@@ -618,7 +618,19 @@ function renderThisYear(year){
       const tg=targets[k],col=MCOL[k]||'#c9a84c';
       const ap=tg.total?Math.min(100,tg.actual/tg.total*100):0;
       const pp=isCurrentYear&&tg.bynow?Math.min(100,tg.bynow/tg.total*100):0;
-      return`<div class="pr" style="margin-bottom:12px"><div class="pl">${k}</div><div style="flex:1;position:relative;height:10px;border-radius:5px;background:var(--bg3);overflow:hidden;"><div style="position:absolute;left:0;top:0;height:100%;width:${pp.toFixed(1)}%;background:${col};opacity:0.2;border-radius:5px"></div><div style="position:absolute;left:0;top:0;height:100%;width:${ap.toFixed(1)}%;background:${col};border-radius:5px"></div></div><div style="font-family:var(--font-m);font-size:11px;color:var(--text2);min-width:58px;text-align:right">${tg.actual}/${tg.total}</div></div>`;
+      // Marker line: by-now position for current year, full target (100%) tick for past years
+      // For past years show at 100% position as a tick; for current year show at by-now %
+      const markerPct=isCurrentYear?(pp||0):100;
+      const markerColor=isCurrentYear?(ap>=pp?'rgba(74,155,142,0.9)':'rgba(196,97,74,0.85)'):(ap>=100?'rgba(74,155,142,0.9)':'rgba(196,97,74,0.85)');
+      const exceeded=isCurrentYear?(ap>=pp):(ap>=100);
+      return`<div class="pr" style="margin-bottom:14px">
+        <div class="pl">${k}</div>
+        <div style="flex:1;position:relative;height:10px;border-radius:5px;background:var(--bg3);">
+          <div style="position:absolute;left:0;top:0;height:100%;width:${ap.toFixed(1)}%;background:${col};border-radius:5px;overflow:hidden;"></div>
+          <div style="position:absolute;left:${markerPct.toFixed(1)}%;top:-3px;width:2px;height:16px;background:${markerColor};border-radius:1px;transform:translateX(-50%);z-index:2;"></div>
+        </div>
+        <div style="font-family:var(--font-m);font-size:11px;min-width:80px;text-align:right;color:${exceeded?'var(--teal)':'var(--text2)'}">${tg.actual}/${tg.total}${exceeded?` \u2713`:''}</div>
+      </div>`;
     }).join('');
   }else{tEl.innerHTML='<div class="ms">N/A \u2014 no targets recorded for this year.</div>';}
   const mc={};for(const b of books){const p=(b.date||'').split('/');if(p.length){const mo=parseInt(p[0]);if(mo>=1&&mo<=12)mc[mo]=(mc[mo]||0)+1;}}
@@ -655,7 +667,7 @@ function renderThisYear(year){
   charts.monthChart=new Chart(document.getElementById('monthChart'),{
     type:'bar',
     data:{labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],datasets:[{data:Array.from({length:12},(_,i)=>mc[i+1]||0),backgroundColor:'#c9a84c',borderRadius:4}]},
-    options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:annualTarget>0||isCurrentYear?18:4,right:annualTarget>0?100:8}},plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9a9688'},grid:{display:false}},y:{ticks:{color:'#9a9688',stepSize:1},grid:{color:'rgba(0,0,0,0.04)'}}}},
+    options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:isCurrentYear&&tot.bynow?18:4}},plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9a9688'},grid:{display:false}},y:{ticks:{color:'#9a9688',stepSize:1},grid:{color:'rgba(0,0,0,0.04)'}}}},
     plugins:[monthPlugin]
   });
   const mediaCounts={};for(const b of books)if(b.media)mediaCounts[b.media]=(mediaCounts[b.media]||0)+1;
