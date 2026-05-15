@@ -269,7 +269,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
         <div id="trChartWrap" style="height:500px"><canvas id="trChart" role="img" aria-label="To read by genre stacked bar"></canvas></div>
       </div>
       <div class="sl">Detail — click a genre to expand series</div>
-      <div class="tw" id="tr-accordion"></div>
+      <div id="tr-accordion"></div>
     </div>
   </div>
 
@@ -538,19 +538,32 @@ function renderHistory(metrics){
   const allT=[...MEDIA,'Total'];
   document.getElementById('hist-leg').innerHTML=allT.map(t=>`<div class="li"><div class="ld" style="background:${MCOL[t]||'#888'}"></div>${t}</div>`).join('');
   const yrsAsc=[2021,2022,2023,2024,2025,2026];
-  // Stacked area: each dataset is the incremental value, stacked:true
+  // Stacked area: each dataset uses cumulative values so bands stack correctly
+  // Order matters: we stack from bottom up
   dc('histLine');
-  const stackedDatasets=MEDIA.map(type=>({
+  const stackOrder=[...MEDIA]; // Print at bottom, Comics at top
+  // For each year, compute cumulative sums in stack order
+  const cumData={};
+  yrsAsc.forEach(y=>{
+    let cum=0;
+    stackOrder.forEach(type=>{
+      cum+=(metrics[type]?metrics[type][y]||0:0);
+      if(!cumData[type])cumData[type]=[];
+      cumData[type].push(cum);
+    });
+  });
+  const stackedDatasets=stackOrder.map((type,i)=>({
     label:type,
-    data:yrsAsc.map(y=>metrics[type]?metrics[type][y]||0:0),
+    data:cumData[type],
     borderColor:MCOL[type],
-    backgroundColor:MCOL[type]+'55',
+    backgroundColor:MCOL[type]+'44',
     borderWidth:1.5,pointRadius:3,pointBackgroundColor:MCOL[type],
-    fill:true,tension:0.3
+    fill:i===0?'origin':{above:MCOL[type]+'44',value:i>0?cumData[stackOrder[i-1]]:0},
+    tension:0.3,order:stackOrder.length-i
   }));
-  // Total as non-stacked line on top
-  stackedDatasets.push({label:'Total',data:yrsAsc.map(y=>metrics['Total']?metrics['Total'][y]||0:0),borderColor:MCOL['Total'],backgroundColor:'transparent',borderWidth:2.5,pointRadius:4,pointBackgroundColor:MCOL['Total'],fill:false,tension:0.3,order:0});
-  charts.histLine=new Chart(document.getElementById('histLine'),{type:'line',data:{labels:yrsAsc.map(String),datasets:stackedDatasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9a9688'},grid:{color:'rgba(0,0,0,0.04)'}},y:{stacked:true,ticks:{color:'#9a9688'},grid:{color:'rgba(0,0,0,0.04)'}}}}});
+  // Total as a clean reference line, not stacked
+  stackedDatasets.push({label:'Total',data:yrsAsc.map(y=>metrics['Total']?metrics['Total'][y]||0:0),borderColor:'#1a1a18',backgroundColor:'transparent',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#1a1a18',fill:false,tension:0.3,order:0});
+  charts.histLine=new Chart(document.getElementById('histLine'),{type:'line',data:{labels:yrsAsc.map(String),datasets:stackedDatasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9a9688'},grid:{color:'rgba(0,0,0,0.04)'}},y:{ticks:{color:'#9a9688'},grid:{color:'rgba(0,0,0,0.04)'}}}}});
   // Velocity table — years as rows, media as columns
   const mo={2021:12,2022:12,2023:12,2024:12,2025:12,2026:4.5};
   document.getElementById('velBody').innerHTML=yrsAsc.map(y=>{
@@ -598,7 +611,7 @@ function renderThisYear(year){
 
 function renderCompletion(bm){
   // Bubble chart: x=total tracked, y=% read, r=owned (scaled)
-  const authors=Object.entries(bm.byAuthor).filter(([,d])=>d.tracked>=3).map(([a,d])=>({a,tracked:d.tracked,read:d.read,owned:d.owned,pctRead:pctN(d.read,d.tracked)}));
+  const authors=Object.entries(bm.byAuthor).filter(([a,d])=>d.tracked>=3&&a&&a!=='Various'&&a!=='(unassigned)'&&!a.toLowerCase().includes('various')).map(([a,d])=>({a,tracked:d.tracked,read:d.read,owned:d.owned,pctRead:pctN(d.read,d.tracked)}));
   dc('bubbleChart');
   // Colour by completion tier
   function bubbleColor(p){if(p>=75)return'rgba(74,155,142,0.7)';if(p>=40)return'rgba(201,168,76,0.7)';return'rgba(196,97,74,0.7)';}
@@ -633,49 +646,142 @@ function renderCompletion(bm){
   document.getElementById('ttrpg-prog').innerHTML=[{n:'Forgotten Realms',d:bm.fr,c:'#c9a84c'},{n:'Dragonlance',d:bm.dl,c:'#4a9b8e'},{n:'Shadowrun',d:bm.sr,c:'#7a6bab'}].map(u=>`<div class="pr"><div class="pl">${u.n}</div><div class="pt"><div class="pf" style="width:${u.d.t?u.d.r/u.d.t*100:0}%;background:${u.c}"></div></div><div class="pv">${pct(u.d.r,u.d.t)}</div></div>`).join('');
 }
 
-function renderToRead(bm){
-  const types=['Series','Individual','Manga','Comics','Graphic Novel'];
-  const typeColors={'Series':'#7a6bab','Individual':'#c9a84c','Manga':'#4a9b8e','Comics':'#5a8a4a','Graphic Novel':'#c4614a'};
-  const genres=Object.entries(bm.byGenre).map(([g,d])=>({g,byType:d.byType||{},total:Object.values(d.byType||{}).reduce((s,v)=>s+v,0),series:(d.series||[]).sort((a,b)=>b.shelf-a.shelf)})).filter(g=>g.total>0).sort((a,b)=>b.total-a.total);
-  document.getElementById('tr-m').innerHTML=mH(fmt(bm.shelf),'Total on shelf','owned unread','c')+mH(fmt(genres.length),'Genres with shelf')+mH(pct(bm.shelf,bm.owned),'% of owned unread');
-  document.getElementById('tr-leg').innerHTML=types.map(t=>`<div class="li"><div class="ld" style="background:${typeColors[t]}"></div>${t}</div>`).join('');
-  const h=Math.max(400,genres.length*30+80);
-  document.getElementById('trChartWrap').style.height=h+'px';
-  dc('trChart');
-  charts.trChart=new Chart(document.getElementById('trChart'),{type:'bar',data:{labels:genres.map(g=>g.g),datasets:types.map(t=>({label:t,data:genres.map(g=>g.byType[t]||0),backgroundColor:typeColors[t],borderRadius:2}))},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,ticks:{color:'#9a9688'},grid:{color:'rgba(0,0,0,0.04)'}},y:{stacked:true,ticks:{color:'#5a5850',font:{size:11}},grid:{display:false}}}}});
-  // Accordion
-  const totals=types.reduce((o,t)=>{o[t]=0;return o;},{});let grandTotal=0;
+function buildToReadAccordion(genres,types,typeColors,idPrefix){
+  if(!genres.length)return'<div class="ms" style="padding:12px;color:var(--text3)">Nothing on shelf in this category.</div>';
+  const totals=types.reduce((o,t)=>{o[t]=0;return o;},{});
   const rows=genres.map((g,idx)=>{
     let rowTotal=0;
-    const cells=types.map(t=>{const v=g.byType[t]||0;totals[t]+=v;rowTotal+=v;return`<td class="nr">${v||'—'}</td>`;}).join('');
-    grandTotal+=rowTotal;
-    const seriesRows=g.series.map(s=>`<div class="acc-series-row"><span>${s.title}</span><span style="text-align:right">${s.type}</span><span style="text-align:right">${s.owned}</span><span style="text-align:right">${s.shelf}</span></div>`).join('');
+    types.forEach(t=>{const v=g.byType[t]||0;totals[t]+=v;rowTotal+=v;});
+    const aid=`${idPrefix}-${idx}`;
+    const seriesRows=g.series.map(s=>{
+      const col=typeColors[s.type]||'#9a9688';
+      return`<div style="display:grid;grid-template-columns:1fr 65px 55px 55px;gap:4px;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px;align-items:center">
+        <span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:2px;background:${col};flex-shrink:0;display:inline-block"></span>${s.title}</span>
+        <span style="font-family:var(--font-m);font-size:10px;color:${col};text-align:center;background:${col}18;border-radius:3px;padding:1px 4px">${s.type}</span>
+        <span style="font-family:var(--font-m);font-size:11px;color:var(--text3);text-align:right">${s.owned}</span>
+        <span style="font-family:var(--font-m);font-size:11px;color:var(--text);text-align:right;font-weight:500">${s.shelf}</span>
+      </div>`;
+    }).join('');
     return`<div class="acc-row">
-      <div class="acc-header" id="acc-h-${idx}" onclick="toggleAcc(${idx})">
-        <div class="acc-name"><span class="acc-chevron" id="acc-c-${idx}">▶</span>${g.g}</div>
+      <div class="acc-header" id="acc-h-${aid}" onclick="toggleAcc('${aid}')">
+        <div class="acc-name"><span class="acc-chevron" id="acc-c-${aid}">▶</span>${g.g}</div>
         ${types.map(t=>`<div class="nr" style="font-family:var(--font-m);font-size:11px;color:var(--text3)">${g.byType[t]||'—'}</div>`).join('')}
         <div class="nr" style="font-family:var(--font-m);font-size:11px;font-weight:600;color:var(--text)">${rowTotal}</div>
       </div>
-      <div class="acc-body" id="acc-b-${idx}">
+      <div class="acc-body" id="acc-b-${aid}">
         <div class="acc-inner">
-          <div class="acc-series-row" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:4px"><span>Series</span><span style="text-align:right">Type</span><span style="text-align:right">Owned</span><span style="text-align:right">On shelf</span></div>
+          <div style="display:grid;grid-template-columns:1fr 65px 55px 55px;gap:4px;padding:4px 0 8px;font-family:var(--font-m);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3)"><span>Series</span><span style="text-align:center">Type</span><span style="text-align:right">Owned</span><span style="text-align:right">On shelf</span></div>
           ${seriesRows}
         </div>
       </div>
     </div>`;
   });
-  const footCells=types.map(t=>`<div class="nr" style="font-family:var(--font-m);font-size:11px;font-weight:600;color:var(--text)">${fmt(totals[t])}</div>`).join('');
-  document.getElementById('tr-accordion').innerHTML=
-    `<div style="background:var(--bg3);display:grid;grid-template-columns:1fr ${types.map(()=>'70px').join(' ')} 80px;gap:4px;padding:8px 12px;font-family:var(--font-m);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);border-radius:10px 10px 0 0;border:1px solid var(--border);border-bottom:none;">
-      <div>Genre</div>${types.map(t=>`<div class="nr">${t==='Graphic Novel'?'GN':t}</div>`).join('')}<div class="nr">Total</div>
-    </div>`+
-    `<div style="border:1px solid var(--border);border-radius:0 0 10px 10px;overflow:hidden;">${rows.join('')}</div>`;
+  const footRow=`<div style="background:var(--bg3);display:grid;grid-template-columns:1fr ${types.map(()=>'70px').join(' ')} 80px;gap:4px;padding:8px 12px;font-family:var(--font-m);font-size:10px;font-weight:600;color:var(--text);border-top:1px solid var(--border)">
+    <div>Total</div>${types.map(t=>`<div class="nr">${fmt(totals[t])}</div>`).join('')}<div class="nr">${fmt(Object.values(totals).reduce((a,b)=>a+b,0))}</div>
+  </div>`;
+  return`<div style="background:var(--bg3);display:grid;grid-template-columns:1fr ${types.map(()=>'70px').join(' ')} 80px;gap:4px;padding:8px 12px;font-family:var(--font-m);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);border-radius:10px 10px 0 0;border:1px solid var(--border);border-bottom:none">
+    <div>Genre</div>${types.map(t=>`<div class="nr">${t==='Graphic Novel'?'GN':t}</div>`).join('')}<div class="nr">Total</div>
+  </div>
+  <div style="border:1px solid var(--border);border-radius:0 0 10px 10px;overflow:hidden;">${rows.join('')}${footRow}</div>`;
 }
 
-function toggleAcc(idx){
-  const body=document.getElementById(`acc-b-${idx}`);
-  const chev=document.getElementById(`acc-c-${idx}`);
-  const head=document.getElementById(`acc-h-${idx}`);
+function renderToRead(bm){
+  const typeColors={'Series':'#7a6bab','Individual':'#c9a84c','Manga':'#4a9b8e','Comics':'#5a8a4a','Graphic Novel':'#c4614a'};
+  const TTRPG_SG='ttrpg';
+  const ttrpgTitles=TKW; // reuse global
+
+  // Split rows into TTRPG vs regular
+  const ttrpgRows=G.bookRows.filter(r=>{
+    const t=r.title.toLowerCase(),sg=r.subgenre.toLowerCase();
+    return (sg===TTRPG_SG||ttrpgTitles.some(k=>t.includes(k)))&&Math.max(0,r.owned-r.read)>0;
+  });
+  const regularRows=G.bookRows.filter(r=>{
+    const t=r.title.toLowerCase(),sg=r.subgenre.toLowerCase();
+    return !(sg===TTRPG_SG||ttrpgTitles.some(k=>t.includes(k)))&&Math.max(0,r.owned-r.read)>0;
+  });
+
+  // Build genre maps for regular books split by media category
+  // Media categories: Print-type (Series+Individual), Manga, Comics+GN
+  const printTypes=new Set(['Series','Individual']);
+  const mangaTypes=new Set(['Manga']);
+  const comicsTypes=new Set(['Comics','Graphic Novel']);
+
+  function buildGenreMap(rows,typeFilter){
+    const map={};
+    rows.filter(r=>typeFilter.has(r.type)).forEach(r=>{
+      const g=r.genre||'Unknown',shelf=Math.max(0,r.owned-r.read);
+      if(!map[g])map[g]={byType:{},series:[]};
+      if(!map[g].byType[r.type])map[g].byType[r.type]=0;
+      map[g].byType[r.type]+=shelf;
+      map[g].series.push({title:r.title,type:r.type,count:r.count,read:r.read,owned:r.owned,shelf});
+    });
+    return Object.entries(map).map(([g,d])=>({g,byType:d.byType,total:Object.values(d.byType).reduce((a,b)=>a+b,0),series:d.series.sort((a,b)=>b.shelf-a.shelf)})).filter(g=>g.total>0).sort((a,b)=>b.total-a.total);
+  }
+
+  // TTRPG genre map
+  function buildTtrpgMap(rows){
+    const map={};
+    rows.forEach(r=>{
+      const g=r.title.toLowerCase().includes('forgotten realms')?'Forgotten Realms':r.title.toLowerCase().includes('dragonlance')?'Dragonlance':r.title.toLowerCase().includes('shadowrun')?'Shadowrun':r.genre||'Other TTRPG';
+      const shelf=Math.max(0,r.owned-r.read);
+      if(!map[g])map[g]={byType:{},series:[]};
+      if(!map[g].byType[r.type])map[g].byType[r.type]=0;
+      map[g].byType[r.type]+=shelf;
+      map[g].series.push({title:r.title,type:r.type,count:r.count,read:r.read,owned:r.owned,shelf});
+    });
+    return Object.entries(map).map(([g,d])=>({g,byType:d.byType,total:Object.values(d.byType).reduce((a,b)=>a+b,0),series:d.series.sort((a,b)=>b.shelf-a.shelf)})).filter(g=>g.total>0).sort((a,b)=>b.total-a.total);
+  }
+
+  const printGenres=buildGenreMap(regularRows,printTypes);
+  const mangaGenres=buildGenreMap(regularRows,mangaTypes);
+  const comicsGenres=buildGenreMap(regularRows,comicsTypes);
+  const ttrpgGenres=buildTtrpgMap(ttrpgRows);
+
+  const ttrpgShelf=ttrpgRows.reduce((s,r)=>s+Math.max(0,r.owned-r.read),0);
+  const printShelf=printGenres.reduce((s,g)=>s+g.total,0);
+  const mangaShelf=mangaGenres.reduce((s,g)=>s+g.total,0);
+  const comicsShelf=comicsGenres.reduce((s,g)=>s+g.total,0);
+
+  document.getElementById('tr-m').innerHTML=
+    mH(fmt(bm.shelf),'Total on shelf','owned unread','c')+
+    mH(fmt(printShelf),'Print / series')+
+    mH(fmt(mangaShelf),'Manga')+
+    mH(fmt(comicsShelf),'Comics / GN')+
+    mH(fmt(ttrpgShelf),'TTRPG');
+
+  // Chart — all non-TTRPG genres by type
+  const allGenres=Object.entries(
+    [...regularRows].reduce((map,r)=>{
+      const g=r.genre||'Unknown',shelf=Math.max(0,r.owned-r.read);
+      if(shelf>0){if(!map[g])map[g]={};if(!map[g][r.type])map[g][r.type]=0;map[g][r.type]+=shelf;}
+      return map;
+    },{})).map(([g,bt])=>({g,byType:bt,total:Object.values(bt).reduce((a,b)=>a+b,0)})).sort((a,b)=>b.total-a.total);
+
+  const types=['Series','Individual','Manga','Comics','Graphic Novel'];
+  document.getElementById('tr-leg').innerHTML=types.map(t=>`<div class="li"><div class="ld" style="background:${typeColors[t]}"></div>${t}</div>`).join('');
+  const h=Math.max(300,allGenres.length*28+80);
+  document.getElementById('trChartWrap').style.height=h+'px';
+  dc('trChart');
+  charts.trChart=new Chart(document.getElementById('trChart'),{type:'bar',data:{labels:allGenres.map(g=>g.g),datasets:types.map(t=>({label:t,data:allGenres.map(g=>g.byType[t]||0),backgroundColor:typeColors[t],borderRadius:2}))},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,ticks:{color:'#9a9688'},grid:{color:'rgba(0,0,0,0.04)'}},y:{stacked:true,ticks:{color:'#5a5850',font:{size:11}},grid:{display:false}}}}});
+
+  // Accordions
+  const acc=document.getElementById('tr-accordion');
+  acc.innerHTML=
+    `<div class="sl" style="margin-top:1.5rem">Print &amp; Series — by genre</div>`+
+    buildToReadAccordion(printGenres,['Series','Individual'],typeColors,'print')+
+    `<div class="sl" style="margin-top:2rem">Manga — by genre</div>`+
+    buildToReadAccordion(mangaGenres,['Manga'],typeColors,'manga')+
+    `<div class="sl" style="margin-top:2rem">Comics &amp; Graphic Novels — by genre</div>`+
+    buildToReadAccordion(comicsGenres,['Comics','Graphic Novel'],typeColors,'comics')+
+    `<div class="sl" style="margin-top:2rem">TTRPG — by universe</div>`+
+    buildToReadAccordion(ttrpgGenres,['Series','Individual','Comics'],typeColors,'ttrpg');
+}
+
+function toggleAcc(aid){
+  const body=document.getElementById(`acc-b-${aid}`);
+  const chev=document.getElementById(`acc-c-${aid}`);
+  const head=document.getElementById(`acc-h-${aid}`);
+  if(!body)return;
   const isOpen=body.classList.contains('open');
   body.classList.toggle('open',!isOpen);
   chev.classList.toggle('open',!isOpen);
@@ -684,10 +790,42 @@ function toggleAcc(idx){
 
 function renderComingUp(up){
   const sorted=[...up].sort((a,b)=>relSort(a.release)-relSort(b.release));
-  document.getElementById('upcoming-list').innerHTML=sorted.map(u=>{
-    const ob=u.ordered==='Have'?'b-green':u.ordered==='Preordered'?'b-teal':u.ordered==='Scheduled'?'b-gold':'b-gray';
-    return`<div class="uc"><div class="uc-date">${u.release}</div><div><div class="uc-title">${u.title||u.series}</div><div class="uc-meta">${u.author}${u.series&&u.title?' · '+u.series:''}</div><div class="uc-badges"><span class="badge ${ob}">${u.ordered||'Not ordered'}</span>${u.publisher?`<span class="badge b-gray">${u.publisher}</span>`:''} ${u.genre?`<span class="badge b-purple">${u.genre}</span>`:''}</div></div></div>`;
-  }).join('');
+  // Group by month
+  const grouped={};
+  sorted.forEach(u=>{
+    const mo=u.release||'Unknown';
+    // Extract month name for grouping
+    let moKey='Unknown';
+    const lo=mo.toLowerCase();
+    for(const[m]of Object.entries(MO_ORD))if(lo.includes(m)){moKey=m.charAt(0).toUpperCase()+m.slice(1);break;}
+    if(!grouped[moKey])grouped[moKey]=[];
+    grouped[moKey].push(u);
+  });
+  const monthOrder=['January','February','March','April','May','June','July','August','September','October','November','December','Unknown'];
+  let html='';
+  for(const mo of monthOrder){
+    if(!grouped[mo])continue;
+    html+=`<div style="margin-bottom:1.5rem">
+      <div style="font-family:var(--font-d);font-size:1rem;font-weight:600;color:var(--gold);margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border)">${mo}</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px">
+        ${grouped[mo].map(u=>{
+          const ob=u.ordered==='Have'?'b-green':u.ordered==='Preordered'?'b-teal':u.ordered==='Scheduled'?'b-gold':'b-gray';
+          const displayTitle=u.title||u.series||'TBD';
+          const sub=[u.series&&u.title?u.series:'',u.author].filter(Boolean).join(' · ');
+          return`<div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:9px 12px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:4px">
+            <div style="font-size:12px;font-weight:500;color:var(--text);line-height:1.3">${displayTitle}</div>
+            ${sub?`<div style="font-family:var(--font-m);font-size:10px;color:var(--text3)">${sub}</div>`:''}
+            <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:2px">
+              <span class="badge ${ob}" style="font-size:9px">${u.ordered||'Not ordered'}</span>
+              ${u.publisher?`<span class="badge b-gray" style="font-size:9px">${u.publisher}</span>`:''}
+              ${u.genre?`<span class="badge b-purple" style="font-size:9px">${u.genre}</span>`:''}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
+  document.getElementById('upcoming-list').innerHTML=html;
 }
 
 function renderBookMail(orders){
