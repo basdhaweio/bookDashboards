@@ -612,27 +612,39 @@ function renderThisYear(year){
     document.getElementById('ty-m').innerHTML=mH(actual,'Books read',`goal: ${tot.total||'N/A'}`,'t')+mH(tot.total||'N/A','Annual goal')+mH('N/A','Target by now','past year')+mH('N/A','vs pace','past year');
   }
   const tEl=document.getElementById('ty-targets');
-  const mk=MEDIA.filter(k=>targets[k]&&targets[k].total>0);
+  // Count actual reads per media type from the book list (source of truth)
+  const actualByMedia={};
+  for(const b of books) if(b.media) actualByMedia[b.media]=(actualByMedia[b.media]||0)+1;
+  // Normalise EBook/Ebook key
+  if(actualByMedia['Ebook']){actualByMedia['EBook']=(actualByMedia['EBook']||0)+actualByMedia['Ebook'];delete actualByMedia['Ebook'];}
+  // Show all media types that have a target OR actual reads
+  const mk=MEDIA.filter(k=>(targets[k]&&targets[k].total>0)||(actualByMedia[k]>0));
   if(mk.length){
-    tEl.innerHTML='<div class="cbt">Actual (solid) vs by-now target (light)</div>'+mk.map(k=>{
-      const tg=targets[k],col=MCOL[k]||'#c9a84c';
-      // Bar width is capped at 100% of track but represents actual/total
-      // If actual > total, bar fills 100% but target line should sit at total/actual * 100% of that bar
-      const ap=tg.total?Math.min(100,tg.actual/tg.total*100):0;
-      const pp=isCurrentYear&&tg.bynow?Math.min(100,tg.bynow/tg.total*100):0;
-      const exceeded=isCurrentYear?(tg.actual>=(tg.bynow||0)):(tg.actual>=tg.total);
-      // Marker sits at: current year = by-now% of total; past year = target% of actual (so it's inside an exceeded bar)
-      const markerPct=isCurrentYear
-        ?(pp||0)
-        :tg.actual>0?Math.min(99,tg.total/tg.actual*100):99;
+    tEl.innerHTML='<div class="cbt">Actual (solid) vs target marker</div>'+mk.map(k=>{
+      const tg=targets[k]||{total:0,bynow:0,actual:0};
+      const col=MCOL[k]||'#c9a84c';
+      // Always use book list count as actual
+      const actualCount=actualByMedia[k]||0;
+      const targetTotal=tg.total||0;
+      // Bar width: if no target, show bar relative to max actual across all types
+      const maxActual=Math.max(...mk.map(m=>actualByMedia[m]||0),1);
+      const ap=targetTotal>0?Math.min(100,actualCount/targetTotal*100):Math.min(100,actualCount/maxActual*100);
+      const pp=isCurrentYear&&tg.bynow&&targetTotal?Math.min(100,tg.bynow/targetTotal*100):0;
+      const exceeded=targetTotal>0?(isCurrentYear?(actualCount>=(tg.bynow||0)):(actualCount>=targetTotal)):true;
+      const markerPct=targetTotal>0
+        ?(isCurrentYear?(pp||0):actualCount>0?Math.min(99,targetTotal/actualCount*100):99)
+        :0;
       const markerColor=exceeded?'rgba(74,155,142,0.9)':'rgba(196,97,74,0.85)';
+      const label=targetTotal>0
+        ?`${actualCount}/${targetTotal}${exceeded?' \u2713':''}`
+        :`${actualCount} (no target)`;
       return`<div class="pr" style="margin-bottom:14px">
         <div class="pl">${k}</div>
         <div style="flex:1;position:relative;height:10px;border-radius:5px;background:var(--bg3);">
           <div style="position:absolute;left:0;top:0;height:100%;width:${ap.toFixed(1)}%;background:${col};border-radius:5px;overflow:hidden;"></div>
-          <div style="position:absolute;left:${markerPct.toFixed(1)}%;top:-3px;width:2px;height:16px;background:${markerColor};border-radius:1px;transform:translateX(-50%);z-index:2;"></div>
+          ${targetTotal>0?`<div style="position:absolute;left:${markerPct.toFixed(1)}%;top:-3px;width:2px;height:16px;background:${markerColor};border-radius:1px;transform:translateX(-50%);z-index:2;"></div>`:''}
         </div>
-        <div style="font-family:var(--font-m);font-size:11px;min-width:80px;text-align:right;color:${exceeded?'var(--teal)':'var(--text2)'}">${tg.actual}/${tg.total}${exceeded?` \u2713`:''}</div>
+        <div style="font-family:var(--font-m);font-size:11px;min-width:80px;text-align:right;color:${exceeded&&targetTotal>0?'var(--teal)':'var(--text2)'}">${label}</div>
       </div>`;
     }).join('');
   }else{tEl.innerHTML='<div class="ms">N/A \u2014 no targets recorded for this year.</div>';}
