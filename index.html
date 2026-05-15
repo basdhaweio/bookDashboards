@@ -25,67 +25,45 @@
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--text);font-family:var(--font-b);font-size:14px;line-height:1.6;min-height:100vh;}
-
-/* HEADER */
 header{background:var(--bg2);padding:2rem 3rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:1rem;box-shadow:var(--shadow);}
 .h-title{font-family:var(--font-d);font-size:2.4rem;font-weight:600;color:var(--gold);letter-spacing:-0.02em;line-height:1;}
 .h-sub{font-family:var(--font-m);font-size:10px;color:var(--text3);letter-spacing:0.12em;text-transform:uppercase;margin-top:5px;}
 .status{font-family:var(--font-m);font-size:11px;color:var(--text3);}
 .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--teal2);margin-right:5px;animation:pulse 2s infinite;}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
-
-/* LOADING */
 #loading{display:flex;align-items:center;justify-content:center;height:60vh;flex-direction:column;gap:1rem;}
 .spinner{width:32px;height:32px;border:2px solid var(--border2);border-top-color:var(--gold2);border-radius:50%;animation:spin 0.8s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg)}}
 .load-txt{font-family:var(--font-m);font-size:11px;color:var(--text3);}
 #error{display:none;padding:3rem;color:var(--coral);font-family:var(--font-m);}
 #dash{display:none;}
-
-/* SECTION NAV */
 .sec-nav{background:var(--bg2);border-bottom:2px solid var(--border);display:flex;padding:0 3rem;}
 .sec-nav button{font-family:var(--font-d);font-size:1rem;font-weight:600;padding:1rem 1.5rem;background:none;border:none;color:var(--text3);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all 0.15s;letter-spacing:-0.01em;}
 .sec-nav button:hover{color:var(--text2);}
 .sec-nav button.active{color:var(--gold);border-bottom-color:var(--gold2);}
-
-/* TAB NAV */
 .tab-nav{background:var(--bg3);border-bottom:1px solid var(--border);display:flex;padding:0 3rem;overflow-x:auto;}
 .tab-nav button{font-family:var(--font-m);font-size:11px;letter-spacing:0.07em;text-transform:uppercase;padding:0.7rem 1.1rem;background:none;border:none;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;transition:all 0.15s;}
 .tab-nav button:hover{color:var(--text2);}
 .tab-nav button.active{color:var(--gold);border-bottom-color:var(--gold2);}
-
-/* PANELS */
 .panel{display:none;padding:2.5rem 3rem;}
 .panel.active{display:block;}
-
-/* SECTION LABEL */
 .sl{font-family:var(--font-m);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:1rem;display:flex;align-items:center;gap:8px;}
 .sl::after{content:'';flex:1;height:1px;background:var(--border);}
-
-/* METRIC GRID */
 .mg{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:2rem;box-shadow:var(--shadow);}
 .m{background:var(--bg2);padding:1.1rem 1.3rem;}
 .mv{font-family:var(--font-d);font-size:1.9rem;font-weight:600;line-height:1;color:var(--gold);}
 .mv.t{color:var(--teal)}.mv.c{color:var(--coral)}.mv.p{color:var(--purple)}.mv.g{color:var(--green)}
 .ml{font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;color:var(--text3);margin-top:5px;}
 .ms{font-size:11px;color:var(--text3);margin-top:2px;}
-
-/* CHART BOX */
 .cb{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1.5rem;margin-bottom:1.5rem;box-shadow:var(--shadow);}
 .cbt{font-family:var(--font-m);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin-bottom:1rem;}
-
-/* TWO COL */
 .tc{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem;}
 @media(max-width:680px){.tc{grid-template-columns:1fr;}}
-
-/* PROGRESS */
 .pr{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
 .pl{width:120px;flex-shrink:0;color:var(--text2);font-family:var(--font-m);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .pt{flex:1;height:5px;border-radius:3px;background:var(--bg3);overflow:hidden;}
 .pf{height:100%;border-radius:3px;}
 .pv{width:42px;text-align:right;color:var(--text3);font-family:var(--font-m);font-size:11px;flex-shrink:0;}
-
-/* TABLE */
 .tw{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:1.5rem;overflow-x:auto;box-shadow:var(--shadow);}
 table{width:100%;border-collapse:collapse;font-size:12px;}
 th{font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;color:var(--text3);padding:9px 12px;text-align:left;border-bottom:1px solid var(--border);background:var(--bg3);}
@@ -95,62 +73,59 @@ td:first-child{color:var(--text);font-weight:500;}
 tr:last-child td{border-bottom:none;}
 tr:hover td{background:var(--bg3);}
 tfoot td{font-weight:600;color:var(--text);background:var(--bg3);}
-
-/* LEGEND */
 .leg{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:1rem;}
 .li{display:flex;align-items:center;gap:5px;font-family:var(--font-m);font-size:11px;color:var(--text2);}
 .ld{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
-
-/* YEAR TOGGLE */
 .ytog{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:1.5rem;}
-.ytog button{font-family:var(--font-m);font-size:11px;letter-spacing:0.06em;padding:5px 14px;background:var(--bg2);border:1px solid var(--border2);border-radius:20px;color:var(--text3);cursor:pointer;transition:all 0.15s;}
+.ytog button{font-family:var(--font-m);font-size:11px;padding:5px 14px;background:var(--bg2);border:1px solid var(--border2);border-radius:20px;color:var(--text3);cursor:pointer;transition:all 0.15s;}
 .ytog button:hover{color:var(--text);border-color:var(--gold2);}
 .ytog button.active{background:var(--gold2);border-color:var(--gold2);color:#fff;font-weight:500;}
-
-/* FORECAST CARDS */
 .fc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:1.5rem;box-shadow:var(--shadow);}
 .fc{background:var(--bg2);padding:1.2rem;}
 .fc-r{font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;}
 .fc-y{font-family:var(--font-d);font-size:1.8rem;font-weight:600;color:var(--gold);line-height:1;}
 .fc-a{font-family:var(--font-m);font-size:11px;color:var(--text3);margin-top:4px;}
-
-/* SLIDER */
 .slider-row{display:flex;align-items:center;gap:12px;margin-bottom:1rem;}
 .slider-row label{font-family:var(--font-m);font-size:11px;color:var(--text3);white-space:nowrap;}
 input[type=range]{flex:1;accent-color:var(--gold2);}
 .sv{font-family:var(--font-d);font-size:1.4rem;font-weight:600;color:var(--gold);min-width:36px;}
 .sm{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:1.5rem;}
-
-/* BADGES */
-.badge{display:inline-block;font-family:var(--font-m);font-size:10px;padding:2px 7px;border-radius:3px;letter-spacing:0.03em;}
+.badge{display:inline-block;font-family:var(--font-m);font-size:10px;padding:2px 7px;border-radius:3px;}
 .b-green{background:var(--green-bg);color:var(--green);}
 .b-gold{background:var(--gold-bg);color:var(--gold);}
 .b-coral{background:var(--coral-bg);color:var(--coral);}
 .b-gray{background:var(--bg3);color:var(--text3);}
 .b-teal{background:var(--teal-bg);color:var(--teal);}
 .b-purple{background:var(--purple-bg);color:var(--purple);}
-
-/* UPCOMING CARDS */
-.uc{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem 1.2rem;margin-bottom:8px;display:flex;align-items:flex-start;gap:12px;box-shadow:var(--shadow);transition:box-shadow 0.15s;}
+.uc{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem 1.2rem;margin-bottom:8px;display:flex;align-items:flex-start;gap:12px;box-shadow:var(--shadow);}
 .uc:hover{box-shadow:var(--shadow2);}
 .uc-date{font-family:var(--font-m);font-size:11px;color:var(--text3);min-width:80px;padding-top:2px;}
 .uc-title{font-size:13px;font-weight:500;color:var(--text);margin-bottom:2px;}
 .uc-meta{font-family:var(--font-m);font-size:11px;color:var(--text3);}
 .uc-badges{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap;}
-
-/* ORDER ROWS */
 .or{display:grid;grid-template-columns:100px 1fr 80px 90px 80px;gap:8px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px;}
 .or:last-child{border-bottom:none;}
 .or:hover{background:var(--bg3);}
-
-/* UNIVERSE CARD */
-.uv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;margin-bottom:1.5rem;}
-.uv-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1.2rem;box-shadow:var(--shadow);}
-.uv-name{font-family:var(--font-d);font-size:1rem;font-weight:600;color:var(--text);margin-bottom:8px;}
-.uv-stats{display:flex;gap:12px;margin-bottom:8px;font-family:var(--font-m);font-size:11px;color:var(--text3);}
-.uv-stat span{color:var(--text);font-weight:500;}
-
-/* MINI CHART IN OVERVIEW */
+/* Universe type sections */
+.uv-section{margin-bottom:2.5rem;}
+.uv-section-title{font-family:var(--font-d);font-size:1.1rem;font-weight:600;color:var(--text);margin-bottom:1rem;padding-bottom:6px;border-bottom:1px solid var(--border);}
+/* Accordion */
+.acc-row{border-bottom:1px solid var(--border);}
+.acc-row:last-child{border-bottom:none;}
+.acc-header{display:grid;grid-template-columns:1fr 70px 70px 70px 70px 70px 80px;gap:4px;align-items:center;padding:8px 12px;cursor:pointer;transition:background 0.1s;font-size:12px;}
+.acc-header:hover{background:var(--bg3);}
+.acc-header.open{background:var(--gold-bg);}
+.acc-name{font-weight:500;color:var(--text);display:flex;align-items:center;gap:6px;}
+.acc-chevron{font-size:10px;color:var(--text3);transition:transform 0.2s;flex-shrink:0;}
+.acc-chevron.open{transform:rotate(90deg);}
+.acc-body{display:none;background:var(--bg3);border-top:1px solid var(--border);}
+.acc-body.open{display:block;}
+.acc-inner{padding:8px 12px 12px 24px;}
+.acc-series-row{display:grid;grid-template-columns:1fr 60px 60px 60px;gap:4px;padding:4px 0;font-size:11px;border-bottom:1px solid var(--border);font-family:var(--font-m);color:var(--text2);}
+.acc-series-row:last-child{border-bottom:none;}
+.acc-series-row span:first-child{color:var(--text);font-family:var(--font-b);}
+/* Bubble chart tooltip */
+.bubble-legend{display:flex;gap:16px;margin-bottom:0.5rem;font-family:var(--font-m);font-size:11px;color:var(--text3);}
 .ov-charts{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem;}
 @media(max-width:680px){.ov-charts{grid-template-columns:1fr;}}
 </style>
@@ -166,14 +141,13 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
 <div id="error"></div>
 
 <div id="dash">
-  <!-- SECTION NAV -->
   <div class="sec-nav">
     <button class="active" onclick="switchSection('tracking')">Tracking</button>
     <button onclick="switchSection('reading')">Reading</button>
     <button onclick="switchSection('buying')">Buying</button>
   </div>
 
-  <!-- TRACKING TABS -->
+  <!-- TRACKING -->
   <div id="sec-tracking">
     <div class="tab-nav">
       <button class="active" onclick="switchTab('overview','tracking')">Overview</button>
@@ -182,61 +156,60 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <button onclick="switchTab('universe','tracking')">By Universe</button>
       <button onclick="switchTab('rooms','tracking')">Rooms</button>
     </div>
-
     <div class="panel active" id="tab-overview">
-      <div class="sl">Library totals</div>
-      <div class="mg" id="ov-m"></div>
-      <div class="sl">Completion rates</div>
-      <div class="mg" id="ov-c"></div>
+      <div class="sl">Library totals</div><div class="mg" id="ov-m"></div>
+      <div class="sl">Completion rates</div><div class="mg" id="ov-c"></div>
       <div class="sl">This year at a glance</div>
       <div class="ov-charts">
         <div class="cb"><div class="cbt">2026 — books read by month</div><div style="height:180px"><canvas id="ov-month" role="img" aria-label="Monthly reading 2026"></canvas></div></div>
         <div class="cb"><div class="cbt">2026 — media type breakdown</div><div style="height:180px"><canvas id="ov-pie" role="img" aria-label="Media type pie 2026"></canvas></div></div>
       </div>
-      <div class="sl">2026 focus series</div>
-      <div id="ov-focus"></div>
+      <div class="sl">2026 focus series</div><div id="ov-focus"></div>
       <div class="sl">Library by type</div>
       <div class="cb">
-        <div class="cbt">Series · Individual · Manga · Comics · Graphic Novel</div>
         <div class="leg"><div class="li"><div class="ld" style="background:#c9a84c"></div>Tracked</div><div class="li"><div class="ld" style="background:#4a9b8e"></div>Read</div><div class="li"><div class="ld" style="background:#7a6bab"></div>Owned</div></div>
         <div style="height:260px"><canvas id="typeChart" role="img" aria-label="Grouped bar by type"></canvas></div>
       </div>
     </div>
-
     <div class="panel" id="tab-bytype">
       <div class="sl">Detail by type</div>
       <div class="tw"><table><thead><tr><th>Type</th><th class="nr">Tracked</th><th class="nr">Read</th><th class="nr">Owned</th><th class="nr">On Shelf</th><th class="nr">Need to Buy</th><th class="nr">% Read/Owned</th><th class="nr">% Owned/Tracked</th></tr></thead><tbody id="typeBody"></tbody><tfoot><tr id="typeFoot"></tr></tfoot></table></div>
       <div class="sl">% read of owned by type</div>
-      <div class="cb"><div style="height:200px"><canvas id="readPctChart" role="img" aria-label="Horizontal bar read pct by type"></canvas></div></div>
+      <div class="cb"><div style="height:200px"><canvas id="readPctChart" role="img" aria-label="% read by type"></canvas></div></div>
     </div>
-
     <div class="panel" id="tab-genre">
-      <div class="sl">On shelf to read vs need to buy — by genre</div>
+      <div class="sl">On shelf vs need to buy — by genre</div>
       <div class="leg"><div class="li"><div class="ld" style="background:#4a9b8e"></div>On shelf</div><div class="li"><div class="ld" style="background:#c4614a"></div>Need to buy</div></div>
-      <div class="cb"><div id="genreWrap" style="height:500px"><canvas id="genreChart" role="img" aria-label="Horizontal bar genres"></canvas></div></div>
+      <div class="cb"><div id="genreWrap" style="height:500px"><canvas id="genreChart" role="img" aria-label="Genre chart"></canvas></div></div>
       <div class="sl">Genre detail</div>
       <div class="tw"><table><thead><tr><th>Genre</th><th class="nr">Tracked</th><th class="nr">Read</th><th class="nr">Owned</th><th class="nr">On Shelf</th><th class="nr">Need to Buy</th><th class="nr">% Read</th></tr></thead><tbody id="genreBody"></tbody></table></div>
     </div>
-
     <div class="panel" id="tab-universe">
-      <div class="sl">Reading progress by universe</div>
-      <div class="uv-grid" id="uv-grid"></div>
-      <div class="sl">Universe comparison</div>
-      <div class="cb">
-        <div class="leg"><div class="li"><div class="ld" style="background:#4a9b8e"></div>Read</div><div class="li"><div class="ld" style="background:#e8e0c8"></div>Unread owned</div><div class="li"><div class="ld" style="background:#f0ebe0"></div>Not owned</div></div>
-        <div id="uvChartWrap" style="height:500px"><canvas id="uvChart" role="img" aria-label="Universe stacked bar"></canvas></div>
+      <div id="uv-series-section" class="uv-section">
+        <div class="uv-section-title">📚 Series</div>
+        <div id="uv-series-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;margin-bottom:1rem;"></div>
+        <div class="cb"><div id="uv-series-wrap" style="height:400px"><canvas id="uvSeriesChart" role="img" aria-label="Series universes bar"></canvas></div></div>
+      </div>
+      <div id="uv-comics-section" class="uv-section">
+        <div class="uv-section-title">🦸 Comics</div>
+        <div id="uv-comics-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;margin-bottom:1rem;"></div>
+        <div class="cb"><div id="uv-comics-wrap" style="height:240px"><canvas id="uvComicsChart" role="img" aria-label="Comics universes bar"></canvas></div></div>
+      </div>
+      <div id="uv-manga-section" class="uv-section">
+        <div class="uv-section-title">🎌 Manga</div>
+        <div id="uv-manga-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;margin-bottom:1rem;"></div>
+        <div class="cb"><div id="uv-manga-wrap" style="height:240px"><canvas id="uvMangaChart" role="img" aria-label="Manga universes bar"></canvas></div></div>
       </div>
     </div>
-
     <div class="panel" id="tab-rooms">
       <div class="sl">Books by room</div>
       <div id="room-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;margin-bottom:1.5rem;"></div>
       <div class="sl">Owned per room</div>
-      <div class="cb"><div style="height:280px"><canvas id="roomChart" role="img" aria-label="Bar chart owned per room"></canvas></div></div>
+      <div class="cb"><div style="height:280px"><canvas id="roomChart" role="img" aria-label="Owned per room"></canvas></div></div>
     </div>
   </div>
 
-  <!-- READING TABS -->
+  <!-- READING -->
   <div id="sec-reading" style="display:none">
     <div class="tab-nav">
       <button class="active" onclick="switchTab('history','reading')">Reading History</button>
@@ -244,15 +217,18 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <button onclick="switchTab('completion','reading')">Completion</button>
       <button onclick="switchTab('toread','reading')">To Read</button>
     </div>
-
     <div class="panel active" id="tab-history">
-      <div class="sl">Year-over-year reading — stacked area by media type</div>
+      <div class="sl">Year-over-year — stacked area by media type</div>
       <div class="leg" id="hist-leg"></div>
-      <div class="cb"><div style="height:340px"><canvas id="histLine" role="img" aria-label="Stacked area chart books per year by media type"></canvas></div></div>
-      <div class="sl">Reading velocity — books per month by type</div>
-      <div class="tw"><table><thead><tr><th>Media</th><th class="nr">2021</th><th class="nr">2022</th><th class="nr">2023</th><th class="nr">2024</th><th class="nr">2025</th><th class="nr">2026 ytd</th><th class="nr">All-time avg</th></tr></thead><tbody id="velBody"></tbody></table></div>
+      <div class="cb"><div style="height:340px"><canvas id="histLine" role="img" aria-label="Stacked area chart reading history"></canvas></div></div>
+      <div class="sl">Reading velocity — books per month</div>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Year</th><th class="nr">Print</th><th class="nr">EBook</th><th class="nr">Audio</th><th class="nr">Manga</th><th class="nr">GN</th><th class="nr">Comics</th><th class="nr">Total</th></tr></thead>
+          <tbody id="velBody"></tbody>
+        </table>
+      </div>
     </div>
-
     <div class="panel" id="tab-thisyear">
       <div class="sl">Year</div>
       <div class="ytog" id="year-tog"></div>
@@ -260,57 +236,55 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div class="sl">Progress vs targets</div>
       <div class="cb" id="ty-targets"></div>
       <div class="sl">Books finished by month</div>
-      <div class="cb"><div style="height:240px"><canvas id="monthChart" role="img" aria-label="Books per month bar"></canvas></div></div>
+      <div class="cb"><div style="height:240px"><canvas id="monthChart" role="img" aria-label="Books per month"></canvas></div></div>
       <div class="sl">Media type breakdown</div>
       <div class="tc">
-        <div class="cb"><div style="height:220px"><canvas id="ty-pie" role="img" aria-label="Media type pie this year"></canvas></div></div>
+        <div class="cb"><div style="height:220px"><canvas id="ty-pie" role="img" aria-label="Media pie"></canvas></div></div>
         <div class="cb" id="ty-media-bars"></div>
       </div>
-      <div class="sl">Focus series</div>
-      <div id="focus-series"></div>
+      <div class="sl">Focus series</div><div id="focus-series"></div>
       <div class="sl">All books this year</div>
-      <div class="tw"><table><thead><tr><th>#</th><th>Title</th><th>Genre</th><th>Media</th><th class="nr">Date</th></tr></thead><tbody id="ty-books"></tbody></table></div>
+      <div class="tw"><table><thead><tr><th>#</th><th class="nr">Date</th><th>Title</th><th>Genre</th><th>Media</th></tr></thead><tbody id="ty-books"></tbody></table></div>
     </div>
-
     <div class="panel" id="tab-completion">
-      <div class="sl">Series completion — by author</div>
-      <div class="tw"><table><thead><tr><th>Author</th><th class="nr">Tracked</th><th class="nr">Read</th><th class="nr">Owned</th><th class="nr">% Read</th><th class="nr">% Owned</th></tr></thead><tbody id="author-body"></tbody></table></div>
+      <div class="sl">Author completion — bubble chart</div>
+      <div class="bubble-legend">
+        <span>X axis: total books tracked</span>
+        <span>Y axis: % read of tracked</span>
+        <span>Bubble size: books owned</span>
+      </div>
+      <div class="cb"><div style="height:440px"><canvas id="bubbleChart" role="img" aria-label="Author completion bubble chart — x=total tracked, y=percent read, size=owned"></canvas></div></div>
       <div class="sl">TTRPG breakdown</div>
       <div class="mg" id="ttrpg-m"></div>
       <div class="tc">
-        <div><div class="sl">TTRPG share</div><div class="cb"><div style="height:220px"><canvas id="ttrpgPie" role="img" aria-label="Pie chart TTRPG universes"></canvas></div></div></div>
+        <div><div class="sl">TTRPG share</div><div class="cb"><div style="height:220px"><canvas id="ttrpgPie" role="img" aria-label="TTRPG pie"></canvas></div></div></div>
         <div><div class="sl">Per-universe completion</div><div class="cb"><div class="cbt">Read of tracked</div><div id="ttrpg-prog"></div></div></div>
       </div>
     </div>
-
     <div class="panel" id="tab-toread">
-      <div class="sl">On shelf to read — by genre</div>
+      <div class="sl">On shelf to read — by genre &amp; type</div>
       <div class="mg" id="tr-m"></div>
       <div class="cb">
-        <div class="cbt">On shelf to read by genre and type</div>
+        <div class="leg" id="tr-leg"></div>
         <div id="trChartWrap" style="height:500px"><canvas id="trChart" role="img" aria-label="To read by genre stacked bar"></canvas></div>
       </div>
-      <div class="sl">Detail table</div>
-      <div class="tw"><table><thead><tr><th>Genre</th><th class="nr">Series</th><th class="nr">Individual</th><th class="nr">Manga</th><th class="nr">Comics</th><th class="nr">GN</th><th class="nr">Total</th></tr></thead><tbody id="tr-body"></tbody><tfoot><tr id="tr-foot"></tr></tfoot></table></div>
+      <div class="sl">Detail — click a genre to expand series</div>
+      <div class="tw" id="tr-accordion"></div>
     </div>
   </div>
 
-  <!-- BUYING TABS -->
+  <!-- BUYING -->
   <div id="sec-buying" style="display:none">
     <div class="tab-nav">
       <button class="active" onclick="switchTab('comingup','buying')">Coming Up</button>
       <button onclick="switchTab('bookmail','buying')">Book Mail</button>
       <button onclick="switchTab('toacquire','buying')">To Acquire</button>
     </div>
-
     <div class="panel active" id="tab-comingup">
-      <div class="sl">Upcoming releases</div>
-      <div id="upcoming-list"></div>
+      <div class="sl">Upcoming releases</div><div id="upcoming-list"></div>
     </div>
-
     <div class="panel" id="tab-bookmail">
-      <div class="sl">Order overview</div>
-      <div class="mg" id="tbb-m"></div>
+      <div class="sl">Order overview</div><div class="mg" id="tbb-m"></div>
       <div class="sl">Pending — unfulfilled &amp; unpaid</div>
       <div class="cb">
         <div class="or" style="background:var(--bg3);font-family:var(--font-m);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);border-radius:6px 6px 0 0;">
@@ -321,7 +295,6 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div class="sl">Full order history</div>
       <div class="tw"><table><thead><tr><th>Date</th><th>Books</th><th>Series</th><th>Author</th><th>Type</th><th class="nr">Count</th><th>Status</th></tr></thead><tbody id="tbb-all"></tbody></table></div>
     </div>
-
     <div class="panel" id="tab-toacquire">
       <div class="sl">To acquire — 0 owned in library</div>
       <div class="mg" id="acq-m"></div>
@@ -337,19 +310,11 @@ const API_KEY='AIzaSyAhfCAYNMD4iyxdaQlM11BbppxwwqTWrxg';
 const BOOKS_ID='1IRQ0VENyj_H_MENOOPBB4W3F8pQo4UeMdoj__9dUm3k';
 const READING_ID='1KeUuBxJkXD0EqSBX-qsu2sadRaAhf2p8Q8OPjiX-ceE';
 const DOB=new Date(1985,10,1),START=new Date(2000,8,1);
-const YEARS=[2026,2025,2024,2023,2022,2021]; // descending
+const YEARS=[2026,2025,2024,2023,2022,2021];
 const MEDIA=['Print','EBook','Audio','Manga','Graphic Novel','Comics'];
 const MCOL={Print:'#c9a84c',EBook:'#4a7ab5',Audio:'#4a9b8e',Manga:'#7a6bab','Graphic Novel':'#c4614a',Comics:'#5a8a4a',Total:'#1a1a18'};
+const TKCOL=['#c9a84c','#4a9b8e','#7a6bab','#c4614a','#5a8a4a','#4a7ab5','#8a6a9a','#6a8a4a','#9a6a4a','#4a6a8a','#8a4a6a','#6a9a6a','#aa8a3a','#3a8a8a','#8a3a8a'];
 const SKIP=new Set(['Time in years','Recreational books per year','Time in months','Current Library Remaining','Rate of 50/yr','Rate of 100/yr','Rate of 150/yr','Days','Weeks per book','At pace, years to finish all current books','TTF FR:','Finish all planned books','Books per month','Weeks per','Read/Planned','Owned/Planned']);
-const TKCOL=['#c9a84c','#4a9b8e','#7a6bab','#c4614a','#5a8a4a','#4a7ab5','#8a6a9a','#6a8a4a','#9a6a4a','#4a6a8a','#8a4a6a','#6a9a6a'];
-
-function n(v){const x=parseInt(v);return isNaN(x)?0:x;}
-function pct(a,b){return b>0?(a/b*100).toFixed(1)+'%':'—';}
-function pctN(a,b){return b>0?+(a/b*100).toFixed(1):0;}
-function fmt(x){return(+x||0).toLocaleString();}
-function age(){return(new Date()-DOB)/(365.25*864e5);}
-
-// Room assignment
 const TKW=['forgotten realms','dragonlance','shadowrun','resident evil','myst','warhammer'];
 const FKW=['firefly','serenity comics','unification comics','new sheriff comics','blue sun rising','return that earth',"brand new 'verse",'gospel according','river run','fall guys','firefly graphic','star wars','mighty nein','vox machina','critical roll','days of adventure','rick and morty'];
 const HT=new Set(['Comics','Graphic Novel','Manga']);
@@ -381,6 +346,12 @@ function assignRoom(title,author,type,genre,sg){
 let charts={};
 function dc(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
 
+function n(v){const x=parseInt(v);return isNaN(x)?0:x;}
+function pct(a,b){return b>0?(a/b*100).toFixed(1)+'%':'—';}
+function pctN(a,b){return b>0?+(a/b*100).toFixed(1):0;}
+function fmt(x){return(+x||0).toLocaleString();}
+function age(){return(new Date()-DOB)/(365.25*864e5);}
+
 async function fr(sid,range){
   const url=`https://sheets.googleapis.com/v4/spreadsheets/${sid}/values/${encodeURIComponent(range)}?key=${API_KEY}`;
   const r=await fetch(url);
@@ -388,7 +359,6 @@ async function fr(sid,range){
   return(await r.json()).values||[];
 }
 
-// PARSERS
 function parseBooks(vals){
   const rows=[];
   for(let i=1;i<vals.length;i++){
@@ -401,20 +371,16 @@ function parseBooks(vals){
 }
 
 function parseYear(vals){
-  // Targets at G59 (row 59, col G=index 6), Series Focus at G69+ (row 69+, col G=index 6)
   const books=[],targets={},focus=[];
   for(let i=0;i<vals.length;i++){
     const r=vals[i]||[];
     const c0=(r[0]||'').trim(),c6=(r[6]||'').trim();
-    // Book rows: col A is a number
     const num=n(c0);
     if(num>0&&r[2])books.push({num,date:(r[1]||'').trim(),title:(r[2]||'').trim(),genre:(r[3]||'').trim(),media:(r[4]||'').trim()});
-    // Targets at row 59 col G area: label in G, total in H, bynow in I, actual in J (0-indexed: 6,7,8,9)
     const tLabel=(r[6]||'').trim();
     if(i>=57&&i<=67&&['Print','EBook','Audio','Manga','Graphic Novel','Comics','Total','Illustrated Total'].includes(tLabel)){
       targets[tLabel]={total:n(r[7]),bynow:n(r[8]),actual:n(r[9])};
     }
-    // Series Focus at row 69+ col G
     if(i>=67&&c6&&!['Print','EBook','Audio','Manga','Graphic Novel','Comics','Total','Illustrated Total','Targets','Series Focus',''].includes(c6)){
       focus.push(c6);
     }
@@ -447,7 +413,6 @@ function parseOrders(vals){
   return orders;
 }
 
-// COMPUTE
 function calcBooks(rows){
   const m={tracked:0,read:0,owned:0,readNotOwned:0,byType:{},byGenre:{},byRoom:{},byUniverse:{},byAuthor:{},fr:{t:0,r:0,o:0},dl:{t:0,r:0,o:0},sr:{t:0,r:0,o:0},ttrpg:{t:0,r:0,o:0}};
   for(const r of rows){
@@ -455,44 +420,59 @@ function calcBooks(rows){
     m.readNotOwned+=Math.max(0,r.read-r.owned);
     if(!m.byType[r.type])m.byType[r.type]={tracked:0,read:0,owned:0};
     m.byType[r.type].tracked+=r.count;m.byType[r.type].read+=r.read;m.byType[r.type].owned+=r.owned;
-    if(r.genre){if(!m.byGenre[r.genre])m.byGenre[r.genre]={tracked:0,read:0,owned:0,byType:{}};m.byGenre[r.genre].tracked+=r.count;m.byGenre[r.genre].read+=r.read;m.byGenre[r.genre].owned+=r.owned;if(!m.byGenre[r.genre].byType[r.type])m.byGenre[r.genre].byType[r.type]=0;m.byGenre[r.genre].byType[r.type]+=Math.max(0,r.owned-r.read);}
+    if(r.genre){
+      if(!m.byGenre[r.genre])m.byGenre[r.genre]={tracked:0,read:0,owned:0,byType:{},series:[]};
+      m.byGenre[r.genre].tracked+=r.count;m.byGenre[r.genre].read+=r.read;m.byGenre[r.genre].owned+=r.owned;
+      const shelf=Math.max(0,r.owned-r.read);
+      if(shelf>0){
+        if(!m.byGenre[r.genre].byType[r.type])m.byGenre[r.genre].byType[r.type]=0;
+        m.byGenre[r.genre].byType[r.type]+=shelf;
+        m.byGenre[r.genre].series.push({title:r.title,type:r.type,count:r.count,read:r.read,owned:r.owned,shelf});
+      }
+    }
     const t=r.title.toLowerCase(),sg=r.subgenre.toLowerCase();
-    if(sg==='ttrpg'||TKW.some(k=>t.includes(k))){m.ttrpg.t+=r.count;m.ttrpg.r+=r.read;m.ttrpg.o+=r.owned;if(t.includes('forgotten realms')){m.fr.t+=r.count;m.fr.r+=r.read;m.fr.o+=r.owned;}else if(t.includes('dragonlance')){m.dl.t+=r.count;m.dl.r+=r.read;m.dl.o+=r.owned;}else if(t.includes('shadowrun')){m.sr.t+=r.count;m.sr.r+=r.read;m.sr.o+=r.owned;}}
+    if(sg==='ttrpg'||TKW.some(k=>t.includes(k))){
+      m.ttrpg.t+=r.count;m.ttrpg.r+=r.read;m.ttrpg.o+=r.owned;
+      if(t.includes('forgotten realms')){m.fr.t+=r.count;m.fr.r+=r.read;m.fr.o+=r.owned;}
+      else if(t.includes('dragonlance')){m.dl.t+=r.count;m.dl.r+=r.read;m.dl.o+=r.owned;}
+      else if(t.includes('shadowrun')){m.sr.t+=r.count;m.sr.r+=r.read;m.sr.o+=r.owned;}
+    }
     const rm=assignRoom(r.title,r.author,r.type,r.genre,r.subgenre);
-    if(!m.byRoom[rm])m.byRoom[rm]={tracked:0,read:0,owned:0};m.byRoom[rm].tracked+=r.count;m.byRoom[rm].read+=r.read;m.byRoom[rm].owned+=r.owned;
+    if(!m.byRoom[rm])m.byRoom[rm]={tracked:0,read:0,owned:0};
+    m.byRoom[rm].tracked+=r.count;m.byRoom[rm].read+=r.read;m.byRoom[rm].owned+=r.owned;
+    // Universe — keyed by primary type
     const uv=r.universe||'(unassigned)';
-    if(!m.byUniverse[uv])m.byUniverse[uv]={tracked:0,read:0,owned:0};m.byUniverse[uv].tracked+=r.count;m.byUniverse[uv].read+=r.read;m.byUniverse[uv].owned+=r.owned;
+    const uvKey=`${uv}||${r.type}`;
+    if(!m.byUniverse[uvKey])m.byUniverse[uvKey]={name:uv,type:r.type,tracked:0,read:0,owned:0};
+    m.byUniverse[uvKey].tracked+=r.count;m.byUniverse[uvKey].read+=r.read;m.byUniverse[uvKey].owned+=r.owned;
+    // Author
     const au=r.author||'Unknown';
-    if(!m.byAuthor[au])m.byAuthor[au]={tracked:0,read:0,owned:0};m.byAuthor[au].tracked+=r.count;m.byAuthor[au].read+=r.read;m.byAuthor[au].owned+=r.owned;
+    if(!m.byAuthor[au])m.byAuthor[au]={tracked:0,read:0,owned:0};
+    m.byAuthor[au].tracked+=r.count;m.byAuthor[au].read+=r.read;m.byAuthor[au].owned+=r.owned;
   }
   m.shelf=m.owned-m.read;m.needBuy=m.tracked-m.owned;
-  const now=new Date();m.months=Math.floor((now-START)/(30.4375*864e5));m.bpm=m.read/m.months;m.bpy=m.bpm*12;m.age=age();
+  const now=new Date();
+  m.months=Math.floor((now-START)/(30.4375*864e5));
+  m.bpm=m.read/m.months;m.bpy=m.bpm*12;m.age=age();
   return m;
 }
 
-// RENDER HELPERS
 function mH(val,lbl,sub='',cls=''){return`<div class="m"><div class="mv ${cls}">${val}</div><div class="ml">${lbl}</div>${sub?`<div class="ms">${sub}</div>`:''}</div>`;}
-
 function mediaBadge(med){return{Print:'b-gold',Audio:'b-teal',Manga:'b-purple',Comics:'b-green',Ebook:'b-teal',EBook:'b-teal','Graphic Novel':'b-coral'}[med]||'b-gray';}
+const MO_ORD={january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12};
+function relSort(s){if(!s)return 99;const l=s.toLowerCase();for(const[m,v]of Object.entries(MO_ORD))if(l.includes(m))return v;return 99;}
 
-const MONTHS_ORD={january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12};
-function relSort(s){if(!s)return 99;const l=s.toLowerCase();for(const[m,v]of Object.entries(MONTHS_ORD))if(l.includes(m))return v;return 99;}
-
-// ── OVERVIEW ──────────────────────────────────────────────────
 function renderOverview(bm,yd2026){
-  document.getElementById('ov-m').innerHTML=mH(fmt(bm.tracked),'Total tracked')+mH(fmt(bm.read),'Total read',pct(bm.read,bm.tracked)+' of tracked','t')+mH(fmt(bm.owned),'Total owned')+mH(fmt(bm.shelf),'On shelf','owned unread','c')+mH(fmt(bm.needBuy),'Need to buy')+mH(fmt(bm.readNotOwned),'Read not owned','delta where read>owned');
+  document.getElementById('ov-m').innerHTML=mH(fmt(bm.tracked),'Total tracked')+mH(fmt(bm.read),'Total read',pct(bm.read,bm.tracked)+' of tracked','t')+mH(fmt(bm.owned),'Total owned')+mH(fmt(bm.shelf),'On shelf','owned unread','c')+mH(fmt(bm.needBuy),'Need to buy')+mH(fmt(bm.readNotOwned),'Read not owned','delta where read > owned');
   document.getElementById('ov-c').innerHTML=mH(pct(bm.read,bm.tracked),'Read / tracked','','t')+mH(pct(bm.read,bm.owned),'Read / owned','','t')+mH(pct(bm.owned,bm.tracked),'Owned / tracked')+mH(pct(bm.owned-bm.read,bm.tracked-bm.read),'Owned unread / unread');
   const{books,focus}=yd2026;
-  // Monthly mini chart
   const mc={};for(const b of books){const p=b.date.split('/');if(p.length){const mo=parseInt(p[0]);if(mo>=1&&mo<=12)mc[mo]=(mc[mo]||0)+1;}}
   dc('ov-month');
   charts['ov-month']=new Chart(document.getElementById('ov-month'),{type:'bar',data:{labels:['J','F','M','A','M','J','J','A','S','O','N','D'],datasets:[{data:Array.from({length:12},(_,i)=>mc[i+1]||0),backgroundColor:'#c9a84c',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9a9688'},grid:{display:false}},y:{ticks:{color:'#9a9688',stepSize:2},grid:{color:'rgba(0,0,0,0.04)'}}}}});
-  // Pie
   const mediaCounts={};for(const b of books)mediaCounts[b.media]=(mediaCounts[b.media]||0)+1;
-  const pieLabels=Object.keys(mediaCounts),pieData=Object.values(mediaCounts);
+  const pieLabels=Object.keys(mediaCounts);
   dc('ov-pie');
-  charts['ov-pie']=new Chart(document.getElementById('ov-pie'),{type:'pie',data:{labels:pieLabels,datasets:[{data:pieData,backgroundColor:pieLabels.map(l=>MCOL[l]||'#9a9688'),borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{family:'DM Mono',size:10},color:'#5a5850',boxWidth:10}}}}});
-  // Focus series
+  charts['ov-pie']=new Chart(document.getElementById('ov-pie'),{type:'pie',data:{labels:pieLabels,datasets:[{data:Object.values(mediaCounts),backgroundColor:pieLabels.map(l=>MCOL[l]||'#9a9688'),borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{family:'DM Mono',size:10},color:'#5a5850',boxWidth:10}}}}});
   const fsEl=document.getElementById('ov-focus');
   if(focus.length&&G.bookRows){
     fsEl.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem;margin-bottom:1.5rem">'+focus.map(sn=>{
@@ -502,14 +482,12 @@ function renderOverview(bm,yd2026){
       const rp=match.count?match.read/match.count*100:0;
       return`<div class="cb" style="margin:0"><div class="cbt">${sn}</div><div style="display:flex;gap:8px;margin-bottom:6px;font-family:var(--font-m);font-size:11px;color:var(--text3)"><span>read <strong style="color:var(--text)">${match.read}</strong></span><span>owned <strong style="color:var(--text)">${match.owned}</strong></span><span>total <strong style="color:var(--text)">${match.count}</strong></span></div><div class="pr" style="margin:0"><div class="pt" style="height:6px"><div class="pf" style="width:${rp.toFixed(1)}%;background:#4a9b8e;height:6px"></div></div><div class="pv">${rp.toFixed(0)}%</div></div></div>`;
     }).join('')+'</div>';
-  } else {fsEl.innerHTML='';}
-  // Type chart
+  }else{fsEl.innerHTML='';}
   const types=['Series','Individual','Manga','Comics','Graphic Novel'];
   dc('typeChart');
   charts.typeChart=new Chart(document.getElementById('typeChart'),{type:'bar',data:{labels:types,datasets:[{label:'Tracked',data:types.map(t=>(bm.byType[t]||{}).tracked||0),backgroundColor:'#c9a84c',borderRadius:3},{label:'Read',data:types.map(t=>(bm.byType[t]||{}).read||0),backgroundColor:'#4a9b8e',borderRadius:3},{label:'Owned',data:types.map(t=>(bm.byType[t]||{}).owned||0),backgroundColor:'#7a6bab',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9a9688'},grid:{display:false}},y:{ticks:{color:'#9a9688'},grid:{color:'rgba(0,0,0,0.04)'}}}}});
 }
 
-// ── BY TYPE ───────────────────────────────────────────────────
 function renderByType(bm){
   const types=['Series','Individual','Manga','Comics','Graphic Novel'];
   document.getElementById('typeBody').innerHTML=types.map(t=>{const d=bm.byType[t]||{tracked:0,read:0,owned:0};return`<tr><td>${t}</td><td class="nr">${fmt(d.tracked)}</td><td class="nr">${fmt(d.read)}</td><td class="nr">${fmt(d.owned)}</td><td class="nr">${fmt(d.owned-d.read)}</td><td class="nr">${fmt(d.tracked-d.owned)}</td><td class="nr">${pct(d.read,d.owned)}</td><td class="nr">${pct(d.owned,d.tracked)}</td></tr>`;}).join('');
@@ -518,7 +496,6 @@ function renderByType(bm){
   charts.readPctChart=new Chart(document.getElementById('readPctChart'),{type:'bar',data:{labels:types,datasets:[{data:types.map(t=>{const d=bm.byType[t]||{};return d.owned?+(d.read/d.owned*100).toFixed(1):0;}),backgroundColor:['#7a6bab','#c9a84c','#4a9b8e','#5a8a4a','#c4614a'],borderRadius:3}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{max:100,ticks:{color:'#9a9688',callback:v=>v+'%'},grid:{color:'rgba(0,0,0,0.04)'}},y:{ticks:{color:'#5a5850'},grid:{display:false}}}}});
 }
 
-// ── GENRE ─────────────────────────────────────────────────────
 function renderGenre(bm){
   const genres=Object.entries(bm.byGenre).map(([g,d])=>({g,tracked:d.tracked,read:d.read,owned:d.owned,shelf:Math.max(0,d.owned-d.read),need:Math.max(0,d.tracked-d.owned)})).sort((a,b)=>b.tracked-a.tracked);
   document.getElementById('genreWrap').style.height=Math.max(400,genres.length*34+80)+'px';
@@ -527,78 +504,83 @@ function renderGenre(bm){
   document.getElementById('genreBody').innerHTML=genres.map(g=>`<tr><td>${g.g}</td><td class="nr">${fmt(g.tracked)}</td><td class="nr">${fmt(g.read)}</td><td class="nr">${fmt(g.owned)}</td><td class="nr">${fmt(g.shelf)}</td><td class="nr">${fmt(g.need)}</td><td class="nr">${pct(g.read,g.tracked)}</td></tr>`).join('');
 }
 
-// ── UNIVERSE ──────────────────────────────────────────────────
-function renderUniverse(bm){
-  const uvs=Object.entries(bm.byUniverse).filter(([k])=>k&&k!=='(unassigned)').map(([k,d])=>({k,tracked:d.tracked,read:d.read,owned:d.owned})).sort((a,b)=>b.tracked-a.tracked);
-  const colors=TKCOL;
-  document.getElementById('uv-grid').innerHTML=uvs.slice(0,24).map((u,i)=>{
-    const rp=pctN(u.read,u.tracked),op=pctN(u.owned,u.tracked);
-    const col=colors[i%colors.length];
-    return`<div class="uv-card"><div class="uv-name">${u.k}</div><div class="uv-stats"><span><span>${fmt(u.tracked)}</span> tracked</span><span><span>${fmt(u.read)}</span> read</span><span><span>${fmt(u.owned)}</span> owned</span></div><div class="pr"><div class="pl">Read</div><div class="pt"><div class="pf" style="width:${rp}%;background:${col}"></div></div><div class="pv">${rp}%</div></div><div class="pr"><div class="pl">Owned</div><div class="pt"><div class="pf" style="width:${op}%;background:${col};opacity:0.4"></div></div><div class="pv">${op}%</div></div></div>`;
+function renderUniverseSection(uvList,gridId,chartId,wrapId,color){
+  const sorted=uvList.filter(u=>u.name&&u.name!=='(unassigned)').sort((a,b)=>b.tracked-a.tracked);
+  if(!sorted.length){document.getElementById(gridId).innerHTML='<div class="ms" style="color:var(--text3);padding:8px">No universe data yet — add values to the Universe column in Butthead Series.</div>';return;}
+  const cols=TKCOL;
+  document.getElementById(gridId).innerHTML=sorted.slice(0,16).map((u,i)=>{
+    const rp=pctN(u.read,u.tracked),op=pctN(u.owned,u.tracked),col=cols[i%cols.length];
+    return`<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:1rem 1.2rem;box-shadow:var(--shadow)"><div style="font-family:var(--font-d);font-size:.95rem;font-weight:600;color:var(--text);margin-bottom:6px">${u.name}</div><div style="display:flex;gap:12px;font-family:var(--font-m);font-size:11px;color:var(--text3);margin-bottom:8px"><span>tracked <strong style="color:var(--text)">${u.tracked}</strong></span><span>read <strong style="color:var(--text)">${u.read}</strong></span><span>owned <strong style="color:var(--text)">${u.owned}</strong></span></div><div class="pr"><div class="pl">Read</div><div class="pt"><div class="pf" style="width:${rp}%;background:${col}"></div></div><div class="pv">${rp}%</div></div><div class="pr"><div class="pl">Owned</div><div class="pt"><div class="pf" style="width:${op}%;background:${col};opacity:0.35"></div></div><div class="pv">${op}%</div></div></div>`;
   }).join('');
-  const top=uvs.slice(0,20);
-  document.getElementById('uvChartWrap').style.height=Math.max(400,top.length*36+80)+'px';
-  dc('uvChart');
-  charts.uvChart=new Chart(document.getElementById('uvChart'),{type:'bar',data:{labels:top.map(u=>u.k),datasets:[{label:'Read',data:top.map(u=>u.read),backgroundColor:'#4a9b8e',borderRadius:2},{label:'Owned unread',data:top.map(u=>Math.max(0,u.owned-u.read)),backgroundColor:'#e8e0c8',borderRadius:2},{label:'Not owned',data:top.map(u=>Math.max(0,u.tracked-u.owned)),backgroundColor:'#f0ebe0',borderRadius:2}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,ticks:{color:'#9a9688'},grid:{color:'rgba(0,0,0,0.04)'}},y:{stacked:true,ticks:{color:'#5a5850',font:{size:11}},grid:{display:false}}}}});
+  const top=sorted.slice(0,20);
+  const h=Math.max(200,top.length*32+80);
+  document.getElementById(wrapId).style.height=h+'px';
+  dc(chartId);
+  charts[chartId]=new Chart(document.getElementById(chartId),{type:'bar',data:{labels:top.map(u=>u.name),datasets:[{label:'Read',data:top.map(u=>u.read),backgroundColor:'#4a9b8e',borderRadius:2},{label:'Owned unread',data:top.map(u=>Math.max(0,u.owned-u.read)),backgroundColor:'#e8e0c8',borderRadius:2},{label:'Not owned',data:top.map(u=>Math.max(0,u.tracked-u.owned)),backgroundColor:'#f0ebe0',borderRadius:2}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,ticks:{color:'#9a9688'},grid:{color:'rgba(0,0,0,0.04)'}},y:{stacked:true,ticks:{color:'#5a5850',font:{size:11}},grid:{display:false}}}}});
 }
 
-// ── ROOMS ─────────────────────────────────────────────────────
+function renderUniverse(bm){
+  const all=Object.values(bm.byUniverse);
+  renderUniverseSection(all.filter(u=>u.type==='Series'),'uv-series-grid','uvSeriesChart','uv-series-wrap');
+  renderUniverseSection(all.filter(u=>u.type==='Comics'||u.type==='Graphic Novel'),'uv-comics-grid','uvComicsChart','uv-comics-wrap');
+  renderUniverseSection(all.filter(u=>u.type==='Manga'),'uv-manga-grid','uvMangaChart','uv-manga-wrap');
+}
+
 function renderRooms(bm){
-  const defs=[{k:'Main Library',i:'📚',th:'Big Series + Classics'},{k:'Hidden — TTRPG',i:'🎲',th:'FR · DL · SR · Warhammer'},{k:'Hidden — Comics/GN/Manga',i:'🎌',th:'Comics · Manga · Nier · Evangelion'},{k:'Hidden — Franchise',i:'🚀',th:'Firefly · Star Wars · Critical Role'},{k:'Goblin Office',i:'🌿',th:'Asian Writers'},{k:'Butthead Office',i:'🏛️',th:'NF · History · Philosophy · Historical Fiction'},{k:'Sitting Room',i:'🪑',th:'Small Series + Pretty Books'},{k:'Bedroom',i:'🌙',th:'Spicy / Kink'}];
+  const defs=[{k:'Main Library',i:'📚',th:'Big Series + Classics'},{k:'Hidden — TTRPG',i:'🎲',th:'FR · DL · SR · Warhammer'},{k:'Hidden — Comics/GN/Manga',i:'🎌',th:'Comics · Manga · Nier · Evangelion'},{k:'Hidden — Franchise',i:'🚀',th:'Firefly · Star Wars · Critical Role'},{k:'Goblin Office',i:'🌿',th:'Asian Writers'},{k:'Butthead Office',i:'🏛️',th:'NF · History · Philosophy'},{k:'Sitting Room',i:'🪑',th:'Small Series + Pretty Books'},{k:'Bedroom',i:'🌙',th:'Spicy / Kink'}];
   const cols=['#c9a84c','#c4614a','#7a6bab','#4a9b8e','#5a8a4a','#9a9688','#8a6a1a','#a84030'];
-  document.getElementById('room-grid').innerHTML=defs.map((d,i)=>{const r=bm.byRoom[d.k]||{tracked:0,read:0,owned:0};const sh=r.owned-r.read,rp=pctN(r.read,r.tracked),op=pctN(r.owned,r.tracked);return`<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:1.1rem 1.3rem;box-shadow:var(--shadow)"><div style="font-family:var(--font-d);font-size:1rem;font-weight:600;color:var(--text);margin-bottom:2px">${d.i} ${d.k}</div><div style="font-family:var(--font-m);font-size:10px;color:var(--text3);margin-bottom:10px">${d.th}</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:8px">${[['tracked',r.tracked],['owned',r.owned],['shelf',sh]].map(([l,v])=>`<div style="background:var(--bg3);border-radius:6px;padding:5px;text-align:center"><div style="font-family:var(--font-d);font-size:1.1rem;font-weight:600;color:${cols[i]}">${fmt(v)}</div><div style="font-family:var(--font-m);font-size:9px;color:var(--text3)">${l}</div></div>`).join('')}</div><div class="pr"><div class="pl">% read</div><div class="pt"><div class="pf" style="width:${rp}%;background:${cols[i]}"></div></div><div class="pv">${rp}%</div></div><div class="pr"><div class="pl">% owned</div><div class="pt"><div class="pf" style="width:${op}%;background:${cols[i]};opacity:0.4"></div></div><div class="pv">${op}%</div></div></div>`;}).join('');
+  document.getElementById('room-grid').innerHTML=defs.map((d,i)=>{const r=bm.byRoom[d.k]||{tracked:0,read:0,owned:0};const sh=r.owned-r.read,rp=pctN(r.read,r.tracked),op=pctN(r.owned,r.tracked);return`<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:1.1rem 1.3rem;box-shadow:var(--shadow)"><div style="font-family:var(--font-d);font-size:1rem;font-weight:600;color:var(--text);margin-bottom:2px">${d.i} ${d.k}</div><div style="font-family:var(--font-m);font-size:10px;color:var(--text3);margin-bottom:10px">${d.th}</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:8px">${[['tracked',r.tracked],['owned',r.owned],['shelf',sh]].map(([l,v])=>`<div style="background:var(--bg3);border-radius:6px;padding:5px;text-align:center"><div style="font-family:var(--font-d);font-size:1.1rem;font-weight:600;color:${cols[i]}">${fmt(v)}</div><div style="font-family:var(--font-m);font-size:9px;color:var(--text3)">${l}</div></div>`).join('')}</div><div class="pr"><div class="pl">% read</div><div class="pt"><div class="pf" style="width:${rp}%;background:${cols[i]}"></div></div><div class="pv">${rp}%</div></div><div class="pr"><div class="pl">% owned</div><div class="pt"><div class="pf" style="width:${op}%;background:${cols[i]};opacity:0.35"></div></div><div class="pv">${op}%</div></div></div>`;}).join('');
   dc('roomChart');
   charts.roomChart=new Chart(document.getElementById('roomChart'),{type:'bar',data:{labels:defs.map(d=>d.k.replace('Hidden — ','')),datasets:[{data:defs.map(d=>(bm.byRoom[d.k]||{}).owned||0),backgroundColor:cols,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9a9688',maxRotation:35,font:{size:10}},grid:{display:false}},y:{ticks:{color:'#9a9688',callback:v=>v.toLocaleString()},grid:{color:'rgba(0,0,0,0.04)'}}}}});
 }
 
-// ── HISTORY ───────────────────────────────────────────────────
 function renderHistory(metrics){
   const allT=[...MEDIA,'Total'];
   document.getElementById('hist-leg').innerHTML=allT.map(t=>`<div class="li"><div class="ld" style="background:${MCOL[t]||'#888'}"></div>${t}</div>`).join('');
-  dc('histLine');
   const yrsAsc=[2021,2022,2023,2024,2025,2026];
-  const datasets=MEDIA.map(type=>({
-    label:type,data:yrsAsc.map(y=>metrics[type]?metrics[type][y]||0:0),
-    borderColor:MCOL[type],backgroundColor:MCOL[type]+'33',
-    borderWidth:1.5,pointRadius:3,pointBackgroundColor:MCOL[type],fill:true,tension:0.3
+  // Stacked area: each dataset is the incremental value, stacked:true
+  dc('histLine');
+  const stackedDatasets=MEDIA.map(type=>({
+    label:type,
+    data:yrsAsc.map(y=>metrics[type]?metrics[type][y]||0:0),
+    borderColor:MCOL[type],
+    backgroundColor:MCOL[type]+'55',
+    borderWidth:1.5,pointRadius:3,pointBackgroundColor:MCOL[type],
+    fill:true,tension:0.3
   }));
-  datasets.push({label:'Total',data:yrsAsc.map(y=>metrics['Total']?metrics['Total'][y]||0:0),borderColor:MCOL['Total'],backgroundColor:'transparent',borderWidth:2.5,pointRadius:4,pointBackgroundColor:MCOL['Total'],fill:false,tension:0.3});
-  charts.histLine=new Chart(document.getElementById('histLine'),{type:'line',data:{labels:yrsAsc.map(String),datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9a9688'},grid:{color:'rgba(0,0,0,0.04)'}},y:{ticks:{color:'#9a9688'},grid:{color:'rgba(0,0,0,0.04)'}}}}});
+  // Total as non-stacked line on top
+  stackedDatasets.push({label:'Total',data:yrsAsc.map(y=>metrics['Total']?metrics['Total'][y]||0:0),borderColor:MCOL['Total'],backgroundColor:'transparent',borderWidth:2.5,pointRadius:4,pointBackgroundColor:MCOL['Total'],fill:false,tension:0.3,order:0});
+  charts.histLine=new Chart(document.getElementById('histLine'),{type:'line',data:{labels:yrsAsc.map(String),datasets:stackedDatasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9a9688'},grid:{color:'rgba(0,0,0,0.04)'}},y:{stacked:true,ticks:{color:'#9a9688'},grid:{color:'rgba(0,0,0,0.04)'}}}}});
+  // Velocity table — years as rows, media as columns
   const mo={2021:12,2022:12,2023:12,2024:12,2025:12,2026:4.5};
-  const atot={};for(const t of allT){let s=0,mc=0;for(const y of yrsAsc){const v=metrics[t]?metrics[t][y]:0;if(v){s+=v;mc+=mo[y];}}atot[t]=mc>0?(s/mc).toFixed(2):'—';}
-  document.getElementById('velBody').innerHTML=allT.map(type=>`<tr><td>${type}</td>${yrsAsc.map(y=>{const v=metrics[type]?metrics[type][y]:0;return`<td class="nr">${v?(v/mo[y]).toFixed(2):'—'}</td>`;}).join('')}<td class="nr">${atot[type]}</td></tr>`).join('');
+  document.getElementById('velBody').innerHTML=yrsAsc.map(y=>{
+    const cells=MEDIA.map(type=>{const v=metrics[type]?metrics[type][y]:0;return`<td class="nr">${v?(v/mo[y]).toFixed(2):'—'}</td>`;}).join('');
+    const tot=metrics['Total']?metrics['Total'][y]:0;
+    return`<tr><td>${y}${y===2026?' (ytd)':''}</td>${cells}<td class="nr"><strong>${tot?(tot/mo[y]).toFixed(2):'—'}</strong></td></tr>`;
+  }).join('');
 }
 
-// ── THIS YEAR ─────────────────────────────────────────────────
 let tyYear=2026,allYD={};
-
 function renderThisYear(year){
   tyYear=year;
   document.querySelectorAll('#year-tog button').forEach(b=>b.classList.toggle('active',parseInt(b.dataset.y)===year));
   const{books,targets,focus}=allYD[year]||{books:[],targets:{},focus:[]};
   const tot=targets['Total']||{total:0,bynow:0,actual:0};
   const actual=books.length,delta=actual-(tot.bynow||0);
-  document.getElementById('ty-m').innerHTML=mH(actual,'Books read',year===2026?`goal: ${tot.total||'?'}`:'','t')+mH(tot.total||'N/A','Annual goal')+mH(tot.bynow||'N/A','Target by now')+mH((delta>=0?'+':'')+delta,'vs pace',delta>=0?'on track ✓':'behind',''+( delta>=0?'t':'c'));
-  // Targets
+  document.getElementById('ty-m').innerHTML=mH(actual,'Books read',`goal: ${tot.total||'N/A'}`,'t')+mH(tot.total||'N/A','Annual goal')+mH(tot.bynow||'N/A','Target by now')+mH((delta>=0?'+':'')+delta,'vs pace',delta>=0?'on track ✓':'behind',delta>=0?'t':'c');
   const tEl=document.getElementById('ty-targets');
   const mk=MEDIA.filter(k=>targets[k]&&targets[k].total>0);
   if(mk.length){
-    tEl.innerHTML='<div class="cbt">Actual (solid) vs by-now target (light)</div><div class="leg"><div class="li"><div class="ld" style="background:var(--border2)"></div>By-now target</div><div class="li"><div class="ld" style="background:var(--gold2)"></div>Actual</div></div>'+
-    mk.map(k=>{const tg=targets[k],col=MCOL[k]||'#c9a84c',ap=tg.total?Math.min(100,tg.actual/tg.total*100):0,pp=tg.total?Math.min(100,tg.bynow/tg.total*100):0;
-      return`<div class="pr" style="margin-bottom:12px"><div class="pl">${k}</div><div style="flex:1;position:relative;height:10px;border-radius:5px;background:var(--bg3);overflow:hidden;"><div style="position:absolute;left:0;top:0;height:100%;width:${pp.toFixed(1)}%;background:${col};opacity:0.2;border-radius:5px"></div><div style="position:absolute;left:0;top:0;height:100%;width:${ap.toFixed(1)}%;background:${col};border-radius:5px"></div></div><div style="font-family:var(--font-m);font-size:11px;color:var(--text2);min-width:58px;text-align:right">${tg.actual}/${tg.total}</div></div>`;}).join('');
-  } else {tEl.innerHTML='<div class="ms">N/A — no targets recorded for this year.</div>';}
-  // Monthly
+    tEl.innerHTML='<div class="cbt">Actual (solid) vs by-now target (light)</div>'+mk.map(k=>{const tg=targets[k],col=MCOL[k]||'#c9a84c',ap=tg.total?Math.min(100,tg.actual/tg.total*100):0,pp=tg.total?Math.min(100,tg.bynow/tg.total*100):0;return`<div class="pr" style="margin-bottom:12px"><div class="pl">${k}</div><div style="flex:1;position:relative;height:10px;border-radius:5px;background:var(--bg3);overflow:hidden;"><div style="position:absolute;left:0;top:0;height:100%;width:${pp.toFixed(1)}%;background:${col};opacity:0.2;border-radius:5px"></div><div style="position:absolute;left:0;top:0;height:100%;width:${ap.toFixed(1)}%;background:${col};border-radius:5px"></div></div><div style="font-family:var(--font-m);font-size:11px;color:var(--text2);min-width:58px;text-align:right">${tg.actual}/${tg.total}</div></div>`;}).join('');
+  }else{tEl.innerHTML='<div class="ms">N/A — no targets recorded for this year.</div>';}
   const mc={};for(const b of books){const p=(b.date||'').split('/');if(p.length){const mo=parseInt(p[0]);if(mo>=1&&mo<=12)mc[mo]=(mc[mo]||0)+1;}}
   dc('monthChart');
   charts.monthChart=new Chart(document.getElementById('monthChart'),{type:'bar',data:{labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],datasets:[{data:Array.from({length:12},(_,i)=>mc[i+1]||0),backgroundColor:'#c9a84c',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9a9688'},grid:{display:false}},y:{ticks:{color:'#9a9688',stepSize:1},grid:{color:'rgba(0,0,0,0.04)'}}}}});
-  // Media pie + bars
   const mediaCounts={};for(const b of books)if(b.media)mediaCounts[b.media]=(mediaCounts[b.media]||0)+1;
-  const pieLbls=Object.keys(mediaCounts),pieData=Object.values(mediaCounts);
+  const pieLbls=Object.keys(mediaCounts);
   dc('ty-pie');
-  charts['ty-pie']=new Chart(document.getElementById('ty-pie'),{type:'pie',data:{labels:pieLbls,datasets:[{data:pieData,backgroundColor:pieLbls.map(l=>MCOL[l]||'#9a9688'),borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{family:'DM Mono',size:10},color:'#5a5850',boxWidth:10}}}}});
-  const mbEl=document.getElementById('ty-media-bars');
-  mbEl.innerHTML='<div class="cbt">Books by media type</div>'+pieLbls.map(l=>{const p=pctN(mediaCounts[l],books.length);return`<div class="pr"><div class="pl">${l}</div><div class="pt"><div class="pf" style="width:${p}%;background:${MCOL[l]||'#9a9688'}"></div></div><div class="pv">${mediaCounts[l]}</div></div>`;}).join('');
-  // Focus series
+  charts['ty-pie']=new Chart(document.getElementById('ty-pie'),{type:'pie',data:{labels:pieLbls,datasets:[{data:Object.values(mediaCounts),backgroundColor:pieLbls.map(l=>MCOL[l]||'#9a9688'),borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{family:'DM Mono',size:10},color:'#5a5850',boxWidth:10}}}}});
+  document.getElementById('ty-media-bars').innerHTML='<div class="cbt">Books by media type</div>'+pieLbls.map(l=>{const p=pctN(mediaCounts[l],books.length);return`<div class="pr"><div class="pl">${l}</div><div class="pt"><div class="pf" style="width:${p}%;background:${MCOL[l]||'#9a9688'}"></div></div><div class="pv">${mediaCounts[l]}</div></div>`;}).join('');
   const fsEl=document.getElementById('focus-series');
   if(focus.length&&G.bookRows){
     fsEl.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:1rem;margin-bottom:1.5rem">'+focus.map(sn=>{
@@ -608,42 +590,98 @@ function renderThisYear(year){
       const rp=match.count?match.read/match.count*100:0,op=match.count?match.owned/match.count*100:0;
       return`<div class="cb" style="margin:0"><div class="cbt">${sn}</div><div style="display:flex;gap:10px;margin-bottom:8px;font-family:var(--font-m);font-size:11px;color:var(--text3)"><span>read <strong style="color:var(--text)">${match.read}</strong></span><span>owned <strong style="color:var(--text)">${match.owned}</strong></span><span>total <strong style="color:var(--text)">${match.count}</strong></span></div><div class="pr"><div class="pl">Read</div><div class="pt"><div class="pf" style="width:${rp.toFixed(1)}%;background:#4a9b8e"></div></div><div class="pv">${rp.toFixed(0)}%</div></div><div class="pr"><div class="pl">Owned</div><div class="pt"><div class="pf" style="width:${op.toFixed(1)}%;background:#7a6bab"></div></div><div class="pv">${op.toFixed(0)}%</div></div></div>`;
     }).join('')+'</div>';
-  } else {fsEl.innerHTML='<div class="ms" style="color:var(--text3);margin-bottom:1.5rem">No focus series data for this year.</div>';}
+  }else{fsEl.innerHTML='<div class="ms" style="color:var(--text3);margin-bottom:1.5rem">No focus series data.</div>';}
   const bBadge={Print:'b-gold',Audio:'b-teal',Manga:'b-purple',Comics:'b-green',Ebook:'b-teal',EBook:'b-teal','Graphic Novel':'b-coral'};
-  document.getElementById('ty-books').innerHTML=books.map(b=>`<tr><td class="nr" style="color:var(--text3)">${b.num}</td><td>${b.title}</td><td>${b.genre}</td><td><span class="badge ${bBadge[b.media]||'b-gray'}">${b.media}</span></td><td class="nr">${b.date}</td></tr>`).join('');
+  // Date column moved to position 2 (after #)
+  document.getElementById('ty-books').innerHTML=books.map(b=>`<tr><td class="nr" style="color:var(--text3);font-family:var(--font-m)">${b.num}</td><td class="nr" style="color:var(--text3);font-family:var(--font-m)">${b.date}</td><td>${b.title}</td><td>${b.genre}</td><td><span class="badge ${bBadge[b.media]||'b-gray'}">${b.media}</span></td></tr>`).join('');
 }
 
-// ── COMPLETION ────────────────────────────────────────────────
 function renderCompletion(bm){
-  const authors=Object.entries(bm.byAuthor).filter(([,d])=>d.tracked>=3).map(([a,d])=>({a,tracked:d.tracked,read:d.read,owned:d.owned})).sort((a,b)=>b.tracked-a.tracked);
-  document.getElementById('author-body').innerHTML=authors.slice(0,50).map(a=>`<tr><td>${a.a}</td><td class="nr">${fmt(a.tracked)}</td><td class="nr">${fmt(a.read)}</td><td class="nr">${fmt(a.owned)}</td><td class="nr">${pct(a.read,a.tracked)}</td><td class="nr">${pct(a.owned,a.tracked)}</td></tr>`).join('');
-  const tSh=bm.ttrpg.o-bm.ttrpg.r;
-  document.getElementById('ttrpg-m').innerHTML=mH(fmt(bm.ttrpg.t),'TTRPG tracked',pct(bm.ttrpg.t,bm.tracked)+' of library')+mH(fmt(bm.ttrpg.r),'TTRPG read',pct(bm.ttrpg.r,bm.ttrpg.t)+' of TTRPG','t')+mH(fmt(bm.ttrpg.o),'TTRPG owned')+mH(fmt(tSh),'TTRPG on shelf','','c')+mH((tSh/bm.bpy).toFixed(1)+' yrs','Years to finish shelf');
+  // Bubble chart: x=total tracked, y=% read, r=owned (scaled)
+  const authors=Object.entries(bm.byAuthor).filter(([,d])=>d.tracked>=3).map(([a,d])=>({a,tracked:d.tracked,read:d.read,owned:d.owned,pctRead:pctN(d.read,d.tracked)}));
+  dc('bubbleChart');
+  // Colour by completion tier
+  function bubbleColor(p){if(p>=75)return'rgba(74,155,142,0.7)';if(p>=40)return'rgba(201,168,76,0.7)';return'rgba(196,97,74,0.7)';}
+  charts.bubbleChart=new Chart(document.getElementById('bubbleChart'),{
+    type:'bubble',
+    data:{datasets:[{
+      label:'Authors',
+      data:authors.map(a=>({x:a.tracked,y:a.pctRead,r:Math.max(4,Math.sqrt(a.owned)*1.8),label:a.a,owned:a.owned,read:a.read})),
+      backgroundColor:authors.map(a=>bubbleColor(a.pctRead)),
+      borderColor:authors.map(a=>bubbleColor(a.pctRead).replace('0.7','1')),
+      borderWidth:1
+    }]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{
+          label:ctx=>{const d=ctx.raw;return[` ${d.label}`,' '+`${d.read} read / ${d.x} tracked (${ctx.parsed.y.toFixed(0)}%)`,' '+`${d.owned} owned`];}
+        }},
+        // Colour legend annotation
+      },
+      scales:{
+        x:{title:{display:true,text:'Total books tracked',color:'#9a9688',font:{size:11,family:'DM Mono'}},ticks:{color:'#9a9688'},grid:{color:'rgba(0,0,0,0.04)'}},
+        y:{title:{display:true,text:'% read',color:'#9a9688',font:{size:11,family:'DM Mono'}},min:0,max:100,ticks:{color:'#9a9688',callback:v=>v+'%'},grid:{color:'rgba(0,0,0,0.04)'}}
+      }
+    }
+  });
+  // Colour key
+  const ttrpgSh=bm.ttrpg.o-bm.ttrpg.r;
+  document.getElementById('ttrpg-m').innerHTML=mH(fmt(bm.ttrpg.t),'TTRPG tracked',pct(bm.ttrpg.t,bm.tracked)+' of library')+mH(fmt(bm.ttrpg.r),'TTRPG read',pct(bm.ttrpg.r,bm.ttrpg.t)+' of TTRPG','t')+mH(fmt(bm.ttrpg.o),'TTRPG owned')+mH(fmt(ttrpgSh),'TTRPG on shelf','','c')+mH((ttrpgSh/bm.bpy).toFixed(1)+' yrs','Years to finish shelf');
   dc('ttrpgPie');
   charts.ttrpgPie=new Chart(document.getElementById('ttrpgPie'),{type:'pie',data:{labels:['FR','DL','SR','Other'],datasets:[{data:[bm.fr.t,bm.dl.t,bm.sr.t,Math.max(0,bm.ttrpg.t-bm.fr.t-bm.dl.t-bm.sr.t)],backgroundColor:['#c9a84c','#4a9b8e','#7a6bab','#e8e0d0'],borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{family:'DM Mono',size:10},color:'#5a5850',boxWidth:10}},tooltip:{callbacks:{label:ctx=>{const tot=ctx.dataset.data.reduce((a,b)=>a+b,0);return` ${fmt(ctx.parsed)} (${(ctx.parsed/tot*100).toFixed(1)}%)`;}}}}}}); 
   document.getElementById('ttrpg-prog').innerHTML=[{n:'Forgotten Realms',d:bm.fr,c:'#c9a84c'},{n:'Dragonlance',d:bm.dl,c:'#4a9b8e'},{n:'Shadowrun',d:bm.sr,c:'#7a6bab'}].map(u=>`<div class="pr"><div class="pl">${u.n}</div><div class="pt"><div class="pf" style="width:${u.d.t?u.d.r/u.d.t*100:0}%;background:${u.c}"></div></div><div class="pv">${pct(u.d.r,u.d.t)}</div></div>`).join('');
 }
 
-// ── TO READ ───────────────────────────────────────────────────
 function renderToRead(bm){
   const types=['Series','Individual','Manga','Comics','Graphic Novel'];
-  const genres=Object.entries(bm.byGenre).map(([g,d])=>({g,byType:d.byType||{},total:Object.values(d.byType||{}).reduce((s,v)=>s+v,0)})).filter(g=>g.total>0).sort((a,b)=>b.total-a.total);
-  const totals=types.reduce((o,t)=>{o[t]=0;return o;},{});let grandTotal=0;
+  const typeColors={'Series':'#7a6bab','Individual':'#c9a84c','Manga':'#4a9b8e','Comics':'#5a8a4a','Graphic Novel':'#c4614a'};
+  const genres=Object.entries(bm.byGenre).map(([g,d])=>({g,byType:d.byType||{},total:Object.values(d.byType||{}).reduce((s,v)=>s+v,0),series:(d.series||[]).sort((a,b)=>b.shelf-a.shelf)})).filter(g=>g.total>0).sort((a,b)=>b.total-a.total);
   document.getElementById('tr-m').innerHTML=mH(fmt(bm.shelf),'Total on shelf','owned unread','c')+mH(fmt(genres.length),'Genres with shelf')+mH(pct(bm.shelf,bm.owned),'% of owned unread');
-  document.getElementById('tr-body').innerHTML=genres.map(g=>{
-    let rowTotal=0;
-    const cells=types.map(t=>{const v=g.byType[t]||0;totals[t]+=v;rowTotal+=v;return`<td class="nr">${v||'—'}</td>`;}).join('');
-    grandTotal+=rowTotal;
-    return`<tr><td>${g.g}</td>${cells}<td class="nr"><strong>${fmt(rowTotal)}</strong></td></tr>`;}).join('');
-  document.getElementById('tr-foot').innerHTML=`<td>Total</td>${types.map(t=>`<td class="nr">${fmt(totals[t])}</td>`).join('')}<td class="nr">${fmt(grandTotal)}</td>`;
+  document.getElementById('tr-leg').innerHTML=types.map(t=>`<div class="li"><div class="ld" style="background:${typeColors[t]}"></div>${t}</div>`).join('');
   const h=Math.max(400,genres.length*30+80);
   document.getElementById('trChartWrap').style.height=h+'px';
   dc('trChart');
-  const typeColors={'Series':'#7a6bab','Individual':'#c9a84c','Manga':'#4a9b8e','Comics':'#5a8a4a','Graphic Novel':'#c4614a'};
-  charts.trChart=new Chart(document.getElementById('trChart'),{type:'bar',data:{labels:genres.map(g=>g.g),datasets:types.map(t=>({label:t,data:genres.map(g=>g.byType[t]||0),backgroundColor:typeColors[t],borderRadius:2}))},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{family:'DM Mono',size:10},color:'#5a5850',boxWidth:10}}},scales:{x:{stacked:true,ticks:{color:'#9a9688'},grid:{color:'rgba(0,0,0,0.04)'}},y:{stacked:true,ticks:{color:'#5a5850',font:{size:11}},grid:{display:false}}}}});
+  charts.trChart=new Chart(document.getElementById('trChart'),{type:'bar',data:{labels:genres.map(g=>g.g),datasets:types.map(t=>({label:t,data:genres.map(g=>g.byType[t]||0),backgroundColor:typeColors[t],borderRadius:2}))},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,ticks:{color:'#9a9688'},grid:{color:'rgba(0,0,0,0.04)'}},y:{stacked:true,ticks:{color:'#5a5850',font:{size:11}},grid:{display:false}}}}});
+  // Accordion
+  const totals=types.reduce((o,t)=>{o[t]=0;return o;},{});let grandTotal=0;
+  const rows=genres.map((g,idx)=>{
+    let rowTotal=0;
+    const cells=types.map(t=>{const v=g.byType[t]||0;totals[t]+=v;rowTotal+=v;return`<td class="nr">${v||'—'}</td>`;}).join('');
+    grandTotal+=rowTotal;
+    const seriesRows=g.series.map(s=>`<div class="acc-series-row"><span>${s.title}</span><span style="text-align:right">${s.type}</span><span style="text-align:right">${s.owned}</span><span style="text-align:right">${s.shelf}</span></div>`).join('');
+    return`<div class="acc-row">
+      <div class="acc-header" id="acc-h-${idx}" onclick="toggleAcc(${idx})">
+        <div class="acc-name"><span class="acc-chevron" id="acc-c-${idx}">▶</span>${g.g}</div>
+        ${types.map(t=>`<div class="nr" style="font-family:var(--font-m);font-size:11px;color:var(--text3)">${g.byType[t]||'—'}</div>`).join('')}
+        <div class="nr" style="font-family:var(--font-m);font-size:11px;font-weight:600;color:var(--text)">${rowTotal}</div>
+      </div>
+      <div class="acc-body" id="acc-b-${idx}">
+        <div class="acc-inner">
+          <div class="acc-series-row" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:4px"><span>Series</span><span style="text-align:right">Type</span><span style="text-align:right">Owned</span><span style="text-align:right">On shelf</span></div>
+          ${seriesRows}
+        </div>
+      </div>
+    </div>`;
+  });
+  const footCells=types.map(t=>`<div class="nr" style="font-family:var(--font-m);font-size:11px;font-weight:600;color:var(--text)">${fmt(totals[t])}</div>`).join('');
+  document.getElementById('tr-accordion').innerHTML=
+    `<div style="background:var(--bg3);display:grid;grid-template-columns:1fr ${types.map(()=>'70px').join(' ')} 80px;gap:4px;padding:8px 12px;font-family:var(--font-m);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);border-radius:10px 10px 0 0;border:1px solid var(--border);border-bottom:none;">
+      <div>Genre</div>${types.map(t=>`<div class="nr">${t==='Graphic Novel'?'GN':t}</div>`).join('')}<div class="nr">Total</div>
+    </div>`+
+    `<div style="border:1px solid var(--border);border-radius:0 0 10px 10px;overflow:hidden;">${rows.join('')}</div>`;
 }
 
-// ── COMING UP ─────────────────────────────────────────────────
+function toggleAcc(idx){
+  const body=document.getElementById(`acc-b-${idx}`);
+  const chev=document.getElementById(`acc-c-${idx}`);
+  const head=document.getElementById(`acc-h-${idx}`);
+  const isOpen=body.classList.contains('open');
+  body.classList.toggle('open',!isOpen);
+  chev.classList.toggle('open',!isOpen);
+  head.classList.toggle('open',!isOpen);
+}
+
 function renderComingUp(up){
   const sorted=[...up].sort((a,b)=>relSort(a.release)-relSort(b.release));
   document.getElementById('upcoming-list').innerHTML=sorted.map(u=>{
@@ -652,20 +690,14 @@ function renderComingUp(up){
   }).join('');
 }
 
-// ── BOOK MAIL ─────────────────────────────────────────────────
 function renderBookMail(orders){
   const pending=orders.filter(o=>o.delivered==='Unfulfilled'||o.paid==='Unpaid');
   const ful=orders.filter(o=>o.delivered==='Fulfilled'&&o.paid==='Paid');
   document.getElementById('tbb-m').innerHTML=mH(orders.length,'Total orders')+mH(ful.length,'Fulfilled','','t')+mH(pending.length,'Pending','','c')+mH(orders.reduce((s,o)=>s+o.count,0),'Books ordered');
-  document.getElementById('tbb-orders').innerHTML=pending.map(o=>{
-    const sb=o.paid==='Unpaid'?'b-coral':'b-gold',sl=o.paid==='Unpaid'?'Unpaid':'Unfulfilled';
-    return`<div class="or"><div style="font-family:var(--font-m);font-size:11px;color:var(--text3)">${o.date}</div><div style="font-size:12px">${o.books||'TBD'}</div><div style="font-size:11px;color:var(--text3)">${o.series||'—'}</div><div style="font-family:var(--font-m);font-size:10px;color:var(--text3)">${o.order||'—'}</div><div><span class="badge ${sb}">${sl}</span></div></div>`;
-  }).join('');
-  const bBadge={Paid:'b-green',Unpaid:'b-coral'};
-  document.getElementById('tbb-all').innerHTML=[...orders].reverse().map(o=>`<tr><td style="font-family:var(--font-m);font-size:11px">${o.date}</td><td>${o.books||'—'}</td><td>${o.series||'—'}</td><td>${o.author||'—'}</td><td>${o.type||'—'}</td><td class="nr">${o.count||1}</td><td><span class="badge ${bBadge[o.paid]||'b-gray'}">${o.paid}</span> <span class="badge ${o.delivered==='Fulfilled'?'b-teal':'b-gold'}">${o.delivered}</span></td></tr>`).join('');
+  document.getElementById('tbb-orders').innerHTML=pending.map(o=>{const sb=o.paid==='Unpaid'?'b-coral':'b-gold',sl=o.paid==='Unpaid'?'Unpaid':'Unfulfilled';return`<div class="or"><div style="font-family:var(--font-m);font-size:11px;color:var(--text3)">${o.date}</div><div style="font-size:12px">${o.books||'TBD'}</div><div style="font-size:11px;color:var(--text3)">${o.series||'—'}</div><div style="font-family:var(--font-m);font-size:10px;color:var(--text3)">${o.order||'—'}</div><div><span class="badge ${sb}">${sl}</span></div></div>`;}).join('');
+  document.getElementById('tbb-all').innerHTML=[...orders].reverse().map(o=>`<tr><td style="font-family:var(--font-m);font-size:11px">${o.date}</td><td>${o.books||'—'}</td><td>${o.series||'—'}</td><td>${o.author||'—'}</td><td>${o.type||'—'}</td><td class="nr">${o.count||1}</td><td><span class="badge ${o.paid==='Paid'?'b-green':'b-coral'}">${o.paid}</span> <span class="badge ${o.delivered==='Fulfilled'?'b-teal':'b-gold'}">${o.delivered}</span></td></tr>`).join('');
 }
 
-// ── TO ACQUIRE ────────────────────────────────────────────────
 function renderToAcquire(bookRows,interested){
   const zeroOwned=bookRows.filter(r=>r.owned===0&&r.count>0).sort((a,b)=>b.count-a.count);
   document.getElementById('acq-m').innerHTML=mH(zeroOwned.length,'Series with 0 owned')+mH(zeroOwned.reduce((s,r)=>s+r.count,0),'Total books')+mH(interested.sd.length,'Someday watchlist');
@@ -673,7 +705,6 @@ function renderToAcquire(bookRows,interested){
   document.getElementById('someday-body').innerHTML=interested.sd.map(s=>`<tr><td>${s.series||s.title}</td><td>${s.author}</td><td class="nr">${s.count||'?'}</td><td>${s.genre||'—'}</td></tr>`).join('');
 }
 
-// ── TAB + SECTION SWITCHING ───────────────────────────────────
 let rendered=new Set(),curSec='tracking',G={};
 
 function switchSection(sec){
@@ -683,20 +714,17 @@ function switchSection(sec){
 }
 
 function switchTab(id,sec){
-  const secEl=document.getElementById('sec-'+sec);
-  if(!secEl)return;
+  const secEl=document.getElementById('sec-'+sec);if(!secEl)return;
   secEl.querySelectorAll('.tab-nav button').forEach(b=>b.classList.toggle('active',b.getAttribute('onclick').includes("'"+id+"'")));
   secEl.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='tab-'+id));
   if(!rendered.has(id)){renderTab(id);rendered.add(id);}
 }
 
-function switchYear(y){
-  tyYear=y;rendered.delete('thisyear');renderTab('thisyear');rendered.add('thisyear');
-}
+function switchYear(y){tyYear=y;rendered.delete('thisyear');renderTab('thisyear');rendered.add('thisyear');}
 
 function renderTab(id){
-  const bm=G.books,yd=allYD;
-  if(id==='overview')renderOverview(bm,yd[2026]||{books:[],targets:{},focus:[]});
+  const bm=G.books;
+  if(id==='overview')renderOverview(bm,allYD[2026]||{books:[],targets:{},focus:[]});
   else if(id==='bytype')renderByType(bm);
   else if(id==='genre')renderGenre(bm);
   else if(id==='universe')renderUniverse(bm);
@@ -713,7 +741,6 @@ function renderTab(id){
   else if(id==='toacquire')renderToAcquire(G.bookRows,G.interested);
 }
 
-// ── INIT ──────────────────────────────────────────────────────
 async function init(){
   try{
     const [booksV,metricsV,intV,ordV,...yearV]=await Promise.all([
