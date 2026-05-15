@@ -103,7 +103,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
 .uc-title{font-size:13px;font-weight:500;color:var(--text);margin-bottom:2px;}
 .uc-meta{font-family:var(--font-m);font-size:11px;color:var(--text3);}
 .uc-badges{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap;}
-.or{display:grid;grid-template-columns:90px 1fr 100px 100px 80px;gap:8px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px;}
+.or{display:grid;grid-template-columns:90px minmax(0,1fr) 110px 110px 80px;gap:8px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px;}
 .or:last-child{border-bottom:none;}
 .or:hover{background:var(--bg3);}
 /* Universe type sections */
@@ -508,9 +508,9 @@ function renderGenre(bm){
 
 function renderUniverseSection(uvList,gridId,chartId,wrapId,color){
   const sorted=uvList.filter(u=>u.name&&u.name!=='(unassigned)').sort((a,b)=>b.tracked-a.tracked);
-  if(!sorted.length){document.getElementById(gridId).innerHTML='<div class="ms" style="color:var(--text3);padding:8px">No universe data yet — add values to the Universe column in Butthead Series.</div>';return;}
+  if(!sorted.length){document.getElementById(gridId).innerHTML='<div class="ms" style="color:var(--text3);padding:8px">No universe data yet — add values to the Universe column in the Series tab.</div>';return;}
   const cols=TKCOL;
-  document.getElementById(gridId).innerHTML=sorted.slice(0,16).map((u,i)=>{
+  document.getElementById(gridId).innerHTML=sorted.map((u,i)=>{
     const rp=pctN(u.read,u.tracked),op=pctN(u.owned,u.tracked),col=cols[i%cols.length];
     return`<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:1rem 1.2rem;box-shadow:var(--shadow)"><div style="font-family:var(--font-d);font-size:.95rem;font-weight:600;color:var(--text);margin-bottom:6px">${u.name}</div><div style="display:flex;gap:12px;font-family:var(--font-m);font-size:11px;color:var(--text3);margin-bottom:8px"><span>tracked <strong style="color:var(--text)">${u.tracked}</strong></span><span>read <strong style="color:var(--text)">${u.read}</strong></span><span>owned <strong style="color:var(--text)">${u.owned}</strong></span></div><div class="pr"><div class="pl">Read</div><div class="pt"><div class="pf" style="width:${rp}%;background:${col}"></div></div><div class="pv">${rp}%</div></div><div class="pr"><div class="pl">Owned</div><div class="pt"><div class="pf" style="width:${op}%;background:${col};opacity:0.35"></div></div><div class="pv">${op}%</div></div></div>`;
   }).join('');
@@ -529,11 +529,11 @@ function renderUniverse(bm){
 }
 
 function renderRooms(bm){
-  const defs=[{k:'Main Library',i:'📚',th:'Big Series + Classics'},{k:'Hidden — TTRPG',i:'🎲',th:'FR · DL · SR · Warhammer'},{k:'Hidden — Comics/GN/Manga',i:'🎌',th:'Comics · Manga · Nier · Evangelion'},{k:'Hidden — Franchise',i:'🚀',th:'Firefly · Star Wars · Critical Role'},{k:'Goblin Office',i:'🌿',th:'Asian Writers'},{k:'Butthead Office',i:'🏛️',th:'NF · History · Philosophy'},{k:'Sitting Room',i:'🪑',th:'Small Series + Pretty Books'},{k:'Bedroom',i:'🌙',th:'Spicy / Kink'}];
+  const defs=[{k:'Main Library',i:'📚',th:'Big Series + Classics'},{k:'Hidden — TTRPG',i:'🎲',th:'FR · DL · SR · Warhammer'},{k:'Hidden — Comics/GN/Manga',i:'🎌',th:'Comics · Manga · Nier · Evangelion'},{k:'Hidden — Franchise',i:'🚀',th:'Firefly · Star Wars · Critical Role'},{k:'Goblin Office',i:'🌿',th:'Wren — Asian Writers',display:'Wren Office'},{k:'Butthead Office',i:'🏛️',th:'Com — NF · History · Philosophy',display:'Com Office'},{k:'Sitting Room',i:'🪑',th:'Small Series + Pretty Books'},{k:'Bedroom',i:'🌙',th:'Spicy / Kink'}];
   const cols=['#c9a84c','#c4614a','#7a6bab','#4a9b8e','#5a8a4a','#9a9688','#8a6a1a','#a84030'];
-  document.getElementById('room-grid').innerHTML=defs.map((d,i)=>{const r=bm.byRoom[d.k]||{tracked:0,read:0,owned:0};const sh=r.owned-r.read,rp=pctN(r.read,r.tracked),op=pctN(r.owned,r.tracked);return`<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:1.1rem 1.3rem;box-shadow:var(--shadow)"><div style="font-family:var(--font-d);font-size:1rem;font-weight:600;color:var(--text);margin-bottom:2px">${d.i} ${d.k}</div><div style="font-family:var(--font-m);font-size:10px;color:var(--text3);margin-bottom:10px">${d.th}</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:8px">${[['tracked',r.tracked],['owned',r.owned],['shelf',sh]].map(([l,v])=>`<div style="background:var(--bg3);border-radius:6px;padding:5px;text-align:center"><div style="font-family:var(--font-d);font-size:1.1rem;font-weight:600;color:${cols[i]}">${fmt(v)}</div><div style="font-family:var(--font-m);font-size:9px;color:var(--text3)">${l}</div></div>`).join('')}</div><div class="pr"><div class="pl">% read</div><div class="pt"><div class="pf" style="width:${rp}%;background:${cols[i]}"></div></div><div class="pv">${rp}%</div></div><div class="pr"><div class="pl">% owned</div><div class="pt"><div class="pf" style="width:${op}%;background:${cols[i]};opacity:0.35"></div></div><div class="pv">${op}%</div></div></div>`;}).join('');
+  document.getElementById('room-grid').innerHTML=defs.map((d,i)=>{const r=bm.byRoom[d.k]||{tracked:0,read:0,owned:0};const sh=r.owned-r.read,rp=pctN(r.read,r.tracked),op=pctN(r.owned,r.tracked);const name=d.display||d.k;return`<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:1.1rem 1.3rem;box-shadow:var(--shadow)"><div style="font-family:var(--font-d);font-size:1rem;font-weight:600;color:var(--text);margin-bottom:2px">${d.i} ${name}</div><div style="font-family:var(--font-m);font-size:10px;color:var(--text3);margin-bottom:10px">${d.th}</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:8px">${[['tracked',r.tracked],['owned',r.owned],['shelf',sh]].map(([l,v])=>`<div style="background:var(--bg3);border-radius:6px;padding:5px;text-align:center"><div style="font-family:var(--font-d);font-size:1.1rem;font-weight:600;color:${cols[i]}">${fmt(v)}</div><div style="font-family:var(--font-m);font-size:9px;color:var(--text3)">${l}</div></div>`).join('')}</div><div class="pr"><div class="pl">% read</div><div class="pt"><div class="pf" style="width:${rp}%;background:${cols[i]}"></div></div><div class="pv">${rp}%</div></div><div class="pr"><div class="pl">% owned</div><div class="pt"><div class="pf" style="width:${op}%;background:${cols[i]};opacity:0.35"></div></div><div class="pv">${op}%</div></div></div>`;}).join('');
   dc('roomChart');
-  charts.roomChart=new Chart(document.getElementById('roomChart'),{type:'bar',data:{labels:defs.map(d=>d.k.replace('Hidden — ','')),datasets:[{data:defs.map(d=>(bm.byRoom[d.k]||{}).owned||0),backgroundColor:cols,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9a9688',maxRotation:35,font:{size:10}},grid:{display:false}},y:{ticks:{color:'#9a9688',callback:v=>v.toLocaleString()},grid:{color:'rgba(0,0,0,0.04)'}}}}});
+  charts.roomChart=new Chart(document.getElementById('roomChart'),{type:'bar',data:{labels:defs.map(d=>(d.display||d.k).replace('Hidden — ','')),datasets:[{data:defs.map(d=>(bm.byRoom[d.k]||{}).owned||0),backgroundColor:cols,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9a9688',maxRotation:35,font:{size:10}},grid:{display:false}},y:{ticks:{color:'#9a9688',callback:v=>v.toLocaleString()},grid:{color:'rgba(0,0,0,0.04)'}}}}});
 }
 
 function renderHistory(metrics){
@@ -616,7 +616,10 @@ function renderThisYear(year){
   const pieLbls=Object.keys(mediaCounts);
   dc('ty-pie');
   charts['ty-pie']=new Chart(document.getElementById('ty-pie'),{type:'pie',data:{labels:pieLbls,datasets:[{data:Object.values(mediaCounts),backgroundColor:pieLbls.map(l=>MCOL[l]||'#9a9688'),borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{family:'DM Mono',size:10},color:'#5a5850',boxWidth:10}}}}});
-  document.getElementById('ty-media-bars').innerHTML='<div class="cbt">Books by media type</div>'+pieLbls.map(l=>{const p=pctN(mediaCounts[l],books.length);return`<div class="pr"><div class="pl">${l}</div><div class="pt"><div class="pf" style="width:${p}%;background:${MCOL[l]||'#9a9688'}"></div></div><div class="pv">${mediaCounts[l]}</div></div>`;}).join('');
+  const genreCounts={};for(const b of books)if(b.genre)genreCounts[b.genre]=(genreCounts[b.genre]||0)+1;
+  const genreEntries=Object.entries(genreCounts).sort((a,b)=>b[1]-a[1]);
+  const genreColors=['#7a6bab','#c9a84c','#4a9b8e','#c4614a','#5a8a4a','#4a7ab5','#8a6a9a','#6a8a4a','#9a6a4a','#4a6a8a'];
+  document.getElementById('ty-media-bars').innerHTML='<div class="cbt">Books by genre</div>'+genreEntries.map(([g,count],i)=>{const p=pctN(count,books.length);return`<div class="pr"><div class="pl">${g}</div><div class="pt"><div class="pf" style="width:${p}%;background:${genreColors[i%genreColors.length]}"></div></div><div class="pv">${count}</div></div>`;}).join('');
   const fsEl=document.getElementById('focus-series');
   if(focus.length&&G.bookRows){
     fsEl.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:1rem;margin-bottom:1.5rem">'+focus.map(sn=>{
