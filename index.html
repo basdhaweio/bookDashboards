@@ -616,13 +616,16 @@ function renderThisYear(year){
   if(mk.length){
     tEl.innerHTML='<div class="cbt">Actual (solid) vs by-now target (light)</div>'+mk.map(k=>{
       const tg=targets[k],col=MCOL[k]||'#c9a84c';
+      // Bar width is capped at 100% of track but represents actual/total
+      // If actual > total, bar fills 100% but target line should sit at total/actual * 100% of that bar
       const ap=tg.total?Math.min(100,tg.actual/tg.total*100):0;
       const pp=isCurrentYear&&tg.bynow?Math.min(100,tg.bynow/tg.total*100):0;
-      // Marker line: by-now position for current year, full target (100%) tick for past years
-      // For past years show at 100% position as a tick; for current year show at by-now %
-      const markerPct=isCurrentYear?(pp||0):100;
-      const markerColor=isCurrentYear?(ap>=pp?'rgba(74,155,142,0.9)':'rgba(196,97,74,0.85)'):(ap>=100?'rgba(74,155,142,0.9)':'rgba(196,97,74,0.85)');
-      const exceeded=isCurrentYear?(ap>=pp):(ap>=100);
+      const exceeded=isCurrentYear?(tg.actual>=(tg.bynow||0)):(tg.actual>=tg.total);
+      // Marker sits at: current year = by-now% of total; past year = target% of actual (so it's inside an exceeded bar)
+      const markerPct=isCurrentYear
+        ?(pp||0)
+        :tg.actual>0?Math.min(99,tg.total/tg.actual*100):99;
+      const markerColor=exceeded?'rgba(74,155,142,0.9)':'rgba(196,97,74,0.85)';
       return`<div class="pr" style="margin-bottom:14px">
         <div class="pl">${k}</div>
         <div style="flex:1;position:relative;height:10px;border-radius:5px;background:var(--bg3);">
@@ -634,41 +637,11 @@ function renderThisYear(year){
     }).join('');
   }else{tEl.innerHTML='<div class="ms">N/A \u2014 no targets recorded for this year.</div>';}
   const mc={};for(const b of books){const p=(b.date||'').split('/');if(p.length){const mo=parseInt(p[0]);if(mo>=1&&mo<=12)mc[mo]=(mc[mo]||0)+1;}}
-  const currentMonth=new Date().getMonth();
   dc('monthChart');
-  const annualTarget=tot.total||0;
-  const monthPlugin={id:'targetLine',afterDraw(chart){
-    const{ctx,chartArea:{left,right,top,bottom},scales:{x,y}}=chart;
-    ctx.save();
-    if(isCurrentYear&&tot.bynow){
-      // Vertical dashed line at current month showing cumulative by-now target
-      const xPos=x.getPixelForValue(currentMonth);
-      ctx.strokeStyle='rgba(169,104,48,0.75)';ctx.lineWidth=2;ctx.setLineDash([4,3]);
-      ctx.beginPath();ctx.moveTo(xPos,top);ctx.lineTo(xPos,bottom);ctx.stroke();
-      ctx.font='10px DM Mono,monospace';ctx.fillStyle='rgba(169,104,48,0.9)';ctx.textAlign='center';
-      ctx.fillText('target: '+tot.bynow,xPos,top-2);
-    }
-    if(annualTarget>0){
-      // Horizontal line at average monthly target (annual goal / 12)
-      const monthlyTarget=annualTarget/12;
-      const yPos=y.getPixelForValue(monthlyTarget);
-      const exceeded=actual>=annualTarget;
-      const lineColor=exceeded?'rgba(74,155,142,0.8)':'rgba(196,97,74,0.7)';
-      ctx.strokeStyle=lineColor;ctx.lineWidth=1.5;ctx.setLineDash([6,3]);
-      ctx.beginPath();ctx.moveTo(left,yPos);ctx.lineTo(right,yPos);ctx.stroke();
-      ctx.setLineDash([]);
-      // Label on right side
-      ctx.font='10px DM Mono,monospace';ctx.fillStyle=lineColor;ctx.textAlign='right';
-      const label=isCurrentYear?`avg target (${monthlyTarget.toFixed(1)}/mo)`:exceeded?`goal: ${annualTarget} \u2713`:`goal: ${annualTarget}`;
-      ctx.fillText(label,right-2,yPos-3);
-    }
-    ctx.restore();
-  }};
   charts.monthChart=new Chart(document.getElementById('monthChart'),{
     type:'bar',
     data:{labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],datasets:[{data:Array.from({length:12},(_,i)=>mc[i+1]||0),backgroundColor:'#c9a84c',borderRadius:4}]},
-    options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:isCurrentYear&&tot.bynow?18:4}},plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9a9688'},grid:{display:false}},y:{ticks:{color:'#9a9688',stepSize:1},grid:{color:'rgba(0,0,0,0.04)'}}}},
-    plugins:[monthPlugin]
+    options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:4}},plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9a9688'},grid:{display:false}},y:{ticks:{color:'#9a9688',stepSize:1},grid:{color:'rgba(0,0,0,0.04)'}}}},
   });
   const mediaCounts={};for(const b of books)if(b.media)mediaCounts[b.media]=(mediaCounts[b.media]||0)+1;
   const pieLbls=Object.keys(mediaCounts);
