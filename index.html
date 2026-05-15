@@ -112,7 +112,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
 /* Accordion */
 .acc-row{border-bottom:1px solid var(--border);}
 .acc-row:last-child{border-bottom:none;}
-.acc-header{display:grid;grid-template-columns:1fr 70px 70px 70px 70px 70px 80px;gap:4px;align-items:center;padding:8px 12px;cursor:pointer;transition:background 0.1s;font-size:12px;}
+.acc-header{display:grid;align-items:center;padding:8px 12px;cursor:pointer;transition:background 0.1s;font-size:12px;}
 .acc-header:hover{background:var(--bg3);}
 .acc-header.open{background:var(--gold-bg);}
 .acc-name{font-weight:500;color:var(--text);display:flex;align-items:center;gap:6px;}
@@ -249,9 +249,11 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
     <div class="panel" id="tab-completion">
       <div class="sl">Author completion — bubble chart</div>
       <div class="bubble-legend">
-        <span>X axis: total books tracked</span>
-        <span>Y axis: % read of tracked</span>
-        <span>Bubble size: books owned</span>
+        <span style="color:var(--teal)">■ top-right: owned &amp; read</span>
+        <span style="color:var(--purple)">■ bottom-right: owned, unread</span>
+        <span style="color:var(--gold)">■ top-left: read, not owned</span>
+        <span style="color:var(--coral)">■ bottom-left: low acquisition</span>
+        <span style="color:var(--text3)">bubble size = total tracked</span>
       </div>
       <div class="cb"><div style="height:440px"><canvas id="bubbleChart" role="img" aria-label="Author completion bubble chart — x=total tracked, y=percent read, size=owned"></canvas></div></div>
       <div class="sl">TTRPG breakdown</div>
@@ -552,18 +554,39 @@ function renderHistory(metrics){
       cumData[type].push(cum);
     });
   });
+  // Build datasets: each fills DOWN to the previous dataset line (fill: index below)
+  // Dataset 0 = Print, fills to origin. Dataset 1 fills to dataset 0, etc.
   const stackedDatasets=stackOrder.map((type,i)=>({
     label:type,
     data:cumData[type],
     borderColor:MCOL[type],
-    backgroundColor:MCOL[type]+'44',
-    borderWidth:1.5,pointRadius:3,pointBackgroundColor:MCOL[type],
-    fill:i===0?'origin':{above:MCOL[type]+'44',value:i>0?cumData[stackOrder[i-1]]:0},
-    tension:0.3,order:stackOrder.length-i
+    backgroundColor:MCOL[type]+'55',
+    borderWidth:1.5,
+    pointRadius:3,
+    pointBackgroundColor:MCOL[type],
+    fill:i===0?'origin':i-1,  // fill down to previous dataset by index
+    tension:0.3,
+    order:stackOrder.length-i
   }));
-  // Total as a clean reference line, not stacked
-  stackedDatasets.push({label:'Total',data:yrsAsc.map(y=>metrics['Total']?metrics['Total'][y]||0:0),borderColor:'#1a1a18',backgroundColor:'transparent',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#1a1a18',fill:false,tension:0.3,order:0});
-  charts.histLine=new Chart(document.getElementById('histLine'),{type:'line',data:{labels:yrsAsc.map(String),datasets:stackedDatasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9a9688'},grid:{color:'rgba(0,0,0,0.04)'}},y:{ticks:{color:'#9a9688'},grid:{color:'rgba(0,0,0,0.04)'}}}}});
+  // Total as a clean reference line on top — not filled
+  stackedDatasets.push({
+    label:'Total',
+    data:yrsAsc.map(y=>metrics['Total']?metrics['Total'][y]||0:0),
+    borderColor:'#1a1a18',backgroundColor:'transparent',
+    borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#1a1a18',
+    fill:false,tension:0.3,order:0
+  });
+  charts.histLine=new Chart(document.getElementById('histLine'),{
+    type:'line',
+    data:{labels:yrsAsc.map(String),datasets:stackedDatasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},filler:{propagate:true}},
+      scales:{
+        x:{ticks:{color:'#9a9688'},grid:{color:'rgba(0,0,0,0.04)'}},
+        y:{ticks:{color:'#9a9688'},grid:{color:'rgba(0,0,0,0.04)'}}
+      }
+    }
+  });
   // Velocity table — years as rows, media as columns
   const mo={2021:12,2022:12,2023:12,2024:12,2025:12,2026:4.5};
   document.getElementById('velBody').innerHTML=yrsAsc.map(y=>{
@@ -610,33 +633,97 @@ function renderThisYear(year){
 }
 
 function renderCompletion(bm){
-  // Bubble chart: x=total tracked, y=% read, r=owned (scaled)
-  const authors=Object.entries(bm.byAuthor).filter(([a,d])=>d.tracked>=3&&a&&a!=='Various'&&a!=='(unassigned)'&&!a.toLowerCase().includes('various')).map(([a,d])=>({a,tracked:d.tracked,read:d.read,owned:d.owned,pctRead:pctN(d.read,d.tracked)}));
+  // Quadrant bubble: x=% owned of tracked, y=% read of tracked, r=total count (scaled)
+  const authors=Object.entries(bm.byAuthor)
+    .filter(([a,d])=>d.tracked>=3&&a&&a!=='Various'&&!a.toLowerCase().includes('various')&&a!=='(unassigned)')
+    .map(([a,d])=>({
+      a,tracked:d.tracked,read:d.read,owned:d.owned,
+      pctOwned:pctN(d.owned,d.tracked),
+      pctRead:pctN(d.read,d.tracked)
+    }));
+
+  // Colour by quadrant: top-right=teal(owned&read), top-left=gold(read but not owned), bottom-right=purple(owned unread), bottom-left=coral(neither much)
+  function qColor(x,y){
+    if(x>=50&&y>=50)return'rgba(74,155,142,0.75)';   // owned & read — teal
+    if(x<50&&y>=50) return'rgba(201,168,76,0.75)';    // read but not owned — gold
+    if(x>=50&&y<50) return'rgba(122,107,171,0.75)';   // owned unread — purple
+    return'rgba(196,97,74,0.75)';                      // neither — coral
+  }
+
   dc('bubbleChart');
-  // Colour by completion tier
-  function bubbleColor(p){if(p>=75)return'rgba(74,155,142,0.7)';if(p>=40)return'rgba(201,168,76,0.7)';return'rgba(196,97,74,0.7)';}
   charts.bubbleChart=new Chart(document.getElementById('bubbleChart'),{
     type:'bubble',
     data:{datasets:[{
       label:'Authors',
-      data:authors.map(a=>({x:a.tracked,y:a.pctRead,r:Math.max(4,Math.sqrt(a.owned)*1.8),label:a.a,owned:a.owned,read:a.read})),
-      backgroundColor:authors.map(a=>bubbleColor(a.pctRead)),
-      borderColor:authors.map(a=>bubbleColor(a.pctRead).replace('0.7','1')),
+      data:authors.map(a=>({
+        x:a.pctOwned,y:a.pctRead,
+        r:Math.max(5,Math.sqrt(a.tracked)*2.2),
+        label:a.a,tracked:a.tracked,read:a.read,owned:a.owned
+      })),
+      backgroundColor:authors.map(a=>qColor(a.pctOwned,a.pctRead)),
+      borderColor:authors.map(a=>qColor(a.pctOwned,a.pctRead).replace('0.75','1')),
       borderWidth:1
     }]},
-    options:{responsive:true,maintainAspectRatio:false,
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      layout:{padding:{top:16,right:16,bottom:16,left:16}},
       plugins:{
         legend:{display:false},
         tooltip:{callbacks:{
-          label:ctx=>{const d=ctx.raw;return[` ${d.label}`,' '+`${d.read} read / ${d.x} tracked (${ctx.parsed.y.toFixed(0)}%)`,' '+`${d.owned} owned`];}
+          label:ctx=>{
+            const d=ctx.raw;
+            return[
+              ` ${d.label}`,
+              ` ${d.tracked} tracked · ${d.read} read · ${d.owned} owned`,
+              ` ${ctx.parsed.x.toFixed(0)}% owned · ${ctx.parsed.y.toFixed(0)}% read`
+            ];
+          }
         }},
-        // Colour legend annotation
+        // Draw quadrant lines and labels via afterDraw plugin
+        quadrantLines:{enabled:true}
       },
       scales:{
-        x:{title:{display:true,text:'Total books tracked',color:'#9a9688',font:{size:11,family:'DM Mono'}},ticks:{color:'#9a9688'},grid:{color:'rgba(0,0,0,0.04)'}},
-        y:{title:{display:true,text:'% read',color:'#9a9688',font:{size:11,family:'DM Mono'}},min:0,max:100,ticks:{color:'#9a9688',callback:v=>v+'%'},grid:{color:'rgba(0,0,0,0.04)'}}
+        x:{
+          title:{display:true,text:'% owned of tracked',color:'#9a9688',font:{size:11,family:'DM Mono'}},
+          min:0,max:105,
+          ticks:{color:'#9a9688',callback:v=>v+'%'},
+          grid:{color:'rgba(0,0,0,0.04)'}
+        },
+        y:{
+          title:{display:true,text:'% read of tracked',color:'#9a9688',font:{size:11,family:'DM Mono'}},
+          min:-5,max:110,
+          ticks:{color:'#9a9688',callback:v=>v<0?'':v+'%'},
+          grid:{color:'rgba(0,0,0,0.04)'}
+        }
       }
-    }
+    },
+    plugins:[{
+      id:'quadrantLines',
+      afterDraw(chart){
+        const{ctx,chartArea:{left,right,top,bottom},scales:{x,y}}=chart;
+        const mx=x.getPixelForValue(50),my=y.getPixelForValue(50);
+        ctx.save();
+        // Quadrant divider lines
+        ctx.strokeStyle='rgba(0,0,0,0.12)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+        ctx.beginPath();ctx.moveTo(mx,top);ctx.lineTo(mx,bottom);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(left,my);ctx.lineTo(right,my);ctx.stroke();
+        ctx.setLineDash([]);
+        // Quadrant background fills
+        ctx.fillStyle='rgba(74,155,142,0.04)';ctx.fillRect(mx,top,right-mx,my-top);  // TR
+        ctx.fillStyle='rgba(122,107,171,0.04)';ctx.fillRect(mx,my,right-mx,bottom-my); // BR
+        ctx.fillStyle='rgba(201,168,76,0.04)';ctx.fillRect(left,top,mx-left,my-top);  // TL
+        ctx.fillStyle='rgba(196,97,74,0.04)';ctx.fillRect(left,my,mx-left,bottom-my); // BL
+        // Quadrant labels
+        ctx.font='10px DM Mono, monospace';ctx.fillStyle='rgba(0,0,0,0.25)';
+        ctx.textAlign='right';
+        ctx.fillText('owned & read',right-6,top+14);
+        ctx.fillText('owned, unread',right-6,bottom-6);
+        ctx.textAlign='left';
+        ctx.fillText('read, not owned',left+6,top+14);
+        ctx.fillText('low acquisition',left+6,bottom-6);
+        ctx.restore();
+      }
+    }]
   });
   // Colour key
   const ttrpgSh=bm.ttrpg.o-bm.ttrpg.r;
@@ -648,6 +735,8 @@ function renderCompletion(bm){
 
 function buildToReadAccordion(genres,types,typeColors,idPrefix){
   if(!genres.length)return'<div class="ms" style="padding:12px;color:var(--text3)">Nothing on shelf in this category.</div>';
+  // Single column template used by header, every row, and footer
+  const colT=`1fr ${types.map(()=>'56px').join(' ')} 62px`;
   const totals=types.reduce((o,t)=>{o[t]=0;return o;},{});
   const rows=genres.map((g,idx)=>{
     let rowTotal=0;
@@ -655,32 +744,33 @@ function buildToReadAccordion(genres,types,typeColors,idPrefix){
     const aid=`${idPrefix}-${idx}`;
     const seriesRows=g.series.map(s=>{
       const col=typeColors[s.type]||'#9a9688';
-      return`<div style="display:grid;grid-template-columns:1fr 65px 55px 55px;gap:4px;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px;align-items:center">
-        <span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:2px;background:${col};flex-shrink:0;display:inline-block"></span>${s.title}</span>
-        <span style="font-family:var(--font-m);font-size:10px;color:${col};text-align:center;background:${col}18;border-radius:3px;padding:1px 4px">${s.type}</span>
+      const shortType=s.type==='Graphic Novel'?'GN':s.type==='Individual'?'Indiv':s.type;
+      return`<div style="display:grid;grid-template-columns:1fr 52px 46px 46px;gap:4px;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px;align-items:center">
+        <span style="display:flex;align-items:center;gap:6px;overflow:hidden"><span style="width:7px;height:7px;border-radius:2px;background:${col};flex-shrink:0;display:inline-block"></span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.title}</span></span>
+        <span style="font-family:var(--font-m);font-size:9px;color:${col};text-align:center;background:${col}18;border-radius:3px;padding:1px 3px;white-space:nowrap">${shortType}</span>
         <span style="font-family:var(--font-m);font-size:11px;color:var(--text3);text-align:right">${s.owned}</span>
         <span style="font-family:var(--font-m);font-size:11px;color:var(--text);text-align:right;font-weight:500">${s.shelf}</span>
       </div>`;
     }).join('');
     return`<div class="acc-row">
-      <div class="acc-header" id="acc-h-${aid}" onclick="toggleAcc('${aid}')">
+      <div class="acc-header" id="acc-h-${aid}" onclick="toggleAcc('${aid}')" style="display:grid;grid-template-columns:${colT};gap:4px;align-items:center;padding:8px 12px;cursor:pointer;" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=this.classList.contains('open')?'var(--gold-bg)':''">
         <div class="acc-name"><span class="acc-chevron" id="acc-c-${aid}">▶</span>${g.g}</div>
-        ${types.map(t=>`<div class="nr" style="font-family:var(--font-m);font-size:11px;color:var(--text3)">${g.byType[t]||'—'}</div>`).join('')}
-        <div class="nr" style="font-family:var(--font-m);font-size:11px;font-weight:600;color:var(--text)">${rowTotal}</div>
+        ${types.map(t=>`<div style="font-family:var(--font-m);font-size:11px;color:var(--text3);text-align:right">${g.byType[t]||'—'}</div>`).join('')}
+        <div style="font-family:var(--font-m);font-size:11px;font-weight:600;color:var(--text);text-align:right">${rowTotal}</div>
       </div>
       <div class="acc-body" id="acc-b-${aid}">
         <div class="acc-inner">
-          <div style="display:grid;grid-template-columns:1fr 65px 55px 55px;gap:4px;padding:4px 0 8px;font-family:var(--font-m);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3)"><span>Series</span><span style="text-align:center">Type</span><span style="text-align:right">Owned</span><span style="text-align:right">On shelf</span></div>
+          <div style="display:grid;grid-template-columns:1fr 52px 46px 46px;gap:4px;padding:4px 0 8px;font-family:var(--font-m);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3)"><span>Series</span><span style="text-align:center">Type</span><span style="text-align:right">Own</span><span style="text-align:right">Shelf</span></div>
           ${seriesRows}
         </div>
       </div>
     </div>`;
   });
-  const footRow=`<div style="background:var(--bg3);display:grid;grid-template-columns:1fr ${types.map(()=>'70px').join(' ')} 80px;gap:4px;padding:8px 12px;font-family:var(--font-m);font-size:10px;font-weight:600;color:var(--text);border-top:1px solid var(--border)">
-    <div>Total</div>${types.map(t=>`<div class="nr">${fmt(totals[t])}</div>`).join('')}<div class="nr">${fmt(Object.values(totals).reduce((a,b)=>a+b,0))}</div>
+  const footRow=`<div style="background:var(--bg3);display:grid;grid-template-columns:${colT};gap:4px;padding:8px 12px;font-family:var(--font-m);font-size:11px;font-weight:600;color:var(--text);border-top:1px solid var(--border)">
+    <div>Total</div>${types.map(t=>`<div style="text-align:right">${fmt(totals[t])}</div>`).join('')}<div style="text-align:right">${fmt(Object.values(totals).reduce((a,b)=>a+b,0))}</div>
   </div>`;
-  return`<div style="background:var(--bg3);display:grid;grid-template-columns:1fr ${types.map(()=>'70px').join(' ')} 80px;gap:4px;padding:8px 12px;font-family:var(--font-m);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);border-radius:10px 10px 0 0;border:1px solid var(--border);border-bottom:none">
-    <div>Genre</div>${types.map(t=>`<div class="nr">${t==='Graphic Novel'?'GN':t}</div>`).join('')}<div class="nr">Total</div>
+  return`<div style="background:var(--bg3);display:grid;grid-template-columns:${colT};gap:4px;padding:8px 12px;font-family:var(--font-m);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);border-radius:10px 10px 0 0;border:1px solid var(--border);border-bottom:none">
+    <div>Genre</div>${types.map(t=>`<div style="text-align:right">${t==='Graphic Novel'?'GN':t==='Individual'?'Indiv':t}</div>`).join('')}<div style="text-align:right">Total</div>
   </div>
   <div style="border:1px solid var(--border);border-radius:0 0 10px 10px;overflow:hidden;">${rows.join('')}${footRow}</div>`;
 }
