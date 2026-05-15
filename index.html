@@ -599,19 +599,65 @@ function renderHistory(metrics){
 let tyYear=2026,allYD={};
 function renderThisYear(year){
   tyYear=year;
+  const currentYear=new Date().getFullYear();
+  const isCurrentYear=year===currentYear;
   document.querySelectorAll('#year-tog button').forEach(b=>b.classList.toggle('active',parseInt(b.dataset.y)===year));
   const{books,targets,focus}=allYD[year]||{books:[],targets:{},focus:[]};
   const tot=targets['Total']||{total:0,bynow:0,actual:0};
-  const actual=books.length,delta=actual-(tot.bynow||0);
-  document.getElementById('ty-m').innerHTML=mH(actual,'Books read',`goal: ${tot.total||'N/A'}`,'t')+mH(tot.total||'N/A','Annual goal')+mH(tot.bynow||'N/A','Target by now')+mH((delta>=0?'+':'')+delta,'vs pace',delta>=0?'on track ✓':'behind',delta>=0?'t':'c');
+  const actual=books.length;
+  if(isCurrentYear){
+    const delta=actual-(tot.bynow||0);
+    document.getElementById('ty-m').innerHTML=mH(actual,'Books read',`goal: ${tot.total||'N/A'}`,'t')+mH(tot.total||'N/A','Annual goal')+mH(tot.bynow||'N/A','Target by now')+mH((delta>=0?'+':'')+delta,'vs pace',delta>=0?'on track \u2713':'behind',delta>=0?'t':'c');
+  }else{
+    document.getElementById('ty-m').innerHTML=mH(actual,'Books read',`goal: ${tot.total||'N/A'}`,'t')+mH(tot.total||'N/A','Annual goal')+mH('N/A','Target by now','past year')+mH('N/A','vs pace','past year');
+  }
   const tEl=document.getElementById('ty-targets');
   const mk=MEDIA.filter(k=>targets[k]&&targets[k].total>0);
   if(mk.length){
-    tEl.innerHTML='<div class="cbt">Actual (solid) vs by-now target (light)</div>'+mk.map(k=>{const tg=targets[k],col=MCOL[k]||'#c9a84c',ap=tg.total?Math.min(100,tg.actual/tg.total*100):0,pp=tg.total?Math.min(100,tg.bynow/tg.total*100):0;return`<div class="pr" style="margin-bottom:12px"><div class="pl">${k}</div><div style="flex:1;position:relative;height:10px;border-radius:5px;background:var(--bg3);overflow:hidden;"><div style="position:absolute;left:0;top:0;height:100%;width:${pp.toFixed(1)}%;background:${col};opacity:0.2;border-radius:5px"></div><div style="position:absolute;left:0;top:0;height:100%;width:${ap.toFixed(1)}%;background:${col};border-radius:5px"></div></div><div style="font-family:var(--font-m);font-size:11px;color:var(--text2);min-width:58px;text-align:right">${tg.actual}/${tg.total}</div></div>`;}).join('');
-  }else{tEl.innerHTML='<div class="ms">N/A — no targets recorded for this year.</div>';}
+    tEl.innerHTML='<div class="cbt">Actual (solid) vs by-now target (light)</div>'+mk.map(k=>{
+      const tg=targets[k],col=MCOL[k]||'#c9a84c';
+      const ap=tg.total?Math.min(100,tg.actual/tg.total*100):0;
+      const pp=isCurrentYear&&tg.bynow?Math.min(100,tg.bynow/tg.total*100):0;
+      return`<div class="pr" style="margin-bottom:12px"><div class="pl">${k}</div><div style="flex:1;position:relative;height:10px;border-radius:5px;background:var(--bg3);overflow:hidden;"><div style="position:absolute;left:0;top:0;height:100%;width:${pp.toFixed(1)}%;background:${col};opacity:0.2;border-radius:5px"></div><div style="position:absolute;left:0;top:0;height:100%;width:${ap.toFixed(1)}%;background:${col};border-radius:5px"></div></div><div style="font-family:var(--font-m);font-size:11px;color:var(--text2);min-width:58px;text-align:right">${tg.actual}/${tg.total}</div></div>`;
+    }).join('');
+  }else{tEl.innerHTML='<div class="ms">N/A \u2014 no targets recorded for this year.</div>';}
   const mc={};for(const b of books){const p=(b.date||'').split('/');if(p.length){const mo=parseInt(p[0]);if(mo>=1&&mo<=12)mc[mo]=(mc[mo]||0)+1;}}
+  const currentMonth=new Date().getMonth();
   dc('monthChart');
-  charts.monthChart=new Chart(document.getElementById('monthChart'),{type:'bar',data:{labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],datasets:[{data:Array.from({length:12},(_,i)=>mc[i+1]||0),backgroundColor:'#c9a84c',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9a9688'},grid:{display:false}},y:{ticks:{color:'#9a9688',stepSize:1},grid:{color:'rgba(0,0,0,0.04)'}}}}});
+  const annualTarget=tot.total||0;
+  const monthPlugin={id:'targetLine',afterDraw(chart){
+    const{ctx,chartArea:{left,right,top,bottom},scales:{x,y}}=chart;
+    ctx.save();
+    if(isCurrentYear&&tot.bynow){
+      // Vertical dashed line at current month showing cumulative by-now target
+      const xPos=x.getPixelForValue(currentMonth);
+      ctx.strokeStyle='rgba(169,104,48,0.75)';ctx.lineWidth=2;ctx.setLineDash([4,3]);
+      ctx.beginPath();ctx.moveTo(xPos,top);ctx.lineTo(xPos,bottom);ctx.stroke();
+      ctx.font='10px DM Mono,monospace';ctx.fillStyle='rgba(169,104,48,0.9)';ctx.textAlign='center';
+      ctx.fillText('target: '+tot.bynow,xPos,top-2);
+    }
+    if(annualTarget>0){
+      // Horizontal line at average monthly target (annual goal / 12)
+      const monthlyTarget=annualTarget/12;
+      const yPos=y.getPixelForValue(monthlyTarget);
+      const exceeded=actual>=annualTarget;
+      const lineColor=exceeded?'rgba(74,155,142,0.8)':'rgba(196,97,74,0.7)';
+      ctx.strokeStyle=lineColor;ctx.lineWidth=1.5;ctx.setLineDash([6,3]);
+      ctx.beginPath();ctx.moveTo(left,yPos);ctx.lineTo(right,yPos);ctx.stroke();
+      ctx.setLineDash([]);
+      // Label on right side
+      ctx.font='10px DM Mono,monospace';ctx.fillStyle=lineColor;ctx.textAlign='right';
+      const label=isCurrentYear?`avg target (${monthlyTarget.toFixed(1)}/mo)`:exceeded?`goal: ${annualTarget} \u2713`:`goal: ${annualTarget}`;
+      ctx.fillText(label,right-2,yPos-3);
+    }
+    ctx.restore();
+  }};
+  charts.monthChart=new Chart(document.getElementById('monthChart'),{
+    type:'bar',
+    data:{labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],datasets:[{data:Array.from({length:12},(_,i)=>mc[i+1]||0),backgroundColor:'#c9a84c',borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:annualTarget>0||isCurrentYear?18:4,right:annualTarget>0?100:8}},plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9a9688'},grid:{display:false}},y:{ticks:{color:'#9a9688',stepSize:1},grid:{color:'rgba(0,0,0,0.04)'}}}},
+    plugins:[monthPlugin]
+  });
   const mediaCounts={};for(const b of books)if(b.media)mediaCounts[b.media]=(mediaCounts[b.media]||0)+1;
   const pieLbls=Object.keys(mediaCounts);
   dc('ty-pie');
@@ -624,17 +670,25 @@ function renderThisYear(year){
   if(focus.length&&G.bookRows){
     fsEl.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:1rem;margin-bottom:1.5rem">'+focus.map(sn=>{
       const sl=sn.toLowerCase();
-      const match=G.bookRows.find(r=>r.title.toLowerCase().includes(sl)||sl.includes(r.title.toLowerCase().split(' ').slice(0,2).join(' ')));
-      if(!match)return`<div class="cb" style="margin:0"><div class="cbt">${sn}</div><div class="ms">Not found in library</div></div>`;
-      const rp=match.count?match.read/match.count*100:0,op=match.count?match.owned/match.count*100:0;
-      return`<div class="cb" style="margin:0"><div class="cbt">${sn}</div><div style="display:flex;gap:10px;margin-bottom:8px;font-family:var(--font-m);font-size:11px;color:var(--text3)"><span>read <strong style="color:var(--text)">${match.read}</strong></span><span>owned <strong style="color:var(--text)">${match.owned}</strong></span><span>total <strong style="color:var(--text)">${match.count}</strong></span></div><div class="pr"><div class="pl">Read</div><div class="pt"><div class="pf" style="width:${rp.toFixed(1)}%;background:#4a9b8e"></div></div><div class="pv">${rp.toFixed(0)}%</div></div><div class="pr"><div class="pl">Owned</div><div class="pt"><div class="pf" style="width:${op.toFixed(1)}%;background:#7a6bab"></div></div><div class="pv">${op.toFixed(0)}%</div></div></div>`;
+      const matchRows=G.bookRows.filter(r=>{
+        const ul=(r.universe||'').toLowerCase(),tl=r.title.toLowerCase();
+        return ul===sl||tl.includes(sl)||sl.includes(tl.split(' ').slice(0,2).join(' '));
+      });
+      if(!matchRows.length)return`<div class="cb" style="margin:0"><div class="cbt">${sn}</div><div class="ms">Not found in library</div></div>`;
+      const totalCount=matchRows.reduce((s,r)=>s+r.count,0);
+      const totalRead=matchRows.reduce((s,r)=>s+r.read,0);
+      const totalOwned=matchRows.reduce((s,r)=>s+r.owned,0);
+      const readThisYear=books.filter(b=>matchRows.some(r=>{
+        const bl=b.title.toLowerCase(),rl=r.title.toLowerCase();
+        return bl.includes(rl)||rl.includes(bl)||(r.universe&&bl.includes(r.universe.toLowerCase()));
+      })).length;
+      const rp=totalCount?totalRead/totalCount*100:0,op=totalCount?totalOwned/totalCount*100:0;
+      return`<div class="cb" style="margin:0"><div class="cbt">${sn}</div><div style="display:flex;gap:10px;margin-bottom:8px;font-family:var(--font-m);font-size:11px;color:var(--text3);flex-wrap:wrap"><span>this year <strong style="color:var(--teal)">${readThisYear}</strong></span><span>all-time <strong style="color:var(--text)">${totalRead}</strong></span><span>total <strong style="color:var(--text)">${totalCount}</strong></span></div><div class="pr"><div class="pl">All-time read</div><div class="pt"><div class="pf" style="width:${rp.toFixed(1)}%;background:#4a9b8e"></div></div><div class="pv">${rp.toFixed(0)}%</div></div><div class="pr"><div class="pl">Owned</div><div class="pt"><div class="pf" style="width:${op.toFixed(1)}%;background:#7a6bab"></div></div><div class="pv">${op.toFixed(0)}%</div></div></div>`;
     }).join('')+'</div>';
   }else{fsEl.innerHTML='<div class="ms" style="color:var(--text3);margin-bottom:1.5rem">No focus series data.</div>';}
   const bBadge={Print:'b-gold',Audio:'b-teal',Manga:'b-purple',Comics:'b-green',Ebook:'b-teal',EBook:'b-teal','Graphic Novel':'b-coral'};
-  // Date column moved to position 2 (after #)
   document.getElementById('ty-books').innerHTML=books.map(b=>`<tr><td class="nr" style="color:var(--text3);font-family:var(--font-m)">${b.num}</td><td class="nr" style="color:var(--text3);font-family:var(--font-m)">${b.date}</td><td>${b.title}</td><td>${b.genre}</td><td><span class="badge ${bBadge[b.media]||'b-gray'}">${b.media}</span></td></tr>`).join('');
 }
-
 function renderCompletion(bm){
   // Quadrant bubble: x=% owned of tracked, y=% read of tracked, r=total count (scaled)
   const authors=Object.entries(bm.byAuthor)
