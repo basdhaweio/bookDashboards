@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Library</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #0e0f0e;
+    --bg2: #161714;
+    --bg3: #1e1f1c;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #e8e6df;
+    --text2: #9a9890;
+    --text3: #5a5955;
+    --gold: #c9a84c;
+    --gold2: #e8c97a;
+    --teal: #4a9b8e;
+    --teal2: #6dbfb0;
+    --coral: #c4614a;
+    --purple: #7a6bab;
+    --green: #5a8a4a;
+    --font-display: 'Playfair Display', Georgia, serif;
+    --font-body: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 14px; line-height: 1.6; min-height: 100vh; }
+
+  /* HEADER */
+  header { padding: 3rem 3rem 2rem; border-bottom: 1px solid var(--border); display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+  .header-title { font-family: var(--font-display); font-size: 2.8rem; font-weight: 600; color: var(--gold2); letter-spacing: -0.02em; line-height: 1; }
+  .header-sub { font-family: var(--font-mono); font-size: 11px; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 6px; }
+  .header-right { text-align: right; }
+  .last-updated { font-family: var(--font-mono); font-size: 11px; color: var(--text3); }
+  .status-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--teal); margin-right: 6px; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* LOADING */
+  #loading { display: flex; align-items: center; justify-content: center; height: 60vh; flex-direction: column; gap: 1rem; }
+  .spinner { width: 36px; height: 36px; border: 2px solid var(--border2); border-top-color: var(--gold); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-family: var(--font-mono); font-size: 12px; color: var(--text3); letter-spacing: 0.08em; }
+
+  /* ERROR */
+  #error { display: none; padding: 3rem; color: var(--coral); font-family: var(--font-mono); }
+
+  /* MAIN */
+  #dashboard { display: none; }
+
+  /* NAV TABS */
+  nav { padding: 0 3rem; border-bottom: 1px solid var(--border); display: flex; gap: 0; overflow-x: auto; }
+  nav button { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding: 1rem 1.4rem; background: none; border: none; color: var(--text3); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; transition: color 0.2s, border-color 0.2s; }
+  nav button:hover { color: var(--text2); }
+  nav button.active { color: var(--gold2); border-bottom-color: var(--gold); }
+
+  /* PANELS */
+  .panel { display: none; padding: 2.5rem 3rem; }
+  .panel.active { display: block; }
+
+  /* SECTION LABEL */
+  .section-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text3); margin-bottom: 1.2rem; display: flex; align-items: center; gap: 8px; }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* METRIC GRID */
+  .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 2.5rem; }
+  .metric { background: var(--bg2); padding: 1.2rem 1.4rem; }
+  .metric-val { font-family: var(--font-display); font-size: 2rem; font-weight: 600; line-height: 1; color: var(--gold2); }
+  .metric-val.teal { color: var(--teal2); }
+  .metric-val.coral { color: var(--coral); }
+  .metric-val.purple { color: var(--purple); }
+  .metric-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text3); margin-top: 6px; }
+  .metric-sub { font-size: 11px; color: var(--text3); margin-top: 3px; }
+
+  /* TWO COL */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2.5rem; }
+  @media(max-width:700px){ .two-col { grid-template-columns: 1fr; } }
+
+  /* CHART CONTAINER */
+  .chart-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; }
+  .chart-box-title { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3); margin-bottom: 1.2rem; }
+  .chart-wrap { position: relative; }
+
+  /* PROGRESS BARS */
+  .prog-list { display: flex; flex-direction: column; gap: 10px; }
+  .prog-row { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+  .prog-label { width: 120px; flex-shrink: 0; color: var(--text2); font-family: var(--font-mono); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .prog-track { flex: 1; height: 4px; border-radius: 2px; background: var(--bg3); overflow: hidden; }
+  .prog-fill { height: 100%; border-radius: 2px; transition: width 0.8s ease; }
+  .prog-val { width: 42px; text-align: right; color: var(--text3); font-family: var(--font-mono); font-size: 11px; flex-shrink: 0; }
+
+  /* ROOM CARDS */
+  .room-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin-bottom: 2.5rem; }
+  .room-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 1.2rem 1.4rem; transition: border-color 0.2s; }
+  .room-card:hover { border-color: var(--border2); }
+  .room-card-title { font-family: var(--font-display); font-size: 1rem; font-weight: 600; color: var(--gold2); margin-bottom: 2px; }
+  .room-card-theme { font-family: var(--font-mono); font-size: 10px; color: var(--text3); letter-spacing: 0.06em; margin-bottom: 12px; }
+  .room-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 10px; }
+  .room-stat { background: var(--bg3); border-radius: 4px; padding: 6px 8px; text-align: center; }
+  .room-stat-val { font-family: var(--font-display); font-size: 1.3rem; font-weight: 600; }
+  .room-stat-lbl { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text3); margin-top: 2px; }
+  .room-note { font-size: 11px; color: var(--text3); margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); line-height: 1.5; }
+
+  /* FORECAST CARDS */
+  .forecast-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 2rem; }
+  .forecast-card { background: var(--bg2); padding: 1.2rem; }
+  .forecast-rate { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text3); margin-bottom: 8px; }
+  .forecast-years { font-family: var(--font-display); font-size: 1.8rem; font-weight: 600; color: var(--gold2); line-height: 1; }
+  .forecast-age { font-family: var(--font-mono); font-size: 11px; color: var(--text3); margin-top: 4px; }
+
+  /* SLIDER */
+  .slider-row { display: flex; align-items: center; gap: 12px; margin-bottom: 1rem; }
+  .slider-row label { font-family: var(--font-mono); font-size: 11px; color: var(--text3); letter-spacing: 0.06em; white-space: nowrap; }
+  input[type=range] { flex: 1; accent-color: var(--gold); }
+  .slider-val { font-family: var(--font-display); font-size: 1.4rem; font-weight: 600; color: var(--gold2); min-width: 36px; }
+  .slider-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 2rem; }
+
+  /* LEGEND */
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 1rem; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 11px; color: var(--text2); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+  /* TABLE */
+  .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .data-table th { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text3); padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+  .data-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--text2); }
+  .data-table td:first-child { color: var(--text); font-weight: 500; }
+  .data-table td.num { font-family: var(--font-mono); text-align: right; }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tr:hover td { background: var(--bg3); }
+  .table-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 2rem; overflow-x: auto; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="header-title">The Library</div>
+    <div class="header-sub">Personal reading tracker</div>
+  </div>
+  <div class="header-right">
+    <div class="last-updated"><span class="status-dot"></span><span id="updateTime">Loading...</span></div>
+  </div>
+</header>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <div class="loading-text">Fetching from Google Sheets...</div>
+</div>
+<div id="error"></div>
+<div id="dashboard">
+  <nav>
+    <button class="active" onclick="switchTab('overview')">Overview</button>
+    <button onclick="switchTab('bytype')">By Type</button>
+    <button onclick="switchTab('genre')">By Genre</button>
+    <button onclick="switchTab('ttrpg')">TTRPG</button>
+    <button onclick="switchTab('rate')">Reading Rate</button>
+    <button onclick="switchTab('forecast')">Forecasts</button>
+    <button onclick="switchTab('rooms')">Rooms</button>
+  </nav>
+
+  <!-- OVERVIEW -->
+  <div class="panel active" id="tab-overview">
+    <div class="section-label">Total library</div>
+    <div class="metric-grid" id="overview-metrics"></div>
+    <div class="section-label">Completion rates</div>
+    <div class="metric-grid" id="completion-metrics"></div>
+    <div class="section-label">Library by type</div>
+    <div class="chart-box">
+      <div class="chart-box-title">Tracked · Read · Owned by type</div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#c9a84c"></div>Tracked</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#4a9b8e"></div>Read</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#7a6bab"></div>Owned</div>
+      </div>
+      <div class="chart-wrap" style="height:280px"><canvas id="typeChart" role="img" aria-label="Grouped bar chart of books by type"></canvas></div>
+    </div>
+  </div>
+
+  <!-- BY TYPE -->
+  <div class="panel" id="tab-bytype">
+    <div class="section-label">Detail by type</div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Type</th><th class="num">Tracked</th><th class="num">Read</th><th class="num">Owned</th><th class="num">On Shelf</th><th class="num">Need to Buy</th><th class="num">% Read/Owned</th><th class="num">% Owned/Tracked</th></tr></thead>
+        <tbody id="typeTableBody"></tbody>
+      </table>
+    </div>
+    <div class="section-label">% read of owned by type</div>
+    <div class="chart-box">
+      <div class="chart-wrap" style="height:220px"><canvas id="readPctChart" role="img" aria-label="Horizontal bar chart of read percentage by type"></canvas></div>
+    </div>
+  </div>
+
+  <!-- BY GENRE -->
+  <div class="panel" id="tab-genre">
+    <div class="section-label">All genres — on shelf vs need to buy</div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#4a9b8e"></div>On shelf to read</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#c4614a"></div>Need to buy</div>
+    </div>
+    <div class="chart-box">
+      <div class="chart-wrap" id="genreChartWrap" style="height:520px"><canvas id="genreChart" role="img" aria-label="Horizontal bar chart of genres"></canvas></div>
+    </div>
+    <div class="section-label" style="margin-top:2rem">Genre table</div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Genre</th><th class="num">Tracked</th><th class="num">Read</th><th class="num">Owned</th><th class="num">On Shelf</th><th class="num">Need to Buy</th></tr></thead>
+        <tbody id="genreTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TTRPG -->
+  <div class="panel" id="tab-ttrpg">
+    <div class="section-label">TTRPG total</div>
+    <div class="metric-grid" id="ttrpg-metrics"></div>
+    <div class="two-col">
+      <div>
+        <div class="section-label">Share of TTRPG tracked</div>
+        <div class="chart-box">
+          <div class="chart-wrap" style="height:220px"><canvas id="ttrpgPie" role="img" aria-label="Pie chart of FR vs DL vs SR share of TTRPG"></canvas></div>
+        </div>
+      </div>
+      <div>
+        <div class="section-label">Per-universe completion</div>
+        <div class="chart-box" style="height:100%">
+          <div class="chart-box-title">Read of tracked</div>
+          <div class="prog-list" id="ttrpg-prog"></div>
+        </div>
+      </div>
+    </div>
+    <div class="section-label">TTRPG vs total library</div>
+    <div class="chart-box">
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#c9a84c"></div>TTRPG</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#2a2b28"></div>Rest of library</div>
+      </div>
+      <div class="chart-wrap" style="height:220px"><canvas id="ttrpgShare" role="img" aria-label="Stacked bar showing TTRPG vs rest of library"></canvas></div>
+    </div>
+  </div>
+
+  <!-- READING RATE -->
+  <div class="panel" id="tab-rate">
+    <div class="section-label">Reading rate since Sept 2000</div>
+    <div class="metric-grid" id="rate-metrics"></div>
+    <div class="section-label">Milestones — books needed to reach % of library</div>
+    <div class="chart-box">
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#c9a84c"></div>Of owned</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#7a6bab"></div>Of all planned</div>
+      </div>
+      <div class="chart-wrap" style="height:260px"><canvas id="milestoneChart" role="img" aria-label="Bar chart of milestone targets"></canvas></div>
+    </div>
+  </div>
+
+  <!-- FORECASTS -->
+  <div class="panel" id="tab-forecast">
+    <div class="section-label">Scenario forecasts — years to clear shelf</div>
+    <div class="forecast-grid" id="forecast-cards"></div>
+    <div class="section-label">Interactive — adjust reading rate</div>
+    <div class="slider-row">
+      <label>Books / year</label>
+      <input type="range" min="20" max="200" step="1" value="45" id="rateSlider">
+      <div class="slider-val" id="rateVal">45</div>
+    </div>
+    <div class="slider-metrics" id="slider-metrics"></div>
+    <div class="section-label">Years to complete vs reading rate</div>
+    <div class="chart-box">
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#c9a84c"></div>Clear shelf</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#c4614a"></div>All planned</div>
+      </div>
+      <div class="chart-wrap" style="height:260px"><canvas id="forecastChart" role="img" aria-label="Line chart of years to finish vs reading rate"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ROOMS -->
+  <div class="panel" id="tab-rooms">
+    <div class="section-label">Books by room in new house</div>
+    <div class="room-grid" id="room-grid"></div>
+    <div class="section-label">Owned books per room</div>
+    <div class="chart-box">
+      <div class="chart-wrap" style="height:300px"><canvas id="roomChart" role="img" aria-label="Bar chart of owned books per room"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_KEY = 'AIzaSyAhfCAYNMD4iyxdaQlM11BbppxwwqTWrxg';
+const SHEET_ID = '1IRQ0VENyj_H_MENOOPBB4W3F8pQo4UeMdoj__9dUm3k';
+const TAB = 'Butthead Series';
+const DOB = new Date(1985, 10, 1); // Nov 1985
+const START_DATE = new Date(2000, 8, 1); // Sept 2000
+
+function currentAge() {
+  const now = new Date();
+  const age = (now - DOB) / (365.25 * 24 * 3600 * 1000);
+  return age;
+}
+
+function n(v) { const x = parseInt(v); return isNaN(x) ? 0 : x; }
+function pct(a, b) { return b > 0 ? (a/b*100).toFixed(1)+'%' : '—'; }
+function fmt(x) { return x.toLocaleString(); }
+
+// ── ROUTING LOGIC ──────────────────────────────────────────────
+const SKIP = new Set(['Time in years','Recreational books per year','Time in months',
+  'Current Library Remaining','Rate of 50/yr','Rate of 100/yr','Rate of 150/yr',
+  'Days','Weeks per book','At pace, years to finish all current books',
+  'TTF FR:','Finish all planned books','Books per month','Weeks per',
+  'Read/Planned','Owned/Planned']);
+
+const TTRPG_KW   = ['forgotten realms','dragonlance','shadowrun','resident evil','myst','warhammer'];
+const FRANCHISE_KW = ['firefly','serenity comics','unification comics','new sheriff comics',
+  'blue sun rising','return that earth',"brand new 'verse",'gospel according','river run',
+  'fall guys','firefly graphic','star wars','mighty nein','vox machina','critical roll',
+  'days of adventure','rick and morty'];
+const HIDDEN_TYPES = new Set(['Comics','Graphic Novel','Manga']);
+const HIDDEN_EXTRA  = ['neir automata','nier replicant','nier ','final fantasy lore',
+  'ffvii:','ffvii remake','ffxiii:','yorha','ghost in the shell stand alone complex light',
+  'akira club','vector prime','evangelion'];
+const ASIAN_AUTHORS = ['ken liu','wesley chu','yoon ha lee','r.f. kuang','rf kuang',
+  'shelley parker-chan','xiran jay zhao','sue lynn tan','cixin liu','ml wang',
+  'neon yang','djeli clark','simon jimenez','amal el-mohtar','amy chu'];
+const ASIAN_TITLES  = ['dandelion dynasty','all that we see','war arts saga','machineries of empire',
+  'poppy wars','babel','katabasis','radiant emperor','iron widow','celestial kingdom',
+  'remembrance of earth',"three-body",'old kingdom','theonite','carmilla the first',
+  'brighter than scale','dead djinn','dead cat tail','ring shout','spear cuts through',
+  'vanished birds','time war','river has roots','seasons of glass'];
+const SPICY_SG   = new Set(['spicy fantasy','sex fantasy','adult','kink']);
+const SPICY_KW   = ['sex wizard'];
+const BUTTHEAD_GENRES = new Set(['nonfiction','history','philosophy','historical fiction']);
+const BUTTHEAD_EXCL_SG = new Set(['kink','ttrpg','adult']);
+const CLASSICS_GENRES  = new Set(['classics','fiction']);
+const CLASSICS_KW = ['alice in wonderland',"grimm's fairy tales",'books of oz','sherlock holmes',
+  'war of the worlds','around the world in 80 days','slaughterhouse','frankenstein','dracula',
+  "dr. jekyll",'legend of sleepy hollow','divine comedy','picture of dorian gray','tom sawyer',
+  "d'artagnan",'count of monte cristo','moby dick','great gatsby','watership down','illiad',
+  '1001 arabian nights','vinland sagas','halloweird','penny bloods','fearsome fairies',
+  'celtic weird','little blue flames','scotland strange','japanese tales','dark fairy tales',
+  'great mythology','brave new world','call of the wild','a girl of the limberlost',
+  'works of edgar allen poe','plays of sophocles','don quixote','bhagavad gita',
+  '1984','farenheit 451','fahrenheit 451'];
+const BIG_AUTHORS = ['jrr tolkien','christopher tolkien','brandon sanderson','terry brooks',
+  'joe abercrombie','frank herbert','brian herbert','kevin j anderson','robin hobb','glen cook',
+  'matt dinniman','jacqueline carey','adrian tchaikovksy','adrian tchaikovsky',
+  'ursula leguin','ursula le guin','steven erikson','ian c. esslemont','ben bova',
+  'john scalzi','james a corey','isaac asimov','brian mcclellan','anthony ryan',
+  'john gwynne','brent weeks','ann leckie','martha wells','douglas adams',
+  'andrzej sapkowski','patrick rothfuss','christopher ruocchio','pierce brown',
+  'orson scott card','neal asher','stephen donaldson','stephen donadlson',
+  'ra salvatore','r.a. salvatore','nk jemisin','n.k. jemisin','raymond feist',
+  'jk rowling','christopher paolini','stephen king','clive cussler','robert ludhlam',
+  'terry pratchet','terry pratchett','george rr martin','tamsyn muir','james islington',
+  's.a. chakraborty','jim butcher','neil stephenson','neil stevenson','nnedi okorafor'];
+const BIG_TITLES = ['wheel of time','dune','black company','malazan','expanse','earthsea','hainish',
+  'kushiel','kingkiller','first law','age of madness','the devils','stormlight','mistborn',
+  'wax and wayne','shannara','farseer','liveship','tawny man','rain wild','fitz and the fool',
+  "dungeon crawler carl","old man's war",'foundation','robot','galactic empire','night angel',
+  'lightbringer','imperial radach','murderbot','hitchhiker','witcher','sun eater','red rising',
+  'ender','shadow saga','formic wars','agent cormac','spatterjay','gap cycle','great god',
+  'corona first','corona second','corona saga','corona coven','crimson shadow','chronicles of ynis',
+  'broken earth','dreamblood','riftwar','dark tower','dirk pitt','chronicles of amber',
+  'song of ice','hyperion cantos','locked tomb','licanius','hierarchy','daevabad','amina al-sirafi',
+  'crescent city','empyrean','grand tour','powder mage','gods of blood',"raven's shadow",
+  "raven's blade",'draconis memoria','faithful and the fallen','of blood and bone','bloodsworn',
+  'books of the raksura','ile-rien','rise of the jain','transformation','polity universe',
+  'saga of first king','buccaneers','hyperion short','lore olympus','vinland saga','saxon tales',
+  'aubrey-maturin','hunger games','inheritance','dreseden files','dresden files',
+  'diamond age','seven eves','anathem','snow crash','asia saga'];
+const SMALL_KW = ['narnia','chronicles of narnia','space trilogy',"c.s. lewis",'sprawl','jackpot',
+  'difference engine','mind over ship','dragon prince','dragon star','exiles','zoey ashe',
+  'john and dave','fourth realm','certainty ','bobiverse','altered carbon',
+  'shadows of the leviathan','founders','runestone','avalon','age of darkness','tower of the tyrant',
+  'gentleman bastard','quantum gravity','justina robson','stuff ','the switch','silo','summerland',
+  'mars trilogy','2312','jean le flambeur','jean le flambuer','texicalaan','monk and robot',
+  'shades of magic','threads of power','six of crows','shiva trilogy','green bone saga',
+  'circe','song of achilles','steel crow saga','norse mythology','dark gods','roots of chaos',
+  'carmilla ','le fanu','piranesi',"witch's heart",'the band','the dwarves','drowning empire',
+  'bourne saga','sunshine','hollow kingdom','world war z','house of leaves','cryonic','firefall',
+  'the sparrow','after the war','windup girl','employees','wax child','project hail mary',
+  'empire without end','jurassic park','prey, eaters','robopocalypse','between earth and sky',
+  'invoker trilogy','book of fallen leaves','daughter of crows','gods of jade','bewitching',
+  'whisper that replaced god','world-maker parable','green and deadly things',
+  'in the shadows of their dying','age of uprising','starship troopers','sands of mars',
+  'space odyssey','androids dream','doomsday book','princess bride','how to defeat a demon king',
+  'of monsters and mainframes','there is no antimemetics','machinehood','harmattan season',
+  'automatic noodle','subtle art of folding','dwellers','voidverse','flux','womb city','annie bot',
+  'tusks of extinction','where the axe','slow gods','fallen gods','nine goblins','sister wake',
+  'downworld sequence','coldwire','these memories','toward eternity','tatami time',"hell's heart",
+  'roots grow into the earth','lovecraft','complete works of hp','parasol against','night of baba',
+  'seventh floor','lies in bone','die comic','this kingdom will not kill me','consentiency',
+  'heirs of babylon',"bastard's honor",'wrath and weeping','daindreth','a matter of time',
+  'dragon never sleeps','batman ressurection','battman revolution','bedtime stories for cynics',
+  'stuart smalley','gary soto','amberglow candy',"assassin's creed gold",'grace ','spin ',
+  'robert charles wilson','chronolith','affinities','binti','space cat'];
+
+function assignRoom(title, author, type, genre, subgenre) {
+  const t = title.toLowerCase(), a = author.toLowerCase();
+  const sg = subgenre.toLowerCase(), g = genre.toLowerCase();
+  if (TTRPG_KW.some(k=>t.includes(k)) || sg==='ttrpg') return 'Hidden — TTRPG';
+  if (FRANCHISE_KW.some(k=>t.includes(k))) return 'Hidden — Franchise';
+  if (HIDDEN_TYPES.has(type) || HIDDEN_EXTRA.some(k=>t.includes(k))) return 'Hidden — Comics/GN/Manga';
+  if (ASIAN_AUTHORS.some(k=>a.includes(k)) || ASIAN_TITLES.some(k=>t.includes(k))) return 'Goblin Office';
+  if (SPICY_SG.has(sg) || SPICY_KW.some(k=>t.includes(k))) return 'Bedroom';
+  if (BUTTHEAD_GENRES.has(g) && !BUTTHEAD_EXCL_SG.has(sg)) return 'Butthead Office';
+  if (CLASSICS_GENRES.has(g) || CLASSICS_KW.some(k=>t.includes(k)) ||
+      BIG_AUTHORS.some(k=>a.includes(k)) || BIG_TITLES.some(k=>t.includes(k))) return 'Main Library';
+  if (SMALL_KW.some(k=>t.includes(k)||a.includes(k))) return 'Sitting Room';
+  return 'Main Library';
+}
+
+// ── FETCH & PARSE ──────────────────────────────────────────────
+async function fetchSheetData() {
+  const range = encodeURIComponent(`'${TAB}'!A:J`);
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}?key=${API_KEY}`;
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`API error: ${resp.status} ${resp.statusText}`);
+  const json = await resp.json();
+  return json.values || [];
+}
+
+function parseRows(values) {
+  if (!values.length) return [];
+  const headers = values[0]; // Type,Title/Author,Count,Number Read,Owned,Authors,Genre,Sub-Genre,Notes,Need
+  const rows = [];
+  for (let i = 1; i < values.length; i++) {
+    const r = values[i];
+    const title = (r[1]||'').trim();
+    const type  = (r[0]||'').trim();
+    const count = n(r[2]);
+    if (!title || !type || count === 0 || SKIP.has(title) || title.startsWith('Totals')) continue;
+    rows.push({
+      type, title,
+      count, read: n(r[3]), owned: n(r[4]),
+      author: (r[5]||'').trim(),
+      genre: (r[6]||'').trim(),
+      subgenre: (r[7]||'').trim(),
+      need: n(r[9]),
+    });
+  }
+  return rows;
+}
+
+// ── COMPUTE METRICS ────────────────────────────────────────────
+function computeMetrics(rows) {
+  const m = { tracked:0, read:0, owned:0,
+    byType:{}, byGenre:{}, byRoom:{},
+    fr:{tracked:0,read:0,owned:0},
+    dl:{tracked:0,read:0,owned:0},
+    sr:{tracked:0,read:0,owned:0},
+    ttrpg:{tracked:0,read:0,owned:0},
+  };
+
+  for (const r of rows) {
+    m.tracked += r.count; m.read += r.read; m.owned += r.owned;
+
+    // By type
+    if (!m.byType[r.type]) m.byType[r.type]={tracked:0,read:0,owned:0};
+    m.byType[r.type].tracked+=r.count; m.byType[r.type].read+=r.read; m.byType[r.type].owned+=r.owned;
+
+    // By genre
+    if (r.genre) {
+      if (!m.byGenre[r.genre]) m.byGenre[r.genre]={tracked:0,read:0,owned:0};
+      m.byGenre[r.genre].tracked+=r.count; m.byGenre[r.genre].read+=r.read; m.byGenre[r.genre].owned+=r.owned;
+    }
+
+    // TTRPG universes
+    const t = r.title.toLowerCase(), sg = r.subgenre.toLowerCase();
+    if (sg==='ttrpg'||TTRPG_KW.some(k=>t.includes(k))) {
+      m.ttrpg.tracked+=r.count; m.ttrpg.read+=r.read; m.ttrpg.owned+=r.owned;
+      if (t.includes('forgotten realms')){m.fr.tracked+=r.count;m.fr.read+=r.read;m.fr.owned+=r.owned;}
+      else if (t.includes('dragonlance')){m.dl.tracked+=r.count;m.dl.read+=r.read;m.dl.owned+=r.owned;}
+      else if (t.includes('shadowrun')){m.sr.tracked+=r.count;m.sr.read+=r.read;m.sr.owned+=r.owned;}
+    }
+
+    // By room
+    const room = assignRoom(r.title, r.author, r.type, r.genre, r.subgenre);
+    if (!m.byRoom[room]) m.byRoom[room]={tracked:0,read:0,owned:0};
+    m.byRoom[room].tracked+=r.count; m.byRoom[room].read+=r.read; m.byRoom[room].owned+=r.owned;
+  }
+
+  m.shelf = m.owned - m.read;
+  m.needBuy = m.tracked - m.owned;
+
+  // Reading rate
+  const now = new Date();
+  m.monthsElapsed = Math.floor((now - START_DATE) / (30.4375 * 24 * 3600 * 1000));
+  m.bpm = m.read / m.monthsElapsed;
+  m.bpy = m.bpm * 12;
+  m.dpb = 365 / m.bpy;
+  m.wpb = m.dpb / 7;
+  m.currentAge = currentAge();
+
+  return m;
+}
+
+// ── RENDER FUNCTIONS ───────────────────────────────────────────
+let charts = {};
+function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
+
+function metricHTML(val, label, sub='', cls='') {
+  return `<div class="metric"><div class="metric-val ${cls}">${val}</div><div class="metric-label">${label}</div>${sub?`<div class="metric-sub">${sub}</div>`:''}</div>`;
+}
+
+function renderOverview(m) {
+  document.getElementById('overview-metrics').innerHTML =
+    metricHTML(fmt(m.tracked),'Total tracked') +
+    metricHTML(fmt(m.read),'Total read',pct(m.read,m.tracked)+' of tracked','teal') +
+    metricHTML(fmt(m.owned),'Total owned',pct(m.owned,m.tracked)+' of tracked') +
+    metricHTML(fmt(m.shelf),'On shelf to read','owned unread','coral') +
+    metricHTML(fmt(m.needBuy),'Need to buy','tracked not owned');
+
+  document.getElementById('completion-metrics').innerHTML =
+    metricHTML(pct(m.read,m.tracked),'Read / tracked','','teal') +
+    metricHTML(pct(m.read,m.owned),'Read / owned','','teal') +
+    metricHTML(pct(m.owned,m.tracked),'Owned / tracked') +
+    metricHTML(pct(m.owned-m.read, m.tracked-m.read),'Owned unread / total unread') +
+    metricHTML(pct(Math.max(0,m.read-m.owned),m.read),'Read but not owned');
+
+  const types = ['Comics','Graphic Novel','Individual','Manga','Series'];
+  destroyChart('typeChart');
+  charts.typeChart = new Chart(document.getElementById('typeChart'), {
+    type:'bar',
+    data:{
+      labels: types,
+      datasets:[
+        {label:'Tracked', data:types.map(t=>(m.byType[t]||{}).tracked||0), backgroundColor:'#c9a84c', borderRadius:3},
+        {label:'Read',    data:types.map(t=>(m.byType[t]||{}).read||0),    backgroundColor:'#4a9b8e', borderRadius:3},
+        {label:'Owned',   data:types.map(t=>(m.byType[t]||{}).owned||0),   backgroundColor:'#7a6bab', borderRadius:3},
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:'#5a5955'},grid:{display:false}},
+              y:{ticks:{color:'#5a5955'},grid:{color:'rgba(255,255,255,0.04)'}}}}
+  });
+}
+
+function renderByType(m) {
+  const types = ['Comics','Graphic Novel','Individual','Manga','Series'];
+  let html = '';
+  let totT=0,totR=0,totO=0;
+  for (const t of types) {
+    const d = m.byType[t]||{tracked:0,read:0,owned:0};
+    const shelf=d.owned-d.read, need=d.tracked-d.owned;
+    totT+=d.tracked; totR+=d.read; totO+=d.owned;
+    html += `<tr><td>${t}</td><td class="num">${fmt(d.tracked)}</td><td class="num">${fmt(d.read)}</td><td class="num">${fmt(d.owned)}</td><td class="num">${fmt(shelf)}</td><td class="num">${fmt(need)}</td><td class="num">${pct(d.read,d.owned)}</td><td class="num">${pct(d.owned,d.tracked)}</td></tr>`;
+  }
+  html += `<tr style="font-weight:500;color:var(--text)"><td>Total</td><td class="num">${fmt(totT)}</td><td class="num">${fmt(totR)}</td><td class="num">${fmt(totO)}</td><td class="num">${fmt(totO-totR)}</td><td class="num">${fmt(totT-totO)}</td><td class="num">${pct(totR,totO)}</td><td class="num">${pct(totO,totT)}</td></tr>`;
+  document.getElementById('typeTableBody').innerHTML = html;
+
+  destroyChart('readPctChart');
+  charts.readPctChart = new Chart(document.getElementById('readPctChart'), {
+    type:'bar',
+    data:{
+      labels:types,
+      datasets:[{
+        label:'% read of owned',
+        data:types.map(t=>{ const d=m.byType[t]||{}; return d.owned?parseFloat((d.read/d.owned*100).toFixed(1)):0; }),
+        backgroundColor:['#c9a84c','#4a9b8e','#7a6bab','#c4614a','#5a8a4a'],
+        borderRadius:3
+      }]
+    },
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{max:100,ticks:{color:'#5a5955',callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.04)'}},
+              y:{ticks:{color:'#5a5955'},grid:{display:false}}}}
+  });
+}
+
+function renderGenre(m) {
+  const genres = Object.entries(m.byGenre)
+    .map(([g,d])=>({g,tracked:d.tracked,read:d.read,owned:d.owned,shelf:d.owned-d.read,need:d.tracked-d.owned}))
+    .sort((a,b)=>b.tracked-a.tracked);
+
+  const h = Math.max(400, genres.length*34+80);
+  document.getElementById('genreChartWrap').style.height = h+'px';
+
+  destroyChart('genreChart');
+  charts.genreChart = new Chart(document.getElementById('genreChart'), {
+    type:'bar',
+    data:{
+      labels:genres.map(g=>g.g),
+      datasets:[
+        {label:'On shelf',  data:genres.map(g=>Math.max(0,g.shelf)), backgroundColor:'#4a9b8e', borderRadius:3},
+        {label:'Need to buy',data:genres.map(g=>Math.max(0,g.need)),  backgroundColor:'#c4614a', borderRadius:3},
+      ]
+    },
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:'#5a5955'},grid:{color:'rgba(255,255,255,0.04)'}},
+              y:{ticks:{color:'#9a9890',font:{size:11}},grid:{display:false}}}}
+  });
+
+  let html='';
+  for (const g of genres) {
+    html+=`<tr><td>${g.g}</td><td class="num">${fmt(g.tracked)}</td><td class="num">${fmt(g.read)}</td><td class="num">${fmt(g.owned)}</td><td class="num">${fmt(g.shelf)}</td><td class="num">${fmt(g.need)}</td></tr>`;
+  }
+  document.getElementById('genreTableBody').innerHTML=html;
+}
+
+function renderTTRPG(m) {
+  const tShelf=m.ttrpg.owned-m.ttrpg.read, tNeed=m.ttrpg.tracked-m.ttrpg.owned;
+  document.getElementById('ttrpg-metrics').innerHTML =
+    metricHTML(fmt(m.ttrpg.tracked),'TTRPG tracked',pct(m.ttrpg.tracked,m.tracked)+' of library') +
+    metricHTML(fmt(m.ttrpg.read),'TTRPG read',pct(m.ttrpg.read,m.ttrpg.tracked)+' of TTRPG','teal') +
+    metricHTML(fmt(m.ttrpg.owned),'TTRPG owned',pct(m.ttrpg.owned,m.ttrpg.tracked)+' of TTRPG') +
+    metricHTML(fmt(tShelf),'TTRPG on shelf',pct(tShelf,m.shelf)+' of total shelf','coral') +
+    metricHTML(fmt(tNeed),'TTRPG to buy') +
+    metricHTML((tShelf/m.bpy).toFixed(1)+' yrs','Years to finish TTRPG shelf','at current pace');
+
+  destroyChart('ttrpgPie');
+  charts.ttrpgPie = new Chart(document.getElementById('ttrpgPie'), {
+    type:'pie',
+    data:{
+      labels:['Forgotten Realms','Dragonlance','Shadowrun','Other TTRPG'],
+      datasets:[{
+        data:[m.fr.tracked,m.dl.tracked,m.sr.tracked,
+              Math.max(0,m.ttrpg.tracked-m.fr.tracked-m.dl.tracked-m.sr.tracked)],
+        backgroundColor:['#c9a84c','#4a9b8e','#7a6bab','#3a3b38'],
+        borderWidth:2, borderColor:'#161714'
+      }]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},
+        tooltip:{callbacks:{label:ctx=>{
+          const total=ctx.dataset.data.reduce((a,b)=>a+b,0);
+          return ` ${fmt(ctx.parsed)} (${(ctx.parsed/total*100).toFixed(1)}%)`;
+        }}}}}
+  });
+
+  const universes = [
+    {name:'Forgotten Realms', d:m.fr},
+    {name:'Dragonlance',      d:m.dl},
+    {name:'Shadowrun',        d:m.sr},
+  ];
+  const colors = ['#c9a84c','#4a9b8e','#7a6bab'];
+  document.getElementById('ttrpg-prog').innerHTML = universes.map((u,i)=>`
+    <div class="prog-row">
+      <div class="prog-label">${u.name}</div>
+      <div class="prog-track"><div class="prog-fill" style="width:${u.d.tracked?u.d.read/u.d.tracked*100:0}%;background:${colors[i]}"></div></div>
+      <div class="prog-val">${pct(u.d.read,u.d.tracked)}</div>
+    </div>`).join('');
+
+  destroyChart('ttrpgShare');
+  charts.ttrpgShare = new Chart(document.getElementById('ttrpgShare'), {
+    type:'bar',
+    data:{
+      labels:['Tracked','Read','Owned','On Shelf'],
+      datasets:[
+        {label:'TTRPG', data:[m.ttrpg.tracked,m.ttrpg.read,m.ttrpg.owned,tShelf], backgroundColor:'#c9a84c', borderRadius:3},
+        {label:'Rest',  data:[m.tracked-m.ttrpg.tracked,m.read-m.ttrpg.read,m.owned-m.ttrpg.owned,m.shelf-tShelf], backgroundColor:'#2a2b28', borderRadius:3},
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{stacked:true,ticks:{color:'#5a5955'},grid:{display:false}},
+              y:{stacked:true,ticks:{color:'#5a5955'},grid:{color:'rgba(255,255,255,0.04)'}}}}
+  });
+}
+
+function renderRate(m) {
+  document.getElementById('rate-metrics').innerHTML =
+    metricHTML(fmt(m.monthsElapsed),'Months reading','since Sept 2000') +
+    metricHTML(m.bpm.toFixed(2),'Books / month','','teal') +
+    metricHTML(m.bpy.toFixed(1),'Books / year','','teal') +
+    metricHTML(m.dpb.toFixed(1),'Days / book') +
+    metricHTML(m.wpb.toFixed(2),'Weeks / book');
+
+  destroyChart('milestoneChart');
+  const pcts=[50,60,70,80,90];
+  charts.milestoneChart = new Chart(document.getElementById('milestoneChart'), {
+    type:'bar',
+    data:{
+      labels:pcts.map(p=>p+'%'),
+      datasets:[
+        {label:'Of owned',   data:pcts.map(p=>Math.round(m.owned*p/100)),   backgroundColor:'#c9a84c', borderRadius:3},
+        {label:'Of planned', data:pcts.map(p=>Math.round(m.tracked*p/100)), backgroundColor:'#7a6bab', borderRadius:3},
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:'#5a5955'},grid:{display:false}},
+              y:{ticks:{color:'#5a5955',callback:v=>v.toLocaleString()},grid:{color:'rgba(255,255,255,0.04)'}}}}
+  });
+}
+
+function renderForecast(m) {
+  const age = m.currentAge;
+  const scenarios=[
+    {label:'Current pace', bpy:m.bpy},
+    {label:'50 / yr',  bpy:50},
+    {label:'75 / yr',  bpy:75},
+    {label:'100 / yr', bpy:100},
+    {label:'150 / yr', bpy:150},
+  ];
+  document.getElementById('forecast-cards').innerHTML = scenarios.map(s=>{
+    const yrs=(m.shelf/s.bpy).toFixed(1);
+    const finAge=Math.round(age+parseFloat(yrs));
+    return `<div class="forecast-card"><div class="forecast-rate">${s.label}</div><div class="forecast-years">${yrs} yrs</div><div class="forecast-age">finish shelf at ~${finAge}</div></div>`;
+  }).join('');
+
+  function updateSlider() {
+    const rate=parseInt(document.getElementById('rateSlider').value);
+    document.getElementById('rateVal').textContent=rate;
+    const sy=(m.shelf/rate).toFixed(1), ay=((m.shelf+m.needBuy)/rate).toFixed(1);
+    document.getElementById('slider-metrics').innerHTML=
+      metricHTML(sy+' yrs','Years to clear shelf',fmt(m.shelf)+' books') +
+      metricHTML(Math.round(age+parseFloat(sy)),'Age clearing shelf') +
+      metricHTML(ay+' yrs','Years to finish all',fmt(m.shelf+m.needBuy)+' books') +
+      metricHTML(Math.round(age+parseFloat(ay)),'Age finishing all');
+  }
+  document.getElementById('rateSlider').value=Math.round(m.bpy);
+  document.getElementById('rateSlider').oninput=updateSlider;
+  updateSlider();
+
+  destroyChart('forecastChart');
+  const rates=Array.from({length:37},(_,i)=>(i+1)*5+15);
+  charts.forecastChart = new Chart(document.getElementById('forecastChart'), {
+    type:'line',
+    data:{
+      labels:rates.map(r=>r+''),
+      datasets:[
+        {label:'Clear shelf', data:rates.map(r=>parseFloat((m.shelf/r).toFixed(2))),
+         borderColor:'#c9a84c', backgroundColor:'rgba(201,168,76,0.06)', borderWidth:2, pointRadius:0, fill:true},
+        {label:'All planned', data:rates.map(r=>parseFloat(((m.shelf+m.needBuy)/r).toFixed(2))),
+         borderColor:'#c4614a', backgroundColor:'rgba(196,97,74,0.05)', borderWidth:2, pointRadius:0, borderDash:[5,3], fill:true},
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{title:{display:true,text:'Books per year',color:'#5a5955',font:{size:11}},ticks:{color:'#5a5955',maxTicksLimit:10},grid:{display:false}},
+        y:{title:{display:true,text:'Years to finish',color:'#5a5955',font:{size:11}},ticks:{color:'#5a5955'},grid:{color:'rgba(255,255,255,0.04)'}}}}
+  });
+}
+
+function renderRooms(m) {
+  const roomDefs = [
+    {key:'Main Library',          icon:'📚', theme:'Big Series + Classics'},
+    {key:'Hidden — TTRPG',        icon:'🎲', theme:'FR · DL · Shadowrun · RE · Myst'},
+    {key:'Hidden — Comics/GN/Manga', icon:'🎌', theme:'Comics · Graphic Novels · Manga · Nier · Evangelion'},
+    {key:'Hidden — Franchise',    icon:'🚀', theme:'Firefly · Star Wars · Critical Role'},
+    {key:'Goblin Office',         icon:'🌿', theme:'Asian Writers + Science + Crafting'},
+    {key:'Butthead Office',       icon:'🏛️', theme:'NF · History · Philosophy · Historical Fiction'},
+    {key:'Sitting Room',          icon:'🪑', theme:'Small Series + Pretty Books'},
+    {key:'Bedroom',               icon:'🌙', theme:'Spicy / TBR / Kink'},
+  ];
+  const colors = ['#c9a84c','#c4614a','#7a6bab','#4a9b8e','#5a8a4a','#9a9890','#e8c97a','#c4614a'];
+
+  document.getElementById('room-grid').innerHTML = roomDefs.map((rd,i)=>{
+    const d = m.byRoom[rd.key]||{tracked:0,read:0,owned:0};
+    const shelf=d.owned-d.read;
+    const readPct=d.tracked?d.read/d.tracked*100:0;
+    const ownedPct=d.tracked?d.owned/d.tracked*100:0;
+    return `<div class="room-card">
+      <div class="room-card-title">${rd.icon} ${rd.key}</div>
+      <div class="room-card-theme">${rd.theme}</div>
+      <div class="room-stats">
+        <div class="room-stat"><div class="room-stat-val" style="color:${colors[i]}">${fmt(d.tracked)}</div><div class="room-stat-lbl">tracked</div></div>
+        <div class="room-stat"><div class="room-stat-val" style="color:${colors[i]}">${fmt(d.owned)}</div><div class="room-stat-lbl">owned</div></div>
+        <div class="room-stat"><div class="room-stat-val" style="color:${colors[i]}">${fmt(shelf)}</div><div class="room-stat-lbl">on shelf</div></div>
+      </div>
+      <div class="prog-list">
+        <div class="prog-row"><div class="prog-label">% read</div><div class="prog-track"><div class="prog-fill" style="width:${readPct.toFixed(1)}%;background:${colors[i]}"></div></div><div class="prog-val">${readPct.toFixed(1)}%</div></div>
+        <div class="prog-row"><div class="prog-label">% owned</div><div class="prog-track"><div class="prog-fill" style="width:${ownedPct.toFixed(1)}%;background:${colors[i]}80"></div></div><div class="prog-val">${ownedPct.toFixed(1)}%</div></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  destroyChart('roomChart');
+  charts.roomChart = new Chart(document.getElementById('roomChart'), {
+    type:'bar',
+    data:{
+      labels:roomDefs.map(r=>r.key.replace('Hidden — ','')),
+      datasets:[
+        {label:'Owned', data:roomDefs.map(r=>(m.byRoom[r.key]||{}).owned||0), backgroundColor:colors, borderRadius:4},
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:'#5a5955',maxRotation:35,font:{size:10}},grid:{display:false}},
+              y:{ticks:{color:'#5a5955',callback:v=>v.toLocaleString()},grid:{color:'rgba(255,255,255,0.04)'}}}}
+  });
+}
+
+// ── TAB SWITCHING ──────────────────────────────────────────────
+let rendered = new Set();
+let globalMetrics = null;
+
+function switchTab(id) {
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active', b.getAttribute('onclick').includes("'"+id+"'")));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active', p.id==='tab-'+id));
+  if (!rendered.has(id) && globalMetrics) {
+    renderTab(id, globalMetrics);
+    rendered.add(id);
+  }
+}
+
+function renderTab(id, m) {
+  if (id==='overview') renderOverview(m);
+  else if (id==='bytype') renderByType(m);
+  else if (id==='genre') renderGenre(m);
+  else if (id==='ttrpg') renderTTRPG(m);
+  else if (id==='rate') renderRate(m);
+  else if (id==='forecast') renderForecast(m);
+  else if (id==='rooms') renderRooms(m);
+}
+
+// ── INIT ───────────────────────────────────────────────────────
+async function init() {
+  try {
+    const values = await fetchSheetData();
+    const rows = parseRows(values);
+    const m = computeMetrics(rows);
+    globalMetrics = m;
+
+    document.getElementById('loading').style.display='none';
+    document.getElementById('dashboard').style.display='block';
+    document.getElementById('updateTime').textContent =
+      'Live · ' + new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+
+    renderTab('overview', m);
+    rendered.add('overview');
+  } catch(e) {
+    document.getElementById('loading').style.display='none';
+    document.getElementById('error').style.display='block';
+    document.getElementById('error').textContent='Error loading data: '+e.message;
+    console.error(e);
+  }
+}
+
+init();
+</script>
+</body>
+</html>
