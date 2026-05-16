@@ -278,13 +278,13 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
   <!-- BUYING -->
   <div id="sec-buying" style="display:none">
     <div class="tab-nav">
-      <button class="active" onclick="switchTab('comingup','buying')">Coming Up</button>
+      <button class="active" onclick="switchTab('libgrowth','buying')">Library Growth</button>
+      <button onclick="switchTab('buythisyear','buying')">This Year</button>
+      <button onclick="switchTab('comingup','buying')">Coming Up</button>
       <button onclick="switchTab('bookmail','buying')">Book Mail</button>
       <button onclick="switchTab('toacquire','buying')">To Acquire</button>
-      <button onclick="switchTab('libgrowth','buying')">Library Growth</button>
-      <button onclick="switchTab('buythisyear','buying')">This Year</button>
     </div>
-    <div class="panel active" id="tab-comingup">
+    <div class="panel" id="tab-comingup">
       <div class="sl">Upcoming releases</div><div id="upcoming-list"></div>
     </div>
     <div class="panel" id="tab-bookmail">
@@ -306,7 +306,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div class="sl">Someday watchlist</div>
       <div class="tw"><table><thead><tr><th>Series</th><th>Author</th><th class="nr">Count</th><th>Genre</th></tr></thead><tbody id="someday-body"></tbody></table></div>
     </div>
-    <div class="panel" id="tab-libgrowth">
+    <div class="panel active" id="tab-libgrowth">
       <div class="sl">Library size over time</div>
       <div class="mg" id="lg-m"></div>
       <div class="cb">
@@ -510,9 +510,15 @@ function renderOverview(bm,yd2026){
   document.getElementById('ov-m').innerHTML=mH(fmt(bm.tracked),'Total tracked')+mH(fmt(bm.read),'Total read',pct(bm.read,bm.tracked)+' of tracked','t')+mH(fmt(bm.owned),'Total owned')+mH(fmt(bm.shelf),'On shelf','owned unread','c')+mH(fmt(bm.needBuy),'Need to buy')+mH(fmt(bm.readNotOwned),'Read not owned','delta where read > owned');
   document.getElementById('ov-c').innerHTML=mH(pct(bm.read,bm.tracked),'Read / tracked','','t')+mH(pct(bm.read,bm.owned),'Read / owned','','t')+mH(pct(bm.owned,bm.tracked),'Owned / tracked')+mH(pct(bm.owned-bm.read,bm.tracked-bm.read),'Owned unread / unread');
   const{books,focus}=yd2026;
-  const mc={};for(const b of books){const p=b.date.split('/');if(p.length){const mo=parseInt(p[0]);if(mo>=1&&mo<=12)mc[mo]=(mc[mo]||0)+1;}}
+  const mcByMedia2026={};
+  for(const b of books){const p=b.date.split('/');if(!p.length)continue;const mo=parseInt(p[0]);if(mo<1||mo>12)continue;const med=b.media||'Unknown';if(!mcByMedia2026[med])mcByMedia2026[med]=Array(12).fill(0);mcByMedia2026[med][mo-1]++;}
+  const activeMedia2026=[...MEDIA,'Unknown'].filter(m=>mcByMedia2026[m]);
   dc('ov-month');
-  charts['ov-month']=new Chart(document.getElementById('ov-month'),{type:'bar',data:{labels:['J','F','M','A','M','J','J','A','S','O','N','D'],datasets:[{data:Array.from({length:12},(_,i)=>mc[i+1]||0),backgroundColor:'#c9a84c',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9a9688'},grid:{display:false}},y:{ticks:{color:'#9a9688',stepSize:2},grid:{color:'rgba(0,0,0,0.04)'}}}}});
+  charts['ov-month']=new Chart(document.getElementById('ov-month'),{
+    type:'bar',
+    data:{labels:['J','F','M','A','M','J','J','A','S','O','N','D'],datasets:activeMedia2026.map(med=>({label:med,data:mcByMedia2026[med],backgroundColor:MCOL[med]||'#9a9688',borderRadius:0,stack:'months'}))},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top',labels:{font:{family:'DM Mono',size:9},color:'#5a5850',boxWidth:8,padding:6}}},scales:{x:{stacked:true,ticks:{color:'#9a9688'},grid:{display:false}},y:{stacked:true,ticks:{color:'#9a9688',stepSize:2},grid:{color:'rgba(0,0,0,0.04)'}}}}
+  });
   const mediaCounts={};for(const b of books)mediaCounts[b.media]=(mediaCounts[b.media]||0)+1;
   const pieLabels=Object.keys(mediaCounts);
   dc('ov-pie');
@@ -1120,18 +1126,26 @@ function renderLibGrowth(growthMetrics,bm){
     chartOwned[chartOwned.length-1]=curOwned;
     chartRead[chartRead.length-1]=curRead;
   }
+  // Stacked area: Read fills to origin, Owned fills to Read, Planned fills to Owned
+  // Use cumulative stacking so bands are visually correct
+  const cumOwned=chartOwned.map((v,i)=>v); // Owned >= Read always
+  const cumPlanned=chartPlanned.map((v,i)=>v); // Planned >= Owned always
   dc('lgLineChart');
   charts.lgLineChart=new Chart(document.getElementById('lgLineChart'),{
     type:'line',
     data:{
       labels:chartYears.map(String),
       datasets:[
-        {label:'Planned',data:chartPlanned,borderColor:'#7a6bab',backgroundColor:'rgba(122,107,171,0.08)',borderWidth:2,pointRadius:chartYears.map((_,i)=>i===chartYears.length-1?6:3),pointBackgroundColor:chartYears.map((_,i)=>i===chartYears.length-1?'#7a6bab':'#7a6bab'),fill:false,tension:0.3},
-        {label:'Owned',data:chartOwned,borderColor:'#c9a84c',backgroundColor:'rgba(201,168,76,0.08)',borderWidth:2,pointRadius:chartYears.map((_,i)=>i===chartYears.length-1?6:3),pointBackgroundColor:chartYears.map((_,i)=>i===chartYears.length-1?'#c9a84c':'#c9a84c'),fill:false,tension:0.3},
-        {label:'Read',data:chartRead,borderColor:'#4a9b8e',backgroundColor:'rgba(74,155,142,0.08)',borderWidth:2,pointRadius:chartYears.map((_,i)=>i===chartYears.length-1?6:3),pointBackgroundColor:chartYears.map((_,i)=>i===chartYears.length-1?'#4a9b8e':'#4a9b8e'),fill:false,tension:0.3},
+        {label:'Read',data:chartRead,borderColor:'#4a9b8e',backgroundColor:'rgba(74,155,142,0.35)',borderWidth:1.5,pointRadius:chartYears.map((_,i)=>i===chartYears.length-1?6:3),pointBackgroundColor:'#4a9b8e',fill:'origin',tension:0.3,order:3},
+        {label:'Owned',data:cumOwned,borderColor:'#c9a84c',backgroundColor:'rgba(201,168,76,0.25)',borderWidth:1.5,pointRadius:chartYears.map((_,i)=>i===chartYears.length-1?6:3),pointBackgroundColor:'#c9a84c',fill:0,tension:0.3,order:2},
+        {label:'Planned',data:cumPlanned,borderColor:'#7a6bab',backgroundColor:'rgba(122,107,171,0.15)',borderWidth:1.5,pointRadius:chartYears.map((_,i)=>i===chartYears.length-1?6:3),pointBackgroundColor:'#7a6bab',fill:1,tension:0.3,order:1},
       ]
     },
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{afterTitle:ctx=>{const i=ctx[0].dataIndex;return i===chartYears.length-1?'(live)':'';}}}},scales:{x:{ticks:{color:'#9a9688'},grid:{color:'rgba(0,0,0,0.04)'}},y:{ticks:{color:'#9a9688',callback:v=>v.toLocaleString()},grid:{color:'rgba(0,0,0,0.04)'}}}}
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},filler:{propagate:true},tooltip:{callbacks:{afterTitle:ctx=>{const i=ctx[0].dataIndex;return i===chartYears.length-1?'(live)':'';}}}},
+      scales:{x:{ticks:{color:'#9a9688'},grid:{color:'rgba(0,0,0,0.04)'}},y:{ticks:{color:'#9a9688',callback:v=>v.toLocaleString()},grid:{color:'rgba(0,0,0,0.04)'}}}
+    }
   });
   // YoY bar chart
   const yoyYears=rows.filter(r=>r.yoyBought>0||r.yoyRead>0||r.yoyPlanned>0).map(r=>r.year);
@@ -1214,7 +1228,7 @@ function renderToAcquire(bookRows,interested){
 let rendered=new Set(),curSec='tracking',G={};
 
 // Section → default tab mapping
-const SEC_DEFAULT={tracking:'overview',reading:'history',buying:'comingup'};
+const SEC_DEFAULT={tracking:'overview',reading:'history',buying:'libgrowth'};
 
 function switchSection(sec,tab){
   curSec=sec;
