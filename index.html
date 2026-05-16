@@ -352,7 +352,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
   <div id="sec-collecting" style="display:none">
     <div class="tab-nav">
       <button class="active" onclick="switchTab('col-fr','collecting')">Forgotten Realms</button>
-      <button disabled style="opacity:0.35;cursor:default">Dragonlance</button>
+      <button onclick="switchTab('col-dl','collecting')">Dragonlance</button>
       <button disabled style="opacity:0.35;cursor:default">Shadowrun</button>
     </div>
 
@@ -408,6 +408,46 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
         <div class="tw"><table><thead><tr><th class="nr">Year</th><th>Title</th><th>Author</th><th>Format</th></tr></thead><tbody id="fr-needed-table"></tbody></table></div>
       </div>
     </div>
+
+    <!-- DL Panel -->
+    <div class="panel" id="tab-col-dl">
+      <div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:0 3rem;display:flex;gap:0;overflow-x:auto;margin:-2.5rem -3rem 2rem;">
+        <button class="active" id="dl-st-overview" onclick="switchDLTab('dl-overview')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid var(--gold2);color:var(--gold);cursor:pointer;margin-bottom:-1px;white-space:nowrap">Overview</button>
+        <button id="dl-st-series" onclick="switchDLTab('dl-series')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid transparent;color:var(--text3);cursor:pointer;margin-bottom:-1px;white-space:nowrap">By Series</button>
+        <button id="dl-st-completion" onclick="switchDLTab('dl-completion')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid transparent;color:var(--text3);cursor:pointer;margin-bottom:-1px;white-space:nowrap">Completion</button>
+      </div>
+      <div id="dl-overview" class="dl-panel" style="display:block">
+        <div class="sl">Dragonlance — overview</div>
+        <div class="mg" id="dl-ov-m"></div>
+        <div class="tc">
+          <div><div class="sl">Series status</div><div class="cb"><div style="height:220px"><canvas id="dl-status-pie" role="img" aria-label="DL series status pie"></canvas></div></div></div>
+          <div><div class="sl">Owned vs needed</div><div class="cb"><div style="height:220px"><canvas id="dl-ov-bar" role="img" aria-label="DL owned vs needed bar"></canvas></div></div></div>
+        </div>
+        <div class="sl">All series — acquisition progress</div>
+        <div class="cb" id="dl-series-bars"></div>
+      </div>
+      <div id="dl-series" class="dl-panel" style="display:none">
+        <div class="sl">All series — click to expand</div>
+        <div style="display:flex;gap:8px;margin-bottom:1.2rem;flex-wrap:wrap">
+          <button onclick="filterDLSeries('all')" id="dl-f-all" class="badge b-gray" style="padding:4px 12px;cursor:pointer;font-size:11px;font-weight:700">All</button>
+          <button onclick="filterDLSeries('complete')" id="dl-f-complete" class="badge" style="padding:4px 12px;cursor:pointer;font-size:11px;background:#eef7f5;color:var(--teal)">Fully Owned ✓</button>
+          <button onclick="filterDLSeries('partial')" id="dl-f-partial" class="badge" style="padding:4px 12px;cursor:pointer;font-size:11px;background:#fffdf0;color:var(--gold)">Partial</button>
+          <button onclick="filterDLSeries('none')" id="dl-f-none" class="badge" style="padding:4px 12px;cursor:pointer;font-size:11px;background:#fdf0ee;color:var(--coral)">None owned</button>
+        </div>
+        <div id="dl-series-list"></div>
+      </div>
+      <div id="dl-completion" class="dl-panel" style="display:none">
+        <div class="sl">Published by year — owned vs needed vs read</div>
+        <div class="leg">
+          <div class="li"><div class="ld" style="background:#4a9b8e"></div>Read</div>
+          <div class="li"><div class="ld" style="background:#c9a84c"></div>Owned unread</div>
+          <div class="li"><div class="ld" style="background:#c4614a"></div>Need</div>
+        </div>
+        <div class="cb"><div style="height:320px"><canvas id="dl-year-chart" role="img" aria-label="DL books by year stacked area"></canvas></div></div>
+        <div class="sl" style="margin-top:0.5rem">Owned — reading queue</div>
+        <div class="tw"><table><thead><tr><th>Title</th><th>Series</th><th>Author</th><th>Published</th></tr></thead><tbody id="dl-owned-unread"></tbody></table></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -417,6 +457,8 @@ const BOOKS_ID='1IRQ0VENyj_H_MENOOPBB4W3F8pQo4UeMdoj__9dUm3k';
 const READING_ID='1KeUuBxJkXD0EqSBX-qsu2sadRaAhf2p8Q8OPjiX-ceE';
 const GROWTH_ID='1PBjnRAqbim6FJrYkv9iwf0R1CFsV7lFD0yGocFZWmYI';
 const FR_ID='1_vivOgWjSRnPO5doL_GIb33PD8sPO0Ya1MM_rf293lg';
+// DL data lives in the same sheet as FR
+const DL_TAB='DL';
 const DOB=new Date(1985,10,1),START=new Date(2000,8,1);
 const YEARS=[2026,2025,2024,2023,2022,2021];
 const MEDIA=['Print','EBook','Audio','Manga','Graphic Novel','Comics'];
@@ -1317,12 +1359,16 @@ function restoreFromHash(){
   const hash=(location.hash||'').replace('#','');
   const[sec,tab]=hash.split('/');
   const validSecs=new Set(['tracking','reading','buying','collecting']);
-  const validTabs=new Set(['overview','bytype','genre','universe','rooms','history','thisyear','completion','toread','comingup','bookmail','toacquire','libgrowth','buythisyear','col-fr']);
+  const validTabs=new Set(['overview','bytype','genre','universe','rooms','history','thisyear','completion','toread','comingup','bookmail','toacquire','libgrowth','buythisyear','col-fr','col-dl']);
   const validFRTabs=new Set(['fr-overview','fr-series','fr-completion']);
+  const validDLTabs=new Set(['dl-overview','dl-series','dl-completion']);
   if(sec&&validSecs.has(sec)){
     if(validFRTabs.has(tab)){
       switchSection('collecting','col-fr');
       switchFRTab(tab);
+    } else if(validDLTabs.has(tab)){
+      switchSection('collecting','col-dl');
+      switchDLTab(tab);
     } else if(tab&&validTabs.has(tab)){
       switchSection(sec,tab);
     } else {
@@ -1353,6 +1399,7 @@ function renderTab(id){
   else if(id==='libgrowth')renderLibGrowth(G.growthMetrics,G.books);
   else if(id==='buythisyear')renderBuyThisYear(G.growthYear);
   else if(id==='col-fr'){switchFRTab('fr-overview');}
+  else if(id==='col-dl'){switchDLTab('dl-overview');}
 }
 
 // ── FR PARSERS ────────────────────────────────────────────────
@@ -1644,9 +1691,243 @@ function renderFRCompletion(){
   ).join('');
 }
 
+// ── DL PARSER ─────────────────────────────────────────────────
+function parseDL(vals){
+  const books=[];
+  const seriesMetrics={};
+  let inMetrics=false;
+  for(const r of vals){
+    const col0=(r[0]||'').trim();
+    const col1=(r[1]||'').trim();
+    const col2=(r[2]||'').trim();
+    const col3=(r[3]||'').trim();
+    const col4=(r[4]||'').trim().toLowerCase();
+    const col5=(r[5]||'').trim().toLowerCase();
+    const col6=(r[6]||'').trim().toLowerCase();
+    // Blank row → switch to metrics
+    if(!col0&&!col1&&!col3)continue;
+    // Metrics section: col3 has Series header or series names
+    if(!col0&&!col1&&col3){
+      if(col3==='Series'||col3==='Totals')continue;
+      seriesMetrics[col3]={count:n(r[4]),owned:n(r[5]),need:n(r[6])};
+      continue;
+    }
+    // Totals row (col0 blank, col4 is a number)
+    if(!col0&&col4&&/^\d+$/.test(col4))continue;
+    // Decade header: col0 ends in 's', no other data
+    if(col0.match(/^\d{4}s$/)&&!col1)continue;
+    // Skip header row
+    if(col0==='Title')continue;
+    if(!col0||!col1)continue;
+    books.push({
+      title:col0,author:col1,date:col2,series:col3,
+      read:col4==='x',owned:col5==='x',need:col6==='x'
+    });
+  }
+  // Group by series
+  const bySeriesMap={};
+  for(const b of books){
+    if(!bySeriesMap[b.series])bySeriesMap[b.series]=[];
+    bySeriesMap[b.series].push(b);
+  }
+  return{books,bySeriesMap,seriesMetrics};
+}
+
+// ── DL SUB-TAB NAVIGATION ─────────────────────────────────────
+const dlRendered=new Set();
+function switchDLTab(tabId){
+  document.querySelectorAll('.dl-panel').forEach(p=>p.style.display='none');
+  const panel=document.getElementById(tabId);
+  if(panel)panel.style.display='block';
+  ['dl-overview','dl-series','dl-completion'].forEach(t=>{
+    const btn=document.getElementById('dl-st-'+t.replace('dl-',''));
+    if(btn){
+      const isActive=t===tabId;
+      btn.style.color=isActive?'var(--gold)':'var(--text3)';
+      btn.style.borderBottomColor=isActive?'var(--gold2)':'transparent';
+    }
+  });
+  if(!dlRendered.has(tabId)){
+    if(tabId==='dl-overview')renderDLOverview();
+    else if(tabId==='dl-series')renderDLSeries();
+    else if(tabId==='dl-completion')renderDLCompletion();
+    dlRendered.add(tabId);
+  }
+  updateHash('collecting',tabId);
+}
+
+// ── DL RENDERERS ──────────────────────────────────────────────
+function renderDLOverview(){
+  const{books,bySeriesMap}=G.dlData||{books:[],bySeriesMap:{}};
+  if(!books.length)return;
+  const total=books.length;
+  const read=books.filter(b=>b.read).length;
+  const owned=books.filter(b=>b.owned).length;
+  const need=books.filter(b=>b.need).length;
+  let fullyOwned=0,partial=0,noneOwned=0;
+  for(const[,sb] of Object.entries(bySeriesMap)){
+    const o=sb.filter(b=>b.owned).length,tot=sb.length;
+    if(o>=tot)fullyOwned++;
+    else if(o>0)partial++;
+    else noneOwned++;
+  }
+  document.getElementById('dl-ov-m').innerHTML=
+    mH(total,'Total tracked')+
+    mH(fmt(owned),'Owned',pct(owned,total)+' of total')+
+    mH(fmt(need),'Still needed',pct(need,total)+' of total','c')+
+    mH(fmt(read),'Read',pct(read,total)+' of total','t')+
+    mH(fullyOwned,'Series fully owned','','g')+
+    mH(Object.keys(bySeriesMap).length,'Total series');
+  dc('dl-status-pie');
+  charts['dl-status-pie']=new Chart(document.getElementById('dl-status-pie'),{
+    type:'pie',
+    data:{labels:['Fully owned','Partial','None owned'],datasets:[{data:[fullyOwned,partial,noneOwned],backgroundColor:['#4a9b8e','#c9a84c','#c4614a'],borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{family:'DM Mono',size:10},color:'#5a5850',boxWidth:10}}}}
+  });
+  dc('dl-ov-bar');
+  charts['dl-ov-bar']=new Chart(document.getElementById('dl-ov-bar'),{
+    type:'bar',
+    data:{labels:['Total','Owned','Need','Read'],datasets:[{data:[total,owned,need,read],backgroundColor:['#7a6bab','#c9a84c','#c4614a','#4a9b8e'],borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9a9688'},grid:{display:false}},y:{ticks:{color:'#9a9688'},grid:{color:'rgba(0,0,0,0.04)'}}}}
+  });
+  // Series progress bars — sorted by total size desc
+  const seriesEntries=Object.entries(bySeriesMap).map(([name,sb])=>({
+    name,total:sb.length,owned:sb.filter(b=>b.owned).length,need:sb.filter(b=>b.need).length,read:sb.filter(b=>b.read).length
+  })).sort((a,b)=>b.total-a.total);
+  document.getElementById('dl-series-bars').innerHTML='<div class="cbt">All series — owned (gold) vs needed (coral)</div>'+
+    seriesEntries.map(s=>{
+      const op=s.total?s.owned/s.total*100:0;
+      const np=s.total?s.need/s.total*100:0;
+      return`<div class="pr" style="margin-bottom:9px">
+        <div class="pl" style="width:200px;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.name}</div>
+        <div style="flex:1;position:relative;height:7px;border-radius:4px;background:var(--bg3)">
+          <div style="position:absolute;left:0;top:0;height:100%;width:${op.toFixed(1)}%;background:#c9a84c;border-radius:4px"></div>
+        </div>
+        <div style="font-family:var(--font-m);font-size:11px;color:var(--text3);min-width:72px;text-align:right">${s.owned}/${s.total}</div>
+      </div>`;
+    }).join('');
+}
+
+let dlFilter='all';
+function filterDLSeries(f){
+  dlFilter=f;
+  ['all','complete','partial','none'].forEach(id=>{
+    const btn=document.getElementById('dl-f-'+id);
+    if(btn)btn.style.fontWeight=id===f?'700':'400';
+  });
+  buildDLSeriesList();
+}
+
+function buildDLSeriesList(){
+  const{bySeriesMap}=G.dlData||{bySeriesMap:{}};
+  const entries=Object.entries(bySeriesMap).map(([name,books])=>{
+    const tot=books.length,o=books.filter(b=>b.owned).length,r=books.filter(b=>b.read).length;
+    const status=o>=tot?'complete':o>0?'partial':'none';
+    return{name,books,tot,o,r,status};
+  }).filter(e=>{
+    if(dlFilter==='all')return true;
+    return e.status===dlFilter;
+  }).sort((a,b)=>{
+    const ord={complete:0,partial:1,none:2};
+    if(ord[a.status]!==ord[b.status])return ord[a.status]-ord[b.status];
+    return a.name.localeCompare(b.name);
+  });
+  const container=document.getElementById('dl-series-list');
+  if(!container)return;
+  container.innerHTML=entries.map((e,idx)=>{
+    const aid=`dl-s-${idx}`;
+    const op=e.tot?e.o/e.tot*100:0;
+    const statusColor=e.status==='complete'?'var(--teal)':e.status==='partial'?'var(--gold)':'var(--coral)';
+    const statusLabel=e.status==='complete'?'Fully owned':e.status==='partial'?'Partial':'None owned';
+    // Sort books by date published
+    const sortedBooks=[...e.books].sort((a,b)=>{
+      const ya=parseInt((a.date||'0').match(/\d{4}/)?.[0]||0);
+      const yb=parseInt((b.date||'0').match(/\d{4}/)?.[0]||0);
+      return ya-yb;
+    });
+    const bookRows=sortedBooks.map(b=>{
+      const isRead=b.read&&b.owned,isReadNoOwn=b.read&&!b.owned,isOwned=!b.read&&b.owned,isNeed=b.need;
+      const dotColor=isRead?'#4a9b8e':isReadNoOwn?'#4ac3d2':isOwned?'#c9a84c':'#c4614a';
+      const bg=isRead?'rgba(74,155,142,0.08)':isReadNoOwn?'rgba(74,195,210,0.08)':isOwned?'rgba(201,168,76,0.07)':'rgba(196,97,74,0.07)';
+      return`<div style="display:grid;grid-template-columns:10px 1fr 160px 120px;gap:6px;align-items:center;padding:5px 8px;border-bottom:1px solid var(--border);background:${bg};font-size:12px">
+        <div style="width:8px;height:8px;border-radius:50%;background:${dotColor}"></div>
+        <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.title}</div>
+        <div style="font-family:var(--font-m);font-size:10px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.author}</div>
+        <div style="font-family:var(--font-m);font-size:10px;color:var(--text3)">${b.date||''}</div>
+      </div>`;
+    }).join('');
+    const legend=`<div style="display:flex;gap:10px;padding:6px 8px;font-family:var(--font-m);font-size:10px;color:var(--text3);background:var(--bg3);border-bottom:1px solid var(--border)">
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#4a9b8e;margin-right:3px"></span>Read & owned</span>
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#c9a84c;margin-right:3px"></span>Owned, unread</span>
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#c4614a;margin-right:3px"></span>Need</span>
+    </div>`;
+    return`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;overflow:hidden;box-shadow:var(--shadow)">
+      <div onclick="toggleAcc('${aid}')" style="display:grid;grid-template-columns:1fr 100px 60px 80px;gap:8px;align-items:center;padding:10px 14px;cursor:pointer" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
+        <div style="font-weight:500;display:flex;align-items:center;gap:8px"><span id="acc-c-${aid}" style="font-size:10px;color:var(--text3);transition:transform 0.2s">▶</span>${e.name}</div>
+        <div style="font-family:var(--font-m);font-size:10px;color:${statusColor}">${statusLabel}</div>
+        <div style="font-family:var(--font-m);font-size:11px;color:var(--text3);text-align:center">${e.o}/${e.tot}</div>
+        <div style="background:var(--bg3);border-radius:4px;height:6px;overflow:hidden;position:relative">
+          <div style="position:absolute;left:0;top:0;height:100%;width:${op.toFixed(1)}%;background:#c9a84c;border-radius:4px"></div>
+        </div>
+      </div>
+      <div class="acc-body" id="acc-b-${aid}">
+        ${legend}
+        <div style="display:grid;grid-template-columns:10px 1fr 160px 120px;gap:6px;padding:5px 8px;font-family:var(--font-m);font-size:9px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);background:var(--bg3);border-bottom:1px solid var(--border)">
+          <div></div><div>Title</div><div>Author</div><div>Published</div>
+        </div>
+        ${bookRows}
+      </div>
+    </div>`;
+  }).join('');
+  if(!entries.length)container.innerHTML='<div class="ms" style="padding:1rem;color:var(--text3)">No series match this filter.</div>';
+}
+
+function renderDLSeries(){buildDLSeriesList();}
+
+function renderDLCompletion(){
+  const{books}=G.dlData||{books:[]};
+  if(!books.length)return;
+  // Extract year from date string
+  const yearBooks={};
+  for(const b of books){
+    const ym=((b.date||'').match(/\d{4}/)||[])[0];
+    if(!ym)continue;
+    const y=parseInt(ym);
+    if(!yearBooks[y])yearBooks[y]={read:0,owned:0,need:0};
+    if(b.read)yearBooks[y].read++;
+    else if(b.owned)yearBooks[y].owned++;
+    if(b.need)yearBooks[y].need++;
+  }
+  const years=Object.keys(yearBooks).map(Number).sort();
+  const readData=years.map(y=>yearBooks[y].read);
+  const ownedCum=years.map(y=>yearBooks[y].read+yearBooks[y].owned);
+  const needCum=years.map(y=>yearBooks[y].read+yearBooks[y].owned+yearBooks[y].need);
+  dc('dl-year-chart');
+  charts['dl-year-chart']=new Chart(document.getElementById('dl-year-chart'),{
+    type:'line',
+    data:{labels:years.map(String),datasets:[
+      {label:'Read',data:readData,borderColor:'#4a9b8e',backgroundColor:'rgba(74,155,142,0.45)',borderWidth:1.5,pointRadius:2,fill:'origin',tension:0.3,order:3},
+      {label:'Owned unread',data:ownedCum,borderColor:'#c9a84c',backgroundColor:'rgba(201,168,76,0.3)',borderWidth:1.5,pointRadius:2,fill:0,tension:0.3,order:2},
+      {label:'Need',data:needCum,borderColor:'#c4614a',backgroundColor:'rgba(196,97,74,0.2)',borderWidth:1.5,pointRadius:2,fill:1,tension:0.3,order:1},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},filler:{propagate:true},
+      tooltip:{callbacks:{label:ctx=>{const y=years[ctx.dataIndex];const d=yearBooks[y];if(ctx.datasetIndex===0)return` Read: ${d.read}`;if(ctx.datasetIndex===1)return` Owned: ${d.owned}`;return` Need: ${d.need}`;}}}},
+      scales:{x:{ticks:{color:'#9a9688',maxTicksLimit:15},grid:{color:'rgba(0,0,0,0.04)'}},y:{ticks:{color:'#9a9688',stepSize:1},grid:{color:'rgba(0,0,0,0.04)'}}}}
+  });
+  // Owned unread queue sorted by publication date
+  const ownedUnread=books.filter(b=>b.owned&&!b.read).sort((a,b)=>{
+    const ya=parseInt((a.date||'0').match(/\d{4}/)?.[0]||0);
+    const yb=parseInt((b.date||'0').match(/\d{4}/)?.[0]||0);
+    return ya-yb;
+  });
+  document.getElementById('dl-owned-unread').innerHTML=ownedUnread.map(b=>
+    `<tr><td>${b.title}</td><td style="color:var(--text2)">${b.series}</td><td style="color:var(--text2)">${b.author}</td><td style="font-family:var(--font-m);font-size:11px;color:var(--text3)">${b.date}</td></tr>`
+  ).join('');
+}
+
 async function init(){
   try{
-    const [booksV,metricsV,intV,ordV,growthMetricsV,growthYearV,frYearV,frSeriesV,...yearV]=await Promise.all([
+    const [booksV,metricsV,intV,ordV,growthMetricsV,growthYearV,frYearV,frSeriesV,dlV,...yearV]=await Promise.all([
       fr(BOOKS_ID,"'Butthead Series'!A:K").catch(()=>[]),
       fr(READING_ID,'Metrics!A:G').catch(()=>[]),
       fr(BOOKS_ID,'Interested!A:J').catch(()=>[]),
@@ -1655,6 +1936,7 @@ async function init(){
       fr(GROWTH_ID,'2026!A:G').catch(()=>[]),
       fr(FR_ID,"'Year Catalog'!A:H").catch(()=>[]),
       fr(FR_ID,"'Series'!A:H").catch(()=>[]),
+      fr(FR_ID,"'DL'!A:H").catch(()=>[]),
       ...YEARS.map(y=>fr(READING_ID,`'${y}'!A:K`).catch(()=>[]))
     ]);
     G.bookRows=parseBooks(booksV);
@@ -1666,6 +1948,7 @@ async function init(){
     G.growthYear=parseGrowthYear(growthYearV);
     G.frBooks=parseFRYearCatalog(frYearV);
     G.frSeries=parseFRSeries(frSeriesV);
+    G.dlData=parseDL(dlV);
     YEARS.forEach((y,i)=>{allYD[y]=parseYear(yearV[i]);});
     document.getElementById('loading').style.display='none';
     document.getElementById('dash').style.display='block';
