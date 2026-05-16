@@ -236,7 +236,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div class="sl">Progress vs targets</div>
       <div class="cb" id="ty-targets"></div>
       <div class="sl">Books finished by month</div>
-      <div class="cb"><div style="height:240px"><canvas id="monthChart" role="img" aria-label="Books per month"></canvas></div></div>
+      <div class="cb"><div style="height:280px"><canvas id="monthChart" role="img" aria-label="Books per month stacked by media type"></canvas></div></div>
       <div class="sl">Media type breakdown</div>
       <div class="tc">
         <div class="cb"><div style="height:220px"><canvas id="ty-pie" role="img" aria-label="Media pie"></canvas></div></div>
@@ -281,6 +281,8 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <button class="active" onclick="switchTab('comingup','buying')">Coming Up</button>
       <button onclick="switchTab('bookmail','buying')">Book Mail</button>
       <button onclick="switchTab('toacquire','buying')">To Acquire</button>
+      <button onclick="switchTab('libgrowth','buying')">Library Growth</button>
+      <button onclick="switchTab('buythisyear','buying')">This Year</button>
     </div>
     <div class="panel active" id="tab-comingup">
       <div class="sl">Upcoming releases</div><div id="upcoming-list"></div>
@@ -304,6 +306,45 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div class="sl">Someday watchlist</div>
       <div class="tw"><table><thead><tr><th>Series</th><th>Author</th><th class="nr">Count</th><th>Genre</th></tr></thead><tbody id="someday-body"></tbody></table></div>
     </div>
+    <div class="panel" id="tab-libgrowth">
+      <div class="sl">Library size over time</div>
+      <div class="mg" id="lg-m"></div>
+      <div class="cb">
+        <div class="cbt">Planned · Owned · Read — with current snapshot</div>
+        <div class="leg">
+          <div class="li"><div class="ld" style="background:#7a6bab"></div>Planned</div>
+          <div class="li"><div class="ld" style="background:#c9a84c"></div>Owned</div>
+          <div class="li"><div class="ld" style="background:#4a9b8e"></div>Read</div>
+        </div>
+        <div style="height:320px"><canvas id="lgLineChart" role="img" aria-label="Library growth line chart over time"></canvas></div>
+      </div>
+      <div class="sl">Year-over-year increases</div>
+      <div class="cb">
+        <div class="cbt">Books added per year — planned, bought, read</div>
+        <div class="leg">
+          <div class="li"><div class="ld" style="background:#7a6bab"></div>Planned (new tracked)</div>
+          <div class="li"><div class="ld" style="background:#c9a84c"></div>Bought</div>
+          <div class="li"><div class="ld" style="background:#4a9b8e"></div>Read</div>
+        </div>
+        <div style="height:280px"><canvas id="lgYoYChart" role="img" aria-label="Year over year library growth bar chart"></canvas></div>
+      </div>
+      <div class="sl">Historical data</div>
+      <div class="tw"><table><thead><tr><th>Year</th><th class="nr">Planned</th><th class="nr">Read</th><th class="nr">Owned</th><th class="nr">+Planned</th><th class="nr">+Read</th><th class="nr">+Bought</th></tr></thead><tbody id="lg-table"></tbody></table></div>
+    </div>
+    <div class="panel" id="tab-buythisyear">
+      <div class="sl">Books acquired this year</div>
+      <div class="mg" id="bty-m"></div>
+      <div class="tc">
+        <div class="cb"><div class="cbt">Acquired by month</div><div style="height:220px"><canvas id="bty-month" role="img" aria-label="Books acquired per month"></canvas></div></div>
+        <div class="cb"><div class="cbt">Source breakdown</div><div style="height:220px"><canvas id="bty-source" role="img" aria-label="Acquisition source pie chart"></canvas></div></div>
+      </div>
+      <div class="sl">Genre breakdown</div>
+      <div class="cb" id="bty-genre"></div>
+      <div class="sl">Format breakdown</div>
+      <div class="cb" id="bty-format"></div>
+      <div class="sl">All acquisitions</div>
+      <div class="tw"><table><thead><tr><th class="nr">#</th><th class="nr">Date</th><th>Title</th><th>Author</th><th>Genre</th><th>Format</th><th>Source</th></tr></thead><tbody id="bty-list"></tbody></table></div>
+    </div>
   </div>
 </div>
 
@@ -311,6 +352,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
 const API_KEY='AIzaSyAhfCAYNMD4iyxdaQlM11BbppxwwqTWrxg';
 const BOOKS_ID='1IRQ0VENyj_H_MENOOPBB4W3F8pQo4UeMdoj__9dUm3k';
 const READING_ID='1KeUuBxJkXD0EqSBX-qsu2sadRaAhf2p8Q8OPjiX-ceE';
+const GROWTH_ID='1PBjnRAqbim6FJrYkv9iwf0R1CFsV7lFD0yGocFZWmYI';
 const DOB=new Date(1985,10,1),START=new Date(2000,8,1);
 const YEARS=[2026,2025,2024,2023,2022,2021];
 const MEDIA=['Print','EBook','Audio','Manga','Graphic Novel','Comics'];
@@ -648,12 +690,47 @@ function renderThisYear(year){
       </div>`;
     }).join('');
   }else{tEl.innerHTML='<div class="ms">N/A \u2014 no targets recorded for this year.</div>';}
-  const mc={};for(const b of books){const p=(b.date||'').split('/');if(p.length){const mo=parseInt(p[0]);if(mo>=1&&mo<=12)mc[mo]=(mc[mo]||0)+1;}}
+  // Build per-media per-month counts
+  const mcByMedia={};
+  for(const b of books){
+    const p=(b.date||'').split('/');
+    if(!p.length)continue;
+    const mo=parseInt(p[0]);
+    if(mo<1||mo>12)continue;
+    const med=b.media||'Unknown';
+    if(!mcByMedia[med])mcByMedia[med]=Array(12).fill(0);
+    mcByMedia[med][mo-1]++;
+  }
+  // Only include media types that actually appear this year, in MEDIA order
+  const activeMedia=[...MEDIA,'Unknown'].filter(m=>mcByMedia[m]);
   dc('monthChart');
   charts.monthChart=new Chart(document.getElementById('monthChart'),{
     type:'bar',
-    data:{labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],datasets:[{data:Array.from({length:12},(_,i)=>mc[i+1]||0),backgroundColor:'#c9a84c',borderRadius:4}]},
-    options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:4}},plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9a9688'},grid:{display:false}},y:{ticks:{color:'#9a9688',stepSize:1},grid:{color:'rgba(0,0,0,0.04)'}}}},
+    data:{
+      labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+      datasets:activeMedia.map(med=>({
+        label:med,
+        data:mcByMedia[med],
+        backgroundColor:MCOL[med]||'#9a9688',
+        borderRadius:0,
+        stack:'months'
+      }))
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      layout:{padding:{top:4}},
+      plugins:{
+        legend:{
+          display:true,
+          position:'top',
+          labels:{font:{family:'DM Mono',size:10},color:'#5a5850',boxWidth:10,padding:10}
+        }
+      },
+      scales:{
+        x:{stacked:true,ticks:{color:'#9a9688'},grid:{display:false}},
+        y:{stacked:true,ticks:{color:'#9a9688',stepSize:1},grid:{color:'rgba(0,0,0,0.04)'}}
+      }
+    }
   });
   const mediaCounts={};for(const b of books)if(b.media)mediaCounts[b.media]=(mediaCounts[b.media]||0)+1;
   const pieLbls=Object.keys(mediaCounts);
@@ -680,7 +757,7 @@ function renderThisYear(year){
         return bl.includes(rl)||rl.includes(bl)||(r.universe&&bl.includes(r.universe.toLowerCase()));
       })).length;
       const rp=totalCount?totalRead/totalCount*100:0,op=totalCount?totalOwned/totalCount*100:0;
-      return`<div class="cb" style="margin:0"><div class="cbt">${sn}</div><div style="display:flex;gap:10px;margin-bottom:8px;font-family:var(--font-m);font-size:11px;color:var(--text3);flex-wrap:wrap"><span>this year <strong style="color:var(--teal)">${readThisYear}</strong></span><span>all-time <strong style="color:var(--text)">${totalRead}</strong></span><span>total <strong style="color:var(--text)">${totalCount}</strong></span></div><div class="pr"><div class="pl">All-time read</div><div class="pt"><div class="pf" style="width:${rp.toFixed(1)}%;background:#4a9b8e"></div></div><div class="pv">${rp.toFixed(0)}%</div></div><div class="pr"><div class="pl">Owned</div><div class="pt"><div class="pf" style="width:${op.toFixed(1)}%;background:#7a6bab"></div></div><div class="pv">${op.toFixed(0)}%</div></div></div>`;
+      return`<div class="cb" style="margin:0"><div class="cbt">${sn}</div><div style="display:flex;gap:10px;margin-bottom:8px;font-family:var(--font-m);font-size:11px;color:var(--text3);flex-wrap:wrap"><span>this year <strong style="color:var(--teal)">${readThisYear}</strong></span><span>all-time <strong style="color:var(--text)">${totalRead}</strong></span><span>series size <strong style="color:var(--text)">${totalCount}</strong></span></div><div class="pr"><div class="pl">All-time read</div><div class="pt"><div class="pf" style="width:${rp.toFixed(1)}%;background:#4a9b8e"></div></div><div class="pv">${rp.toFixed(0)}%</div></div><div class="pr"><div class="pl">Owned</div><div class="pt"><div class="pf" style="width:${op.toFixed(1)}%;background:#7a6bab"></div></div><div class="pv">${op.toFixed(0)}%</div></div></div>`;
     }).join('')+'</div>';
   }else{fsEl.innerHTML='<div class="ms" style="color:var(--text3);margin-bottom:1.5rem">No focus series data.</div>';}
   const bBadge={Print:'b-gold',Audio:'b-teal',Manga:'b-purple',Comics:'b-green',Ebook:'b-teal',EBook:'b-teal','Graphic Novel':'b-coral'};
@@ -993,7 +1070,140 @@ function renderBookMail(orders){
   document.getElementById('tbb-all').innerHTML=[...orders].reverse().map(o=>`<tr><td style="font-family:var(--font-m);font-size:11px;white-space:nowrap">${o.date}</td><td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.books||'—'}</td><td>${o.series||'—'}</td><td>${o.author||'—'}</td><td>${o.type||'—'}</td><td class="nr">${o.count||1}</td><td style="white-space:nowrap"><span class="badge ${o.paid==='Paid'?'b-green':'b-coral'}">${o.paid}</span> <span class="badge ${o.delivered==='Fulfilled'?'b-teal':'b-gold'}">${o.delivered}</span></td></tr>`).join('');
 }
 
-function renderToAcquire(bookRows,interested){
+function parseGrowthMetrics(vals){
+  const rows=[];
+  for(const r of vals){
+    const year=parseInt(r[0]);
+    if(!year||year<2000)continue;
+    rows.push({year,planned:n(r[1]),read:n(r[2]),owned:n(r[3]),yoyPlanned:n(r[4]),yoyRead:n(r[5]),yoyBought:n(r[6])});
+  }
+  return rows.sort((a,b)=>a.year-b.year);
+}
+
+function parseGrowthYear(vals){
+  const books=[];
+  for(let i=1;i<vals.length;i++){
+    const r=vals[i];
+    if(!r[0]||!r[2])continue;
+    books.push({num:n(r[0]),date:(r[1]||'').trim(),title:(r[2]||'').trim(),author:(r[3]||'').trim(),genre:(r[4]||'').trim(),format:(r[5]||'').trim(),source:(r[6]||'').trim()});
+  }
+  return books;
+}
+
+function renderLibGrowth(growthMetrics,bm){
+  const rows=growthMetrics;
+  const years=rows.map(r=>r.year);
+  // Current live numbers from Butthead Series
+  const curYear=new Date().getFullYear();
+  const curPlanned=bm.tracked,curOwned=bm.owned,curRead=bm.read;
+  // Metrics summary
+  const latest=rows[rows.length-1]||{};
+  const prev=rows[rows.length-2]||{};
+  document.getElementById('lg-m').innerHTML=
+    mH(fmt(curPlanned),'Currently tracked','live from library','p')+
+    mH(fmt(curOwned),'Currently owned','live from library')+
+    mH(fmt(curRead),'Currently read','live from library','t')+
+    mH(fmt(latest.yoyBought||0),'Bought last year',String(latest.year||''))+
+    mH(fmt(latest.yoyRead||0),'Read last year',String(latest.year||''))+
+    mH(fmt(latest.yoyPlanned||0),'New tracked last year',String(latest.year||''));
+  // Line chart — historical + current dot
+  const chartYears=[...years];
+  const chartPlanned=[...rows.map(r=>r.planned)];
+  const chartOwned=[...rows.map(r=>r.owned)];
+  const chartRead=[...rows.map(r=>r.read)];
+  // Add current year marker if not already present
+  if(chartYears[chartYears.length-1]!==curYear){
+    chartYears.push(curYear);chartPlanned.push(curPlanned);chartOwned.push(curOwned);chartRead.push(curRead);
+  } else {
+    // Update last entry with live values
+    chartPlanned[chartPlanned.length-1]=curPlanned;
+    chartOwned[chartOwned.length-1]=curOwned;
+    chartRead[chartRead.length-1]=curRead;
+  }
+  dc('lgLineChart');
+  charts.lgLineChart=new Chart(document.getElementById('lgLineChart'),{
+    type:'line',
+    data:{
+      labels:chartYears.map(String),
+      datasets:[
+        {label:'Planned',data:chartPlanned,borderColor:'#7a6bab',backgroundColor:'rgba(122,107,171,0.08)',borderWidth:2,pointRadius:chartYears.map((_,i)=>i===chartYears.length-1?6:3),pointBackgroundColor:chartYears.map((_,i)=>i===chartYears.length-1?'#7a6bab':'#7a6bab'),fill:false,tension:0.3},
+        {label:'Owned',data:chartOwned,borderColor:'#c9a84c',backgroundColor:'rgba(201,168,76,0.08)',borderWidth:2,pointRadius:chartYears.map((_,i)=>i===chartYears.length-1?6:3),pointBackgroundColor:chartYears.map((_,i)=>i===chartYears.length-1?'#c9a84c':'#c9a84c'),fill:false,tension:0.3},
+        {label:'Read',data:chartRead,borderColor:'#4a9b8e',backgroundColor:'rgba(74,155,142,0.08)',borderWidth:2,pointRadius:chartYears.map((_,i)=>i===chartYears.length-1?6:3),pointBackgroundColor:chartYears.map((_,i)=>i===chartYears.length-1?'#4a9b8e':'#4a9b8e'),fill:false,tension:0.3},
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{afterTitle:ctx=>{const i=ctx[0].dataIndex;return i===chartYears.length-1?'(live)':'';}}}},scales:{x:{ticks:{color:'#9a9688'},grid:{color:'rgba(0,0,0,0.04)'}},y:{ticks:{color:'#9a9688',callback:v=>v.toLocaleString()},grid:{color:'rgba(0,0,0,0.04)'}}}}
+  });
+  // YoY bar chart
+  const yoyYears=rows.filter(r=>r.yoyBought>0||r.yoyRead>0||r.yoyPlanned>0).map(r=>r.year);
+  dc('lgYoYChart');
+  charts.lgYoYChart=new Chart(document.getElementById('lgYoYChart'),{
+    type:'bar',
+    data:{
+      labels:yoyYears.map(String),
+      datasets:[
+        {label:'Planned',data:yoyYears.map(y=>rows.find(r=>r.year===y)?.yoyPlanned||0),backgroundColor:'#7a6bab',borderRadius:3},
+        {label:'Bought',data:yoyYears.map(y=>rows.find(r=>r.year===y)?.yoyBought||0),backgroundColor:'#c9a84c',borderRadius:3},
+        {label:'Read',data:yoyYears.map(y=>rows.find(r=>r.year===y)?.yoyRead||0),backgroundColor:'#4a9b8e',borderRadius:3},
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9a9688'},grid:{display:false}},y:{ticks:{color:'#9a9688'},grid:{color:'rgba(0,0,0,0.04)'}}}}
+  });
+  // Table — most recent first
+  document.getElementById('lg-table').innerHTML=[...rows].reverse().map(r=>{
+    const isCur=r.year===curYear;
+    return`<tr${isCur?' style="font-weight:600"':''}><td>${r.year}${isCur?' (snapshot)':''}</td><td class="nr">${fmt(r.planned)}</td><td class="nr">${fmt(r.read)}</td><td class="nr">${fmt(r.owned)}</td><td class="nr">${r.yoyPlanned?'+'+fmt(r.yoyPlanned):'—'}</td><td class="nr">${r.yoyRead?'+'+fmt(r.yoyRead):'—'}</td><td class="nr">${r.yoyBought?'+'+fmt(r.yoyBought):'—'}</td></tr>`;
+  }).join('');
+}
+
+function renderBuyThisYear(books){
+  const SOURCE_COLORS={'Tombolo':'#c9a84c','The Broken Binding':'#4a9b8e','Illumicrate':'#7a6bab','B&N':'#4a7ab5','Amazon':'#c4614a','Dark Carnival':'#5a8a4a','Brotherwise':'#8a6a9a','Wilson\'s Book World':'#9a6a4a'};
+  const FORMAT_COLORS={'Print':'#c9a84c','Manga':'#7a6bab','Comics':'#5a8a4a','Ebook':'#4a7ab5','Audio':'#4a9b8e','Graphic Novel':'#c4614a'};
+  const GENRE_COLORS=['#7a6bab','#c9a84c','#4a9b8e','#c4614a','#5a8a4a','#4a7ab5','#8a6a9a','#6a8a4a','#9a6a4a','#4a6a8a'];
+  // Metrics
+  const sourceCounts={},genreCounts={},formatCounts={},monthlyCounts={};
+  for(const b of books){
+    sourceCounts[b.source]=(sourceCounts[b.source]||0)+1;
+    genreCounts[b.genre]=(genreCounts[b.genre]||0)+1;
+    formatCounts[b.format]=(formatCounts[b.format]||0)+1;
+    if(b.date){const mo=parseInt(b.date.split('/')[0]);if(mo>=1&&mo<=12)monthlyCounts[mo]=(monthlyCounts[mo]||0)+1;}
+  }
+  const topSource=Object.entries(sourceCounts).sort((a,b)=>b[1]-a[1])[0]||['—',0];
+  const topGenre=Object.entries(genreCounts).sort((a,b)=>b[1]-a[1])[0]||['—',0];
+  document.getElementById('bty-m').innerHTML=
+    mH(books.length,'Total acquired','this year','t')+
+    mH(Object.keys(sourceCounts).length,'Sources')+
+    mH(topSource[0],'Top source',topSource[1]+' books')+
+    mH(topGenre[0],'Top genre',topGenre[1]+' books')+
+    mH(formatCounts['Print']||0,'Print')+
+    mH((formatCounts['Manga']||0)+(formatCounts['Comics']||0)+(formatCounts['Graphic Novel']||0),'Manga/Comics/GN');
+  // Monthly bar
+  dc('bty-month');
+  charts['bty-month']=new Chart(document.getElementById('bty-month'),{
+    type:'bar',
+    data:{labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],datasets:[{data:Array.from({length:12},(_,i)=>monthlyCounts[i+1]||0),backgroundColor:'#c9a84c',borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9a9688'},grid:{display:false}},y:{ticks:{color:'#9a9688',stepSize:2},grid:{color:'rgba(0,0,0,0.04)'}}}}
+  });
+  // Source pie
+  const srcLabels=Object.keys(sourceCounts),srcData=Object.values(sourceCounts);
+  dc('bty-source');
+  charts['bty-source']=new Chart(document.getElementById('bty-source'),{
+    type:'pie',
+    data:{labels:srcLabels,datasets:[{data:srcData,backgroundColor:srcLabels.map(l=>SOURCE_COLORS[l]||'#9a9688'),borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{family:'DM Mono',size:10},color:'#5a5850',boxWidth:10}}}}
+  });
+  // Genre bars
+  const genreEntries=Object.entries(genreCounts).sort((a,b)=>b[1]-a[1]);
+  const maxG=genreEntries[0]?.[1]||1;
+  document.getElementById('bty-genre').innerHTML='<div class="cbt">Books by genre</div>'+genreEntries.map(([g,count],i)=>{const p=count/maxG*100;return`<div class="pr"><div class="pl">${g}</div><div class="pt"><div class="pf" style="width:${p.toFixed(1)}%;background:${GENRE_COLORS[i%GENRE_COLORS.length]}"></div></div><div class="pv">${count}</div></div>`;}).join('');
+  // Format bars
+  const formatEntries=Object.entries(formatCounts).sort((a,b)=>b[1]-a[1]);
+  const maxF=formatEntries[0]?.[1]||1;
+  document.getElementById('bty-format').innerHTML='<div class="cbt">Books by format</div>'+formatEntries.map(([f,count])=>{const p=count/maxF*100;return`<div class="pr"><div class="pl">${f}</div><div class="pt"><div class="pf" style="width:${p.toFixed(1)}%;background:${FORMAT_COLORS[f]||'#9a9688'}"></div></div><div class="pv">${count}</div></div>`;}).join('');
+  // List
+  document.getElementById('bty-list').innerHTML=books.map(b=>`<tr><td class="nr" style="color:var(--text3);font-family:var(--font-m)">${b.num}</td><td class="nr" style="color:var(--text3);font-family:var(--font-m)">${b.date}</td><td>${b.title}</td><td>${b.author||'—'}</td><td>${b.genre||'—'}</td><td><span class="badge ${FORMAT_COLORS[b.format]?'b-gold':'b-gray'}" style="background:${(FORMAT_COLORS[b.format]||'#9a9688')+'18'};color:${FORMAT_COLORS[b.format]||'#9a9688'}">${b.format}</span></td><td style="font-family:var(--font-m);font-size:11px;color:var(--text2)">${b.source}</td></tr>`).join('');
+}
+
+
   const zeroOwned=bookRows.filter(r=>r.owned===0&&r.count>0).sort((a,b)=>b.count-a.count);
   document.getElementById('acq-m').innerHTML=mH(zeroOwned.length,'Series with 0 owned')+mH(zeroOwned.reduce((s,r)=>s+r.count,0),'Total books')+mH(interested.sd.length,'Someday watchlist');
   document.getElementById('acq-body').innerHTML=zeroOwned.map(r=>`<tr><td>${r.title}</td><td>${r.author}</td><td>${r.type}</td><td>${r.genre||'—'}</td><td class="nr">${r.count}</td><td>${r.universe||'—'}</td></tr>`).join('');
@@ -1033,7 +1243,7 @@ function restoreFromHash(){
   const hash=(location.hash||'').replace('#','');
   const[sec,tab]=hash.split('/');
   const validSecs=new Set(['tracking','reading','buying']);
-  const validTabs=new Set(['overview','bytype','genre','universe','rooms','history','thisyear','completion','toread','comingup','bookmail','toacquire']);
+  const validTabs=new Set(['overview','bytype','genre','universe','rooms','history','thisyear','completion','toread','comingup','bookmail','toacquire','libgrowth','buythisyear']);
   if(sec&&validSecs.has(sec)&&tab&&validTabs.has(tab)){
     switchSection(sec,tab);
   } else {
@@ -1058,15 +1268,19 @@ function renderTab(id){
   else if(id==='comingup')renderComingUp(G.interested.up);
   else if(id==='bookmail')renderBookMail(G.orders);
   else if(id==='toacquire')renderToAcquire(G.bookRows,G.interested);
+  else if(id==='libgrowth')renderLibGrowth(G.growthMetrics,G.books);
+  else if(id==='buythisyear')renderBuyThisYear(G.growthYear);
 }
 
 async function init(){
   try{
-    const [booksV,metricsV,intV,ordV,...yearV]=await Promise.all([
+    const [booksV,metricsV,intV,ordV,growthMetricsV,growthYearV,...yearV]=await Promise.all([
       fr(BOOKS_ID,"'Butthead Series'!A:K"),
       fr(READING_ID,'Metrics!A:G'),
       fr(BOOKS_ID,'Interested!A:J'),
       fr(BOOKS_ID,"'Book Mail Orders'!A:M"),
+      fr(GROWTH_ID,'Metrics!A:G'),
+      fr(GROWTH_ID,'2026!A:G'),
       ...YEARS.map(y=>fr(READING_ID,`'${y}'!A:K`))
     ]);
     G.bookRows=parseBooks(booksV);
@@ -1074,6 +1288,8 @@ async function init(){
     G.metrics=parseMetrics(metricsV);
     G.interested=parseInterested(intV);
     G.orders=parseOrders(ordV);
+    G.growthMetrics=parseGrowthMetrics(growthMetricsV);
+    G.growthYear=parseGrowthYear(growthYearV);
     YEARS.forEach((y,i)=>{allYD[y]=parseYear(yearV[i]);});
     document.getElementById('loading').style.display='none';
     document.getElementById('dash').style.display='block';
