@@ -1291,7 +1291,7 @@ const SEC_DEFAULT={tracking:'overview',reading:'history',buying:'libgrowth',coll
 
 function switchSection(sec,tab){
   curSec=sec;
-  document.querySelectorAll('.sec-nav button').forEach(b=>b.classList.toggle('active',b.getAttribute('onclick').includes("'"+sec+"'")));
+  document.querySelectorAll('.sec-nav button').forEach(b=>{const oc=b.getAttribute('onclick');if(oc)b.classList.toggle('active',oc.includes("'"+sec+"'"));});
   ['tracking','reading','buying','collecting'].forEach(s=>{const el=document.getElementById('sec-'+s);if(el)el.style.display=s===sec?'block':'none';});
   const targetTab=tab||SEC_DEFAULT[sec];
   switchTab(targetTab,sec,true); // true = called from switchSection, skip hash update loop
@@ -1301,7 +1301,7 @@ function switchSection(sec,tab){
 function switchTab(id,sec,fromSection){
   sec=sec||curSec;
   const secEl=document.getElementById('sec-'+sec);if(!secEl)return;
-  secEl.querySelectorAll('.tab-nav button').forEach(b=>b.classList.toggle('active',b.getAttribute('onclick').includes("'"+id+"'")));
+  secEl.querySelectorAll('.tab-nav button').forEach(b=>{const oc=b.getAttribute('onclick');if(oc)b.classList.toggle('active',oc.includes("'"+id+"'"));});
   secEl.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='tab-'+id));
   if(!rendered.has(id)){renderTab(id);rendered.add(id);}
   if(!fromSection){curSec=sec;updateHash(sec,id);}
@@ -1310,7 +1310,7 @@ function switchTab(id,sec,fromSection){
 function switchYear(y){tyYear=y;rendered.delete('thisyear');renderTab('thisyear');rendered.add('thisyear');}
 
 function updateHash(sec,tab){
-  history.replaceState(null,'',`#${sec}/${tab}`);
+  try{history.replaceState(null,'',`#${sec}/${tab}`);}catch(e){}
 }
 
 function restoreFromHash(){
@@ -1647,15 +1647,15 @@ function renderFRCompletion(){
 async function init(){
   try{
     const [booksV,metricsV,intV,ordV,growthMetricsV,growthYearV,frYearV,frSeriesV,...yearV]=await Promise.all([
-      fr(BOOKS_ID,"'Butthead Series'!A:K"),
-      fr(READING_ID,'Metrics!A:G'),
-      fr(BOOKS_ID,'Interested!A:J'),
-      fr(BOOKS_ID,"'Book Mail Orders'!A:M"),
-      fr(GROWTH_ID,'Metrics!A:G'),
-      fr(GROWTH_ID,'2026!A:G'),
-      fr(FR_ID,'Year Catalog!A:H'),
-      fr(FR_ID,'Series!A:H'),
-      ...YEARS.map(y=>fr(READING_ID,`'${y}'!A:K`))
+      fr(BOOKS_ID,"'Butthead Series'!A:K").catch(()=>[]),
+      fr(READING_ID,'Metrics!A:G').catch(()=>[]),
+      fr(BOOKS_ID,'Interested!A:J').catch(()=>[]),
+      fr(BOOKS_ID,"'Book Mail Orders'!A:M").catch(()=>[]),
+      fr(GROWTH_ID,'Metrics!A:G').catch(()=>[]),
+      fr(GROWTH_ID,'2026!A:G').catch(()=>[]),
+      fr(FR_ID,"'Year Catalog'!A:H").catch(()=>[]),
+      fr(FR_ID,"'Series'!A:H").catch(()=>[]),
+      ...YEARS.map(y=>fr(READING_ID,`'${y}'!A:K`).catch(()=>[]))
     ]);
     G.bookRows=parseBooks(booksV);
     G.books=calcBooks(G.bookRows);
