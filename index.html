@@ -530,7 +530,7 @@ function renderOverview(bm,yd2026){
       const match=G.bookRows.find(r=>r.title.toLowerCase().includes(sl)||sl.includes(r.title.toLowerCase().split(' ').slice(0,2).join(' ')));
       if(!match)return`<div class="cb" style="margin:0"><div class="cbt">${sn}</div><div class="ms">—</div></div>`;
       const rp=match.count?match.read/match.count*100:0;
-      return`<div class="cb" style="margin:0"><div class="cbt">${sn}</div><div style="display:flex;gap:8px;margin-bottom:6px;font-family:var(--font-m);font-size:11px;color:var(--text3)"><span>read <strong style="color:var(--text)">${match.read}</strong></span><span>owned <strong style="color:var(--text)">${match.owned}</strong></span><span>total <strong style="color:var(--text)">${match.count}</strong></span></div><div class="pr" style="margin:0"><div class="pt" style="height:6px"><div class="pf" style="width:${rp.toFixed(1)}%;background:#4a9b8e;height:6px"></div></div><div class="pv">${rp.toFixed(0)}%</div></div></div>`;
+      return`<div class="cb" style="margin:0"><div class="cbt">${sn}</div><div style="display:flex;gap:12px;margin-bottom:6px;font-family:var(--font-m);font-size:11px;color:var(--text3)"><span>read <strong style="color:var(--teal)">${match.read}</strong></span><span>series size <strong style="color:var(--text)">${match.count}</strong></span></div><div class="pr" style="margin:0"><div class="pt" style="height:6px"><div class="pf" style="width:${rp.toFixed(1)}%;background:#4a9b8e;height:6px"></div></div><div class="pv">${rp.toFixed(0)}%</div></div></div>`;
     }).join('')+'</div>';
   }else{fsEl.innerHTML='';}
   const types=['Series','Individual','Manga','Comics','Graphic Novel'];
@@ -757,13 +757,8 @@ function renderThisYear(year){
       if(!matchRows.length)return`<div class="cb" style="margin:0"><div class="cbt">${sn}</div><div class="ms">Not found in library</div></div>`;
       const totalCount=matchRows.reduce((s,r)=>s+r.count,0);
       const totalRead=matchRows.reduce((s,r)=>s+r.read,0);
-      const totalOwned=matchRows.reduce((s,r)=>s+r.owned,0);
-      const readThisYear=books.filter(b=>matchRows.some(r=>{
-        const bl=b.title.toLowerCase(),rl=r.title.toLowerCase();
-        return bl.includes(rl)||rl.includes(bl)||(r.universe&&bl.includes(r.universe.toLowerCase()));
-      })).length;
-      const rp=totalCount?totalRead/totalCount*100:0,op=totalCount?totalOwned/totalCount*100:0;
-      return`<div class="cb" style="margin:0"><div class="cbt">${sn}</div><div style="display:flex;gap:10px;margin-bottom:8px;font-family:var(--font-m);font-size:11px;color:var(--text3);flex-wrap:wrap"><span>this year <strong style="color:var(--teal)">${readThisYear}</strong></span><span>all-time <strong style="color:var(--text)">${totalRead}</strong></span><span>series size <strong style="color:var(--text)">${totalCount}</strong></span></div><div class="pr"><div class="pl">All-time read</div><div class="pt"><div class="pf" style="width:${rp.toFixed(1)}%;background:#4a9b8e"></div></div><div class="pv">${rp.toFixed(0)}%</div></div><div class="pr"><div class="pl">Owned</div><div class="pt"><div class="pf" style="width:${op.toFixed(1)}%;background:#7a6bab"></div></div><div class="pv">${op.toFixed(0)}%</div></div></div>`;
+      const rp=totalCount?totalRead/totalCount*100:0;
+      return`<div class="cb" style="margin:0"><div class="cbt">${sn}</div><div style="display:flex;gap:12px;margin-bottom:8px;font-family:var(--font-m);font-size:11px;color:var(--text3)"><span>read <strong style="color:var(--teal)">${totalRead}</strong></span><span>series size <strong style="color:var(--text)">${totalCount}</strong></span></div><div class="pr"><div class="pl">Read</div><div class="pt"><div class="pf" style="width:${rp.toFixed(1)}%;background:#4a9b8e"></div></div><div class="pv">${rp.toFixed(0)}%</div></div></div>`;
     }).join('')+'</div>';
   }else{fsEl.innerHTML='<div class="ms" style="color:var(--text3);margin-bottom:1.5rem">No focus series data.</div>';}
   const bBadge={Print:'b-gold',Audio:'b-teal',Manga:'b-purple',Comics:'b-green',Ebook:'b-teal',EBook:'b-teal','Graphic Novel':'b-coral'};
