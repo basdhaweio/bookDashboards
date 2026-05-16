@@ -1204,6 +1204,7 @@ function renderBuyThisYear(books){
 }
 
 
+function renderToAcquire(bookRows,interested){
   const zeroOwned=bookRows.filter(r=>r.owned===0&&r.count>0).sort((a,b)=>b.count-a.count);
   document.getElementById('acq-m').innerHTML=mH(zeroOwned.length,'Series with 0 owned')+mH(zeroOwned.reduce((s,r)=>s+r.count,0),'Total books')+mH(interested.sd.length,'Someday watchlist');
   document.getElementById('acq-body').innerHTML=zeroOwned.map(r=>`<tr><td>${r.title}</td><td>${r.author}</td><td>${r.type}</td><td>${r.genre||'—'}</td><td class="nr">${r.count}</td><td>${r.universe||'—'}</td></tr>`).join('');
