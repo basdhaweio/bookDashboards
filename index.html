@@ -1360,7 +1360,7 @@ function parseFRYearCatalog(vals){
     const ownedRaw=(r[5]||'').trim().toLowerCase();
     const needRaw=(r[6]||'').trim().toLowerCase();
     // Year header row
-    if(title&&/^20?\d{2}$/.test(title)&&!author&&!fmt){
+    if(title&&/^\d{4}$/.test(title)&&!author&&!fmt){
       currentYear=parseInt(title);continue;
     }
     // Totals/metrics row (numeric in read col and > 5)
