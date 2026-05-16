@@ -1316,10 +1316,18 @@ function updateHash(sec,tab){
 function restoreFromHash(){
   const hash=(location.hash||'').replace('#','');
   const[sec,tab]=hash.split('/');
-  const validSecs=new Set(['tracking','reading','buying']);
+  const validSecs=new Set(['tracking','reading','buying','collecting']);
   const validTabs=new Set(['overview','bytype','genre','universe','rooms','history','thisyear','completion','toread','comingup','bookmail','toacquire','libgrowth','buythisyear','col-fr']);
-  if(sec&&validSecs.has(sec)&&tab&&validTabs.has(tab)){
-    switchSection(sec,tab);
+  const validFRTabs=new Set(['fr-overview','fr-series','fr-completion']);
+  if(sec&&validSecs.has(sec)){
+    if(validFRTabs.has(tab)){
+      switchSection('collecting','col-fr');
+      switchFRTab(tab);
+    } else if(tab&&validTabs.has(tab)){
+      switchSection(sec,tab);
+    } else {
+      switchSection(sec);
+    }
   } else {
     switchSection('tracking','overview');
   }
@@ -1344,7 +1352,7 @@ function renderTab(id){
   else if(id==='toacquire')renderToAcquire(G.bookRows,G.interested);
   else if(id==='libgrowth')renderLibGrowth(G.growthMetrics,G.books);
   else if(id==='buythisyear')renderBuyThisYear(G.growthYear);
-  else if(id==='col-fr'){renderFROverview();rendered.add('fr-overview');}
+  else if(id==='col-fr'){switchFRTab('fr-overview');}
 }
 
 // ── FR PARSERS ────────────────────────────────────────────────
@@ -1410,7 +1418,6 @@ function switchFRTab(tabId){
   document.querySelectorAll('.fr-panel').forEach(p=>p.style.display='none');
   const panel=document.getElementById(tabId);
   if(panel)panel.style.display='block';
-  // Update sub-tab button styles
   ['fr-overview','fr-series','fr-completion'].forEach(t=>{
     const btn=document.getElementById('fr-st-'+t.replace('fr-',''));
     if(btn){
@@ -1425,6 +1432,8 @@ function switchFRTab(tabId){
     else if(tabId==='fr-completion')renderFRCompletion();
     frRendered.add(tabId);
   }
+  // Update URL hash so position is saved on reload
+  updateHash('collecting',tabId);
 }
 
 // ── FR RENDERERS ──────────────────────────────────────────────
