@@ -145,6 +145,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
     <button class="active" onclick="switchSection('tracking')">Tracking</button>
     <button onclick="switchSection('reading')">Reading</button>
     <button onclick="switchSection('buying')">Buying</button>
+    <button onclick="switchSection('collecting')">Collecting</button>
   </div>
 
   <!-- TRACKING -->
@@ -346,6 +347,68 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div class="tw"><table><thead><tr><th class="nr">#</th><th class="nr">Date</th><th>Title</th><th>Author</th><th>Genre</th><th>Format</th><th>Source</th></tr></thead><tbody id="bty-list"></tbody></table></div>
     </div>
   </div>
+
+  <!-- COLLECTING -->
+  <div id="sec-collecting" style="display:none">
+    <div class="tab-nav">
+      <button class="active" onclick="switchTab('col-fr','collecting')">Forgotten Realms</button>
+      <button disabled style="opacity:0.35;cursor:default">Dragonlance</button>
+      <button disabled style="opacity:0.35;cursor:default">Shadowrun</button>
+    </div>
+
+    <!-- FR sub-tabs rendered inside a container -->
+    <div id="fr-subtabs" style="background:var(--bg3);border-bottom:1px solid var(--border);padding:0 3rem;display:flex;gap:0;overflow-x:auto;">
+      <button class="active" id="fr-st-overview" onclick="switchFRTab('fr-overview')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid transparent;color:var(--text3);cursor:pointer;margin-bottom:-1px;white-space:nowrap;transition:all 0.15s">Overview</button>
+      <button id="fr-st-series" onclick="switchFRTab('fr-series')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid transparent;color:var(--text3);cursor:pointer;margin-bottom:-1px;white-space:nowrap;transition:all 0.15s">By Series</button>
+      <button id="fr-st-completion" onclick="switchFRTab('fr-completion')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid transparent;color:var(--text3);cursor:pointer;margin-bottom:-1px;white-space:nowrap;transition:all 0.15s">Completion</button>
+    </div>
+
+    <div class="panel active" id="tab-col-fr">
+      <!-- FR Overview -->
+      <div id="fr-overview" class="fr-panel" style="display:block">
+        <div class="sl">Forgotten Realms — overview</div>
+        <div class="mg" id="fr-ov-m"></div>
+        <div class="tc">
+          <div>
+            <div class="sl">Series completion status</div>
+            <div class="cb"><div style="height:220px"><canvas id="fr-status-pie" role="img" aria-label="FR series completion status pie"></canvas></div></div>
+          </div>
+          <div>
+            <div class="sl">Read vs owned vs total</div>
+            <div class="cb"><div style="height:220px"><canvas id="fr-ov-bar" role="img" aria-label="FR read owned total bar"></canvas></div></div>
+          </div>
+        </div>
+        <div class="sl">Top series by size</div>
+        <div class="cb" id="fr-series-bars"></div>
+      </div>
+
+      <!-- FR By Series -->
+      <div id="fr-series" class="fr-panel" style="display:none">
+        <div class="sl">All series — click to expand book list</div>
+        <div style="display:flex;gap:8px;margin-bottom:1.2rem;flex-wrap:wrap">
+          <button onclick="filterFRSeries('all')" id="fr-f-all" class="badge b-gray" style="padding:4px 12px;cursor:pointer;font-size:11px">All</button>
+          <button onclick="filterFRSeries('complete')" id="fr-f-complete" class="badge" style="padding:4px 12px;cursor:pointer;font-size:11px;background:#eef7f5;color:var(--teal)">Complete ✓</button>
+          <button onclick="filterFRSeries('partial')" id="fr-f-partial" class="badge" style="padding:4px 12px;cursor:pointer;font-size:11px;background:#fffdf0;color:var(--gold)">Partial</button>
+          <button onclick="filterFRSeries('unstarted')" id="fr-f-unstarted" class="badge" style="padding:4px 12px;cursor:pointer;font-size:11px;background:#fdf0ee;color:var(--coral)">Unstarted</button>
+          <button onclick="filterFRSeries('need')" id="fr-f-need" class="badge b-purple" style="padding:4px 12px;cursor:pointer;font-size:11px">Has Needed</button>
+        </div>
+        <div id="fr-series-list"></div>
+      </div>
+
+      <!-- FR Completion (year timeline) -->
+      <div id="fr-completion" class="fr-panel" style="display:none">
+        <div class="sl">Published, owned &amp; read by year — 1987 to present</div>
+        <div class="leg">
+          <div class="li"><div class="ld" style="background:#4a9b8e"></div>Read</div>
+          <div class="li"><div class="ld" style="background:#c9a84c"></div>Owned (unread)</div>
+          <div class="li"><div class="ld" style="background:#c4614a"></div>Need</div>
+        </div>
+        <div class="cb"><div style="height:340px"><canvas id="fr-year-chart" role="img" aria-label="FR books published owned read by year stacked area"></canvas></div></div>
+        <div class="sl" style="margin-top:0.5rem">Still needed — 9 books</div>
+        <div class="tw"><table><thead><tr><th class="nr">Year</th><th>Title</th><th>Author</th><th>Format</th></tr></thead><tbody id="fr-needed-table"></tbody></table></div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -353,6 +416,7 @@ const API_KEY='AIzaSyAhfCAYNMD4iyxdaQlM11BbppxwwqTWrxg';
 const BOOKS_ID='1IRQ0VENyj_H_MENOOPBB4W3F8pQo4UeMdoj__9dUm3k';
 const READING_ID='1KeUuBxJkXD0EqSBX-qsu2sadRaAhf2p8Q8OPjiX-ceE';
 const GROWTH_ID='1PBjnRAqbim6FJrYkv9iwf0R1CFsV7lFD0yGocFZWmYI';
+const FR_ID='1_vivOgWjSRnPO5doL_GIb33PD8sPO0Ya1MM_rf293lg';
 const DOB=new Date(1985,10,1),START=new Date(2000,8,1);
 const YEARS=[2026,2025,2024,2023,2022,2021];
 const MEDIA=['Print','EBook','Audio','Manga','Graphic Novel','Comics'];
@@ -1223,12 +1287,12 @@ function renderToAcquire(bookRows,interested){
 let rendered=new Set(),curSec='tracking',G={};
 
 // Section → default tab mapping
-const SEC_DEFAULT={tracking:'overview',reading:'history',buying:'libgrowth'};
+const SEC_DEFAULT={tracking:'overview',reading:'history',buying:'libgrowth',collecting:'col-fr'};
 
 function switchSection(sec,tab){
   curSec=sec;
   document.querySelectorAll('.sec-nav button').forEach(b=>b.classList.toggle('active',b.getAttribute('onclick').includes("'"+sec+"'")));
-  ['tracking','reading','buying'].forEach(s=>{const el=document.getElementById('sec-'+s);if(el)el.style.display=s===sec?'block':'none';});
+  ['tracking','reading','buying','collecting'].forEach(s=>{const el=document.getElementById('sec-'+s);if(el)el.style.display=s===sec?'block':'none';});
   const targetTab=tab||SEC_DEFAULT[sec];
   switchTab(targetTab,sec,true); // true = called from switchSection, skip hash update loop
   updateHash(sec,targetTab);
@@ -1253,7 +1317,7 @@ function restoreFromHash(){
   const hash=(location.hash||'').replace('#','');
   const[sec,tab]=hash.split('/');
   const validSecs=new Set(['tracking','reading','buying']);
-  const validTabs=new Set(['overview','bytype','genre','universe','rooms','history','thisyear','completion','toread','comingup','bookmail','toacquire','libgrowth','buythisyear']);
+  const validTabs=new Set(['overview','bytype','genre','universe','rooms','history','thisyear','completion','toread','comingup','bookmail','toacquire','libgrowth','buythisyear','col-fr']);
   if(sec&&validSecs.has(sec)&&tab&&validTabs.has(tab)){
     switchSection(sec,tab);
   } else {
@@ -1280,17 +1344,308 @@ function renderTab(id){
   else if(id==='toacquire')renderToAcquire(G.bookRows,G.interested);
   else if(id==='libgrowth')renderLibGrowth(G.growthMetrics,G.books);
   else if(id==='buythisyear')renderBuyThisYear(G.growthYear);
+  else if(id==='col-fr'){renderFROverview();rendered.add('fr-overview');}
+}
+
+// ── FR PARSERS ────────────────────────────────────────────────
+function parseFRYearCatalog(vals){
+  const books=[],yearMetrics=[];
+  let currentYear=null;
+  for(const r of vals){
+    const title=(r[0]||'').trim();
+    const author=(r[1]||'').trim();
+    const datePub=(r[2]||'').trim();
+    const fmt=(r[3]||'').trim();
+    const readRaw=(r[4]||'').trim().toLowerCase();
+    const ownedRaw=(r[5]||'').trim().toLowerCase();
+    const needRaw=(r[6]||'').trim().toLowerCase();
+    // Year header row
+    if(title&&/^20?\d{2}$/.test(title)&&!author&&!fmt){
+      currentYear=parseInt(title);continue;
+    }
+    // Totals/metrics row (numeric in read col and > 5)
+    if(!title&&!author)continue;
+    if(title&&!author&&!fmt&&!readRaw)continue;
+    if(!title||!currentYear)continue;
+    const isRead=!!(readRaw&&readRaw!=='0'&&!/^\d+$/.test(readRaw));
+    const isOwned=!!(ownedRaw&&ownedRaw!=='0'&&!/^\d+$/.test(ownedRaw));
+    const isNeed=!!(needRaw&&needRaw!=='0'&&needRaw!=='x'?false:needRaw==='x');
+    // isNeed: x in need column
+    const needFinal=!!(needRaw==='x');
+    books.push({year:currentYear,title,author,date:datePub,format:fmt,read:isRead,owned:isOwned,need:needFinal});
+  }
+  return books;
+}
+
+function parseFRSeries(vals){
+  const series={};
+  let currentSeries=null;
+  for(const r of vals){
+    const title=(r[0]||'').trim();
+    const author=(r[1]||'').trim();
+    const datePub=(r[2]||'').trim();
+    const fmt=(r[3]||'').trim();
+    const readRaw=(r[4]||'').trim().toLowerCase();
+    const ownedRaw=(r[5]||'').trim().toLowerCase();
+    const needRaw=(r[6]||'').trim().toLowerCase();
+    const dupeRaw=(r[7]||'').trim();
+    // Skip totals row
+    if(!title&&!author)continue;
+    if(title&&readRaw&&/^\d+$/.test(readRaw)&&parseInt(readRaw)>5)continue;
+    // Series header: title present, no author, no format
+    if(title&&!author&&!fmt){currentSeries=title;series[currentSeries]=[];continue;}
+    if(!title||!currentSeries||!author)continue;
+    const isRead=!!(readRaw&&readRaw!=='0'&&!/^\d+$/.test(readRaw));
+    const isOwned=!!(ownedRaw&&ownedRaw!=='0'&&!/^\d+$/.test(ownedRaw));
+    const isNeed=needRaw==='x';
+    const isDupe=dupeRaw&&dupeRaw!=='1';
+    series[currentSeries].push({title,author,date:datePub,format:fmt,read:isRead,owned:isOwned,need:isNeed,dupe:isDupe,dupeGroup:dupeRaw});
+  }
+  return series;
+}
+
+// ── FR SUB-TAB NAVIGATION ─────────────────────────────────────
+const frRendered=new Set();
+function switchFRTab(tabId){
+  document.querySelectorAll('.fr-panel').forEach(p=>p.style.display='none');
+  const panel=document.getElementById(tabId);
+  if(panel)panel.style.display='block';
+  // Update sub-tab button styles
+  ['fr-overview','fr-series','fr-completion'].forEach(t=>{
+    const btn=document.getElementById('fr-st-'+t.replace('fr-',''));
+    if(btn){
+      const isActive=t===tabId;
+      btn.style.color=isActive?'var(--gold)':'var(--text3)';
+      btn.style.borderBottomColor=isActive?'var(--gold2)':'transparent';
+    }
+  });
+  if(!frRendered.has(tabId)){
+    if(tabId==='fr-overview')renderFROverview();
+    else if(tabId==='fr-series')renderFRSeries();
+    else if(tabId==='fr-completion')renderFRCompletion();
+    frRendered.add(tabId);
+  }
+}
+
+// ── FR RENDERERS ──────────────────────────────────────────────
+function renderFROverview(){
+  const books=G.frBooks||[];
+  const series=G.frSeries||{};
+  if(!books.length)return;
+  const total=books.length;
+  const read=books.filter(b=>b.read).length;
+  const owned=books.filter(b=>b.owned).length;
+  const need=books.filter(b=>b.need).length;
+  // Series completion status
+  let complete=0,partial=0,readyToRead=0,ownedNone=0;
+  for(const[,sb] of Object.entries(series)){
+    if(!sb.length)continue;
+    const r=sb.filter(b=>b.read).length,o=sb.filter(b=>b.owned).length,tot=sb.length;
+    const deduped=new Set(sb.map(b=>b.title)).size;
+    if(r>=deduped)complete++;
+    else if(r>0)partial++;
+    else if(o>=deduped)readyToRead++;
+    else ownedNone++;
+  }
+  document.getElementById('fr-ov-m').innerHTML=
+    mH(total,'Total tracked')+
+    mH(fmt(read),'Read',pct(read,total)+' of total','t')+
+    mH(fmt(owned),'Owned',pct(owned,total)+' of total')+
+    mH(fmt(need),'Still needed','','c')+
+    mH(complete,'Series complete','all books read','g')+
+    mH(readyToRead,'Ready to read','owned, unstarted');
+  dc('fr-status-pie');
+  charts['fr-status-pie']=new Chart(document.getElementById('fr-status-pie'),{
+    type:'pie',
+    data:{labels:['Complete','Partial','Ready to read','Not owned'],datasets:[{data:[complete,partial,readyToRead,ownedNone],backgroundColor:['#4a9b8e','#c9a84c','#7a6bab','#c4614a'],borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{family:'DM Mono',size:10},color:'#5a5850',boxWidth:10}}}}
+  });
+  dc('fr-ov-bar');
+  charts['fr-ov-bar']=new Chart(document.getElementById('fr-ov-bar'),{
+    type:'bar',
+    data:{labels:['Total','Owned','Read','Need'],datasets:[{data:[total,owned,read,need],backgroundColor:['#7a6bab','#c9a84c','#4a9b8e','#c4614a'],borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9a9688'},grid:{display:false}},y:{ticks:{color:'#9a9688'},grid:{color:'rgba(0,0,0,0.04)'}}}}
+  });
+  // Top series bars
+  const topSeries=Object.entries(series)
+    .map(([name,sb])=>({name,total:sb.length,read:sb.filter(b=>b.read).length,owned:sb.filter(b=>b.owned).length}))
+    .filter(s=>s.total>=3)
+    .sort((a,b)=>b.total-a.total)
+    .slice(0,20);
+  document.getElementById('fr-series-bars').innerHTML='<div class="cbt">Top series by size — read progress</div>'+
+    topSeries.map(s=>{
+      const rp=s.total?s.read/s.total*100:0;
+      const op=s.total?s.owned/s.total*100:0;
+      return`<div class="pr" style="margin-bottom:9px">
+        <div class="pl" style="width:180px;font-size:11px">${s.name}</div>
+        <div style="flex:1;position:relative;height:8px;border-radius:4px;background:var(--bg3);">
+          <div style="position:absolute;left:0;top:0;height:100%;width:${op.toFixed(1)}%;background:#c9a84c;border-radius:4px;opacity:0.4"></div>
+          <div style="position:absolute;left:0;top:0;height:100%;width:${rp.toFixed(1)}%;background:#4a9b8e;border-radius:4px"></div>
+        </div>
+        <div style="font-family:var(--font-m);font-size:11px;color:var(--text3);min-width:70px;text-align:right">${s.read}/${s.total}</div>
+      </div>`;
+    }).join('');
+}
+
+let frSeriesFilter='all';
+function filterFRSeries(f){
+  frSeriesFilter=f;
+  ['all','complete','partial','unstarted','need'].forEach(id=>{
+    const btn=document.getElementById('fr-f-'+id);
+    if(btn)btn.style.fontWeight=id===f?'700':'400';
+  });
+  buildFRSeriesList();
+}
+
+function buildFRSeriesList(){
+  const series=G.frSeries||{};
+  const container=document.getElementById('fr-series-list');
+  if(!container)return;
+  const entries=Object.entries(series).map(([name,books])=>{
+    const r=books.filter(b=>b.read).length;
+    const o=books.filter(b=>b.owned).length;
+    const tot=books.length;
+    const hasNeed=books.some(b=>b.need);
+    let status='unstarted';
+    if(r>=tot&&tot>0)status='complete';
+    else if(r>0)status='partial';
+    else if(o>=tot)status='unstarted'; // owned but unread
+    return{name,books,r,o,tot,hasNeed,status};
+  }).filter(e=>{
+    if(frSeriesFilter==='all')return true;
+    if(frSeriesFilter==='complete')return e.status==='complete';
+    if(frSeriesFilter==='partial')return e.status==='partial';
+    if(frSeriesFilter==='unstarted')return e.status==='unstarted'&&e.r===0;
+    if(frSeriesFilter==='need')return e.hasNeed;
+    return true;
+  }).sort((a,b)=>{
+    // Sort: complete first, then partial, then unstarted, by name
+    const order={complete:0,partial:1,unstarted:2};
+    if(order[a.status]!==order[b.status])return order[a.status]-order[b.status];
+    return a.name.localeCompare(b.name);
+  });
+
+  container.innerHTML=entries.map((e,idx)=>{
+    const aid=`fr-s-${idx}`;
+    const rp=e.tot?e.r/e.tot*100:0;
+    const statusColor=e.status==='complete'?'var(--teal)':e.status==='partial'?'var(--gold)':'var(--coral)';
+    const statusLabel=e.status==='complete'?'Complete':e.status==='partial'?'Partial':'Unstarted';
+    // Books sorted by publication date (year extracted from date string)
+    const sortedBooks=[...e.books].sort((a,b)=>{
+      const ya=parseInt((a.date||'0').match(/\d{4}/)?.[0]||0);
+      const yb=parseInt((b.date||'0').match(/\d{4}/)?.[0]||0);
+      return ya-yb;
+    });
+    const bookRows=sortedBooks.map(b=>{
+      const isReadNotOwned=b.read&&!b.owned;
+      const isOwnedRead=b.read&&b.owned;
+      const isOwnedUnread=!b.read&&b.owned&&!b.need;
+      const isNeed=b.need;
+      // Color: green=read+owned, cyan=read not owned, yellow=owned unread, red=need
+      const bgColor=isOwnedRead?'rgba(74,155,142,0.12)':isReadNotOwned?'rgba(74,195,210,0.12)':isOwnedUnread?'rgba(201,168,76,0.10)':'rgba(196,97,74,0.10)';
+      const dotColor=isOwnedRead?'#4a9b8e':isReadNotOwned?'#4ac3d2':isOwnedUnread?'#c9a84c':'#c4614a';
+      const dupeNote=b.dupe?` <span style="color:var(--text3);font-size:9px" title="Also appears in another series">*</span>`:'';
+      return`<div style="display:grid;grid-template-columns:10px 1fr 120px 70px 60px;gap:6px;align-items:center;padding:5px 8px;border-bottom:1px solid var(--border);background:${bgColor};font-size:12px">
+        <div style="width:8px;height:8px;border-radius:50%;background:${dotColor};flex-shrink:0"></div>
+        <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.title}${dupeNote}</div>
+        <div style="font-family:var(--font-m);font-size:10px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.author}</div>
+        <div style="font-family:var(--font-m);font-size:10px;color:var(--text3)">${b.date||''}</div>
+        <div style="font-family:var(--font-m);font-size:10px;color:var(--text3)">${b.format||''}</div>
+      </div>`;
+    }).join('');
+    // Color legend for this accordion
+    const legend=`<div style="display:flex;gap:10px;padding:6px 8px;font-family:var(--font-m);font-size:10px;color:var(--text3);background:var(--bg3);border-bottom:1px solid var(--border)">
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#4a9b8e;margin-right:3px"></span>Read & owned</span>
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#4ac3d2;margin-right:3px"></span>Read, not owned</span>
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#c9a84c;margin-right:3px"></span>Owned, unread</span>
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#c4614a;margin-right:3px"></span>Need</span>
+    </div>`;
+    return`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;overflow:hidden;box-shadow:var(--shadow)">
+      <div onclick="toggleAcc('${aid}')" style="display:grid;grid-template-columns:1fr 90px 60px 80px;gap:8px;align-items:center;padding:10px 14px;cursor:pointer;transition:background 0.1s" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
+        <div style="font-weight:500;display:flex;align-items:center;gap:8px"><span id="acc-c-${aid}" style="font-size:10px;color:var(--text3);transition:transform 0.2s">▶</span>${e.name}</div>
+        <div style="font-family:var(--font-m);font-size:10px;color:${statusColor}">${statusLabel}</div>
+        <div style="font-family:var(--font-m);font-size:11px;color:var(--text3);text-align:center">${e.r}/${e.tot}</div>
+        <div style="background:var(--bg3);border-radius:4px;height:6px;overflow:hidden;position:relative">
+          <div style="position:absolute;left:0;top:0;height:100%;width:${rp.toFixed(1)}%;background:#4a9b8e;border-radius:4px"></div>
+        </div>
+      </div>
+      <div class="acc-body" id="acc-b-${aid}">
+        ${legend}
+        <div style="display:grid;grid-template-columns:10px 1fr 120px 70px 60px;gap:6px;padding:5px 8px;font-family:var(--font-m);font-size:9px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);background:var(--bg3);border-bottom:1px solid var(--border)">
+          <div></div><div>Title</div><div>Author</div><div>Published</div><div>Format</div>
+        </div>
+        ${bookRows}
+      </div>
+    </div>`;
+  }).join('');
+  if(!entries.length)container.innerHTML='<div class="ms" style="padding:1rem;color:var(--text3)">No series match this filter.</div>';
+}
+
+function renderFRSeries(){buildFRSeriesList();}
+
+function renderFRCompletion(){
+  const books=G.frBooks||[];
+  if(!books.length)return;
+  // Year buckets
+  const years=[...new Set(books.map(b=>b.year))].sort();
+  const yearData=years.map(y=>{
+    const yBooks=books.filter(b=>b.year===y);
+    const published=yBooks.length;
+    const read=yBooks.filter(b=>b.read).length;
+    const owned=yBooks.filter(b=>b.owned&&!b.read).length; // owned but unread
+    const need=yBooks.filter(b=>b.need).length;
+    return{year:y,published,read,owned,need};
+  });
+  // Stacked area: Read (bottom), Owned unread (middle), Need (top)
+  // Use cumulative for proper stacking
+  const readData=yearData.map(d=>d.read);
+  const ownedCum=yearData.map((d,i)=>d.read+d.owned);
+  const needCum=yearData.map((d,i)=>d.read+d.owned+d.need);
+  dc('fr-year-chart');
+  charts['fr-year-chart']=new Chart(document.getElementById('fr-year-chart'),{
+    type:'line',
+    data:{
+      labels:years.map(String),
+      datasets:[
+        {label:'Read',data:readData,borderColor:'#4a9b8e',backgroundColor:'rgba(74,155,142,0.45)',borderWidth:1.5,pointRadius:2,fill:'origin',tension:0.3,order:3},
+        {label:'Owned unread',data:ownedCum,borderColor:'#c9a84c',backgroundColor:'rgba(201,168,76,0.3)',borderWidth:1.5,pointRadius:2,fill:0,tension:0.3,order:2},
+        {label:'Need',data:needCum,borderColor:'#c4614a',backgroundColor:'rgba(196,97,74,0.2)',borderWidth:1.5,pointRadius:2,fill:1,tension:0.3,order:1},
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},filler:{propagate:true},
+        tooltip:{callbacks:{label:ctx=>{
+          const d=yearData[ctx.dataIndex];
+          if(ctx.datasetIndex===0)return` Read: ${d.read}`;
+          if(ctx.datasetIndex===1)return` Owned unread: ${d.owned}`;
+          return` Need: ${d.need}`;
+        }}}
+      },
+      scales:{
+        x:{ticks:{color:'#9a9688',maxTicksLimit:15},grid:{color:'rgba(0,0,0,0.04)'}},
+        y:{ticks:{color:'#9a9688',stepSize:1},grid:{color:'rgba(0,0,0,0.04)'}}
+      }
+    }
+  });
+  // Needed table
+  const needed=books.filter(b=>b.need).sort((a,b)=>a.year-b.year);
+  document.getElementById('fr-needed-table').innerHTML=needed.map(b=>
+    `<tr><td class="nr" style="font-family:var(--font-m)">${b.year}</td><td>${b.title}</td><td>${b.author}</td><td>${b.format||'—'}</td></tr>`
+  ).join('');
 }
 
 async function init(){
   try{
-    const [booksV,metricsV,intV,ordV,growthMetricsV,growthYearV,...yearV]=await Promise.all([
+    const [booksV,metricsV,intV,ordV,growthMetricsV,growthYearV,frYearV,frSeriesV,...yearV]=await Promise.all([
       fr(BOOKS_ID,"'Butthead Series'!A:K"),
       fr(READING_ID,'Metrics!A:G'),
       fr(BOOKS_ID,'Interested!A:J'),
       fr(BOOKS_ID,"'Book Mail Orders'!A:M"),
       fr(GROWTH_ID,'Metrics!A:G'),
       fr(GROWTH_ID,'2026!A:G'),
+      fr(FR_ID,'Year Catalog!A:H'),
+      fr(FR_ID,'Series!A:H'),
       ...YEARS.map(y=>fr(READING_ID,`'${y}'!A:K`))
     ]);
     G.bookRows=parseBooks(booksV);
@@ -1300,6 +1655,8 @@ async function init(){
     G.orders=parseOrders(ordV);
     G.growthMetrics=parseGrowthMetrics(growthMetricsV);
     G.growthYear=parseGrowthYear(growthYearV);
+    G.frBooks=parseFRYearCatalog(frYearV);
+    G.frSeries=parseFRSeries(frSeriesV);
     YEARS.forEach((y,i)=>{allYD[y]=parseYear(yearV[i]);});
     document.getElementById('loading').style.display='none';
     document.getElementById('dash').style.display='block';
