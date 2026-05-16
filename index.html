@@ -357,13 +357,12 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
     </div>
 
     <!-- FR sub-tabs rendered inside a container -->
-    <div id="fr-subtabs" style="background:var(--bg3);border-bottom:1px solid var(--border);padding:0 3rem;display:flex;gap:0;overflow-x:auto;">
-      <button class="active" id="fr-st-overview" onclick="switchFRTab('fr-overview')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid transparent;color:var(--text3);cursor:pointer;margin-bottom:-1px;white-space:nowrap;transition:all 0.15s">Overview</button>
-      <button id="fr-st-series" onclick="switchFRTab('fr-series')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid transparent;color:var(--text3);cursor:pointer;margin-bottom:-1px;white-space:nowrap;transition:all 0.15s">By Series</button>
-      <button id="fr-st-completion" onclick="switchFRTab('fr-completion')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid transparent;color:var(--text3);cursor:pointer;margin-bottom:-1px;white-space:nowrap;transition:all 0.15s">Completion</button>
-    </div>
-
     <div class="panel active" id="tab-col-fr">
+      <div id="fr-subtabs" style="background:var(--bg3);border-bottom:1px solid var(--border);padding:0 3rem;display:flex;gap:0;overflow-x:auto;margin:-2.5rem -3rem 2rem;">
+        <button class="active" id="fr-st-overview" onclick="switchFRTab('fr-overview')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid var(--gold2);color:var(--gold);cursor:pointer;margin-bottom:-1px;white-space:nowrap;transition:all 0.15s">Overview</button>
+        <button id="fr-st-series" onclick="switchFRTab('fr-series')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid transparent;color:var(--text3);cursor:pointer;margin-bottom:-1px;white-space:nowrap;transition:all 0.15s">By Series</button>
+        <button id="fr-st-completion" onclick="switchFRTab('fr-completion')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid transparent;color:var(--text3);cursor:pointer;margin-bottom:-1px;white-space:nowrap;transition:all 0.15s">Completion</button>
+      </div>
       <!-- FR Overview -->
       <div id="fr-overview" class="fr-panel" style="display:block">
         <div class="sl">Forgotten Realms — overview</div>
