@@ -2306,7 +2306,7 @@ function buildBSList(){
     const aid=`bs-e-${idx}`;
     const rp=e.totalBooks?e.totalRead/e.totalBooks*100:0;
     const op=e.totalBooks?e.totalOwned/e.totalBooks*100:0;
-    const ongoingBadge=e.ongoing?`<span class="badge" style="background:#eef3f8;color:var(--blue);font-size:9px;margin-left:6px">Ongoing 📖</span>`:'';
+    const ongoingBadge='';
     const completeBadge=e.complete?`<span class="badge b-teal" style="font-size:9px;margin-left:6px">Complete ✓</span>`:'';
 
     if(e.isUniverse){
@@ -2315,9 +2315,9 @@ function buildBSList(){
         const said=`bs-s-${idx}-${si}`;
         const srp=s.count?s.read/s.count*100:0;
         const sop=s.count?s.owned/s.count*100:0;
-        const sOngoing=s.ongoing?`<span class="badge" style="background:#eef3f8;color:var(--blue);font-size:9px">Ongoing 📖</span>`:'';
+        const sOngoing='';
         const bookRows=s.books.map(b=>{
-          const isRead=b.read,isOwned=b.owned&&!b.read,isNeed=!b.owned;
+          const isRead=b.read,isOwned=b.owned&&!b.read;
           const dot=isRead?'#4a9b8e':isOwned?'#c9a84c':'#c4614a';
           const bg=isRead?'rgba(74,155,142,0.07)':isOwned?'rgba(201,168,76,0.07)':'rgba(196,97,74,0.07)';
           return`<div style="display:grid;grid-template-columns:8px 24px 1fr 130px 60px;gap:6px;align-items:center;padding:4px 8px;border-bottom:1px solid var(--border);background:${bg};font-size:11px">
@@ -2330,7 +2330,7 @@ function buildBSList(){
         }).join('');
         return`<div style="border:1px solid var(--border);border-radius:6px;margin:4px 12px 4px 20px;overflow:hidden;background:var(--bg2)">
           <div onclick="toggleAcc('${said}')" style="display:grid;grid-template-columns:1fr auto 70px 120px;gap:8px;align-items:center;padding:8px 12px;cursor:pointer;background:var(--bg3)" onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background='var(--bg3)'">
-            <div style="font-size:12px;font-weight:500;display:flex;align-items:center;gap:6px"><span id="acc-c-${said}" style="font-size:9px;color:var(--text3)">▶</span>${s.name}${sOngoing}</div>
+            <div style="font-size:12px;font-weight:500;display:flex;align-items:center;gap:6px"><span id="acc-c-${said}" style="font-size:9px;color:var(--text3)">▶</span>${s.name}</div>
             <div style="font-family:var(--font-m);font-size:10px;color:var(--text3)">${s.read}/${s.count}${s.bsCount>s.count?` of ${s.bsCount}`:''}</div>
             <div style="position:relative;height:5px;border-radius:3px;background:var(--border)">
               <div style="position:absolute;left:0;top:0;height:100%;width:${sop.toFixed(1)}%;background:#c9a84c;border-radius:3px;opacity:0.5"></div>
@@ -2349,7 +2349,7 @@ function buildBSList(){
 
       return`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;overflow:hidden;box-shadow:var(--shadow)">
         <div onclick="toggleAcc('${aid}')" style="display:grid;grid-template-columns:1fr auto 80px 160px;gap:10px;align-items:center;padding:12px 16px;cursor:pointer" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
-          <div style="font-family:var(--font-d);font-size:1rem;font-weight:600;display:flex;align-items:center;gap:8px"><span id="acc-c-${aid}" style="font-size:10px;color:var(--text3)">▶</span>${e.name}${ongoingBadge}${completeBadge}</div>
+          <div style="font-size:13px;font-weight:600;font-family:var(--font-d);display:flex;align-items:center;gap:8px"><span id="acc-c-${aid}" style="font-size:10px;color:var(--text3);font-family:var(--font-m)">▶</span>${e.name}${completeBadge}</div>
           <div style="font-family:var(--font-m);font-size:11px;color:var(--text3)">${e.seriesList.length} series · ${e.totalRead}/${e.totalBooks} read</div>
           <div style="position:relative;height:6px;border-radius:3px;background:var(--border)">
             <div style="position:absolute;left:0;top:0;height:100%;width:${op.toFixed(1)}%;background:#c9a84c;border-radius:3px;opacity:0.4"></div>
@@ -2369,7 +2369,7 @@ function buildBSList(){
     } else {
       // Single series: books directly in accordion
       const bookRows=e.books.map(b=>{
-        const isRead=b.read,isOwned=b.owned&&!b.read,isNeed=!b.owned;
+        const isRead=b.read,isOwned=b.owned&&!b.read;
         const dot=isRead?'#4a9b8e':isOwned?'#c9a84c':'#c4614a';
         const bg=isRead?'rgba(74,155,142,0.07)':isOwned?'rgba(201,168,76,0.07)':'rgba(196,97,74,0.07)';
         return`<div style="display:grid;grid-template-columns:8px 24px 1fr 130px 60px;gap:6px;align-items:center;padding:4px 10px;border-bottom:1px solid var(--border);background:${bg};font-size:11px">
@@ -2380,10 +2380,10 @@ function buildBSList(){
           <div style="font-family:var(--font-m);font-size:10px;color:var(--text3)">${b.media||''}</div>
         </div>`;
       }).join('');
-      const bsExtra=e.bsCount>e.totalBooks?` of ${e.bsCount}`:'' ;
+      const bsExtra=e.bsCount>e.totalBooks?` of ${e.bsCount}`:'';
       return`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;box-shadow:var(--shadow)">
-        <div onclick="toggleAcc('${aid}')" style="display:grid;grid-template-columns:1fr auto 80px 160px;gap:10px;align-items:center;padding:11px 16px;cursor:pointer" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
-          <div style="font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px"><span id="acc-c-${aid}" style="font-size:10px;color:var(--text3)">▶</span>${e.name}${ongoingBadge}${completeBadge}</div>
+        <div onclick="toggleAcc('${aid}')" style="display:grid;grid-template-columns:1fr auto 80px 160px;gap:10px;align-items:center;padding:12px 16px;cursor:pointer" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
+          <div style="font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px"><span id="acc-c-${aid}" style="font-size:10px;color:var(--text3)">▶</span>${e.name}${completeBadge}</div>
           <div style="font-family:var(--font-m);font-size:11px;color:var(--text3)">${e.totalRead}/${e.totalBooks}${bsExtra} read</div>
           <div style="position:relative;height:6px;border-radius:3px;background:var(--border)">
             <div style="position:absolute;left:0;top:0;height:100%;width:${op.toFixed(1)}%;background:#c9a84c;border-radius:3px;opacity:0.4"></div>
