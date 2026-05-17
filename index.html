@@ -353,7 +353,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
     <div class="tab-nav">
       <button class="active" onclick="switchTab('col-fr','collecting')">Forgotten Realms</button>
       <button onclick="switchTab('col-dl','collecting')">Dragonlance</button>
-      <button disabled style="opacity:0.35;cursor:default">Shadowrun</button>
+      <button onclick="switchTab('col-sr','collecting')">Shadowrun</button>
     </div>
 
     <!-- FR sub-tabs rendered inside a container -->
@@ -445,6 +445,40 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
         <div class="cb"><div style="height:320px"><canvas id="dl-year-chart" role="img" aria-label="DL books by year stacked area"></canvas></div></div>
         <div class="sl" style="margin-top:0.5rem">Owned — reading queue</div>
         <div class="tw"><table><thead><tr><th>Title</th><th>Series</th><th>Author</th><th>Published</th></tr></thead><tbody id="dl-owned-unread"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- SR Panel -->
+    <div class="panel" id="tab-col-sr">
+      <div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:0 3rem;display:flex;gap:0;overflow-x:auto;margin:-2.5rem -3rem 2rem;">
+        <button id="sr-st-overview" onclick="switchSRTab('sr-overview')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid var(--gold2);color:var(--gold);cursor:pointer;margin-bottom:-1px;white-space:nowrap">Overview</button>
+        <button id="sr-st-publisher" onclick="switchSRTab('sr-publisher')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid transparent;color:var(--text3);cursor:pointer;margin-bottom:-1px;white-space:nowrap">By Publisher</button>
+        <button id="sr-st-completion" onclick="switchSRTab('sr-completion')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid transparent;color:var(--text3);cursor:pointer;margin-bottom:-1px;white-space:nowrap">Completion</button>
+      </div>
+      <div id="sr-overview" class="sr-panel" style="display:block">
+        <div class="sl">Shadowrun — overview</div>
+        <div class="mg" id="sr-ov-m"></div>
+        <div class="tc">
+          <div><div class="sl">Publisher era breakdown</div><div class="cb"><div style="height:220px"><canvas id="sr-pub-pie" role="img" aria-label="SR publisher era pie"></canvas></div></div></div>
+          <div><div class="sl">Read vs owned vs needed</div><div class="cb"><div style="height:220px"><canvas id="sr-ov-bar" role="img" aria-label="SR read owned needed bar"></canvas></div></div></div>
+        </div>
+        <div class="sl">Publisher eras — completion progress</div>
+        <div class="cb" id="sr-pub-bars"></div>
+      </div>
+      <div id="sr-publisher" class="sr-panel" style="display:none">
+        <div class="sl">Books by publisher era — click to expand</div>
+        <div id="sr-publisher-list"></div>
+      </div>
+      <div id="sr-completion" class="sr-panel" style="display:none">
+        <div class="sl">Published by year — read vs owned vs needed</div>
+        <div class="leg">
+          <div class="li"><div class="ld" style="background:#4a9b8e"></div>Read</div>
+          <div class="li"><div class="ld" style="background:#c9a84c"></div>Owned unread</div>
+          <div class="li"><div class="ld" style="background:#c4614a"></div>Need</div>
+        </div>
+        <div class="cb"><div style="height:320px"><canvas id="sr-year-chart" role="img" aria-label="SR books by year stacked area"></canvas></div></div>
+        <div class="sl" style="margin-top:0.5rem">Reading queue — owned, not yet read</div>
+        <div class="tw"><table><thead><tr><th>Title</th><th>Author</th><th>Published</th><th>Format</th><th>Publisher</th></tr></thead><tbody id="sr-read-queue"></tbody></table></div>
       </div>
     </div>
   </div>
@@ -1358,9 +1392,10 @@ function restoreFromHash(){
   const hash=(location.hash||'').replace('#','');
   const[sec,tab]=hash.split('/');
   const validSecs=new Set(['tracking','reading','buying','collecting']);
-  const validTabs=new Set(['overview','bytype','genre','universe','rooms','history','thisyear','completion','toread','comingup','bookmail','toacquire','libgrowth','buythisyear','col-fr','col-dl']);
+  const validTabs=new Set(['overview','bytype','genre','universe','rooms','history','thisyear','completion','toread','comingup','bookmail','toacquire','libgrowth','buythisyear','col-fr','col-dl','col-sr']);
   const validFRTabs=new Set(['fr-overview','fr-series','fr-completion']);
   const validDLTabs=new Set(['dl-overview','dl-series','dl-completion']);
+  const validSRTabs=new Set(['sr-overview','sr-publisher','sr-completion']);
   if(sec&&validSecs.has(sec)){
     if(validFRTabs.has(tab)){
       switchSection('collecting','col-fr');
@@ -1368,6 +1403,9 @@ function restoreFromHash(){
     } else if(validDLTabs.has(tab)){
       switchSection('collecting','col-dl');
       switchDLTab(tab);
+    } else if(validSRTabs.has(tab)){
+      switchSection('collecting','col-sr');
+      switchSRTab(tab);
     } else if(tab&&validTabs.has(tab)){
       switchSection(sec,tab);
     } else {
@@ -1399,6 +1437,7 @@ function renderTab(id){
   else if(id==='buythisyear')renderBuyThisYear(G.growthYear);
   else if(id==='col-fr'){switchFRTab('fr-overview');}
   else if(id==='col-dl'){switchDLTab('dl-overview');}
+  else if(id==='col-sr'){switchSRTab('sr-overview');}
 }
 
 // ── FR PARSERS ────────────────────────────────────────────────
@@ -1924,9 +1963,199 @@ function renderDLCompletion(){
   ).join('');
 }
 
+// ── SR PARSER ─────────────────────────────────────────────────
+function parseSR(vals){
+  const books=[];
+  const PUBLISHERS=['FASA Books','WizKid Books','Catalyst'];
+  for(const r of vals){
+    const num=(r[0]||'').trim();
+    const title=(r[1]||'').trim().replace(/\n/g,' ');
+    const author=(r[2]||'').trim().replace(/\n/g,' ');
+    const date=(r[3]||'').trim();
+    const owned=(r[4]||'').trim().toLowerCase()==='x';
+    const read=(r[5]||'').trim().toLowerCase()==='x';
+    const fmt=(r[6]||'').trim();
+    const publisher=(r[7]||'').trim();
+    if(!title||title==='Title')continue;
+    if(!publisher)continue;
+    books.push({num,title,author,date,owned,read,need:!owned,format:fmt,publisher});
+  }
+  // Group by publisher
+  const byPublisher={};
+  for(const pub of PUBLISHERS) byPublisher[pub]=books.filter(b=>b.publisher===pub);
+  return{books,byPublisher};
+}
+
+// ── SR SUB-TAB NAVIGATION ─────────────────────────────────────
+const srRendered=new Set();
+function switchSRTab(tabId){
+  document.querySelectorAll('.sr-panel').forEach(p=>p.style.display='none');
+  const panel=document.getElementById(tabId);
+  if(panel)panel.style.display='block';
+  ['sr-overview','sr-publisher','sr-completion'].forEach(t=>{
+    const btn=document.getElementById('sr-st-'+t.replace('sr-',''));
+    if(btn){
+      const isActive=t===tabId;
+      btn.style.color=isActive?'var(--gold)':'var(--text3)';
+      btn.style.borderBottomColor=isActive?'var(--gold2)':'transparent';
+    }
+  });
+  if(!srRendered.has(tabId)){
+    if(tabId==='sr-overview')renderSROverview();
+    else if(tabId==='sr-publisher')renderSRPublisher();
+    else if(tabId==='sr-completion')renderSRCompletion();
+    srRendered.add(tabId);
+  }
+  updateHash('collecting',tabId);
+}
+
+// ── SR RENDERERS ──────────────────────────────────────────────
+const PUB_COLORS={'FASA Books':'#4a9b8e','WizKid Books':'#c9a84c','Catalyst':'#7a6bab'};
+const PUB_LABELS={'FASA Books':'FASA (1990–2001)','WizKid Books':'WizKids (2005–2006)','Catalyst':'Catalyst (2010–2020)'};
+
+function renderSROverview(){
+  const{books,byPublisher}=G.srData||{books:[],byPublisher:{}};
+  if(!books.length)return;
+  const total=books.length;
+  const read=books.filter(b=>b.read).length;
+  const owned=books.filter(b=>b.owned).length;
+  const need=books.filter(b=>b.need).length;
+  document.getElementById('sr-ov-m').innerHTML=
+    mH(total,'Total tracked')+
+    mH(fmt(read),'Read',pct(read,total)+' of total','t')+
+    mH(fmt(owned),'Owned',pct(owned,total)+' of total')+
+    mH(fmt(need),'Need',pct(need,total)+' of total','c')+
+    mH(40,'FASA era','fully read & owned','g')+
+    mH(3,'Publishers','FASA · WizKids · Catalyst');
+  // Publisher pie
+  const pubNames=Object.keys(byPublisher);
+  dc('sr-pub-pie');
+  charts['sr-pub-pie']=new Chart(document.getElementById('sr-pub-pie'),{
+    type:'pie',
+    data:{labels:pubNames.map(p=>PUB_LABELS[p]||p),datasets:[{data:pubNames.map(p=>byPublisher[p].length),backgroundColor:pubNames.map(p=>PUB_COLORS[p]||'#9a9688'),borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{family:'DM Mono',size:10},color:'#5a5850',boxWidth:10}}}}
+  });
+  // Read/owned/need grouped bar
+  dc('sr-ov-bar');
+  charts['sr-ov-bar']=new Chart(document.getElementById('sr-ov-bar'),{
+    type:'bar',
+    data:{
+      labels:pubNames.map(p=>PUB_LABELS[p]||p),
+      datasets:[
+        {label:'Read',data:pubNames.map(p=>byPublisher[p].filter(b=>b.read).length),backgroundColor:'#4a9b8e',borderRadius:3},
+        {label:'Owned',data:pubNames.map(p=>byPublisher[p].filter(b=>b.owned).length),backgroundColor:'#c9a84c',borderRadius:3},
+        {label:'Need',data:pubNames.map(p=>byPublisher[p].filter(b=>b.need).length),backgroundColor:'#c4614a',borderRadius:3},
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{family:'DM Mono',size:10},color:'#5a5850',boxWidth:8}}},scales:{x:{ticks:{color:'#9a9688',font:{size:10}},grid:{display:false}},y:{ticks:{color:'#9a9688'},grid:{color:'rgba(0,0,0,0.04)'}}}}
+  });
+  // Publisher progress bars
+  document.getElementById('sr-pub-bars').innerHTML=pubNames.map(pub=>{
+    const pb=byPublisher[pub];
+    const r=pb.filter(b=>b.read).length,o=pb.filter(b=>b.owned).length,tot=pb.length;
+    const rp=tot?r/tot*100:0,op=tot?o/tot*100:0;
+    const col=PUB_COLORS[pub]||'#9a9688';
+    return`<div style="margin-bottom:16px">
+      <div style="font-family:var(--font-b);font-size:13px;font-weight:500;margin-bottom:4px">${PUB_LABELS[pub]||pub} <span style="font-family:var(--font-m);font-size:11px;color:var(--text3);font-weight:400">${tot} books</span></div>
+      <div class="pr"><div class="pl">Read</div><div class="pt"><div class="pf" style="width:${rp.toFixed(1)}%;background:#4a9b8e"></div></div><div class="pv">${r}/${tot}</div></div>
+      <div class="pr"><div class="pl">Owned</div><div class="pt"><div class="pf" style="width:${op.toFixed(1)}%;background:${col};opacity:0.6"></div></div><div class="pv">${o}/${tot}</div></div>
+    </div>`;
+  }).join('');
+}
+
+function renderSRPublisher(){
+  const{byPublisher}=G.srData||{byPublisher:{}};
+  const pubNames=Object.keys(byPublisher);
+  const container=document.getElementById('sr-publisher-list');
+  container.innerHTML=pubNames.map((pub,pidx)=>{
+    const books=byPublisher[pub];
+    const r=books.filter(b=>b.read).length,o=books.filter(b=>b.owned).length,tot=books.length;
+    const op=tot?o/tot*100:0;
+    const col=PUB_COLORS[pub]||'#9a9688';
+    const aid=`sr-p-${pidx}`;
+    const sortedBooks=[...books].sort((a,b)=>{
+      const ya=parseInt((a.date||'0').match(/\d{4}/)?.[0]||0);
+      const yb=parseInt((b.date||'0').match(/\d{4}/)?.[0]||0);
+      return ya-yb;
+    });
+    const bookRows=sortedBooks.map(b=>{
+      const isReadOwned=b.read&&b.owned,isOwnedUnread=!b.read&&b.owned,isNeed=b.need;
+      const dotColor=isReadOwned?'#4a9b8e':isOwnedUnread?'#c9a84c':'#c4614a';
+      const bg=isReadOwned?'rgba(74,155,142,0.07)':isOwnedUnread?'rgba(201,168,76,0.07)':'rgba(196,97,74,0.07)';
+      return`<div style="display:grid;grid-template-columns:10px 1fr 150px 90px 80px;gap:6px;align-items:center;padding:5px 8px;border-bottom:1px solid var(--border);background:${bg};font-size:12px">
+        <div style="width:8px;height:8px;border-radius:50%;background:${dotColor}"></div>
+        <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.title}</div>
+        <div style="font-family:var(--font-m);font-size:10px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.author}</div>
+        <div style="font-family:var(--font-m);font-size:10px;color:var(--text3)">${b.date}</div>
+        <div style="font-family:var(--font-m);font-size:10px;color:var(--text3)">${b.format}</div>
+      </div>`;
+    }).join('');
+    const legend=`<div style="display:flex;gap:10px;padding:6px 8px;font-family:var(--font-m);font-size:10px;color:var(--text3);background:var(--bg3);border-bottom:1px solid var(--border)">
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#4a9b8e;margin-right:3px"></span>Read & owned</span>
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#c9a84c;margin-right:3px"></span>Owned, unread</span>
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#c4614a;margin-right:3px"></span>Need</span>
+    </div>`;
+    return`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;margin-bottom:12px;overflow:hidden;box-shadow:var(--shadow)">
+      <div onclick="toggleAcc('${aid}')" style="display:grid;grid-template-columns:1fr 60px 80px;gap:8px;align-items:center;padding:12px 14px;cursor:pointer" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
+        <div style="font-family:var(--font-d);font-size:1rem;font-weight:600;display:flex;align-items:center;gap:8px"><span id="acc-c-${aid}" style="font-size:10px;color:var(--text3)">▶</span>${PUB_LABELS[pub]||pub}</div>
+        <div style="font-family:var(--font-m);font-size:11px;color:var(--text3);text-align:center">${r}/${tot} read</div>
+        <div style="background:var(--bg3);border-radius:4px;height:6px;overflow:hidden;position:relative">
+          <div style="position:absolute;left:0;top:0;height:100%;width:${op.toFixed(1)}%;background:${col};border-radius:4px"></div>
+        </div>
+      </div>
+      <div class="acc-body" id="acc-b-${aid}">
+        ${legend}
+        <div style="display:grid;grid-template-columns:10px 1fr 150px 90px 80px;gap:6px;padding:5px 8px;font-family:var(--font-m);font-size:9px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);background:var(--bg3);border-bottom:1px solid var(--border)">
+          <div></div><div>Title</div><div>Author</div><div>Published</div><div>Format</div>
+        </div>
+        ${bookRows}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderSRCompletion(){
+  const{books}=G.srData||{books:[]};
+  if(!books.length)return;
+  const yearBooks={};
+  for(const b of books){
+    const ym=((b.date||'').match(/\d{4}/)||[])[0];
+    if(!ym)continue;
+    const y=parseInt(ym);
+    if(!yearBooks[y])yearBooks[y]={read:0,owned:0,need:0};
+    if(b.read)yearBooks[y].read++;
+    else if(b.owned)yearBooks[y].owned++;
+    if(b.need)yearBooks[y].need++;
+  }
+  const years=Object.keys(yearBooks).map(Number).sort();
+  const readData=years.map(y=>yearBooks[y].read);
+  const ownedCum=years.map(y=>yearBooks[y].read+yearBooks[y].owned);
+  const needCum=years.map(y=>yearBooks[y].read+yearBooks[y].owned+yearBooks[y].need);
+  dc('sr-year-chart');
+  charts['sr-year-chart']=new Chart(document.getElementById('sr-year-chart'),{
+    type:'line',
+    data:{labels:years.map(String),datasets:[
+      {label:'Read',data:readData,borderColor:'#4a9b8e',backgroundColor:'rgba(74,155,142,0.45)',borderWidth:1.5,pointRadius:2,fill:'origin',tension:0.3,order:3},
+      {label:'Owned unread',data:ownedCum,borderColor:'#c9a84c',backgroundColor:'rgba(201,168,76,0.3)',borderWidth:1.5,pointRadius:2,fill:0,tension:0.3,order:2},
+      {label:'Need',data:needCum,borderColor:'#c4614a',backgroundColor:'rgba(196,97,74,0.2)',borderWidth:1.5,pointRadius:2,fill:1,tension:0.3,order:1},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},filler:{propagate:true},
+      tooltip:{callbacks:{label:ctx=>{const y=years[ctx.dataIndex];const d=yearBooks[y];if(ctx.datasetIndex===0)return` Read: ${d.read}`;if(ctx.datasetIndex===1)return` Owned: ${d.owned}`;return` Need: ${d.need}`;}}},
+    },scales:{x:{ticks:{color:'#9a9688',maxTicksLimit:15},grid:{color:'rgba(0,0,0,0.04)'}},y:{ticks:{color:'#9a9688',stepSize:1},grid:{color:'rgba(0,0,0,0.04)'}}}}
+  });
+  const queue=books.filter(b=>b.owned&&!b.read).sort((a,b)=>{
+    const ya=parseInt((a.date||'0').match(/\d{4}/)?.[0]||0);
+    const yb=parseInt((b.date||'0').match(/\d{4}/)?.[0]||0);
+    return ya-yb;
+  });
+  document.getElementById('sr-read-queue').innerHTML=queue.map(b=>
+    `<tr><td>${b.title}</td><td style="color:var(--text2)">${b.author}</td><td style="font-family:var(--font-m);font-size:11px;color:var(--text3)">${b.date}</td><td style="font-family:var(--font-m);font-size:11px;color:var(--text3)">${b.format}</td><td style="font-family:var(--font-m);font-size:11px;color:var(--text3)">${b.publisher}</td></tr>`
+  ).join('');
+}
+
 async function init(){
   try{
-    const [booksV,metricsV,intV,ordV,growthMetricsV,growthYearV,frYearV,frSeriesV,dlV,...yearV]=await Promise.all([
+    const [booksV,metricsV,intV,ordV,growthMetricsV,growthYearV,frYearV,frSeriesV,dlV,srV,...yearV]=await Promise.all([
       fr(BOOKS_ID,"'Butthead Series'!A:K").catch(()=>[]),
       fr(READING_ID,'Metrics!A:G').catch(()=>[]),
       fr(BOOKS_ID,'Interested!A:J').catch(()=>[]),
@@ -1936,6 +2165,7 @@ async function init(){
       fr(FR_ID,"'Year Catalog'!A:H").catch(()=>[]),
       fr(FR_ID,"'Series'!A:H").catch(()=>[]),
       fr(FR_ID,"'DL'!A:H").catch(()=>[]),
+      fr(FR_ID,"'SR'!A:H").catch(()=>[]),
       ...YEARS.map(y=>fr(READING_ID,`'${y}'!A:K`).catch(()=>[]))
     ]);
     G.bookRows=parseBooks(booksV);
@@ -1948,6 +2178,7 @@ async function init(){
     G.frBooks=parseFRYearCatalog(frYearV);
     G.frSeries=parseFRSeries(frSeriesV);
     G.dlData=parseDL(dlV);
+    G.srData=parseSR(srV);
     YEARS.forEach((y,i)=>{allYD[y]=parseYear(yearV[i]);});
     document.getElementById('loading').style.display='none';
     document.getElementById('dash').style.display='block';
