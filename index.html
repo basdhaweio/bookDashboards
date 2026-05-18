@@ -1487,35 +1487,47 @@ function parseFRYearCatalog(vals){
 }
 
 function parseFRSeries(vals){
-  // Series sheet is membership-only: just title groupings + dupe flag
-  // Status (read/owned/need) and metadata (author/date/format) come from Year Catalog join
+  // New flat format: col A = Title, col B = Series name
+  // (also handles old grouped header format gracefully)
   const series={};
   let currentSeries=null;
+
+  // Detect format: if any row has a non-empty col B that looks like a series name
+  // (not a number, not x/blank), assume flat format
+  const flatFormat=vals.slice(1).some(r=>{
+    const b=(r[1]||'').trim();
+    return b&&!/^\d+$/.test(b)&&b.toLowerCase()!=='x'&&b!=='Series';
+  });
+
   for(const r of vals){
     const title=(r[0]||'').trim();
-    if(!title)continue;
-    // Totals/metrics rows: col A is blank or a number
-    if(/^\d+$/.test(title)&&parseInt(title)>5)continue;
-    // Dupe column: whichever column it lands in after cleanup (currently col B or later)
-    // After stripping Author/Date/Format/Read/Owned/Need, Dupe will be in col B (index 1)
-    // But sheet may not be cleaned yet — handle both old and new layouts gracefully
-    // Old layout: Title, Author, Date, Format, Read, Owned, Need, Dupe (col 7)
-    // New layout: Title, Dupe (col 1)
-    // Detect by whether col 1 looks like an author name vs a number/blank
     const col1=(r[1]||'').trim();
-    const col7=(r[7]||'').trim();
-    const dupeRaw=col7||( /^\d+$/.test(col1)||col1===''?col1:'' );
-    const isDupe=dupeRaw&&dupeRaw!=='1';
-    // Series header: no dupe-like content in col1, or col1 empty and col2+ empty
-    const isHeader=!col1||(col1==='')||(/^\d+$/.test(col1)&&!r[2]);
-    if(isHeader&&title&&!(/^\d+$/.test(title))){
-      currentSeries=title;series[currentSeries]=[];continue;
-    }
-    // Book row needs a current series context
-    if(!currentSeries)continue;
-    // Skip if this looks like a totals row (title is empty, numbers in other cols)
     if(!title)continue;
-    series[currentSeries].push({title,dupe:isDupe,dupeGroup:dupeRaw});
+    // Skip header row
+    if(title==='Title')continue;
+    // Skip totals/numeric rows
+    if(/^\d+$/.test(title)&&parseInt(title)>5)continue;
+
+    if(flatFormat){
+      // Flat format: col A = book title, col B = series name
+      const seriesName=col1||'(Standalone)';
+      if(seriesName==='(Standalone)')continue; // skip standalones
+      if(!series[seriesName])series[seriesName]=[];
+      // Dupe: if same title already exists under a different series
+      const alreadySeen=Object.values(series).some(books=>books.some(b=>b.title===title));
+      series[seriesName].push({title,dupe:alreadySeen,dupeGroup:alreadySeen?'2':'1'});
+    } else {
+      // Legacy grouped format: series header rows (title only, no col B)
+      // Dupe in col B or col 7
+      const dupeRaw=(r[7]||r[1]||'').trim();
+      const isDupe=dupeRaw&&dupeRaw!=='1';
+      if(!col1){
+        // Series header
+        currentSeries=title;series[currentSeries]=[];
+      } else if(currentSeries){
+        series[currentSeries].push({title,dupe:isDupe,dupeGroup:dupeRaw||'1'});
+      }
+    }
   }
   return series;
 }
