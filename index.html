@@ -266,14 +266,20 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       </div>
     </div>
     <div class="panel" id="tab-byseries">
-      <div class="sl">Library — by universe &amp; series</div>
       <div class="mg" id="bs-m"></div>
-      <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;align-items:center">
-        <span style="font-family:var(--font-m);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em">Filter:</span>
-        <button onclick="filterBS('all')" id="bs-f-all" class="badge b-gray" style="padding:4px 12px;cursor:pointer;font-size:11px;font-weight:700">All</button>
-        <button onclick="filterBS('unstarted')" id="bs-f-unstarted" class="badge" style="padding:4px 12px;cursor:pointer;font-size:11px;background:#fdf0ee;color:var(--coral)">Unstarted</button>
-        <button onclick="filterBS('complete')" id="bs-f-complete" class="badge" style="padding:4px 12px;cursor:pointer;font-size:11px;background:#eef7f5;color:var(--teal)">Complete ✓</button>
-        <input type="text" id="bs-search" placeholder="Search series or universe…" oninput="filterBS(currentBSFilter)" style="margin-left:auto;font-family:var(--font-m);font-size:11px;padding:5px 10px;border:1px solid var(--border2);border-radius:6px;outline:none;width:220px">
+      <!-- By Series sub-tabs -->
+      <div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:0 0 0 0;display:flex;gap:0;overflow-x:auto;margin:-2.5rem -3rem 2rem;padding-left:3rem">
+        <button id="bs-st-universes" onclick="switchBSTab('universes')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid var(--gold2);color:var(--gold);cursor:pointer;margin-bottom:-1px;white-space:nowrap">Universes</button>
+        <button id="bs-st-print" onclick="switchBSTab('print')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid transparent;color:var(--text3);cursor:pointer;margin-bottom:-1px;white-space:nowrap">Print &amp; Series</button>
+        <button id="bs-st-manga" onclick="switchBSTab('manga')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid transparent;color:var(--text3);cursor:pointer;margin-bottom:-1px;white-space:nowrap">Manga</button>
+        <button id="bs-st-comics" onclick="switchBSTab('comics')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid transparent;color:var(--text3);cursor:pointer;margin-bottom:-1px;white-space:nowrap">Comics &amp; GN</button>
+        <div style="flex:1"></div>
+        <div style="display:flex;gap:8px;align-items:center;padding-right:3rem">
+          <button onclick="filterBS('all')" id="bs-f-all" class="badge b-gray" style="padding:3px 10px;cursor:pointer;font-size:10px;font-weight:700">All</button>
+          <button onclick="filterBS('unstarted')" id="bs-f-unstarted" class="badge" style="padding:3px 10px;cursor:pointer;font-size:10px;background:#fdf0ee;color:var(--coral)">Unstarted</button>
+          <button onclick="filterBS('complete')" id="bs-f-complete" class="badge" style="padding:3px 10px;cursor:pointer;font-size:10px;background:#eef7f5;color:var(--teal)">Complete ✓</button>
+          <input type="text" id="bs-search" placeholder="Search…" oninput="filterBS(currentBSFilter)" style="font-family:var(--font-m);font-size:11px;padding:4px 8px;border:1px solid var(--border2);border-radius:6px;outline:none;width:160px">
+        </div>
       </div>
       <div id="bs-list"></div>
     </div>
@@ -2331,22 +2337,23 @@ function bookRows(books){
   }).join('');
 }
 
-function buildSeriesBody(s,secFilter){
-  // secFilter: which section we're rendering in — show only those books, or all if series is single-section
-  const filtBooks=s.sections.length>1?s.bySection[secFilter]||[]:s.books;
-  // If multi-section, show sub-headers for each section present within this series
-  if(s.sections.length>1){
-    return s.sections.map(sec=>{
-      const sb=s.bySection[sec];
-      if(!sb||!sb.length)return'';
-      return`<div style="background:var(--bg4);padding:3px 10px;font-family:var(--font-m);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border)">${SEC_LABELS[sec]}</div>`+bookRows(sb);
-    }).join('');
+function buildSeriesBody(s,secFilter,inUniverse){
+  // When inside a universe accordion (inUniverse=true), secFilter restricts to that section's books only
+  // When a standalone series appears once for all its media (inUniverse=false, secFilter=null), show all with sub-headers
+  if(inUniverse||s.sections.length===1){
+    const books=secFilter?(s.bySection[secFilter]||[]):s.books;
+    return bookRows(books);
   }
-  return bookRows(filtBooks);
+  // Standalone multi-media series: show all books with sub-section headers
+  return s.sections.map(sec=>{
+    const sb=s.bySection[sec];
+    if(!sb||!sb.length)return'';
+    return`<div style="background:var(--bg4);padding:3px 10px;font-family:var(--font-m);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border)">${SEC_LABELS[sec]}</div>`+bookRows(sb);
+  }).join('');
 }
 
-function seriesAccordion(s,aid,secFilter){
-  const dispBooks=s.sections.length>1?s.bySection[secFilter]||[]:s.books;
+function seriesAccordion(s,aid,secFilter,inUniverse=true){
+  const dispBooks=inUniverse&&secFilter?(s.bySection[secFilter]||[]):s.books;
   const dispRead=dispBooks.filter(b=>b.read).length;
   const dispCount=dispBooks.length;
   const bsExtra=s.bsCount>s.count?` of ${s.bsCount}`:'';
@@ -2358,19 +2365,22 @@ function seriesAccordion(s,aid,secFilter){
       ${progBar(dispRead,dispBooks.filter(b=>b.owned).length,dispCount,'5px')}
       <div></div>
     </div>
-    <div class="acc-body" id="acc-b-${aid}">${LEGEND}${buildSeriesBody(s,secFilter)}</div>
+    <div class="acc-body" id="acc-b-${aid}">${LEGEND}${buildSeriesBody(s,secFilter,inUniverse)}</div>
   </div>`;
 }
 
 function universeAccordion(e,aid,secFilter){
-  const secBooks=e.bySection[secFilter]||[];
+  // secFilter=null means Universes tab: show all books, with media sub-headers if mixed
+  const secBooks=secFilter?(e.bySection[secFilter]||[]):e.allBooks||(e.seriesList?e.seriesList.flatMap(s=>s.books):[]);
   const secRead=secBooks.filter(b=>b.read).length;
   const secOwned=secBooks.filter(b=>b.owned).length;
   const secCount=secBooks.length;
-  // Only show series that have books in this section
-  const relevantSeries=e.seriesList.filter(s=>(s.bySection[secFilter]||[]).length>0);
+  // Only show series that have books in the relevant section (or all if no filter)
+  const relevantSeries=secFilter
+    ?e.seriesList.filter(s=>(s.bySection[secFilter]||[]).length>0)
+    :e.seriesList;
   const badge=e.complete?`<span class="badge b-teal" style="font-size:9px;margin-left:6px">Complete ✓</span>`:'';
-  const seriesRows=relevantSeries.map((s,si)=>seriesAccordion(s,`${aid}-${si}`,secFilter)).join('');
+  const seriesRows=relevantSeries.map((s,si)=>seriesAccordion(s,`${aid}-${si}`,secFilter,true)).join('');
   return`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;overflow:hidden;box-shadow:var(--shadow)">
     <div onclick="toggleAcc('${aid}')" style="display:grid;grid-template-columns:1fr auto 80px 160px;gap:10px;align-items:center;padding:12px 16px;cursor:pointer" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
       <div style="font-size:13px;font-weight:600;font-family:var(--font-d);display:flex;align-items:center;gap:8px"><span id="acc-c-${aid}" style="font-size:10px;color:var(--text3);font-family:var(--font-m)">▶</span>${e.name}${badge}</div>
@@ -2391,7 +2401,8 @@ function universeAccordion(e,aid,secFilter){
 
 function singleSeriesAccordion(e,aid,secFilter){
   const badge=e.complete?`<span class="badge b-teal" style="font-size:9px;margin-left:6px">Complete ✓</span>`:'';
-  const dispBooks=e.sections.length>1?e.bySection[secFilter]||[]:e.books;
+  // Single-series entries always show ALL books (with sub-headers if multi-media)
+  const dispBooks=e.books;
   const dispRead=dispBooks.filter(b=>b.read).length;
   const dispOwned=dispBooks.filter(b=>b.owned).length;
   const dispCount=dispBooks.length;
@@ -2403,48 +2414,56 @@ function singleSeriesAccordion(e,aid,secFilter){
       ${progBar(dispRead,dispOwned,dispCount)}
       <div></div>
     </div>
-    <div class="acc-body" id="acc-b-${aid}">${LEGEND}${buildSeriesBody(e,secFilter)}</div>
+    <div class="acc-body" id="acc-b-${aid}">${LEGEND}${buildSeriesBody(e,null,false)}</div>
   </div>`;
 }
 
 function buildBSList(){
   const{uvEntries,serEntries}=G.bsEntries||{uvEntries:[],serEntries:[]};
   const search=(document.getElementById('bs-search')?.value||'').toLowerCase();
+  const container=document.getElementById('bs-list');
+  if(!container)return;
 
   function matchesFilter(e){
     if(search){
       const nameMatch=e.name.toLowerCase().includes(search);
-      const seriesMatch=e.isUniverse&&e.seriesList.some(s=>s.name.toLowerCase().includes(search));
+      const seriesMatch=e.isUniverse&&e.seriesList&&e.seriesList.some(s=>s.name.toLowerCase().includes(search));
       if(!nameMatch&&!seriesMatch)return false;
     }
     const totalRead=e.totalRead!==undefined?e.totalRead:e.read;
-    const totalCount=e.totalBooks!==undefined?e.totalBooks:e.count;
     if(currentBSFilter==='unstarted')return totalRead===0;
     if(currentBSFilter==='complete')return e.complete;
     return true;
   }
 
-  const SECTIONS=[
-    {id:'print',  label:'📚 Print & Series'},
-    {id:'manga',  label:'🎌 Manga'},
-    {id:'comics', label:'🦸 Comics & Graphic Novels'},
-  ];
-
-  const container=document.getElementById('bs-list');
-  if(!container)return;
-
   let html='';
-  for(const sec of SECTIONS){
-    // Universes with content in this section
-    const secUV=uvEntries.filter(e=>matchesFilter(e)&&(e.bySection[sec.id]||[]).length>0);
-    // Single series with primary section here
-    const secSer=serEntries.filter(e=>matchesFilter(e)&&(e.bySection[sec.id]||[]).length>0&&e.sections[0]===sec.id);
-    if(!secUV.length&&!secSer.length)continue;
-    html+=`<div class="sl" style="margin-top:${html?'2rem':'0'}">${sec.label}</div>`;
-    html+=secUV.map((e,i)=>universeAccordion(e,`bs-uv-${sec.id}-${i}`,sec.id)).join('');
-    html+=secSer.map((e,i)=>singleSeriesAccordion(e,`bs-ser-${sec.id}-${i}`,sec.id)).join('');
+  if(currentBSTab==='universes'){
+    const filtered=uvEntries.filter(matchesFilter);
+    html=filtered.map((e,i)=>universeAccordion(e,`bs-uv-${i}`,null)).join('');
+    if(!html)html='<div class="ms" style="padding:1rem;color:var(--text3)">No universes found.</div>';
+  } else {
+    const secId=currentBSTab;
+    const filtered=serEntries.filter(e=>{
+      if(!matchesFilter(e))return false;
+      const counts={print:(e.bySection.print||[]).length,manga:(e.bySection.manga||[]).length,comics:(e.bySection.comics||[]).length};
+      const primary=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0][0];
+      return primary===secId;
+    });
+    html=filtered.map((e,i)=>singleSeriesAccordion(e,`bs-ser-${secId}-${i}`,secId)).join('');
+    if(!html)html='<div class="ms" style="padding:1rem;color:var(--text3)">No series found.</div>';
   }
-  container.innerHTML=html||'<div class="ms" style="padding:1rem;color:var(--text3)">No results.</div>';
+  container.innerHTML=html;
+}
+
+let currentBSTab='universes';
+
+function switchBSTab(tab){
+  currentBSTab=tab;
+  ['universes','print','manga','comics'].forEach(t=>{
+    const btn=document.getElementById('bs-st-'+t);
+    if(btn){btn.style.color=t===tab?'var(--gold)':'var(--text3)';btn.style.borderBottomColor=t===tab?'var(--gold2)':'transparent';}
+  });
+  buildBSList();
 }
 
 function renderBySeries(){
@@ -2461,6 +2480,7 @@ function renderBySeries(){
     mH(universes,'Universes')+
     mH(series,'Series');
   G.bsEntries=buildBSData();
+  currentBSTab='universes';
   filterBS('all');
 }
 
