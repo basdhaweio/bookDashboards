@@ -2220,15 +2220,13 @@ function parseIndividual(vals){
 let currentBSFilter='all';
 
 // Media type classification
-const PRINT_TYPES=new Set(['Series','Individual']);
 const MANGA_TYPES=new Set(['Manga']);
 const COMICS_TYPES=new Set(['Comics','Graphic Novel']);
 
-function mediaSection(type){
-  if(PRINT_TYPES.has(type))return'print';
-  if(MANGA_TYPES.has(type))return'manga';
-  if(COMICS_TYPES.has(type))return'comics';
-  return'print'; // fallback
+function mediaSection(media){
+  if(MANGA_TYPES.has(media))return'manga';
+  if(COMICS_TYPES.has(media))return'comics';
+  return'print'; // Print, Audio, Short Stories, etc all go to Print section
 }
 
 function buildBSData(){
@@ -2269,7 +2267,7 @@ function buildBSData(){
     const sortedBooks=[...sBooks].sort((a,b)=>( parseFloat(a.seq)||999)-(parseFloat(b.seq)||999));
     // Determine primary media section
     const sectionCounts={print:0,manga:0,comics:0};
-    for(const b of sBooks) sectionCounts[mediaSection(b.type||'')]++;
+    for(const b of sBooks) sectionCounts[mediaSection(b.media||'')]++;
     const primarySection=Object.entries(sectionCounts).sort((a,b)=>b[1]-a[1])[0][0];
     return{name:sName,books:sortedBooks,read:sRead,owned:sOwned,count:sCount,
            bsCount,bsRead,bsOwned,sectionCounts,primarySection};
@@ -2412,8 +2410,8 @@ function buildEntryHTML(e,idx,section){
       </div>`;
     }).join('');
     const secBooks=e.seriesList.flatMap(s=>{
-      const secTypes={'print':['Series','Individual'],'manga':['Manga'],'comics':['Comics','Graphic Novel']}[section]||[];
-      return s.books.filter(b=>secTypes.includes(b.type||''));
+      const secTypes={'print':['Print','Audio','Short Stories'],'manga':['Manga'],'comics':['Comics','Graphic Novel']}[section]||[];
+      return s.books.filter(b=>secTypes.includes(b.media||''));
     });
     const secRead=secBooks.filter(b=>b.read).length;
     const secTotal=secBooks.length;
@@ -2439,9 +2437,9 @@ function buildEntryHTML(e,idx,section){
     const bsExtra=e.bsCount>e.count?` of ${e.bsCount}`:'';
     let bodyContent;
     if(hasMixed){
-      const sections=[['📚 Print/Series',['Series','Individual']],['🎌 Manga',['Manga']],['🦸 Comics/GN',['Comics','Graphic Novel']]];
+      const sections=[['📚 Print/Series',['Print','Audio','Short Stories']],['🎌 Manga',['Manga']],['🦸 Comics/GN',['Comics','Graphic Novel']]];
       bodyContent=sections.map(([label,types])=>{
-        const sBooks=e.books.filter(b=>types.includes(b.type||''));
+        const sBooks=e.books.filter(b=>types.includes(b.media||''));
         if(!sBooks.length)return'';
         return`<div style="background:var(--bg3);padding:4px 8px 2px;font-family:var(--font-m);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border)">${label}</div>`+
           buildBookList(sBooks,aid+'-sub');
