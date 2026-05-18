@@ -2219,94 +2219,75 @@ function parseIndividual(vals){
 // ── BY SERIES ─────────────────────────────────────────────────
 let currentBSFilter='all';
 
-// Media type classification
 const MANGA_TYPES=new Set(['Manga']);
 const COMICS_TYPES=new Set(['Comics','Graphic Novel']);
 
 function mediaSection(media){
   if(MANGA_TYPES.has(media))return'manga';
   if(COMICS_TYPES.has(media))return'comics';
-  return'print'; // Print, Audio, Short Stories, etc all go to Print section
+  return'print';
 }
 
 function buildBSData(){
   const books=G.indBooks||[];
   const bsRows=G.bookRows||[];
-
-  // Butthead Series lookup for authoritative totals
   const bsLookup={};
   for(const r of bsRows) bsLookup[r.title.toLowerCase()]={count:r.count,read:r.read,owned:r.owned};
 
-  // Structure: section(print/manga/comics) → universe|series → books
-  // Each entry will be tagged with which media sections it has content in
-  const uvData={};   // universe → { seriesName → [books] }
-  const serData={};  // seriesName (no universe) → [books]
-
+  // Group: universe → series → books, or standalone series → books
+  const uvData={};
+  const serData={};
   for(const b of books){
     const uv=b.universe||'';
-    const sn=b.series;
     if(uv){
       if(!uvData[uv])uvData[uv]={};
-      if(!uvData[uv][sn])uvData[uv][sn]=[];
-      uvData[uv][sn].push(b);
+      if(!uvData[uv][b.series])uvData[uv][b.series]=[];
+      uvData[uv][b.series].push(b);
     } else {
-      if(!serData[sn])serData[sn]=[];
-      serData[sn].push(b);
+      if(!serData[b.series])serData[b.series]=[];
+      serData[b.series].push(b);
     }
   }
 
-  // Build entry objects with media-split sub-series
-  function makeSeriesEntry(sName, sBooks){
-    const sRead=sBooks.filter(b=>b.read).length;
-    const sOwned=sBooks.filter(b=>b.owned).length;
-    const sCount=sBooks.length;
+  function sortedBooks(arr){return [...arr].sort((a,b)=>(parseFloat(a.seq)||999)-(parseFloat(b.seq)||999));}
+
+  function seriesObj(sName,sBooks){
     const bs=bsLookup[sName.toLowerCase()];
-    const bsCount=bs?bs.count:sCount;
-    const bsRead=bs?bs.read:sRead;
-    const bsOwned=bs?bs.owned:sOwned;
-    const sortedBooks=[...sBooks].sort((a,b)=>( parseFloat(a.seq)||999)-(parseFloat(b.seq)||999));
-    // Determine primary media section
-    const sectionCounts={print:0,manga:0,comics:0};
-    for(const b of sBooks) sectionCounts[mediaSection(b.media||'')]++;
-    const primarySection=Object.entries(sectionCounts).sort((a,b)=>b[1]-a[1])[0][0];
-    return{name:sName,books:sortedBooks,read:sRead,owned:sOwned,count:sCount,
-           bsCount,bsRead,bsOwned,sectionCounts,primarySection};
+    const read=sBooks.filter(b=>b.read).length;
+    const owned=sBooks.filter(b=>b.owned).length;
+    const count=sBooks.length;
+    const bsCount=bs?bs.count:count;
+    // Per-section book lists
+    const bySection={print:[],manga:[],comics:[]};
+    for(const b of sortedBooks(sBooks)) bySection[mediaSection(b.media||'')].push(b);
+    const sections=Object.entries(bySection).filter(([,v])=>v.length>0).map(([k])=>k);
+    return{name:sName,books:sortedBooks(sBooks),bySection,sections,read,owned,count,bsCount,
+           complete:read>=count&&count>0};
   }
 
   // Universe entries
   const uvEntries=[];
-  for(const[uv,seriesMap] of Object.entries(uvData)){
-    const seriesList=Object.entries(seriesMap).map(([sn,sb])=>makeSeriesEntry(sn,sb))
-      .sort((a,b)=>b.count-a.count);
-    // Determine which sections this universe has content in
-    const hasSection={print:false,manga:false,comics:false};
-    for(const s of seriesList) for(const[sec,cnt] of Object.entries(s.sectionCounts)) if(cnt>0) hasSection[sec]=true;
+  for(const[uv,sm] of Object.entries(uvData)){
+    const seriesList=Object.entries(sm).map(([sn,sb])=>seriesObj(sn,sb)).sort((a,b)=>b.count-a.count);
     const allBooks=seriesList.flatMap(s=>s.books);
-    const totalBooks=allBooks.length;
+    const bySection={print:[],manga:[],comics:[]};
+    for(const b of allBooks) bySection[mediaSection(b.media||'')].push(b);
+    const sections=Object.entries(bySection).filter(([,v])=>v.length>0).map(([k])=>k);
     const totalRead=allBooks.filter(b=>b.read).length;
     const totalOwned=allBooks.filter(b=>b.owned).length;
-    const complete=totalRead>=totalBooks&&totalBooks>0;
-    // Primary section = section with most books
-    const secTotals={print:0,manga:0,comics:0};
-    for(const s of seriesList) for(const[sec,cnt] of Object.entries(s.sectionCounts)) secTotals[sec]+=cnt;
-    const primarySection=Object.entries(secTotals).sort((a,b)=>b[1]-a[1])[0][0];
-    uvEntries.push({isUniverse:true,name:uv,seriesList,totalBooks,totalRead,totalOwned,
-                   complete,hasSection,primarySection,multiMedia:Object.values(hasSection).filter(Boolean).length>1});
+    uvEntries.push({isUniverse:true,name:uv,seriesList,bySection,sections,
+      totalBooks:allBooks.length,totalRead,totalOwned,
+      complete:totalRead>=allBooks.length&&allBooks.length>0});
   }
 
   // Single series entries
   const serEntries=[];
   for(const[sn,sb] of Object.entries(serData)){
-    const e=makeSeriesEntry(sn,sb);
-    const complete=e.read>=e.count&&e.count>0;
-    serEntries.push({isUniverse:false,name:sn,...e,complete});
+    serEntries.push(seriesObj(sn,sb));
   }
 
-  // Sort each by totalBooks/count desc
   uvEntries.sort((a,b)=>b.totalBooks-a.totalBooks);
   serEntries.sort((a,b)=>b.count-a.count);
-
-  // Combine, grouped into sections
   return{uvEntries,serEntries};
 }
 
@@ -2319,144 +2300,111 @@ function filterBS(f){
   buildBSList();
 }
 
-function buildBookRow(b,idx_prefix){
-  const isRead=b.read,isOwned=b.owned&&!b.read;
-  const dot=isRead?'#4a9b8e':isOwned?'#c9a84c':'#c4614a';
-  const bg=isRead?'rgba(74,155,142,0.07)':isOwned?'rgba(201,168,76,0.07)':'rgba(196,97,74,0.07)';
-  return`<div style="display:grid;grid-template-columns:8px 24px 1fr 130px;gap:6px;align-items:center;padding:4px 8px;border-bottom:1px solid var(--border);background:${bg};font-size:11px">
-    <div style="width:7px;height:7px;border-radius:50%;background:${dot}"></div>
-    <div style="font-family:var(--font-m);font-size:10px;color:var(--text3);text-align:right">${b.seq||''}</div>
-    <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.title}</div>
-    <div style="font-family:var(--font-m);font-size:10px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.author}</div>
-  </div>`;
-}
-
-function buildBookList(books,aid_prefix){
-  return`<div style="display:grid;grid-template-columns:8px 24px 1fr 130px;gap:6px;padding:4px 8px;font-family:var(--font-m);font-size:9px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);background:var(--bg3);border-bottom:1px solid var(--border)">
-    <div></div><div style="text-align:right">#</div><div>Title</div><div>Author</div>
-  </div>`+books.map((b,i)=>buildBookRow(b,`${aid_prefix}-${i}`)).join('');
-}
-
 const LEGEND=`<div style="display:flex;gap:10px;padding:5px 10px;font-family:var(--font-m);font-size:10px;color:var(--text3);background:var(--bg3);border-bottom:1px solid var(--border)">
   <span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#4a9b8e;margin-right:3px"></span>Read</span>
   <span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#c9a84c;margin-right:3px"></span>Owned, unread</span>
   <span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#c4614a;margin-right:3px"></span>Not owned</span>
 </div>`;
 
-function buildProgressBar(read,owned,total,height='6px'){
+const SEC_LABELS={print:'📚 Print & Series',manga:'🎌 Manga',comics:'🦸 Comics & GN'};
+
+function progBar(read,owned,total,h='6px'){
   const rp=total?read/total*100:0,op=total?owned/total*100:0;
-  return`<div style="position:relative;height:${height};border-radius:3px;background:var(--border)">
+  return`<div style="position:relative;height:${h};border-radius:3px;background:var(--border)">
     <div style="position:absolute;left:0;top:0;height:100%;width:${op.toFixed(1)}%;background:#c9a84c;border-radius:3px;opacity:0.4"></div>
     <div style="position:absolute;left:0;top:0;height:100%;width:${rp.toFixed(1)}%;background:#4a9b8e;border-radius:3px"></div>
   </div>`;
 }
 
-function buildSeriesAccordion(s,aid){
-  // For a series entry within a universe, may have sub-sections if mixed media
-  const hasMixed=Object.values(s.sectionCounts).filter(v=>v>0).length>1;
-  const bsExtra=s.bsCount>s.count?` of ${s.bsCount}`:'';
-  const completeBadge=s.read>=s.count&&s.count>0?`<span class="badge b-teal" style="font-size:9px;margin-left:4px">✓</span>`:'';
-  let bodyContent;
-  if(hasMixed){
-    // Split books by section
-    const sections=[['📚 Print/Series',['Series','Individual']],['🎌 Manga',['Manga']],['🦸 Comics/GN',['Comics','Graphic Novel']]];
-    bodyContent=sections.map(([label,types])=>{
-      const sBooks=s.books.filter(b=>types.includes(b.type||''));
-      if(!sBooks.length)return'';
-      return`<div style="background:var(--bg3);padding:4px 8px 2px;font-family:var(--font-m);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border)">${label}</div>`+
-        buildBookList(sBooks,aid+'-sub');
+function bookRows(books){
+  return`<div style="display:grid;grid-template-columns:8px 24px 1fr 130px;gap:6px;padding:4px 8px;font-family:var(--font-m);font-size:9px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);background:var(--bg3);border-bottom:1px solid var(--border)"><div></div><div style="text-align:right">#</div><div>Title</div><div>Author</div></div>`+
+  books.map(b=>{
+    const isRead=b.read,isOwned=b.owned&&!b.read;
+    const dot=isRead?'#4a9b8e':isOwned?'#c9a84c':'#c4614a';
+    const bg=isRead?'rgba(74,155,142,0.07)':isOwned?'rgba(201,168,76,0.07)':'rgba(196,97,74,0.07)';
+    return`<div style="display:grid;grid-template-columns:8px 24px 1fr 130px;gap:6px;align-items:center;padding:4px 8px;border-bottom:1px solid var(--border);background:${bg};font-size:11px">
+      <div style="width:7px;height:7px;border-radius:50%;background:${dot}"></div>
+      <div style="font-family:var(--font-m);font-size:10px;color:var(--text3);text-align:right">${b.seq||''}</div>
+      <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.title}</div>
+      <div style="font-family:var(--font-m);font-size:10px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.author}</div>
+    </div>`;
+  }).join('');
+}
+
+function buildSeriesBody(s,secFilter){
+  // secFilter: which section we're rendering in — show only those books, or all if series is single-section
+  const filtBooks=s.sections.length>1?s.bySection[secFilter]||[]:s.books;
+  // If multi-section, show sub-headers for each section present within this series
+  if(s.sections.length>1){
+    return s.sections.map(sec=>{
+      const sb=s.bySection[sec];
+      if(!sb||!sb.length)return'';
+      return`<div style="background:var(--bg4);padding:3px 10px;font-family:var(--font-m);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border)">${SEC_LABELS[sec]}</div>`+bookRows(sb);
     }).join('');
-  } else {
-    bodyContent=buildBookList(s.books,aid);
   }
+  return bookRows(filtBooks);
+}
+
+function seriesAccordion(s,aid,secFilter){
+  const dispBooks=s.sections.length>1?s.bySection[secFilter]||[]:s.books;
+  const dispRead=dispBooks.filter(b=>b.read).length;
+  const dispCount=dispBooks.length;
+  const bsExtra=s.bsCount>s.count?` of ${s.bsCount}`:'';
+  const badge=s.complete?`<span class="badge b-teal" style="font-size:9px;margin-left:4px">✓</span>`:'';
   return`<div style="border:1px solid var(--border);border-radius:6px;margin:4px 12px 4px 20px;overflow:hidden;background:var(--bg2)">
     <div onclick="toggleAcc('${aid}')" style="display:grid;grid-template-columns:1fr auto 70px 100px;gap:8px;align-items:center;padding:8px 12px;cursor:pointer;background:var(--bg3)" onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background='var(--bg3)'">
-      <div style="font-size:12px;font-weight:500;display:flex;align-items:center;gap:5px"><span id="acc-c-${aid}" style="font-size:9px;color:var(--text3)">▶</span>${s.name}${completeBadge}</div>
-      <div style="font-family:var(--font-m);font-size:10px;color:var(--text3)">${s.read}/${s.count}${bsExtra}</div>
-      ${buildProgressBar(s.read,s.owned,s.count,'5px')}
+      <div style="font-size:12px;font-weight:500;display:flex;align-items:center;gap:5px"><span id="acc-c-${aid}" style="font-size:9px;color:var(--text3)">▶</span>${s.name}${badge}</div>
+      <div style="font-family:var(--font-m);font-size:10px;color:var(--text3)">${dispRead}/${dispCount}${bsExtra}</div>
+      ${progBar(dispRead,dispBooks.filter(b=>b.owned).length,dispCount,'5px')}
       <div></div>
     </div>
-    <div class="acc-body" id="acc-b-${aid}">${LEGEND}${bodyContent}</div>
+    <div class="acc-body" id="acc-b-${aid}">${LEGEND}${buildSeriesBody(s,secFilter)}</div>
   </div>`;
 }
 
-function buildEntryHTML(e,idx,section){
-  const aid=`bs-e-${section}-${idx}`;
-  const completeBadge=e.complete?`<span class="badge b-teal" style="font-size:9px;margin-left:6px">Complete ✓</span>`:'';
+function universeAccordion(e,aid,secFilter){
+  const secBooks=e.bySection[secFilter]||[];
+  const secRead=secBooks.filter(b=>b.read).length;
+  const secOwned=secBooks.filter(b=>b.owned).length;
+  const secCount=secBooks.length;
+  // Only show series that have books in this section
+  const relevantSeries=e.seriesList.filter(s=>(s.bySection[secFilter]||[]).length>0);
+  const badge=e.complete?`<span class="badge b-teal" style="font-size:9px;margin-left:6px">Complete ✓</span>`:'';
+  const seriesRows=relevantSeries.map((s,si)=>seriesAccordion(s,`${aid}-${si}`,secFilter)).join('');
+  return`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;overflow:hidden;box-shadow:var(--shadow)">
+    <div onclick="toggleAcc('${aid}')" style="display:grid;grid-template-columns:1fr auto 80px 160px;gap:10px;align-items:center;padding:12px 16px;cursor:pointer" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
+      <div style="font-size:13px;font-weight:600;font-family:var(--font-d);display:flex;align-items:center;gap:8px"><span id="acc-c-${aid}" style="font-size:10px;color:var(--text3);font-family:var(--font-m)">▶</span>${e.name}${badge}</div>
+      <div style="font-family:var(--font-m);font-size:11px;color:var(--text3)">${relevantSeries.length} series · ${secRead}/${secCount} read</div>
+      ${progBar(secRead,secOwned,secCount)}
+      <div></div>
+    </div>
+    <div class="acc-body" id="acc-b-${aid}">
+      <div style="display:flex;gap:10px;padding:6px 16px;font-family:var(--font-m);font-size:10px;color:var(--text3);background:var(--bg3);border-bottom:1px solid var(--border)">
+        <span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#4a9b8e;margin-right:3px"></span>Read</span>
+        <span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#c9a84c;margin-right:3px"></span>Owned, unread</span>
+        <span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#c4614a;margin-right:3px"></span>Not owned</span>
+      </div>
+      ${seriesRows}
+    </div>
+  </div>`;
+}
 
-  if(e.isUniverse){
-    // Filter series list to those with content in this section
-    const sectionSeries=e.seriesList.filter(s=>s.sectionCounts[section]>0);
-    if(!sectionSeries.length)return'';
-    // For multi-media universes show all series; for this-section ones filter books inside
-    const seriesRows=sectionSeries.map((s,si)=>{
-      const said=`bs-s-${section}-${idx}-${si}`;
-      // Books in this section only
-      const secTypes={'print':['Series','Individual'],'manga':['Manga'],'comics':['Comics','Graphic Novel']}[section]||[];
-      const sBooks=e.multiMedia?s.books.filter(b=>secTypes.includes(b.type||'')):s.books;
-      const sRead=sBooks.filter(b=>b.read).length;
-      const sOwned=sBooks.filter(b=>b.owned).length;
-      const sCount=sBooks.length;
-      const bsExtra=s.bsCount>s.count?` of ${s.bsCount}`:'';
-      const completeBadge2=sRead>=sCount&&sCount>0?`<span class="badge b-teal" style="font-size:9px;margin-left:4px">✓</span>`:'';
-      return`<div style="border:1px solid var(--border);border-radius:6px;margin:4px 12px 4px 20px;overflow:hidden;background:var(--bg2)">
-        <div onclick="toggleAcc('${said}')" style="display:grid;grid-template-columns:1fr auto 70px 100px;gap:8px;align-items:center;padding:8px 12px;cursor:pointer;background:var(--bg3)" onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background='var(--bg3)'">
-          <div style="font-size:12px;font-weight:500;display:flex;align-items:center;gap:5px"><span id="acc-c-${said}" style="font-size:9px;color:var(--text3)">▶</span>${s.name}${completeBadge2}</div>
-          <div style="font-family:var(--font-m);font-size:10px;color:var(--text3)">${sRead}/${sCount}${bsExtra}</div>
-          ${buildProgressBar(sRead,sOwned,sCount,'5px')}
-          <div></div>
-        </div>
-        <div class="acc-body" id="acc-b-${said}">${LEGEND}${buildBookList(sBooks,said)}</div>
-      </div>`;
-    }).join('');
-    const secBooks=e.seriesList.flatMap(s=>{
-      const secTypes={'print':['Print','Audio','Short Stories'],'manga':['Manga'],'comics':['Comics','Graphic Novel']}[section]||[];
-      return s.books.filter(b=>secTypes.includes(b.media||''));
-    });
-    const secRead=secBooks.filter(b=>b.read).length;
-    const secTotal=secBooks.length;
-    return`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;overflow:hidden;box-shadow:var(--shadow)">
-      <div onclick="toggleAcc('${aid}')" style="display:grid;grid-template-columns:1fr auto 80px 160px;gap:10px;align-items:center;padding:12px 16px;cursor:pointer" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
-        <div style="font-size:13px;font-weight:600;font-family:var(--font-d);display:flex;align-items:center;gap:8px"><span id="acc-c-${aid}" style="font-size:10px;color:var(--text3);font-family:var(--font-m)">▶</span>${e.name}${completeBadge}</div>
-        <div style="font-family:var(--font-m);font-size:11px;color:var(--text3)">${sectionSeries.length} series · ${secRead}/${secTotal} read</div>
-        ${buildProgressBar(secRead,secTotal,secTotal)}
-        <div></div>
-      </div>
-      <div class="acc-body" id="acc-b-${aid}">
-        <div style="display:flex;gap:10px;padding:6px 16px;font-family:var(--font-m);font-size:10px;color:var(--text3);background:var(--bg3);border-bottom:1px solid var(--border)">
-          <span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#4a9b8e;margin-right:3px"></span>Read</span>
-          <span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#c9a84c;margin-right:3px"></span>Owned, unread</span>
-          <span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#c4614a;margin-right:3px"></span>Not owned</span>
-        </div>
-        ${seriesRows}
-      </div>
-    </div>`;
-  } else {
-    // Single series — but may be mixed media, use sub-section approach
-    const hasMixed=Object.values(e.sectionCounts).filter(v=>v>0).length>1;
-    const bsExtra=e.bsCount>e.count?` of ${e.bsCount}`:'';
-    let bodyContent;
-    if(hasMixed){
-      const sections=[['📚 Print/Series',['Print','Audio','Short Stories']],['🎌 Manga',['Manga']],['🦸 Comics/GN',['Comics','Graphic Novel']]];
-      bodyContent=sections.map(([label,types])=>{
-        const sBooks=e.books.filter(b=>types.includes(b.media||''));
-        if(!sBooks.length)return'';
-        return`<div style="background:var(--bg3);padding:4px 8px 2px;font-family:var(--font-m);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border)">${label}</div>`+
-          buildBookList(sBooks,aid+'-sub');
-      }).join('');
-    } else {
-      bodyContent=buildBookList(e.books,aid);
-    }
-    return`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;box-shadow:var(--shadow)">
-      <div onclick="toggleAcc('${aid}')" style="display:grid;grid-template-columns:1fr auto 80px 160px;gap:10px;align-items:center;padding:12px 16px;cursor:pointer" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
-        <div style="font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px"><span id="acc-c-${aid}" style="font-size:10px;color:var(--text3)">▶</span>${e.name}${completeBadge}</div>
-        <div style="font-family:var(--font-m);font-size:11px;color:var(--text3)">${e.read}/${e.count}${bsExtra} read</div>
-        ${buildProgressBar(e.read,e.owned,e.count)}
-        <div></div>
-      </div>
-      <div class="acc-body" id="acc-b-${aid}">${LEGEND}${bodyContent}</div>
-    </div>`;
-  }
+function singleSeriesAccordion(e,aid,secFilter){
+  const badge=e.complete?`<span class="badge b-teal" style="font-size:9px;margin-left:6px">Complete ✓</span>`:'';
+  const dispBooks=e.sections.length>1?e.bySection[secFilter]||[]:e.books;
+  const dispRead=dispBooks.filter(b=>b.read).length;
+  const dispOwned=dispBooks.filter(b=>b.owned).length;
+  const dispCount=dispBooks.length;
+  const bsExtra=e.bsCount>e.count?` of ${e.bsCount}`:'';
+  return`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;box-shadow:var(--shadow)">
+    <div onclick="toggleAcc('${aid}')" style="display:grid;grid-template-columns:1fr auto 80px 160px;gap:10px;align-items:center;padding:12px 16px;cursor:pointer" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
+      <div style="font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px"><span id="acc-c-${aid}" style="font-size:10px;color:var(--text3)">▶</span>${e.name}${badge}</div>
+      <div style="font-family:var(--font-m);font-size:11px;color:var(--text3)">${dispRead}/${dispCount}${bsExtra} read</div>
+      ${progBar(dispRead,dispOwned,dispCount)}
+      <div></div>
+    </div>
+    <div class="acc-body" id="acc-b-${aid}">${LEGEND}${buildSeriesBody(e,secFilter)}</div>
+  </div>`;
 }
 
 function buildBSList(){
@@ -2469,18 +2417,17 @@ function buildBSList(){
       const seriesMatch=e.isUniverse&&e.seriesList.some(s=>s.name.toLowerCase().includes(search));
       if(!nameMatch&&!seriesMatch)return false;
     }
-    if(currentBSFilter==='unstarted')return e.totalRead===0||(e.read===0&&!e.isUniverse);
+    const totalRead=e.totalRead!==undefined?e.totalRead:e.read;
+    const totalCount=e.totalBooks!==undefined?e.totalBooks:e.count;
+    if(currentBSFilter==='unstarted')return totalRead===0;
     if(currentBSFilter==='complete')return e.complete;
     return true;
   }
 
-  const filteredUV=uvEntries.filter(matchesFilter);
-  const filteredSer=serEntries.filter(matchesFilter);
-
   const SECTIONS=[
-    {id:'print',  label:'📚 Print & Series',   types:['Series','Individual']},
-    {id:'manga',  label:'🎌 Manga',              types:['Manga']},
-    {id:'comics', label:'🦸 Comics & Graphic Novels', types:['Comics','Graphic Novel']},
+    {id:'print',  label:'📚 Print & Series'},
+    {id:'manga',  label:'🎌 Manga'},
+    {id:'comics', label:'🦸 Comics & Graphic Novels'},
   ];
 
   const container=document.getElementById('bs-list');
@@ -2488,16 +2435,15 @@ function buildBSList(){
 
   let html='';
   for(const sec of SECTIONS){
-    // Universes that have content in this section
-    const secUV=filteredUV.filter(e=>e.hasSection[sec.id]);
-    // Single series that belong to this section
-    const secSer=filteredSer.filter(e=>e.primarySection===sec.id);
+    // Universes with content in this section
+    const secUV=uvEntries.filter(e=>matchesFilter(e)&&(e.bySection[sec.id]||[]).length>0);
+    // Single series with primary section here
+    const secSer=serEntries.filter(e=>matchesFilter(e)&&(e.bySection[sec.id]||[]).length>0&&e.sections[0]===sec.id);
     if(!secUV.length&&!secSer.length)continue;
     html+=`<div class="sl" style="margin-top:${html?'2rem':'0'}">${sec.label}</div>`;
-    html+=secUV.map((e,i)=>buildEntryHTML(e,i,sec.id)).join('');
-    html+=secSer.map((e,i)=>buildEntryHTML(e,secUV.length+i,sec.id)).join('');
+    html+=secUV.map((e,i)=>universeAccordion(e,`bs-uv-${sec.id}-${i}`,sec.id)).join('');
+    html+=secSer.map((e,i)=>singleSeriesAccordion(e,`bs-ser-${sec.id}-${i}`,sec.id)).join('');
   }
-
   container.innerHTML=html||'<div class="ms" style="padding:1rem;color:var(--text3)">No results.</div>';
 }
 
