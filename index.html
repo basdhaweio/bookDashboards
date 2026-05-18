@@ -1487,43 +1487,39 @@ function parseFRYearCatalog(vals){
 }
 
 function parseFRSeries(vals){
-  // New flat format: col A = Title, col B = Series name
-  // (also handles old grouped header format gracefully)
+  // Supports two formats, detected by header row:
+  // New flat: header = "Title" | "Series"  → col A=title, col B=series name
+  // Old grouped: header = "Title" | "Author" (or anything else) → series header rows
   const series={};
+  if(!vals.length)return series;
+
+  const header0=(vals[0]?.[0]||'').trim().toLowerCase();
+  const header1=(vals[0]?.[1]||'').trim().toLowerCase();
+  const flatFormat=header0==='title'&&header1==='series';
+
   let currentSeries=null;
-
-  // Detect format: if any row has a non-empty col B that looks like a series name
-  // (not a number, not x/blank), assume flat format
-  const flatFormat=vals.slice(1).some(r=>{
-    const b=(r[1]||'').trim();
-    return b&&!/^\d+$/.test(b)&&b.toLowerCase()!=='x'&&b!=='Series';
-  });
-
-  for(const r of vals){
+  for(let i=1;i<vals.length;i++){
+    const r=vals[i];
     const title=(r[0]||'').trim();
     const col1=(r[1]||'').trim();
     if(!title)continue;
-    // Skip header row
-    if(title==='Title')continue;
-    // Skip totals/numeric rows
     if(/^\d+$/.test(title)&&parseInt(title)>5)continue;
 
     if(flatFormat){
-      // Flat format: col A = book title, col B = series name
-      const seriesName=col1||'(Standalone)';
-      if(seriesName==='(Standalone)')continue; // skip standalones
+      // col A = book title, col B = series name
+      const seriesName=col1;
+      if(!seriesName)continue; // no series = standalone, skip
       if(!series[seriesName])series[seriesName]=[];
-      // Dupe: if same title already exists under a different series
-      const alreadySeen=Object.values(series).some(books=>books.some(b=>b.title===title));
+      // Mark as dupe if this title already exists under a different series
+      const alreadySeen=Object.entries(series).some(([sn,books])=>sn!==seriesName&&books.some(b=>b.title===title));
       series[seriesName].push({title,dupe:alreadySeen,dupeGroup:alreadySeen?'2':'1'});
     } else {
-      // Legacy grouped format: series header rows (title only, no col B)
-      // Dupe in col B or col 7
-      const dupeRaw=(r[7]||r[1]||'').trim();
+      // Old grouped: series header = title only with no col B
+      const dupeRaw=(r[7]||'').trim();
       const isDupe=dupeRaw&&dupeRaw!=='1';
       if(!col1){
-        // Series header
-        currentSeries=title;series[currentSeries]=[];
+        currentSeries=title;
+        if(!series[currentSeries])series[currentSeries]=[];
       } else if(currentSeries){
         series[currentSeries].push({title,dupe:isDupe,dupeGroup:dupeRaw||'1'});
       }
