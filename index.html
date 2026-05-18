@@ -1529,19 +1529,30 @@ function parseFRSeries(vals){
 }
 
 function enrichFRSeriesFromYearCatalog(series, ycBooks){
-  // Build Year Catalog lookup by title (lowercase)
-  const ycByTitle={};
-  for(const b of ycBooks) ycByTitle[b.title.toLowerCase()]=b;
-  // Enrich each book in each series with YC metadata + status
+  // Normalize title for matching: lowercase, strip parentheticals, strip punctuation
+  function normTitle(t){
+    return t.toLowerCase()
+      .replace(/\s*\(.*?\)\s*/g,'')  // strip (Homecoming 2), (Brimstone Angels Series 4) etc
+      .replace(/[-']/g,' ')           // hyphen/apostrophe → space
+      .replace(/\s+/g,' ')
+      .trim();
+  }
+  // Build two lookups: exact and normalized
+  const ycExact={}, ycNorm={};
+  for(const b of ycBooks){
+    ycExact[b.title.toLowerCase()]=b;
+    const n=normTitle(b.title);
+    if(!ycNorm[n])ycNorm[n]=b; // first match wins if multiple normalize the same
+  }
   const enriched={};
   for(const[sName,books] of Object.entries(series)){
     enriched[sName]=books.map(b=>{
-      const yc=ycByTitle[b.title.toLowerCase()];
+      // Try exact match first, then normalized
+      const yc=ycExact[b.title.toLowerCase()]||ycNorm[normTitle(b.title)];
       return{
         title:b.title,
         dupe:b.dupe,
         dupeGroup:b.dupeGroup,
-        // From Year Catalog (source of truth)
         author:yc?yc.author:'',
         date:yc?yc.date:'',
         format:yc?yc.format:'',
