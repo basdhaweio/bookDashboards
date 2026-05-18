@@ -1487,30 +1487,64 @@ function parseFRYearCatalog(vals){
 }
 
 function parseFRSeries(vals){
+  // Series sheet is membership-only: just title groupings + dupe flag
+  // Status (read/owned/need) and metadata (author/date/format) come from Year Catalog join
   const series={};
   let currentSeries=null;
   for(const r of vals){
     const title=(r[0]||'').trim();
-    const author=(r[1]||'').trim();
-    const datePub=(r[2]||'').trim();
-    const fmt=(r[3]||'').trim();
-    const readRaw=(r[4]||'').trim().toLowerCase();
-    const ownedRaw=(r[5]||'').trim().toLowerCase();
-    const needRaw=(r[6]||'').trim().toLowerCase();
-    const dupeRaw=(r[7]||'').trim();
-    // Skip totals row
-    if(!title&&!author)continue;
-    if(title&&readRaw&&/^\d+$/.test(readRaw)&&parseInt(readRaw)>5)continue;
-    // Series header: title present, no author, no format
-    if(title&&!author&&!fmt){currentSeries=title;series[currentSeries]=[];continue;}
-    if(!title||!currentSeries||!author)continue;
-    const isRead=!!(readRaw&&readRaw!=='0'&&!/^\d+$/.test(readRaw));
-    const isOwned=!!(ownedRaw&&ownedRaw!=='0'&&!/^\d+$/.test(ownedRaw));
-    const isNeed=needRaw==='x';
+    if(!title)continue;
+    // Totals/metrics rows: col A is blank or a number
+    if(/^\d+$/.test(title)&&parseInt(title)>5)continue;
+    // Dupe column: whichever column it lands in after cleanup (currently col B or later)
+    // After stripping Author/Date/Format/Read/Owned/Need, Dupe will be in col B (index 1)
+    // But sheet may not be cleaned yet — handle both old and new layouts gracefully
+    // Old layout: Title, Author, Date, Format, Read, Owned, Need, Dupe (col 7)
+    // New layout: Title, Dupe (col 1)
+    // Detect by whether col 1 looks like an author name vs a number/blank
+    const col1=(r[1]||'').trim();
+    const col7=(r[7]||'').trim();
+    const dupeRaw=col7||( /^\d+$/.test(col1)||col1===''?col1:'' );
     const isDupe=dupeRaw&&dupeRaw!=='1';
-    series[currentSeries].push({title,author,date:datePub,format:fmt,read:isRead,owned:isOwned,need:isNeed,dupe:isDupe,dupeGroup:dupeRaw});
+    // Series header: no dupe-like content in col1, or col1 empty and col2+ empty
+    const isHeader=!col1||(col1==='')||(/^\d+$/.test(col1)&&!r[2]);
+    if(isHeader&&title&&!(/^\d+$/.test(title))){
+      currentSeries=title;series[currentSeries]=[];continue;
+    }
+    // Book row needs a current series context
+    if(!currentSeries)continue;
+    // Skip if this looks like a totals row (title is empty, numbers in other cols)
+    if(!title)continue;
+    series[currentSeries].push({title,dupe:isDupe,dupeGroup:dupeRaw});
   }
   return series;
+}
+
+function enrichFRSeriesFromYearCatalog(series, ycBooks){
+  // Build Year Catalog lookup by title (lowercase)
+  const ycByTitle={};
+  for(const b of ycBooks) ycByTitle[b.title.toLowerCase()]=b;
+  // Enrich each book in each series with YC metadata + status
+  const enriched={};
+  for(const[sName,books] of Object.entries(series)){
+    enriched[sName]=books.map(b=>{
+      const yc=ycByTitle[b.title.toLowerCase()];
+      return{
+        title:b.title,
+        dupe:b.dupe,
+        dupeGroup:b.dupeGroup,
+        // From Year Catalog (source of truth)
+        author:yc?yc.author:'',
+        date:yc?yc.date:'',
+        format:yc?yc.format:'',
+        read:yc?yc.read:false,
+        owned:yc?yc.owned:false,
+        need:yc?yc.need:false,
+        year:yc?yc.year:0,
+      };
+    });
+  }
+  return enriched;
 }
 
 // ── FR SUB-TAB NAVIGATION ─────────────────────────────────────
@@ -2451,7 +2485,7 @@ async function init(){
     G.growthMetrics=parseGrowthMetrics(growthMetricsV);
     G.growthYear=parseGrowthYear(growthYearV);
     G.frBooks=parseFRYearCatalog(frYearV);
-    G.frSeries=parseFRSeries(frSeriesV);
+    G.frSeries=enrichFRSeriesFromYearCatalog(parseFRSeries(frSeriesV), G.frBooks);
     G.dlData=parseDL(dlV);
     G.srData=parseSR(srV);
     YEARS.forEach((y,i)=>{allYD[y]=parseYear(yearV[i]);});
