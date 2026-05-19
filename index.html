@@ -268,7 +268,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
     <div class="panel" id="tab-byseries">
       <div class="mg" id="bs-m"></div>
       <!-- By Series sub-tabs -->
-      <div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:0 0 0 0;display:flex;gap:0;overflow-x:auto;margin:-2.5rem -3rem 2rem;padding-left:3rem">
+      <div style="background:var(--bg3);border-bottom:1px solid var(--border);display:flex;gap:0;overflow-x:auto;margin:1rem -3rem 2rem;padding-left:3rem">
         <button id="bs-st-universes" onclick="switchBSTab('universes')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid var(--gold2);color:var(--gold);cursor:pointer;margin-bottom:-1px;white-space:nowrap">Universes</button>
         <button id="bs-st-print" onclick="switchBSTab('print')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid transparent;color:var(--text3);cursor:pointer;margin-bottom:-1px;white-space:nowrap">Print &amp; Series</button>
         <button id="bs-st-manga" onclick="switchBSTab('manga')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid transparent;color:var(--text3);cursor:pointer;margin-bottom:-1px;white-space:nowrap">Manga</button>
@@ -2281,9 +2281,35 @@ function buildBSData(){
     const sections=Object.entries(bySection).filter(([,v])=>v.length>0).map(([k])=>k);
     const totalRead=allBooks.filter(b=>b.read).length;
     const totalOwned=allBooks.filter(b=>b.owned).length;
-    uvEntries.push({isUniverse:true,name:uv,seriesList,bySection,sections,
-      totalBooks:allBooks.length,totalRead,totalOwned,
-      complete:totalRead>=allBooks.length&&allBooks.length>0});
+    const isTrulyMultiSeries=seriesList.length>=2;
+    // If all books are in one non-print section (all manga or all comics), treat as serEntries
+    const isSingleMedia=sections.length===1&&sections[0]!=='print';
+    if(isTrulyMultiSeries&&!isSingleMedia){
+      uvEntries.push({isUniverse:true,name:uv,seriesList,bySection,sections,
+        totalBooks:allBooks.length,totalRead,totalOwned,
+        complete:totalRead>=allBooks.length&&allBooks.length>0});
+    } else {
+      // Single-media multi-series (e.g. all-comics Power Rangers, all-manga Evangelion)
+      // Route as a grouped entry into serEntries using the universe name
+      const groupBooks=allBooks;
+      const groupRead=totalRead;
+      const groupOwned=totalOwned;
+      const groupCount=groupBooks.length;
+      const bs=null; // no single bsLookup entry for universe name
+      const groupBySection={print:[],manga:[],comics:[]};
+      for(const b of groupBooks) groupBySection[mediaSection(b.media||'')].push(b);
+      const groupSections=Object.entries(groupBySection).filter(([,v])=>v.length>0).map(([k])=>k);
+      // Build as a seriesObj-like entry but with universe name and sub-series aware body
+      const grouped={
+        name:uv, books:sortedBooks(groupBooks), bySection:groupBySection,
+        sections:groupSections, read:groupRead, owned:groupOwned,
+        count:groupCount, bsCount:groupCount,
+        complete:groupRead>=groupCount&&groupCount>0,
+        // Keep sub-series list for rendering
+        subSeries:seriesList
+      };
+      serEntries.push(grouped);
+    }
   }
 
   // Single series entries
@@ -2399,22 +2425,46 @@ function universeAccordion(e,aid,secFilter){
   </div>`;
 }
 
-function singleSeriesAccordion(e,aid,secFilter){
+function singleSeriesAccordion(e,aid,secId){
   const badge=e.complete?`<span class="badge b-teal" style="font-size:9px;margin-left:6px">Complete ✓</span>`:'';
-  // Single-series entries always show ALL books (with sub-headers if multi-media)
   const dispBooks=e.books;
   const dispRead=dispBooks.filter(b=>b.read).length;
   const dispOwned=dispBooks.filter(b=>b.owned).length;
   const dispCount=dispBooks.length;
   const bsExtra=e.bsCount>e.count?` of ${e.bsCount}`:'';
+  // If this is a grouped universe entry with sub-series, render like a mini universe
+  let bodyContent;
+  if(e.subSeries&&e.subSeries.length>1){
+    const subRows=e.subSeries.map((s,si)=>{
+      const said=`${aid}-sub-${si}`;
+      const sRead=s.read,sOwned=s.owned,sCount=s.count;
+      const sBadge=s.complete?`<span class="badge b-teal" style="font-size:9px;margin-left:4px">✓</span>`:'';
+      return`<div style="border:1px solid var(--border);border-radius:6px;margin:4px 12px 4px 20px;overflow:hidden;background:var(--bg2)">
+        <div onclick="toggleAcc('${said}')" style="display:grid;grid-template-columns:1fr auto 70px 100px;gap:8px;align-items:center;padding:8px 12px;cursor:pointer;background:var(--bg3)" onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background='var(--bg3)'">
+          <div style="font-size:12px;font-weight:500;display:flex;align-items:center;gap:5px"><span id="acc-c-${said}" style="font-size:9px;color:var(--text3)">▶</span>${s.name}${sBadge}</div>
+          <div style="font-family:var(--font-m);font-size:10px;color:var(--text3)">${sRead}/${sCount}</div>
+          ${progBar(sRead,sOwned,sCount,'5px')}
+          <div></div>
+        </div>
+        <div class="acc-body" id="acc-b-${said}">${LEGEND}${bookRows(s.books)}</div>
+      </div>`;
+    }).join('');
+    bodyContent=`<div style="display:flex;gap:10px;padding:6px 16px;font-family:var(--font-m);font-size:10px;color:var(--text3);background:var(--bg3);border-bottom:1px solid var(--border)">
+      <span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#4a9b8e;margin-right:3px"></span>Read</span>
+      <span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#c9a84c;margin-right:3px"></span>Owned, unread</span>
+      <span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#c4614a;margin-right:3px"></span>Not owned</span>
+    </div>${subRows}`;
+  } else {
+    bodyContent=LEGEND+buildSeriesBody(e,null,false);
+  }
   return`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;box-shadow:var(--shadow)">
     <div onclick="toggleAcc('${aid}')" style="display:grid;grid-template-columns:1fr auto 80px 160px;gap:10px;align-items:center;padding:12px 16px;cursor:pointer" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
       <div style="font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px"><span id="acc-c-${aid}" style="font-size:10px;color:var(--text3)">▶</span>${e.name}${badge}</div>
-      <div style="font-family:var(--font-m);font-size:11px;color:var(--text3)">${dispRead}/${dispCount}${bsExtra} read</div>
+      <div style="font-family:var(--font-m);font-size:11px;color:var(--text3)">${e.subSeries?`${e.subSeries.length} series · `:''} ${dispRead}/${dispCount}${bsExtra} read</div>
       ${progBar(dispRead,dispOwned,dispCount)}
       <div></div>
     </div>
-    <div class="acc-body" id="acc-b-${aid}">${LEGEND}${buildSeriesBody(e,null,false)}</div>
+    <div class="acc-body" id="acc-b-${aid}">${bodyContent}</div>
   </div>`;
 }
 
