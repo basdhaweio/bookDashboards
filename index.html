@@ -268,17 +268,31 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
     <div class="panel" id="tab-byseries">
       <div class="mg" id="bs-m"></div>
       <!-- By Series sub-tabs -->
-      <div style="background:var(--bg3);border-bottom:1px solid var(--border);display:flex;gap:0;overflow-x:auto;margin:1rem -3rem 2rem;padding-left:3rem">
+      <div style="background:var(--bg3);border-bottom:1px solid var(--border);display:flex;gap:0;overflow-x:auto;margin:1rem -3rem 0;padding-left:3rem">
         <button id="bs-st-universes" onclick="switchBSTab('universes')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid var(--gold2);color:var(--gold);cursor:pointer;margin-bottom:-1px;white-space:nowrap">Universes</button>
         <button id="bs-st-print" onclick="switchBSTab('print')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid transparent;color:var(--text3);cursor:pointer;margin-bottom:-1px;white-space:nowrap">Print &amp; Series</button>
         <button id="bs-st-manga" onclick="switchBSTab('manga')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid transparent;color:var(--text3);cursor:pointer;margin-bottom:-1px;white-space:nowrap">Manga</button>
         <button id="bs-st-comics" onclick="switchBSTab('comics')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid transparent;color:var(--text3);cursor:pointer;margin-bottom:-1px;white-space:nowrap">Comics &amp; GN</button>
         <div style="flex:1"></div>
-        <div style="display:flex;gap:8px;align-items:center;padding-right:3rem">
+        <div style="display:flex;gap:6px;align-items:center;padding-right:3rem">
+          <input type="text" id="bs-search" placeholder="Search…" oninput="buildBSList()" style="font-family:var(--font-m);font-size:11px;padding:4px 8px;border:1px solid var(--border2);border-radius:6px;outline:none;width:140px">
+        </div>
+      </div>
+      <!-- Genre + completion filters -->
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:0.6rem 0 1rem;border-bottom:1px solid var(--border);margin-bottom:1.5rem">
+        <span style="font-family:var(--font-m);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.07em">Genre:</span>
+        <button onclick="setBSGenre('all')" id="bs-g-all" class="badge b-gray" style="padding:3px 10px;cursor:pointer;font-size:10px;font-weight:700">All</button>
+        <button onclick="setBSGenre('Fantasy')" id="bs-g-Fantasy" class="badge" style="padding:3px 10px;cursor:pointer;font-size:10px;background:#eef3f8;color:#4a7ab5">Fantasy</button>
+        <button onclick="setBSGenre('Scifi')" id="bs-g-Scifi" class="badge" style="padding:3px 10px;cursor:pointer;font-size:10px;background:#eef7f5;color:var(--teal)">Sci-Fi</button>
+        <button onclick="setBSGenre('Superhero')" id="bs-g-Superhero" class="badge" style="padding:3px 10px;cursor:pointer;font-size:10px;background:#fff0ee;color:var(--coral)">Superhero</button>
+        <button onclick="setBSGenre('Horror')" id="bs-g-Horror" class="badge" style="padding:3px 10px;cursor:pointer;font-size:10px;background:#f5eef8;color:#7a5ab5">Horror</button>
+        <button onclick="setBSGenre('Nonfiction')" id="bs-g-Nonfiction" class="badge" style="padding:3px 10px;cursor:pointer;font-size:10px;background:#f5f0e8;color:#8a7a5a">Nonfiction</button>
+        <button onclick="setBSGenre('Fiction')" id="bs-g-Fiction" class="badge" style="padding:3px 10px;cursor:pointer;font-size:10px;background:#f8f3ee;color:#9a7a5a">Fiction</button>
+        <button onclick="setBSGenre('Slice of Life')" id="bs-g-Slice of Life" class="badge" style="padding:3px 10px;cursor:pointer;font-size:10px;background:#eef8ef;color:#5a8a5a">Slice of Life</button>
+        <div style="margin-left:auto;display:flex;gap:6px">
           <button onclick="filterBS('all')" id="bs-f-all" class="badge b-gray" style="padding:3px 10px;cursor:pointer;font-size:10px;font-weight:700">All</button>
           <button onclick="filterBS('unstarted')" id="bs-f-unstarted" class="badge" style="padding:3px 10px;cursor:pointer;font-size:10px;background:#fdf0ee;color:var(--coral)">Unstarted</button>
           <button onclick="filterBS('complete')" id="bs-f-complete" class="badge" style="padding:3px 10px;cursor:pointer;font-size:10px;background:#eef7f5;color:var(--teal)">Complete ✓</button>
-          <input type="text" id="bs-search" placeholder="Search…" oninput="filterBS(currentBSFilter)" style="font-family:var(--font-m);font-size:11px;padding:4px 8px;border:1px solid var(--border2);border-radius:6px;outline:none;width:160px">
         </div>
       </div>
       <div id="bs-list"></div>
@@ -2263,11 +2277,14 @@ function buildBSData(){
     const owned=sBooks.filter(b=>b.owned).length;
     const count=sBooks.length;
     const bsCount=bs?bs.count:count;
-    // Per-section book lists
     const bySection={print:[],manga:[],comics:[]};
     for(const b of sortedBooks(sBooks)) bySection[mediaSection(b.media||'')].push(b);
     const sections=Object.entries(bySection).filter(([,v])=>v.length>0).map(([k])=>k);
-    return{name:sName,books:sortedBooks(sBooks),bySection,sections,read,owned,count,bsCount,
+    // Genre: most common type value across books
+    const gc={};
+    for(const b of sBooks){const g=b.type||'';gc[g]=(gc[g]||0)+1;}
+    const genre=Object.entries(gc).sort((a,b)=>b[1]-a[1])[0]?.[0]||'';
+    return{name:sName,books:sortedBooks(sBooks),bySection,sections,read,owned,count,bsCount,genre,
            complete:read>=count&&count>0};
   }
 
@@ -2286,7 +2303,11 @@ function buildBSData(){
     // If all books are in one non-print section (all manga or all comics), treat as serEntries
     const isSingleMedia=sections.length===1&&sections[0]!=='print';
     if(isTrulyMultiSeries&&!isSingleMedia){
-      uvEntries.push({isUniverse:true,name:uv,seriesList,bySection,sections,
+      // Genre: most common genre across all series in universe
+      const gc={};
+      for(const s of seriesList) gc[s.genre]=(gc[s.genre]||0)+s.count;
+      const genre=Object.entries(gc).sort((a,b)=>b[1]-a[1])[0]?.[0]||'';
+      uvEntries.push({isUniverse:true,name:uv,seriesList,bySection,sections,genre,
         totalBooks:allBooks.length,totalRead,totalOwned,
         complete:totalRead>=allBooks.length&&allBooks.length>0});
     } else {
@@ -2328,6 +2349,18 @@ function buildBSData(){
   uvEntries.sort(completenessSort);
   serEntries.sort(completenessSort);
   return{uvEntries,serEntries};
+}
+
+let currentBSGenre='all';
+
+function setBSGenre(g){
+  currentBSGenre=g;
+  document.querySelectorAll('[id^="bs-g-"]').forEach(btn=>{
+    const active=btn.id===`bs-g-${g}`;
+    btn.style.fontWeight=active?'700':'400';
+    btn.style.opacity=active?'1':'0.7';
+  });
+  buildBSList();
 }
 
 function filterBS(f){
@@ -2487,6 +2520,11 @@ function buildBSList(){
       const seriesMatch=e.isUniverse&&e.seriesList&&e.seriesList.some(s=>s.name.toLowerCase().includes(search));
       if(!nameMatch&&!seriesMatch)return false;
     }
+    if(currentBSGenre!=='all'){
+      const eGenre=e.genre||'';
+      const seriesGenreMatch=e.isUniverse&&e.seriesList&&e.seriesList.some(s=>s.genre===currentBSGenre);
+      if(eGenre!==currentBSGenre&&!seriesGenreMatch)return false;
+    }
     const totalRead=e.totalRead!==undefined?e.totalRead:e.read;
     if(currentBSFilter==='unstarted')return totalRead===0;
     if(currentBSFilter==='complete')return e.complete;
@@ -2538,6 +2576,7 @@ function renderBySeries(){
     mH(series,'Series');
   G.bsEntries=buildBSData();
   currentBSTab='universes';
+  currentBSGenre='all';
   filterBS('all');
 }
 
