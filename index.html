@@ -2273,6 +2273,7 @@ function buildBSData(){
 
   // Universe entries
   const uvEntries=[];
+  const serEntries=[];
   for(const[uv,sm] of Object.entries(uvData)){
     const seriesList=Object.entries(sm).map(([sn,sb])=>seriesObj(sn,sb)).sort((a,b)=>b.count-a.count);
     const allBooks=seriesList.flatMap(s=>s.books);
@@ -2312,8 +2313,7 @@ function buildBSData(){
     }
   }
 
-  // Single series entries
-  const serEntries=[];
+  // Single series entries (no universe)
   for(const[sn,sb] of Object.entries(serData)){
     serEntries.push(seriesObj(sn,sb));
   }
