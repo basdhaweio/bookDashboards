@@ -2318,8 +2318,15 @@ function buildBSData(){
     serEntries.push(seriesObj(sn,sb));
   }
 
-  uvEntries.sort((a,b)=>b.totalBooks-a.totalBooks);
-  serEntries.sort((a,b)=>b.count-a.count);
+  function completenessSort(a,b){
+    // Complete first, then partial (read>0), then unstarted; within each group sort by size desc
+    const aScore=a.complete?2:(((a.totalRead||a.read||0)>0)?1:0);
+    const bScore=b.complete?2:(((b.totalRead||b.read||0)>0)?1:0);
+    if(bScore!==aScore)return bScore-aScore;
+    return(b.totalBooks||b.count||0)-(a.totalBooks||a.count||0);
+  }
+  uvEntries.sort(completenessSort);
+  serEntries.sort(completenessSort);
   return{uvEntries,serEntries};
 }
 
