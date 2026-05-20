@@ -2418,42 +2418,72 @@ function buildSeriesBody(s,secFilter,inUniverse){
   }).join('');
 }
 
+const GENRE_COLORS={
+  'Fantasy':    {bg:'#eef3f8',color:'#4a7ab5'},
+  'Scifi':      {bg:'#eef7f5',color:'#2a8a7e'},
+  'Superhero':  {bg:'#fff0ee',color:'#c4614a'},
+  'Horror':     {bg:'#f5eef8',color:'#7a5ab5'},
+  'Nonfiction': {bg:'#f5f0e8',color:'#8a7a5a'},
+  'Fiction':    {bg:'#f8f3ee',color:'#9a7a5a'},
+  'Slice of Life':{bg:'#eef8ef',color:'#5a8a5a'},
+  'Survival Horror':{bg:'#f5eef8',color:'#7a5ab5'},
+  'Dark Fantasy':{bg:'#eef3f8',color:'#4a7ab5'},
+  'Science Fantasy':{bg:'#eef7f5',color:'#2a8a7e'},
+  'Historical Fiction':{bg:'#f8f3ee',color:'#9a7a5a'},
+};
+function genreBadge(genre){
+  if(!genre)return'';
+  const c=GENRE_COLORS[genre]||{bg:'var(--bg3)',color:'var(--text3)'};
+  return`<span style="font-family:var(--font-m);font-size:9px;padding:2px 7px;border-radius:10px;background:${c.bg};color:${c.color};white-space:nowrap">${genre}</span>`;
+}
+function completeBadge(complete){
+  return complete?`<span class="badge b-teal" style="font-size:9px">Complete ✓</span>`:'';
+}
+
+// Consistent header grid: 18px(arrow) | 1fr(title) | auto(genre) | auto(complete) | 60px(series) | 70px(count) | 120px(bar)
+// For sub-series (inner level): slightly smaller, no series count col
+function accHeader(aid,name,genre,complete,seriesCount,readCount,totalCount,bsCount,isUniverse,indent){
+  const bsExtra=bsCount&&bsCount>totalCount?` of ${bsCount}`:'';
+  const seriesCol=seriesCount!=null?`<div style="font-family:var(--font-m);font-size:10px;color:var(--text3);text-align:right;white-space:nowrap">${seriesCount} series</div>`:'<div></div>';
+  const pad=indent?'8px 12px':'12px 16px';
+  const bg=indent?'var(--bg3)':'';
+  const nameSize=indent?'12px':'13px';
+  const nameFam=isUniverse&&!indent?'font-family:var(--font-d);font-weight:600;':'font-weight:500;';
+  return`<div onclick="toggleAcc('${aid}')" style="display:grid;grid-template-columns:18px 1fr auto auto ${seriesCount!=null?'60px ':''} 70px 120px;gap:8px;align-items:center;padding:${pad};cursor:pointer;background:${bg}" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background='${bg}'">
+    <span id="acc-c-${aid}" style="font-size:9px;color:var(--text3)">▶</span>
+    <div style="font-size:${nameSize};${nameFam}overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</div>
+    <div>${genreBadge(genre)}</div>
+    <div>${completeBadge(complete)}</div>
+    ${seriesCount!=null?`<div style="font-family:var(--font-m);font-size:10px;color:var(--text3);text-align:right;white-space:nowrap">${seriesCount} series</div>`:''}
+    <div style="font-family:var(--font-m);font-size:10px;color:var(--text3);text-align:right;white-space:nowrap">${readCount}/${totalCount}${bsExtra}</div>
+    ${progBar(readCount,0,totalCount,indent?'5px':'6px')}
+  </div>`;
+}
+
 function seriesAccordion(s,aid,secFilter,inUniverse=true){
   const dispBooks=inUniverse&&secFilter?(s.bySection[secFilter]||[]):s.books;
   const dispRead=dispBooks.filter(b=>b.read).length;
+  const dispOwned=dispBooks.filter(b=>b.owned).length;
   const dispCount=dispBooks.length;
-  const bsExtra=s.bsCount>s.count?` of ${s.bsCount}`:'';
-  const badge=s.complete?`<span class="badge b-teal" style="font-size:9px;margin-left:4px">✓</span>`:'';
+  const hdr=accHeader(aid,s.name,s.genre,s.complete,null,dispRead,dispCount,s.bsCount,false,true);
   return`<div style="border:1px solid var(--border);border-radius:6px;margin:4px 12px 4px 20px;overflow:hidden;background:var(--bg2)">
-    <div onclick="toggleAcc('${aid}')" style="display:grid;grid-template-columns:1fr auto 70px 100px;gap:8px;align-items:center;padding:8px 12px;cursor:pointer;background:var(--bg3)" onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background='var(--bg3)'">
-      <div style="font-size:12px;font-weight:500;display:flex;align-items:center;gap:5px"><span id="acc-c-${aid}" style="font-size:9px;color:var(--text3)">▶</span>${s.name}${badge}</div>
-      <div style="font-family:var(--font-m);font-size:10px;color:var(--text3)">${dispRead}/${dispCount}${bsExtra}</div>
-      ${progBar(dispRead,dispBooks.filter(b=>b.owned).length,dispCount,'5px')}
-      <div></div>
-    </div>
+    ${hdr}
     <div class="acc-body" id="acc-b-${aid}">${LEGEND}${buildSeriesBody(s,secFilter,inUniverse)}</div>
   </div>`;
 }
 
 function universeAccordion(e,aid,secFilter){
-  // secFilter=null means Universes tab: show all books, with media sub-headers if mixed
-  const secBooks=secFilter?(e.bySection[secFilter]||[]):e.allBooks||(e.seriesList?e.seriesList.flatMap(s=>s.books):[]);
+  const secBooks=secFilter?(e.bySection[secFilter]||[]):e.seriesList?e.seriesList.flatMap(s=>s.books):[];
   const secRead=secBooks.filter(b=>b.read).length;
   const secOwned=secBooks.filter(b=>b.owned).length;
   const secCount=secBooks.length;
-  // Only show series that have books in the relevant section (or all if no filter)
   const relevantSeries=secFilter
     ?e.seriesList.filter(s=>(s.bySection[secFilter]||[]).length>0)
     :e.seriesList;
-  const badge=e.complete?`<span class="badge b-teal" style="font-size:9px;margin-left:6px">Complete ✓</span>`:'';
+  const hdr=accHeader(aid,e.name,e.genre,e.complete,relevantSeries.length,secRead,secCount,null,true,false);
   const seriesRows=relevantSeries.map((s,si)=>seriesAccordion(s,`${aid}-${si}`,secFilter,true)).join('');
   return`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;overflow:hidden;box-shadow:var(--shadow)">
-    <div onclick="toggleAcc('${aid}')" style="display:grid;grid-template-columns:1fr auto 80px 160px;gap:10px;align-items:center;padding:12px 16px;cursor:pointer" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
-      <div style="font-size:13px;font-weight:600;font-family:var(--font-d);display:flex;align-items:center;gap:8px"><span id="acc-c-${aid}" style="font-size:10px;color:var(--text3);font-family:var(--font-m)">▶</span>${e.name}${badge}</div>
-      <div style="font-family:var(--font-m);font-size:11px;color:var(--text3)">${relevantSeries.length} series · ${secRead}/${secCount} read</div>
-      ${progBar(secRead,secOwned,secCount)}
-      <div></div>
-    </div>
+    ${hdr}
     <div class="acc-body" id="acc-b-${aid}">
       <div style="display:flex;gap:10px;padding:6px 16px;font-family:var(--font-m);font-size:10px;color:var(--text3);background:var(--bg3);border-bottom:1px solid var(--border)">
         <span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#4a9b8e;margin-right:3px"></span>Read</span>
@@ -2466,26 +2496,19 @@ function universeAccordion(e,aid,secFilter){
 }
 
 function singleSeriesAccordion(e,aid,secId){
-  const badge=e.complete?`<span class="badge b-teal" style="font-size:9px;margin-left:6px">Complete ✓</span>`:'';
   const dispBooks=e.books;
   const dispRead=dispBooks.filter(b=>b.read).length;
   const dispOwned=dispBooks.filter(b=>b.owned).length;
   const dispCount=dispBooks.length;
-  const bsExtra=e.bsCount>e.count?` of ${e.bsCount}`:'';
-  // If this is a grouped universe entry with sub-series, render like a mini universe
+  const serCount=e.subSeries&&e.subSeries.length>1?e.subSeries.length:null;
+  const hdr=accHeader(aid,e.name,e.genre,e.complete,serCount,dispRead,dispCount,e.bsCount,!!serCount,false);
   let bodyContent;
   if(e.subSeries&&e.subSeries.length>1){
     const subRows=e.subSeries.map((s,si)=>{
       const said=`${aid}-sub-${si}`;
-      const sRead=s.read,sOwned=s.owned,sCount=s.count;
-      const sBadge=s.complete?`<span class="badge b-teal" style="font-size:9px;margin-left:4px">✓</span>`:'';
+      const sHdr=accHeader(said,s.name,s.genre,s.complete,null,s.read,s.count,null,false,true);
       return`<div style="border:1px solid var(--border);border-radius:6px;margin:4px 12px 4px 20px;overflow:hidden;background:var(--bg2)">
-        <div onclick="toggleAcc('${said}')" style="display:grid;grid-template-columns:1fr auto 70px 100px;gap:8px;align-items:center;padding:8px 12px;cursor:pointer;background:var(--bg3)" onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background='var(--bg3)'">
-          <div style="font-size:12px;font-weight:500;display:flex;align-items:center;gap:5px"><span id="acc-c-${said}" style="font-size:9px;color:var(--text3)">▶</span>${s.name}${sBadge}</div>
-          <div style="font-family:var(--font-m);font-size:10px;color:var(--text3)">${sRead}/${sCount}</div>
-          ${progBar(sRead,sOwned,sCount,'5px')}
-          <div></div>
-        </div>
+        ${sHdr}
         <div class="acc-body" id="acc-b-${said}">${LEGEND}${bookRows(s.books)}</div>
       </div>`;
     }).join('');
@@ -2498,15 +2521,11 @@ function singleSeriesAccordion(e,aid,secId){
     bodyContent=LEGEND+buildSeriesBody(e,null,false);
   }
   return`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;box-shadow:var(--shadow)">
-    <div onclick="toggleAcc('${aid}')" style="display:grid;grid-template-columns:1fr auto 80px 160px;gap:10px;align-items:center;padding:12px 16px;cursor:pointer" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
-      <div style="font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px"><span id="acc-c-${aid}" style="font-size:10px;color:var(--text3)">▶</span>${e.name}${badge}</div>
-      <div style="font-family:var(--font-m);font-size:11px;color:var(--text3)">${e.subSeries?`${e.subSeries.length} series · `:''} ${dispRead}/${dispCount}${bsExtra} read</div>
-      ${progBar(dispRead,dispOwned,dispCount)}
-      <div></div>
-    </div>
+    ${hdr}
     <div class="acc-body" id="acc-b-${aid}">${bodyContent}</div>
   </div>`;
 }
+
 
 function buildBSList(){
   const{uvEntries,serEntries}=G.bsEntries||{uvEntries:[],serEntries:[]};
