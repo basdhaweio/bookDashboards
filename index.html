@@ -832,8 +832,14 @@ function renderHistory(metrics){
   yrsAsc.forEach(y=>{
     const yBooks=(allYD[y]||{}).books||[];
     yBooks.forEach(b=>{
-      // Use genre if available, fall back to media type grouping
-      let g=b.genre||'';
+      // Normalize genre string — handle Sci Fi / SciFi / Sci-Fi all mapping to Scifi
+      let g=(b.genre||'').trim();
+      g=g.replace(/sci[\s\-]?fi/i,'Scifi')
+         .replace(/slice[\s\-]of[\s\-]life/i,'Slice of Life')
+         .replace(/historical[\s\-]fiction/i,'Historical Fiction')
+         .replace(/graphic[\s\-]novel/i,'Comics/GN')
+         .replace(/comics?/i,'Comics/GN');
+      // Use media as fallback when genre is blank
       if(!g&&b.media){
         if(b.media==='Manga')g='Manga';
         else if(b.media==='Comics'||b.media==='Graphic Novel')g='Comics/GN';
