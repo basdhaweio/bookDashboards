@@ -230,6 +230,9 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
           <tbody id="velBody"></tbody>
         </table>
       </div>
+      <div class="sl" style="margin-top:2rem">Year-over-year — stacked area by genre</div>
+      <div class="leg" id="hist-genre-leg"></div>
+      <div class="cb"><div style="height:340px"><canvas id="histGenre" role="img" aria-label="Stacked area chart reading history by genre"></canvas></div></div>
     </div>
     <div class="panel" id="tab-thisyear">
       <div class="sl">Year</div>
@@ -815,9 +818,62 @@ function renderHistory(metrics){
     const tot=metrics['Total']?metrics['Total'][y]:0;
     return`<tr><td>${y}${y===2026?' (ytd)':''}</td>${cells}<td class="nr"><strong>${tot?(tot/mo[y]).toFixed(2):'—'}</strong></td></tr>`;
   }).join('');
-}
 
-let tyYear=2026,allYD={};
+  // Genre stacked area — uses allYD book-level data
+  const GENRE_ORDER=['Fantasy','Scifi','Nonfiction','Fiction','Superhero','Horror','Slice of Life','Historical Fiction','Mystery','Classics','Other'];
+  const GCOL={
+    'Fantasy':'#4a7ab5','Scifi':'#4a9b8e','Nonfiction':'#c9a84c','Fiction':'#9a8a6a',
+    'Superhero':'#c4614a','Horror':'#7a5ab5','Slice of Life':'#5a8a5a',
+    'Historical Fiction':'#8a6a4a','Mystery':'#6a8a9a','Classics':'#9a7a5a','Other':'#aaa'
+  };
+  const genreCounts={};
+  yrsAsc.forEach(y=>{
+    const yBooks=(allYD[y]||{}).books||[];
+    yBooks.forEach(b=>{
+      const g=GENRE_ORDER.includes(b.genre)?b.genre:'Other';
+      if(!genreCounts[g])genreCounts[g]={};
+      genreCounts[g][y]=(genreCounts[g][y]||0)+1;
+    });
+  });
+  const activeGenres=GENRE_ORDER.filter(g=>genreCounts[g]&&yrsAsc.some(y=>genreCounts[g][y]>0));
+  const gCumData={};
+  yrsAsc.forEach(y=>{
+    let cum=0;
+    activeGenres.forEach(g=>{
+      cum+=(genreCounts[g]?genreCounts[g][y]||0:0);
+      if(!gCumData[g])gCumData[g]=[];
+      gCumData[g].push(cum);
+    });
+  });
+  document.getElementById('hist-genre-leg').innerHTML=activeGenres.map(g=>`<div class="li"><div class="ld" style="background:${GCOL[g]}"></div>${g}</div>`).join('');
+  dc('histGenre');
+  charts.histGenre=new Chart(document.getElementById('histGenre'),{
+    type:'line',
+    data:{
+      labels:yrsAsc.map(String),
+      datasets:activeGenres.map((g,i)=>({
+        label:g, data:gCumData[g],
+        borderColor:GCOL[g], backgroundColor:GCOL[g]+'55',
+        borderWidth:1.5, pointRadius:3, pointBackgroundColor:GCOL[g],
+        fill:i===0?'origin':i-1, tension:0.3, order:activeGenres.length-i
+      }))
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},filler:{propagate:true},
+        tooltip:{callbacks:{label:ctx=>{
+          const g=activeGenres[ctx.datasetIndex];
+          const y=yrsAsc[ctx.dataIndex];
+          const raw=genreCounts[g]?genreCounts[g][y]||0:0;
+          return` ${g}: ${raw}`;
+        }}}
+      },
+      scales:{
+        x:{ticks:{color:'#9a9688'},grid:{color:'rgba(0,0,0,0.04)'}},
+        y:{ticks:{color:'#9a9688'},grid:{color:'rgba(0,0,0,0.04)'}}
+      }
+    }
+  });
+}
 function renderThisYear(year){
   tyYear=year;
   const currentYear=new Date().getFullYear();
