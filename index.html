@@ -820,17 +820,27 @@ function renderHistory(metrics){
   }).join('');
 
   // Genre stacked area — uses allYD book-level data
-  const GENRE_ORDER=['Fantasy','Scifi','Nonfiction','Fiction','Superhero','Horror','Slice of Life','Historical Fiction','Mystery','Classics','Other'];
+  // Put Other at bottom of stack so it doesn't overwhelm
+  const GENRE_ORDER=['Other','Comics/GN','Manga','Mystery','Historical Fiction','Slice of Life','Horror','Superhero','Fiction','Nonfiction','Scifi','Fantasy'];
   const GCOL={
     'Fantasy':'#4a7ab5','Scifi':'#4a9b8e','Nonfiction':'#c9a84c','Fiction':'#9a8a6a',
     'Superhero':'#c4614a','Horror':'#7a5ab5','Slice of Life':'#5a8a5a',
-    'Historical Fiction':'#8a6a4a','Mystery':'#6a8a9a','Classics':'#9a7a5a','Other':'#aaa'
+    'Historical Fiction':'#8a6a4a','Mystery':'#6a8a9a','Manga':'#c9845a',
+    'Comics/GN':'#7a9a5a','Classics':'#9a7a5a','Other':'#c8c4bc'
   };
   const genreCounts={};
   yrsAsc.forEach(y=>{
     const yBooks=(allYD[y]||{}).books||[];
     yBooks.forEach(b=>{
-      const g=GENRE_ORDER.includes(b.genre)?b.genre:'Other';
+      // Use genre if available, fall back to media type grouping
+      let g=b.genre||'';
+      if(!g&&b.media){
+        if(b.media==='Manga')g='Manga';
+        else if(b.media==='Comics'||b.media==='Graphic Novel')g='Comics/GN';
+        else g='Other';
+      }
+      if(!g)g='Other';
+      if(!GENRE_ORDER.includes(g))g='Other';
       if(!genreCounts[g])genreCounts[g]={};
       genreCounts[g][y]=(genreCounts[g][y]||0)+1;
     });
@@ -853,7 +863,7 @@ function renderHistory(metrics){
       labels:yrsAsc.map(String),
       datasets:activeGenres.map((g,i)=>({
         label:g, data:gCumData[g],
-        borderColor:GCOL[g], backgroundColor:GCOL[g]+'55',
+        borderColor:GCOL[g], backgroundColor:GCOL[g]+'40',
         borderWidth:1.5, pointRadius:3, pointBackgroundColor:GCOL[g],
         fill:i===0?'origin':i-1, tension:0.3, order:activeGenres.length-i
       }))
