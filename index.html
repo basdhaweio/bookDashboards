@@ -1467,9 +1467,10 @@ function renderBuyThisYear(books){
 
 
 function renderToAcquire(bookRows,interested){
-  const zeroOwned=bookRows.filter(r=>r.owned===0&&r.count>0).sort((a,b)=>b.count-a.count);
-  // Read but not fully owned: read > 0 AND owned < read (ebook/borrowed reads)
-  const readNotOwned=bookRows.filter(r=>r.read>0&&r.owned<r.read&&r.owned>=0).sort((a,b)=>(b.read-b.owned)-(a.read-a.owned));
+  // Not yet started: owned=0 AND read=0 (truly untouched)
+  const zeroOwned=bookRows.filter(r=>r.owned===0&&r.read===0&&r.count>0).sort((a,b)=>b.count-a.count);
+  // Read but not owned: read > 0 AND owned < read (ebook/borrowed — excludes anything in zeroOwned)
+  const readNotOwned=bookRows.filter(r=>r.read>0&&r.owned<r.read).sort((a,b)=>(b.read-b.owned)-(a.read-a.owned));
   document.getElementById('acq-m').innerHTML=
     mH(zeroOwned.length,'Unstarted series')+
     mH(zeroOwned.reduce((s,r)=>s+r.count,0),'Total books in unstarted')+
