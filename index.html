@@ -338,10 +338,12 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div class="tw"><table><thead><tr><th>Date</th><th>Books</th><th>Series</th><th>Author</th><th>Type</th><th class="nr">Count</th><th>Status</th></tr></thead><tbody id="tbb-all"></tbody></table></div>
     </div>
     <div class="panel" id="tab-toacquire">
-      <div class="sl">To acquire — 0 owned in library</div>
+      <div class="sl">To acquire — series not yet started</div>
       <div class="mg" id="acq-m"></div>
       <div class="tw"><table><thead><tr><th>Title / Series</th><th>Author</th><th>Type</th><th>Genre</th><th class="nr">Count</th><th>Universe</th></tr></thead><tbody id="acq-body"></tbody></table></div>
-      <div class="sl">Someday watchlist</div>
+      <div class="sl" style="margin-top:2rem">Read but not owned — in library digitally or borrowed</div>
+      <div class="tw"><table><thead><tr><th>Title / Series</th><th>Author</th><th>Type</th><th>Genre</th><th class="nr">Read</th><th class="nr">Owned</th><th class="nr">Gap</th></tr></thead><tbody id="unowned-body"></tbody></table></div>
+      <div class="sl" style="margin-top:2rem">Someday watchlist</div>
       <div class="tw"><table><thead><tr><th>Series</th><th>Author</th><th class="nr">Count</th><th>Genre</th></tr></thead><tbody id="someday-body"></tbody></table></div>
     </div>
     <div class="panel active" id="tab-libgrowth">
@@ -703,10 +705,15 @@ function renderOverview(bm,yd2026){
   if(focus.length&&G.bookRows){
     fsEl.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem;margin-bottom:1.5rem">'+focus.map(sn=>{
       const sl=sn.toLowerCase();
-      const match=G.bookRows.find(r=>r.title.toLowerCase().includes(sl)||sl.includes(r.title.toLowerCase().split(' ').slice(0,2).join(' ')));
-      if(!match)return`<div class="cb" style="margin:0"><div class="cbt">${sn}</div><div class="ms">—</div></div>`;
-      const rp=match.count?match.read/match.count*100:0;
-      return`<div class="cb" style="margin:0"><div class="cbt">${sn}</div><div style="display:flex;gap:12px;margin-bottom:6px;font-family:var(--font-m);font-size:11px;color:var(--text3)"><span>read <strong style="color:var(--teal)">${match.read}</strong></span><span>series size <strong style="color:var(--text)">${match.count}</strong></span></div><div class="pr" style="margin:0"><div class="pt" style="height:6px"><div class="pf" style="width:${rp.toFixed(1)}%;background:#4a9b8e;height:6px"></div></div><div class="pv">${rp.toFixed(0)}%</div></div></div>`;
+      const matchRows=G.bookRows.filter(r=>{
+        const ul=(r.universe||'').toLowerCase(),tl=r.title.toLowerCase();
+        return ul===sl||tl.includes(sl)||sl.includes(tl.split(' ').slice(0,2).join(' '));
+      });
+      if(!matchRows.length)return`<div class="cb" style="margin:0"><div class="cbt">${sn}</div><div class="ms">—</div></div>`;
+      const totalCount=matchRows.reduce((s,r)=>s+r.count,0);
+      const totalRead=matchRows.reduce((s,r)=>s+r.read,0);
+      const rp=totalCount?totalRead/totalCount*100:0;
+      return`<div class="cb" style="margin:0"><div class="cbt">${sn}</div><div style="display:flex;gap:12px;margin-bottom:6px;font-family:var(--font-m);font-size:11px;color:var(--text3)"><span>read <strong style="color:var(--teal)">${totalRead}</strong></span><span>series size <strong style="color:var(--text)">${totalCount}</strong></span></div><div class="pr" style="margin:0"><div class="pt" style="height:6px"><div class="pf" style="width:${rp.toFixed(1)}%;background:#4a9b8e;height:6px"></div></div><div class="pv">${rp.toFixed(0)}%</div></div></div>`;
     }).join('')+'</div>';
   }else{fsEl.innerHTML='';}
   const types=['Series','Individual','Manga','Comics','Graphic Novel'];
@@ -1461,8 +1468,15 @@ function renderBuyThisYear(books){
 
 function renderToAcquire(bookRows,interested){
   const zeroOwned=bookRows.filter(r=>r.owned===0&&r.count>0).sort((a,b)=>b.count-a.count);
-  document.getElementById('acq-m').innerHTML=mH(zeroOwned.length,'Series with 0 owned')+mH(zeroOwned.reduce((s,r)=>s+r.count,0),'Total books')+mH(interested.sd.length,'Someday watchlist');
+  // Read but not fully owned: read > 0 AND owned < read (ebook/borrowed reads)
+  const readNotOwned=bookRows.filter(r=>r.read>0&&r.owned<r.read&&r.owned>=0).sort((a,b)=>(b.read-b.owned)-(a.read-a.owned));
+  document.getElementById('acq-m').innerHTML=
+    mH(zeroOwned.length,'Unstarted series')+
+    mH(zeroOwned.reduce((s,r)=>s+r.count,0),'Total books in unstarted')+
+    mH(readNotOwned.length,'Read but not owned')+
+    mH(interested.sd.length,'Someday watchlist');
   document.getElementById('acq-body').innerHTML=zeroOwned.map(r=>`<tr><td>${r.title}</td><td>${r.author}</td><td>${r.type}</td><td>${r.genre||'—'}</td><td class="nr">${r.count}</td><td>${r.universe||'—'}</td></tr>`).join('');
+  document.getElementById('unowned-body').innerHTML=readNotOwned.map(r=>`<tr><td>${r.title}</td><td>${r.author}</td><td>${r.type}</td><td>${r.genre||'—'}</td><td class="nr" style="color:var(--teal)">${r.read}</td><td class="nr">${r.owned}</td><td class="nr" style="color:var(--coral)">${r.read-r.owned}</td></tr>`).join('');
   document.getElementById('someday-body').innerHTML=interested.sd.map(s=>`<tr><td>${s.series||s.title}</td><td>${s.author}</td><td class="nr">${s.count||'?'}</td><td>${s.genre||'—'}</td></tr>`).join('');
 }
 
