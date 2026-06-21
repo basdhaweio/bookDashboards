@@ -338,10 +338,14 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div class="tw"><table><thead><tr><th>Date</th><th>Books</th><th>Series</th><th>Author</th><th>Type</th><th class="nr">Count</th><th>Status</th></tr></thead><tbody id="tbb-all"></tbody></table></div>
     </div>
     <div class="panel" id="tab-toacquire">
-      <div class="sl">To acquire — series not yet started</div>
+      <div class="sl">To acquire — reconciling the "need to buy" gap</div>
       <div class="mg" id="acq-m"></div>
+      <div class="cb" id="acq-reconcile" style="margin-bottom:1.5rem"></div>
+      <div class="sl">Unstarted series — owned 0, read 0</div>
       <div class="tw"><table><thead><tr><th>Title / Series</th><th>Author</th><th>Type</th><th>Genre</th><th class="nr">Count</th><th>Universe</th></tr></thead><tbody id="acq-body"></tbody></table></div>
-      <div class="sl" style="margin-top:2rem">Read but not owned — in library digitally or borrowed</div>
+      <div class="sl" style="margin-top:2rem">Partially owned — in progress, more to buy</div>
+      <div class="tw"><table><thead><tr><th>Title / Series</th><th>Author</th><th>Type</th><th>Genre</th><th class="nr">Owned</th><th class="nr">Count</th><th class="nr">Gap</th></tr></thead><tbody id="partial-body"></tbody></table></div>
+      <div class="sl" style="margin-top:2rem">Read but not owned — digital or borrowed</div>
       <div class="tw"><table><thead><tr><th>Title / Series</th><th>Author</th><th>Type</th><th>Genre</th><th class="nr">Read</th><th class="nr">Owned</th><th class="nr">Gap</th></tr></thead><tbody id="unowned-body"></tbody></table></div>
       <div class="sl" style="margin-top:2rem">Someday watchlist</div>
       <div class="tw"><table><thead><tr><th>Series</th><th>Author</th><th class="nr">Count</th><th>Genre</th></tr></thead><tbody id="someday-body"></tbody></table></div>
@@ -1467,16 +1471,48 @@ function renderBuyThisYear(books){
 
 
 function renderToAcquire(bookRows,interested){
-  // Not yet started: owned=0 AND read=0 (truly untouched)
-  const zeroOwned=bookRows.filter(r=>r.owned===0&&r.read===0&&r.count>0).sort((a,b)=>b.count-a.count);
-  // Read but not owned: read > 0 AND owned < read (ebook/borrowed — excludes anything in zeroOwned)
+  // Three mutually-exclusive buckets that together sum to total "need to buy"
+  // 1. Unstarted: owned=0, read=0
+  // 2. Read but not owned: read>owned (digital/borrowed)
+  // 3. Partially owned: owned>0, owned<count, NOT in bucket 2
+  const unstarted=bookRows.filter(r=>r.owned===0&&r.read===0&&r.count>0).sort((a,b)=>b.count-a.count);
   const readNotOwned=bookRows.filter(r=>r.read>0&&r.owned<r.read).sort((a,b)=>(b.read-b.owned)-(a.read-a.owned));
+  const readNotOwnedSet=new Set(readNotOwned.map(r=>r.title));
+  const partial=bookRows.filter(r=>r.owned>0&&r.owned<r.count&&!readNotOwnedSet.has(r.title)).sort((a,b)=>(b.count-b.owned)-(a.count-a.owned));
+
+  // Compute total need-to-buy gap across all series (matches Tracking)
+  const totalGap=bookRows.reduce((s,r)=>s+Math.max(0,r.count-r.owned),0);
+  const unstartedGap=unstarted.reduce((s,r)=>s+r.count,0);
+  const readNotOwnedGap=readNotOwned.reduce((s,r)=>s+(r.read-r.owned),0);
+  const partialGap=partial.reduce((s,r)=>s+(r.count-r.owned),0);
+  // Remainder = read-not-owned series that also have additional unowned books beyond what's read
+  const accounted=unstartedGap+partialGap+readNotOwned.reduce((s,r)=>s+(r.count-r.owned),0);
+  const otherGap=Math.max(0,totalGap-unstartedGap-partialGap-readNotOwned.reduce((s,r)=>s+(r.count-r.owned),0));
+
   document.getElementById('acq-m').innerHTML=
-    mH(zeroOwned.length,'Unstarted series')+
-    mH(zeroOwned.reduce((s,r)=>s+r.count,0),'Total books in unstarted')+
-    mH(readNotOwned.length,'Read but not owned')+
-    mH(interested.sd.length,'Someday watchlist');
-  document.getElementById('acq-body').innerHTML=zeroOwned.map(r=>`<tr><td>${r.title}</td><td>${r.author}</td><td>${r.type}</td><td>${r.genre||'—'}</td><td class="nr">${r.count}</td><td>${r.universe||'—'}</td></tr>`).join('');
+    mH(fmt(totalGap),'Total need to buy','books across all series','c')+
+    mH(unstarted.length,'Unstarted series')+
+    mH(partial.length,'Partially owned')+
+    mH(readNotOwned.length,'Read but not owned');
+
+  // Reconciliation bar
+  const segs=[
+    {label:'Unstarted',val:unstartedGap,col:'#c4614a'},
+    {label:'Partially owned',val:partialGap,col:'#c9a84c'},
+    {label:'Read, not owned',val:readNotOwned.reduce((s,r)=>s+(r.count-r.owned),0),col:'#7a6bab'},
+  ];
+  const segTotal=segs.reduce((s,x)=>s+x.val,0)||1;
+  document.getElementById('acq-reconcile').innerHTML=
+    '<div class="cbt">How the '+fmt(totalGap)+' "need to buy" breaks down</div>'+
+    '<div style="display:flex;height:28px;border-radius:6px;overflow:hidden;margin-bottom:10px">'+
+    segs.map(s=>`<div style="width:${(s.val/segTotal*100).toFixed(1)}%;background:${s.col};display:flex;align-items:center;justify-content:center;color:#fff;font-family:var(--font-m);font-size:10px" title="${s.label}: ${s.val}">${s.val>segTotal*0.05?s.val:''}</div>`).join('')+
+    '</div>'+
+    '<div style="display:flex;gap:16px;flex-wrap:wrap;font-family:var(--font-m);font-size:11px;color:var(--text3)">'+
+    segs.map(s=>`<span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${s.col};margin-right:4px"></span>${s.label}: <strong style="color:var(--text)">${s.val}</strong></span>`).join('')+
+    '</div>';
+
+  document.getElementById('acq-body').innerHTML=unstarted.map(r=>`<tr><td>${r.title}</td><td>${r.author}</td><td>${r.type}</td><td>${r.genre||'—'}</td><td class="nr">${r.count}</td><td>${r.universe||'—'}</td></tr>`).join('');
+  document.getElementById('partial-body').innerHTML=partial.map(r=>`<tr><td>${r.title}</td><td>${r.author}</td><td>${r.type}</td><td>${r.genre||'—'}</td><td class="nr">${r.owned}</td><td class="nr">${r.count}</td><td class="nr" style="color:var(--coral)">${r.count-r.owned}</td></tr>`).join('');
   document.getElementById('unowned-body').innerHTML=readNotOwned.map(r=>`<tr><td>${r.title}</td><td>${r.author}</td><td>${r.type}</td><td>${r.genre||'—'}</td><td class="nr" style="color:var(--teal)">${r.read}</td><td class="nr">${r.owned}</td><td class="nr" style="color:var(--coral)">${r.read-r.owned}</td></tr>`).join('');
   document.getElementById('someday-body').innerHTML=interested.sd.map(s=>`<tr><td>${s.series||s.title}</td><td>${s.author}</td><td class="nr">${s.count||'?'}</td><td>${s.genre||'—'}</td></tr>`).join('');
 }
