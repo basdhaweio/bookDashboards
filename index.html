@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Library</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Caveat:wght@600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 :root{
@@ -36,6 +37,72 @@ header{background:var(--bg2);padding:2rem 3rem 1.5rem;border-bottom:1px solid va
 @keyframes spin{to{transform:rotate(360deg)}}
 .load-txt{font-family:var(--font-m);font-size:11px;color:var(--text3);}
 #error{display:none;padding:3rem;color:var(--coral);font-family:var(--font-m);}
+/* ── BOOK CLUB FLYER ─────────────────────────────────────────── */
+body.flyer-mode header,body.flyer-mode .sec-nav{display:none;}
+body.flyer-mode{background:#8a7a5e;}
+#sec-bookclub{display:none;}
+.bc-page{max-width:960px;margin:0 auto;background:#f6edd8;color:#2b2620;box-shadow:0 4px 30px rgba(0,0,0,0.4);padding:0 0 2rem;position:relative;overflow:hidden;
+  background-image:radial-gradient(rgba(120,100,60,0.06) 1px,transparent 1px),radial-gradient(rgba(120,100,60,0.05) 1px,transparent 1px);
+  background-size:5px 5px,7px 7px;background-position:0 0,3px 3px;}
+.bc-page,.bc-page *{font-family:'DM Sans',sans-serif;}
+.bc-slab{font-family:'Alfa Slab One',serif !important;font-weight:400;}
+.bc-hand{font-family:'Caveat',cursive !important;}
+.bc-mast{background:#d94f30;color:#f6edd8;padding:1.4rem 2rem 1.1rem;display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;position:relative;
+  background-image:radial-gradient(rgba(0,0,0,0.12) 1.2px,transparent 1.2px);background-size:6px 6px;}
+.bc-logo{background:#f6edd8;color:#d94f30;border-radius:50%;width:92px;height:92px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;line-height:1;flex:none;border:4px solid #2b2620;transform:rotate(-6deg);box-shadow:3px 3px 0 rgba(0,0,0,0.3);}
+.bc-logo .bc-slab{font-size:1.5rem;}
+.bc-logo div:last-child{font-size:8px;letter-spacing:0.1em;font-weight:700;margin-top:3px;text-transform:uppercase;}
+.bc-mast-title{font-size:2.7rem;line-height:1.02;text-transform:uppercase;text-shadow:3px 3px 0 #2b2620;letter-spacing:0.01em;}
+.bc-mast-sub{font-size:11px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;margin-top:6px;opacity:0.9;}
+.bc-edition{margin-left:auto;background:#2b2620;color:#f6edd8;padding:8px 14px;text-align:center;transform:rotate(2deg);flex:none;border:2px dashed #f6edd8;}
+.bc-edition .bc-slab{font-size:1.1rem;}
+.bc-edition div:last-child{font-size:9px;letter-spacing:0.15em;text-transform:uppercase;}
+.bc-marquee{background:#2b2620;color:#e8a33d;font-weight:700;font-size:11px;letter-spacing:0.25em;text-transform:uppercase;padding:6px 0;white-space:nowrap;overflow:hidden;text-align:center;}
+.bc-body{padding:1.6rem 2rem 0;}
+.bc-mo{margin-bottom:2rem;}
+.bc-mo-hd{display:inline-block;background:#2e8f83;color:#f6edd8;padding:6px 22px 5px;font-size:1.25rem;text-transform:uppercase;transform:rotate(-1deg);box-shadow:3px 3px 0 rgba(43,38,32,0.7);margin-bottom:1.1rem;letter-spacing:0.03em;}
+.bc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;}
+.bc-card{border:3px solid #2b2620;padding:12px;display:flex;gap:12px;position:relative;box-shadow:4px 4px 0 rgba(43,38,32,0.55);min-height:150px;background:#fdf6e4;}
+.bc-card:nth-child(4n+1){transform:rotate(-0.4deg);}
+.bc-card:nth-child(4n+3){transform:rotate(0.45deg);}
+.bc-card.bc-have{opacity:0.62;background:#e8e2d0;}
+.bc-cov{flex:none;width:88px;height:132px;border:2px solid #2b2620;background:#e8a33d;display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:2px 2px 0 rgba(43,38,32,0.4);}
+.bc-cov img{width:100%;height:100%;object-fit:cover;display:block;}
+.bc-cov-none{font-size:9px;font-weight:800;text-transform:uppercase;text-align:center;letter-spacing:0.08em;padding:6px;color:#2b2620;line-height:1.5;}
+.bc-info{display:flex;flex-direction:column;gap:3px;min-width:0;padding-right:8px;}
+.bc-item{font-family:'DM Mono',monospace !important;font-size:9px;letter-spacing:0.12em;color:#8a6a3a;}
+.bc-title{font-size:15px;line-height:1.15;text-transform:uppercase;}
+.bc-auth{font-size:11px;font-weight:700;color:#5a4a32;}
+.bc-ser{font-size:10px;color:#7a6a4e;font-style:italic;}
+.bc-tag{font-size:11px;line-height:1.35;color:#3b3428;margin-top:2px;}
+.bc-burst{position:absolute;top:-12px;right:-10px;background:#d94f30;color:#f6edd8;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.02em;width:62px;height:62px;display:flex;align-items:center;justify-content:center;text-align:center;transform:rotate(12deg);line-height:1.1;padding:6px;
+  clip-path:polygon(50% 0%,61% 12%,77% 6%,81% 22%,98% 24%,91% 39%,100% 50%,91% 61%,98% 76%,81% 78%,77% 94%,61% 88%,50% 100%,39% 88%,23% 94%,19% 78%,2% 76%,9% 61%,0% 50%,9% 39%,2% 24%,19% 22%,23% 6%,39% 12%);}
+.bc-burst.bc-b-new{background:#2e8f83;}
+.bc-burst.bc-b-gold{background:#c98a1a;}
+.bc-burst.bc-b-gray{background:#7a746a;}
+.bc-burst.bc-b-blue{background:#3a6ea8;}
+.bc-rel{margin-top:auto;font-family:'DM Mono',monospace !important;font-size:10px;font-weight:500;background:#2b2620;color:#e8a33d;display:inline-block;align-self:flex-start;padding:2px 8px;letter-spacing:0.1em;text-transform:uppercase;}
+.bc-form{margin:2.2rem 2rem 0;border-top:3px dashed #2b2620;padding-top:0.4rem;position:relative;}
+.bc-scis{position:absolute;top:-14px;left:24px;background:#f6edd8;padding:0 8px;font-size:16px;}
+.bc-form-inner{border:3px solid #2b2620;background:#fdf6e4;padding:1.2rem 1.4rem;box-shadow:4px 4px 0 rgba(43,38,32,0.55);}
+.bc-form-hd{font-size:1.3rem;text-transform:uppercase;margin-bottom:2px;}
+.bc-form-sub{font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#7a6a4e;margin-bottom:12px;}
+.bc-form-rows{display:grid;grid-template-columns:1fr 1fr;gap:2px 24px;}
+@media(max-width:700px){.bc-form-rows{grid-template-columns:1fr;}}
+.bc-form-row{display:flex;align-items:center;gap:9px;padding:4px 2px;border-bottom:1px dotted #b8a888;font-size:12px;cursor:pointer;user-select:none;}
+.bc-form-row:hover{background:#f3e8cc;}
+.bc-chk{flex:none;width:16px;height:16px;border:2px solid #2b2620;background:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;line-height:1;color:#d94f30;}
+.bc-form-row .bc-item{width:48px;flex:none;}
+.bc-form-row-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;}
+.bc-form-foot{display:flex;align-items:flex-end;gap:2rem;margin-top:1.2rem;flex-wrap:wrap;}
+.bc-blank{border-bottom:2px solid #2b2620;min-width:150px;display:inline-block;font-size:1.25rem;padding:0 8px;color:#3a5a8a;}
+.bc-lbl{font-size:10px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;}
+.bc-total{margin-left:auto;background:#d94f30;color:#f6edd8;padding:10px 18px;text-align:center;transform:rotate(-1.5deg);border:2px solid #2b2620;box-shadow:3px 3px 0 rgba(43,38,32,0.55);}
+.bc-total .bc-slab{font-size:1.6rem;line-height:1;}
+.bc-total div:last-child{font-size:8px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;}
+.bc-return{display:block;margin:2rem auto 0;background:#2b2620;color:#f6edd8;border:none;padding:12px 26px;font-size:1rem;cursor:pointer;text-transform:uppercase;box-shadow:4px 4px 0 rgba(0,0,0,0.35);letter-spacing:0.04em;}
+.bc-return:hover{background:#d94f30;}
+.bc-foot{text-align:center;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:#8a7a5e;margin-top:1.2rem;font-weight:700;}
 #dash{display:none;}
 .sec-nav{background:var(--bg2);border-bottom:2px solid var(--border);display:flex;padding:0 3rem;}
 .sec-nav button{font-family:var(--font-d);font-size:1rem;font-weight:600;padding:1rem 1.5rem;background:none;border:none;color:var(--text3);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all 0.15s;letter-spacing:-0.01em;}
@@ -146,6 +213,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
     <button onclick="switchSection('reading')">Reading</button>
     <button onclick="switchSection('buying')">Buying</button>
     <button onclick="switchSection('collecting')">Collecting</button>
+    <button onclick="switchSection('bookclub')" style="margin-left:auto;color:#b5502f">Book Club ✂</button>
   </div>
 
   <!-- TRACKING -->
@@ -525,6 +593,39 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       </div>
     </div>
   </div>
+
+  <!-- BOOK CLUB FLYER -->
+  <div id="sec-bookclub">
+    <div class="panel active" id="tab-flyer" style="padding:1.5rem 1rem 3rem">
+      <div class="bc-page">
+        <div class="bc-mast">
+          <div class="bc-logo"><div class="bc-slab">TL</div><div>Book<br>Club</div></div>
+          <div>
+            <div class="bc-mast-title bc-slab">The Library<br>Book Club</div>
+            <div class="bc-mast-sub">New &amp; upcoming books · order today!</div>
+          </div>
+          <div class="bc-edition"><div class="bc-slab" id="bc-edition-mo">—</div><div id="bc-edition-no">Flyer No. 1</div></div>
+        </div>
+        <div class="bc-marquee" id="bc-marquee">★ See inside for new releases ★ Books! Books! Books! ★</div>
+        <div class="bc-body" id="bc-months"></div>
+        <div class="bc-form" id="bc-form-wrap">
+          <div class="bc-scis">✂</div>
+          <div class="bc-form-inner">
+            <div class="bc-form-hd bc-slab">Order Form</div>
+            <div class="bc-form-sub">Check the books you want — return this flyer to the library</div>
+            <div class="bc-form-rows" id="bc-form-rows"></div>
+            <div class="bc-form-foot">
+              <div><span class="bc-lbl">Name:</span> <span class="bc-blank bc-hand">John</span></div>
+              <div><span class="bc-lbl">Teacher:</span> <span class="bc-blank bc-hand">Ms. Claude</span></div>
+              <div class="bc-total"><div class="bc-slab" id="bc-total-n">0</div><div>Books ordered</div></div>
+            </div>
+          </div>
+        </div>
+        <button class="bc-return bc-slab" onclick="switchSection('tracking')">◀ Return flyer to The Library</button>
+        <div class="bc-foot" id="bc-foot">Sources: Interested sheet · Book Notification</div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -628,6 +729,16 @@ function parseInterested(vals){
     if(o.release)up.push(o);else sd.push(o);
   }
   return{up,sd};
+}
+
+// Book Club tab (Book Notification imports): A=Title B=Author C=Series D=Release E=Genre F=Notes G=ISBN
+function parseBookClub(vals){
+  const rows=[];
+  for(let i=1;i<vals.length;i++){
+    const r=vals[i],title=(r[0]||'').trim();if(!title)continue;
+    rows.push({title,author:(r[1]||'').trim(),series:(r[2]||'').trim(),release:(r[3]||'').trim(),genre:(r[4]||'').trim(),notes:(r[5]||'').trim(),isbn:(r[6]||'').trim()});
+  }
+  return rows;
 }
 
 function parseOrders(vals){
@@ -1520,12 +1631,13 @@ function renderToAcquire(bookRows,interested){
 let rendered=new Set(),curSec='tracking',G={};
 
 // Section → default tab mapping
-const SEC_DEFAULT={tracking:'overview',reading:'history',buying:'libgrowth',collecting:'col-fr'};
+const SEC_DEFAULT={tracking:'overview',reading:'history',buying:'libgrowth',collecting:'col-fr',bookclub:'flyer'};
 
 function switchSection(sec,tab){
   curSec=sec;
   document.querySelectorAll('.sec-nav button').forEach(b=>{const oc=b.getAttribute('onclick');if(oc)b.classList.toggle('active',oc.includes("'"+sec+"'"));});
-  ['tracking','reading','buying','collecting'].forEach(s=>{const el=document.getElementById('sec-'+s);if(el)el.style.display=s===sec?'block':'none';});
+  ['tracking','reading','buying','collecting','bookclub'].forEach(s=>{const el=document.getElementById('sec-'+s);if(el)el.style.display=s===sec?'block':'none';});
+  document.body.classList.toggle('flyer-mode',sec==='bookclub');
   const targetTab=tab||SEC_DEFAULT[sec];
   switchTab(targetTab,sec,true); // true = called from switchSection, skip hash update loop
   updateHash(sec,targetTab);
@@ -1549,8 +1661,8 @@ function updateHash(sec,tab){
 function restoreFromHash(){
   const hash=(location.hash||'').replace('#','');
   const[sec,tab]=hash.split('/');
-  const validSecs=new Set(['tracking','reading','buying','collecting']);
-  const validTabs=new Set(['overview','bytype','genre','universe','rooms','history','thisyear','completion','byseries','toread','comingup','bookmail','toacquire','libgrowth','buythisyear','col-fr','col-dl','col-sr']);
+  const validSecs=new Set(['tracking','reading','buying','collecting','bookclub']);
+  const validTabs=new Set(['overview','bytype','genre','universe','rooms','history','thisyear','completion','byseries','toread','comingup','bookmail','toacquire','libgrowth','buythisyear','col-fr','col-dl','col-sr','flyer']);
   const validFRTabs=new Set(['fr-overview','fr-series','fr-completion']);
   const validDLTabs=new Set(['dl-overview','dl-series','dl-completion']);
   const validSRTabs=new Set(['sr-overview','sr-publisher','sr-completion']);
@@ -1594,6 +1706,7 @@ function renderTab(id){
   else if(id==='toacquire')renderToAcquire(G.bookRows,G.interested);
   else if(id==='libgrowth')renderLibGrowth(G.growthMetrics,G.books);
   else if(id==='buythisyear')renderBuyThisYear(G.growthYear);
+  else if(id==='flyer')renderBookClub();
   else if(id==='col-fr'){switchFRTab('fr-overview');}
   else if(id==='col-dl'){switchDLTab('dl-overview');}
   else if(id==='col-sr'){switchSRTab('sr-overview');}
@@ -2723,9 +2836,139 @@ function renderBySeries(){
   filterBS('all');
 }
 
+// ── BOOK CLUB FLYER ───────────────────────────────────────────
+const bcEsc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const bcKey=s=>String(s||'').toLowerCase().replace(/\(.*?\)/g,'').replace(/[^a-z0-9]/g,'');
+const BC_TAGS={Fantasy:'Swords! Sorcery! Adventure awaits!','Sci-Fi':'Blast off to strange new worlds!',Scifi:'Blast off to strange new worlds!',Superhero:'POW! BAM! Heroes in action!',Horror:'Read it… if you dare!',Nonfiction:'Amazing TRUE stories!',Fiction:'A story you won\'t forget!','Slice of Life':'Just like real life — but better!',Manga:'Read it right to left!',Comics:'Full-color comic action!'};
+function bcRelParts(rel){
+  const names=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const lo=(rel||'').toLowerCase();
+  for(const[m,v]of Object.entries(MO_ORD))if(lo.includes(m)){
+    const day=(rel.match(/\b(\d{1,2})\b/)||[])[1];
+    return{mo:v,moName:m.charAt(0).toUpperCase()+m.slice(1),day:day||''};
+  }
+  const iso=(rel||'').match(/^(\d{4})-(\d{2})-(\d{2})/); // parse ISO by parts — Date() would shift it a day via UTC
+  if(iso)return{mo:+iso[2],moName:names[+iso[2]-1],day:String(+iso[3])};
+  const d=new Date(rel);
+  if(!isNaN(d)&&/\d/.test(rel))return{mo:d.getMonth()+1,moName:names[d.getMonth()],day:String(d.getDate())};
+  return{mo:99,moName:'Date TBA',day:''};
+}
+function bcBuildItems(){
+  const items=[],seen=new Set();
+  for(const u of G.interested.up){
+    const displayTitle=u.title||u.series||'TBD';
+    seen.add(bcKey(displayTitle));
+    items.push({title:displayTitle,author:u.author,series:u.series&&u.title?u.series:'',genre:u.genre,release:u.release,ordered:u.ordered,publisher:u.publisher,isbn:'',notes:'',isNew:false});
+  }
+  for(const b of (G.bookClub||[])){
+    if(seen.has(bcKey(b.title)))continue;
+    items.push({title:b.title,author:b.author,series:b.series,genre:b.genre,release:b.release,ordered:'',publisher:'',isbn:b.isbn,notes:b.notes,isNew:true});
+  }
+  items.forEach(it=>{const p=bcRelParts(it.release);it.mo=p.mo;it.moName=p.moName;it.day=p.day;});
+  items.sort((a,b)=>a.mo-b.mo||(a.day||99)-(b.day||99));
+  items.forEach((it,i)=>{it.num=101+i;it.key=bcKey(it.title)+'|'+bcKey(it.author);});
+  return items;
+}
+function bcBurst(it){
+  if(it.isNew)return['bc-b-new','NEW!'];
+  if(it.ordered==='Have')return['bc-b-gray','HAVE IT'];
+  if(it.ordered==='Preordered')return['bc-b-gold','ORDERED ✓'];
+  if(it.ordered==='Scheduled')return['bc-b-blue','ON THE WAY'];
+  return['','GET IT!'];
+}
+function renderBookClub(){
+  const items=bcBuildItems();
+  const now=new Date();
+  document.getElementById('bc-edition-mo').textContent=now.toLocaleString('en-US',{month:'long'}).toUpperCase()+' '+now.getFullYear();
+  document.getElementById('bc-edition-no').textContent='Flyer No. '+(now.getMonth()+1);
+  const mq='★ '+items.length+' books inside ★ New releases ★ Hot off the press ★ Order today ★ Books! Books! Books! ';
+  document.getElementById('bc-marquee').textContent=mq+mq;
+  // Month sections
+  const byMo={};
+  items.forEach(it=>{(byMo[it.moName]=byMo[it.moName]||[]).push(it);});
+  const moOrder=Object.keys(byMo).sort((a,b)=>(byMo[a][0].mo)-(byMo[b][0].mo));
+  document.getElementById('bc-months').innerHTML=moOrder.map(mo=>`
+    <div class="bc-mo">
+      <div class="bc-mo-hd bc-slab">${mo==='Date TBA'?'Date TBA':'Coming in '+mo}</div>
+      <div class="bc-grid">
+        ${byMo[mo].map(it=>{
+          const[bcls,btxt]=bcBurst(it);
+          const tag=it.notes||BC_TAGS[it.genre]||'Don\'t miss this one!';
+          const rel=it.moName==='Date TBA'?'TBA':(it.moName.slice(0,3)+(it.day?' '+it.day:'')).toUpperCase();
+          return`<div class="bc-card${it.ordered==='Have'?' bc-have':''}">
+            <div class="bc-burst ${bcls}">${btxt}</div>
+            <div class="bc-cov" data-cov="${bcEsc(it.key)}" data-t="${bcEsc(it.title)}" data-a="${bcEsc(it.author)}" data-i="${bcEsc(it.isbn)}"><div class="bc-cov-none">Cover<br>art<br>coming<br>soon!</div></div>
+            <div class="bc-info">
+              <div class="bc-item">ITEM #${it.num}</div>
+              <div class="bc-title bc-slab">${bcEsc(it.title)}</div>
+              ${it.author?`<div class="bc-auth">by ${bcEsc(it.author)}</div>`:''}
+              ${it.series?`<div class="bc-ser">${bcEsc(it.series)}</div>`:''}
+              <div class="bc-tag">${bcEsc(tag)}</div>
+              <div class="bc-rel">📅 ${rel}</div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`).join('');
+  // Order form: everything not already secured
+  const orderable=items.filter(it=>it.ordered!=='Have'&&it.ordered!=='Preordered');
+  const checked=bcGetChecked();
+  document.getElementById('bc-form-rows').innerHTML=orderable.map(it=>`
+    <div class="bc-form-row" onclick="bcToggle('${bcEsc(it.key)}')">
+      <div class="bc-chk" id="bc-chk-${bcEsc(it.key).replace(/[^a-zA-Z0-9|]/g,'')}">${checked[it.key]?'✗':''}</div>
+      <div class="bc-item">#${it.num}</div>
+      <div class="bc-form-row-t">${bcEsc(it.title)}</div>
+    </div>`).join('')||'<div style="font-size:12px;padding:8px 0">Nothing to order — you\'re all caught up!</div>';
+  bcTally();
+  document.getElementById('bc-foot').textContent='The Library Book Club · sources: Interested sheet'+(G.bookClub&&G.bookClub.length?' + Book Notification ('+G.bookClub.length+' titles)':'')+' · covers via Open Library';
+  bcFetchCovers();
+}
+function bcGetChecked(){try{return JSON.parse(localStorage.getItem('bcOrder')||'{}');}catch(e){return{};}}
+function bcToggle(key){
+  const c=bcGetChecked();
+  if(c[key])delete c[key];else c[key]=1;
+  try{localStorage.setItem('bcOrder',JSON.stringify(c));}catch(e){}
+  const el=document.getElementById('bc-chk-'+key.replace(/[^a-zA-Z0-9|]/g,''));
+  if(el)el.textContent=c[key]?'✗':'';
+  bcTally();
+}
+function bcTally(){
+  const n=Object.keys(bcGetChecked()).length;
+  document.getElementById('bc-total-n').textContent=n;
+}
+// Cover art via Open Library (cached in localStorage, 30-day TTL; failures are not cached)
+async function bcFetchCovers(){
+  const els=[...document.querySelectorAll('.bc-cov[data-cov]')];
+  const jobs=els.map(el=>async()=>{
+    const key='bcCov2:'+el.dataset.cov;
+    let cached=null;
+    try{cached=JSON.parse(localStorage.getItem(key));}catch(e){}
+    if(cached&&Date.now()-cached.t<(cached.u?2592e6:2592e5)){if(cached.u)bcSetCover(el,cached.u);return;} // hits 30d, misses 3d (cover may appear at release)
+    if(el.dataset.i){bcSetCover(el,'https://covers.openlibrary.org/b/isbn/'+encodeURIComponent(el.dataset.i)+'-M.jpg?default=false');return;}
+    try{
+      const q='title='+encodeURIComponent(el.dataset.t)+(el.dataset.a?'&author='+encodeURIComponent(el.dataset.a):'');
+      const r=await fetch('https://openlibrary.org/search.json?'+q+'&limit=1&fields=cover_i');
+      if(!r.ok)return; // rate-limited or down — leave placeholder, retry next visit
+      const j=await r.json();
+      const cid=((j.docs||[])[0]||{}).cover_i;
+      const url=cid?'https://covers.openlibrary.org/b/id/'+cid+'-M.jpg':'';
+      try{localStorage.setItem(key,JSON.stringify({u:url,t:Date.now()}));}catch(e){}
+      if(url)bcSetCover(el,url);
+    }catch(e){}
+  });
+  // limit concurrency so we don't hammer the API
+  const pool=jobs.slice();
+  await Promise.all(Array.from({length:3},async()=>{while(pool.length){await pool.shift()();}}));
+}
+function bcSetCover(el,url){
+  const img=new Image();
+  img.onload=()=>{if(img.naturalWidth>1){el.innerHTML='';el.appendChild(img);}};
+  img.src=url;img.alt='cover';
+}
+
 async function init(){
   try{
-    const [booksV,indV,metricsV,intV,ordV,growthMetricsV,growthYearV,frYearV,frSeriesV,dlV,srV,...yearV]=await Promise.all([
+    const [booksV,indV,metricsV,intV,ordV,growthMetricsV,growthYearV,frYearV,frSeriesV,dlV,srV,bcV,...yearV]=await Promise.all([
       fr(BOOKS_ID,"'Butthead Series'!A:K").catch(()=>[]),
       fr(BOOKS_ID,"'Butthead Individual'!A:J").catch(()=>[]),
       fr(READING_ID,'Metrics!A:G').catch(()=>[]),
@@ -2737,6 +2980,7 @@ async function init(){
       fr(FR_ID,"'Series'!A:H").catch(()=>[]),
       fr(FR_ID,"'DL'!A:H").catch(()=>[]),
       fr(FR_ID,"'SR'!A:H").catch(()=>[]),
+      fr(BOOKS_ID,"'Book Club'!A:G").catch(()=>[]),
       ...YEARS.map(y=>fr(READING_ID,`'${y}'!A:K`).catch(()=>[]))
     ]);
     G.bookRows=parseBooks(booksV);
@@ -2751,6 +2995,7 @@ async function init(){
     G.frSeries=enrichFRSeriesFromYearCatalog(parseFRSeries(frSeriesV), G.frBooks);
     G.dlData=parseDL(dlV);
     G.srData=parseSR(srV);
+    G.bookClub=parseBookClub(bcV);
     YEARS.forEach((y,i)=>{allYD[y]=parseYear(yearV[i]);});
     document.getElementById('loading').style.display='none';
     document.getElementById('dash').style.display='block';
