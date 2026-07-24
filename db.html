@@ -1485,9 +1485,17 @@ function parseGrowthYear(vals){
 function renderLibGrowth(growthMetrics,bm){
   const rows=growthMetrics;
   const years=rows.map(r=>r.year);
-  // Current live numbers from Butthead Series
+  // Current live numbers. The historical ledger counts the WHOLE library
+  // (main + D&D collection), so the current dot must too, or dissolving the
+  // D&D aggregate rows makes the library look like it shrank. D&D is Com's,
+  // so only fold it in when viewing Com/Both, not Shereen.
   const curYear=new Date().getFullYear();
-  const curPlanned=bm.tracked,curOwned=bm.owned,curRead=bm.read;
+  let dT=0,dO=0,dR=0;
+  if(OWNER!=='goblin'){
+    const dnd=[...(G.frBooks||[]),...((G.dlData&&G.dlData.books)||[]),...((G.srData&&G.srData.books)||[])];
+    dT=dnd.length; dO=dnd.filter(b=>b.owned).length; dR=dnd.filter(b=>b.read).length;
+  }
+  const curPlanned=bm.tracked+dT,curOwned=bm.owned+dO,curRead=bm.read+dR;
   // Metrics summary
   const latest=rows[rows.length-1]||{};
   const prev=rows[rows.length-2]||{};
