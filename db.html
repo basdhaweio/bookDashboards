@@ -1041,7 +1041,7 @@ function renderThisYear(year){
   const currentYear=new Date().getFullYear();
   const isCurrentYear=year===currentYear;
   document.querySelectorAll('#year-tog button').forEach(b=>b.classList.toggle('active',parseInt(b.dataset.y)===year));
-  const{books,targets,focus}=allYD[year]||{books:[],targets:{},focus:[]};
+  const{books,targets,focus}=(OWNER==='goblin'?{books:[],targets:{},focus:[]}:(allYD[year]||{books:[],targets:{},focus:[]}));
   const tot=targets['Total']||{total:0,bynow:0,actual:0};
   const actual=books.length;
   if(isCurrentYear){
@@ -1690,7 +1690,7 @@ function setOwner(o){
   OWNER=o;
   document.querySelectorAll('#owner-filter button').forEach(b=>b.classList.toggle('active',b.dataset.o===o));
   const note=document.getElementById('owner-note');
-  if(note)note.textContent=o==='goblin'?'reading & buying history shown is Com\'s':'';
+  if(note)note.textContent=o==='goblin'?'Shereen has no reading/buying history yet':'';
   applyOwner(true);
 }
 
@@ -1756,12 +1756,16 @@ function renderTab(id){
 }
 function renderTabInner(id){
   const bm=G.books;
-  if(id==='overview')renderOverview(bm,allYD[2026]||{books:[],targets:{},focus:[]});
+  // Reading & buying history live only for Com; Shereen (goblin) has none yet,
+  // so pass empty data for her — 'all'/Com show the full log.
+  const H=OWNER!=='goblin';
+  const EMPTY_YD={books:[],targets:{},focus:[]};
+  if(id==='overview')renderOverview(bm,H?(allYD[2026]||EMPTY_YD):EMPTY_YD);
   else if(id==='bytype')renderByType(bm);
   else if(id==='genre')renderGenre(bm);
   else if(id==='universe')renderUniverse(bm);
   else if(id==='rooms')renderRooms(bm);
-  else if(id==='history')renderHistory(G.metrics);
+  else if(id==='history')renderHistory(H?G.metrics:{});
   else if(id==='thisyear'){
     if(!document.querySelector('#year-tog button'))document.getElementById('year-tog').innerHTML=YEARS.map(y=>`<button data-y="${y}" onclick="switchYear(${y})">${y}</button>`).join('');
     renderThisYear(tyYear);
@@ -1769,12 +1773,12 @@ function renderTabInner(id){
   else if(id==='completion')renderCompletion(bm);
   else if(id==='byseries')renderBySeries();
   else if(id==='toread')renderToRead(bm);
-  else if(id==='comingup')renderComingUp(G.interested.up);
-  else if(id==='bookmail')renderBookMail(G.orders);
-  else if(id==='toacquire')renderToAcquire(G.bookRows,G.interested);
-  else if(id==='someday')renderSomeday(G.interested);
-  else if(id==='libgrowth')renderLibGrowth(G.growthMetrics,G.books);
-  else if(id==='buythisyear')renderBuyThisYear(G.growthYear);
+  else if(id==='comingup')renderComingUp(H?G.interested.up:[]);
+  else if(id==='bookmail')renderBookMail(H?G.orders:[]);
+  else if(id==='toacquire')renderToAcquire(G.bookRows,H?G.interested:{up:[],sd:[]});
+  else if(id==='someday')renderSomeday(H?G.interested:{up:[],sd:[]});
+  else if(id==='libgrowth')renderLibGrowth(H?G.growthMetrics:[],G.books);
+  else if(id==='buythisyear')renderBuyThisYear(H?G.growthYear:[]);
   else if(id==='flyer')renderBookClub();
   else if(id==='col-fr'){switchFRTab('fr-overview');}
   else if(id==='col-dl'){switchDLTab('dl-overview');}
