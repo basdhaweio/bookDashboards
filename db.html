@@ -1483,24 +1483,31 @@ function parseGrowthYear(vals){
 }
 
 function renderLibGrowth(growthMetrics,bm){
-  const rows=growthMetrics;
-  const years=rows.map(r=>r.year);
-  // Current live numbers. The historical ledger counts the WHOLE library
-  // (main + D&D collection), so the current dot must too, or dissolving the
-  // D&D aggregate rows makes the library look like it shrank. D&D is Com's,
-  // so only fold it in when viewing Com/Both, not Shereen.
   const curYear=new Date().getFullYear();
+  // The imported ledger counts the WHOLE library (main + D&D). Overview counts
+  // main only, and the D&D aggregate was double-counted into every ledger year.
+  // D&D is a legacy collection (essentially all acquired by 2016), so subtract
+  // it as a near-constant to put the whole curve on the same main-only basis as
+  // Overview. Only for Com/Both — Shereen has no D&D.
   let dT=0,dO=0,dR=0;
   if(OWNER!=='goblin'){
     const dnd=[...(G.frBooks||[]),...((G.dlData&&G.dlData.books)||[]),...((G.srData&&G.srData.books)||[])];
     dT=dnd.length; dO=dnd.filter(b=>b.owned).length; dR=dnd.filter(b=>b.read).length;
   }
-  const curPlanned=bm.tracked+dT,curOwned=bm.owned+dO,curRead=bm.read+dR;
+  const rows=growthMetrics.map(r=>{
+    let p=Math.max(0,r.planned-dT),o=Math.max(0,r.owned-dO),rd=Math.max(0,r.read-dR);
+    o=Math.min(o,p); rd=Math.min(rd,o); // keep read <= owned <= planned
+    return {year:r.year,planned:p,owned:o,read:rd,
+            yoyPlanned:r.yoyPlanned,yoyRead:r.yoyRead,yoyBought:r.yoyBought};
+  });
+  const years=rows.map(r=>r.year);
+  // Current live numbers = main catalog, identical to Overview's totals.
+  const curPlanned=bm.tracked,curOwned=bm.owned,curRead=bm.read;
   // Metrics summary
   const latest=rows[rows.length-1]||{};
   const prev=rows[rows.length-2]||{};
   document.getElementById('lg-m').innerHTML=
-    mH(fmt(curPlanned),'Currently tracked','live from library','p')+
+    mH(fmt(curPlanned),'Currently tracked','live · matches Overview','p')+
     mH(fmt(curOwned),'Currently owned','live from library')+
     mH(fmt(curRead),'Currently read','live from library','t')+
     mH(fmt(latest.yoyBought||0),'Bought last year',String(latest.year||''))+
