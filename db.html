@@ -790,12 +790,17 @@ function calcBooks(rows){
         m.byGenre[r.genre].series.push({title:r.title,type:r.type,count:r.count,read:r.read,owned:r.owned,shelf});
       }
     }
-    const t=r.title.toLowerCase(),sg=r.subgenre.toLowerCase();
-    if(sg==='ttrpg'||TKW.some(k=>t.includes(k))){
+    const t=r.title.toLowerCase(),sg=r.subgenre.toLowerCase(),uvl=(r.universe||'').toLowerCase();
+    // Match the D&D universes on the universe column, not the series title —
+    // real series names ("The Cleric Quintet") don't contain the universe name.
+    const inFR=uvl==='forgotten realms'||t.includes('forgotten realms');
+    const inDL=uvl==='dragonlance'||t.includes('dragonlance');
+    const inSR=uvl==='shadowrun'||t.includes('shadowrun');
+    if(sg==='ttrpg'||inFR||inDL||inSR||TKW.some(k=>t.includes(k))){
       m.ttrpg.t+=r.count;m.ttrpg.r+=r.read;m.ttrpg.o+=r.owned;
-      if(t.includes('forgotten realms')){m.fr.t+=r.count;m.fr.r+=r.read;m.fr.o+=r.owned;}
-      else if(t.includes('dragonlance')){m.dl.t+=r.count;m.dl.r+=r.read;m.dl.o+=r.owned;}
-      else if(t.includes('shadowrun')){m.sr.t+=r.count;m.sr.r+=r.read;m.sr.o+=r.owned;}
+      if(inFR){m.fr.t+=r.count;m.fr.r+=r.read;m.fr.o+=r.owned;}
+      else if(inDL){m.dl.t+=r.count;m.dl.r+=r.read;m.dl.o+=r.owned;}
+      else if(inSR){m.sr.t+=r.count;m.sr.r+=r.read;m.sr.o+=r.owned;}
     }
     const rm=assignRoom(r.title,r.author,r.type,r.genre,r.subgenre);
     if(!m.byRoom[rm])m.byRoom[rm]={tracked:0,read:0,owned:0};
@@ -1484,24 +1489,11 @@ function parseGrowthYear(vals){
 
 function renderLibGrowth(growthMetrics,bm){
   const curYear=new Date().getFullYear();
-  // The imported ledger counts the WHOLE library (main + D&D). Overview counts
-  // main only, and the D&D aggregate was double-counted into every ledger year.
-  // D&D is a legacy collection (essentially all acquired by 2016), so subtract
-  // it as a near-constant to put the whole curve on the same main-only basis as
-  // Overview. Only for Com/Both — Shereen has no D&D.
-  let dT=0,dO=0,dR=0;
-  if(OWNER!=='goblin'){
-    const dnd=[...(G.frBooks||[]),...((G.dlData&&G.dlData.books)||[]),...((G.srData&&G.srData.books)||[])];
-    dT=dnd.length; dO=dnd.filter(b=>b.owned).length; dR=dnd.filter(b=>b.read).length;
-  }
-  const rows=growthMetrics.map(r=>{
-    let p=Math.max(0,r.planned-dT),o=Math.max(0,r.owned-dO),rd=Math.max(0,r.read-dR);
-    o=Math.min(o,p); rd=Math.min(rd,o); // keep read <= owned <= planned
-    return {year:r.year,planned:p,owned:o,read:rd,
-            yoyPlanned:r.yoyPlanned,yoyRead:r.yoyRead,yoyBought:r.yoyBought};
-  });
+  // Both the imported ledger and the live rollup now count the WHOLE library
+  // (main + D&D), so no adjustment is needed — the current dot is exactly
+  // Overview's totals.
+  const rows=growthMetrics;
   const years=rows.map(r=>r.year);
-  // Current live numbers = main catalog, identical to Overview's totals.
   const curPlanned=bm.tracked,curOwned=bm.owned,curRead=bm.read;
   // Metrics summary
   const latest=rows[rows.length-1]||{};
