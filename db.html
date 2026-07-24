@@ -37,6 +37,11 @@ header{background:var(--bg2);padding:2rem 3rem 1.5rem;border-bottom:1px solid va
 @keyframes spin{to{transform:rotate(360deg)}}
 .load-txt{font-family:var(--font-m);font-size:11px;color:var(--text3);}
 #error{display:none;padding:3rem;color:var(--coral);font-family:var(--font-m);}
+.owner-filter{display:inline-flex;border:1px solid var(--border2);border-radius:7px;overflow:hidden;background:var(--bg2)}
+.owner-filter button{font-family:var(--font-m);font-size:11px;letter-spacing:0.04em;padding:5px 13px;background:none;border:none;border-right:1px solid var(--border);color:var(--text3);cursor:pointer;transition:all 0.12s}
+.owner-filter button:last-child{border-right:none}
+.owner-filter button:hover{color:var(--text2);background:var(--bg3)}
+.owner-filter button.active{background:var(--gold2);color:#fff;font-weight:500}
 /* ── BOOK CLUB FLYER ─────────────────────────────────────────── */
 body.flyer-mode header,body.flyer-mode .sec-nav{display:none;}
 body.flyer-mode{background:#8a7a5e;}
@@ -201,7 +206,15 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
 
 <header>
   <div><div class="h-title">The Library</div><div class="h-sub">Personal reading tracker · database edition</div></div>
-  <div><div class="status"><span class="dot"></span><span id="updateTime">Loading...</span></div></div>
+  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+    <div id="owner-filter" class="owner-filter">
+      <button data-o="butthead" class="active" onclick="setOwner('butthead')">Com</button>
+      <button data-o="goblin" onclick="setOwner('goblin')">Shereen</button>
+      <button data-o="all" onclick="setOwner('all')">Both</button>
+    </div>
+    <div id="owner-note" style="font-family:var(--font-m);font-size:9px;color:var(--coral);height:11px"></div>
+    <div class="status"><span class="dot"></span><span id="updateTime">Loading...</span></div>
+  </div>
 </header>
 
 <div id="loading"><div class="spinner"></div><div class="load-txt">Fetching from Google Sheets...</div></div>
@@ -702,7 +715,7 @@ function parseBooks(vals){
     const r=vals[i];
     const title=(r[1]||'').trim(),type=(r[0]||'').trim(),count=n(r[2]);
     if(!title||!type||count===0||SKIP.has(title)||title.startsWith('Totals'))continue;
-    rows.push({type,title,count,read:n(r[3]),owned:n(r[4]),author:(r[5]||'').trim(),genre:(r[6]||'').trim(),subgenre:(r[7]||'').trim(),universe:(r[8]||'').trim()});
+    rows.push({type,title,count,read:n(r[3]),owned:n(r[4]),author:(r[5]||'').trim(),genre:(r[6]||'').trim(),subgenre:(r[7]||'').trim(),universe:(r[8]||'').trim(),owner:(r[9]||'butthead').trim()});
   }
   return rows;
 }
@@ -1660,7 +1673,26 @@ function renderSomeday(interested){
     </div>`).join('')||'<div style="font-family:var(--font-m);font-size:12px;color:var(--text3);padding:1rem 0">Nothing on the someday list.</div>';
 }
 
-let rendered=new Set(),curSec='tracking',G={};
+let rendered=new Set(),curSec='tracking',curTab='overview',G={};
+
+// Owner filter — catalog is split by owner; 'all' shows both.
+let OWNER='butthead'; // default to Com's catalog (cleanup focus)
+const OWNER_LABEL={butthead:'Com',goblin:'Shereen',other:'Other'};
+function applyOwner(rerender){
+  const pick=rows=>OWNER==='all'?rows:rows.filter(r=>(r.owner||'butthead')===OWNER);
+  G.bookRows=pick(G.allBookRows||[]);
+  G.indBooks=pick(G.allIndBooks||[]);
+  G.books=calcBooks(G.bookRows);
+  if(rerender){rendered.clear();renderTab(curTab);}
+}
+function setOwner(o){
+  if(o===OWNER)return;
+  OWNER=o;
+  document.querySelectorAll('#owner-filter button').forEach(b=>b.classList.toggle('active',b.dataset.o===o));
+  const note=document.getElementById('owner-note');
+  if(note)note.textContent=o==='goblin'?'reading & buying history shown is Com\'s':'';
+  applyOwner(true);
+}
 
 // Section → default tab mapping
 const SEC_DEFAULT={tracking:'overview',reading:'history',buying:'libgrowth',collecting:'col-fr',bookclub:'flyer'};
@@ -1680,6 +1712,7 @@ function switchTab(id,sec,fromSection){
   const secEl=document.getElementById('sec-'+sec);if(!secEl)return;
   secEl.querySelectorAll('.tab-nav button').forEach(b=>{const oc=b.getAttribute('onclick');if(oc)b.classList.toggle('active',oc.includes("'"+id+"'"));});
   secEl.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='tab-'+id));
+  curTab=id;
   if(!rendered.has(id)){renderTab(id);rendered.add(id);}
   if(!fromSection){curSec=sec;updateHash(sec,id);}
 }
@@ -2504,6 +2537,7 @@ function parseIndividual(vals){
       read:(r[7]||'').trim().toLowerCase()==='x',
       universe:(r[8]||'').trim(),
       notes:(r[9]||'').trim(),
+      owner:(r[10]||'butthead').trim(),
     });
   }
   return books;
@@ -3020,9 +3054,9 @@ async function init(){
       fr(BOOKS_ID,"'Book Club'!A:G").catch(()=>[]),
       ...YEARS.map(y=>fr(READING_ID,`'${y}'!A:K`).catch(()=>[]))
     ]);
-    G.bookRows=parseBooks(booksV);
-    G.books=calcBooks(G.bookRows);
-    G.indBooks=parseIndividual(indV);
+    G.allBookRows=parseBooks(booksV);
+    G.allIndBooks=parseIndividual(indV);
+    applyOwner(false); // sets G.bookRows / G.indBooks / G.books per OWNER
     G.metrics=parseMetrics(metricsV);
     G.interested=parseInterested(intV);
     G.orders=parseOrders(ordV);
