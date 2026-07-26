@@ -93,7 +93,8 @@ body.flyer-mode{background:#8a7a5e;}
 .bc-form-hd{font-size:1.3rem;text-transform:uppercase;margin-bottom:2px;}
 .bc-form-sub{font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#7a6a4e;margin-bottom:12px;}
 .bc-form-rows{display:grid;grid-template-columns:1fr 1fr;gap:2px 24px;}
-@media(max-width:700px){.bc-form-rows{grid-template-columns:1fr;}}
+/* minmax(0,…) so long titles ellipsize instead of widening the track */
+@media(max-width:700px){.bc-form-rows{grid-template-columns:minmax(0,1fr);}}
 .bc-form-row{display:flex;align-items:center;gap:9px;padding:4px 2px;border-bottom:1px dotted #b8a888;font-size:12px;cursor:pointer;user-select:none;}
 .bc-form-row:hover{background:#f3e8cc;}
 .bc-chk{flex:none;width:16px;height:16px;border:2px solid #2b2620;background:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;line-height:1;color:#d94f30;}
@@ -113,6 +114,7 @@ body.flyer-mode{background:#8a7a5e;}
 .sec-nav button{font-family:var(--font-d);font-size:1rem;font-weight:600;padding:1rem 1.5rem;background:none;border:none;color:var(--text3);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all 0.15s;letter-spacing:-0.01em;}
 .sec-nav button:hover{color:var(--text2);}
 .sec-nav button.active{color:var(--gold);border-bottom-color:var(--gold2);}
+.sec-nav button.bc-btn{margin-left:auto;color:#b5502f;}
 .tab-nav{background:var(--bg3);border-bottom:1px solid var(--border);display:flex;padding:0 3rem;overflow-x:auto;}
 .tab-nav button{font-family:var(--font-m);font-size:11px;letter-spacing:0.07em;text-transform:uppercase;padding:0.7rem 1.1rem;background:none;border:none;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;transition:all 0.15s;}
 .tab-nav button:hover{color:var(--text2);}
@@ -200,6 +202,114 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
 .bubble-legend{display:flex;gap:16px;margin-bottom:0.5rem;font-family:var(--font-m);font-size:11px;color:var(--text3);}
 .ov-charts{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem;}
 @media(max-width:680px){.ov-charts{grid-template-columns:1fr;}}
+
+/* ── MOBILE ──────────────────────────────────────────────────── */
+@media(max-width:780px){
+  /* Nothing scrolls sideways except things that opt in (tables, nav) */
+  html,body{max-width:100%;overflow-x:hidden;}
+
+  /* Chrome: 3rem gutters are most of a phone screen */
+  header{padding:1.1rem 1rem 0.9rem;align-items:stretch;flex-direction:column;gap:0.9rem;}
+  .h-title{font-size:1.9rem;}
+  header>div:last-child{flex-direction:row!important;align-items:center!important;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+  .status{font-size:10px;}
+  #owner-note{flex-basis:100%;order:3;}
+
+  /* Both nav bars scroll horizontally instead of forcing the page wide */
+  .sec-nav,.tab-nav{padding:0 0.75rem;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-wrap:nowrap;}
+  .sec-nav::-webkit-scrollbar,.tab-nav::-webkit-scrollbar{display:none;}
+  .sec-nav button{font-size:0.95rem;padding:0.85rem 0.7rem;white-space:nowrap;flex:none;}
+  .sec-nav button.bc-btn{margin-left:0;padding-right:1rem;}
+  .tab-nav button{padding:0.7rem 0.75rem;flex:none;}
+
+  .panel{padding:1.4rem 0.9rem 2.5rem;}
+  .cb{padding:1rem 0.85rem;border-radius:8px;}
+  .sl{margin-bottom:0.8rem;}
+
+  /* Metric grids: two per row rather than one squeezed column */
+  .mg,.sm,.fc-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .m,.fc{padding:0.9rem 0.8rem;}
+  .mv{font-size:1.55rem;}
+  .fc-y{font-size:1.5rem;}
+  .ml,.ms,.fc-a{overflow-wrap:anywhere;}
+
+  /* Tables keep their own scroller; hint that they pan */
+  .tw{-webkit-overflow-scrolling:touch;}
+  th,td{padding:8px 10px;white-space:nowrap;}
+
+  /* Progress rows: reclaim label width */
+  .pl{width:88px;font-size:10px;}
+  .pv{width:36px;font-size:10px;}
+
+  /* Order rows: 5 fixed columns (422px) can't fit — reflow to a card */
+  .or-head{display:none;}
+  .or{grid-template-columns:minmax(0,1fr) auto;gap:3px 10px;padding:11px 12px;align-items:center;}
+  .or>*:nth-child(2){order:1;grid-column:1/-1;font-size:13px!important;color:var(--text);font-weight:500;}
+  .or>*:nth-child(1){order:2;}
+  .or>*:nth-child(5){order:3;justify-self:end;}
+  .or>*:nth-child(3){order:4;}
+  .or>*:nth-child(4){order:5;justify-self:end;}
+
+  /* Accordions: name flexes, the numeric columns become narrow implicit tracks */
+  .acc-header,.acc-body .acc-inner>div[style*="grid"]{
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-auto-flow:column;grid-auto-columns:minmax(26px,auto);}
+  .acc-header>div:not(.acc-name){font-size:10px!important;}
+  .acc-name{font-size:11px;min-width:0;overflow:hidden;text-overflow:ellipsis;}
+  .acc-inner{padding:8px 10px 12px 14px;}
+  .acc-series-row{grid-template-columns:minmax(0,1fr) 40px 40px 40px;}
+
+  /* Update cards stack their date above the title */
+  .uc{padding:0.9rem 1rem;flex-wrap:wrap;gap:8px;}
+  .uc-date{min-width:0;font-size:10px;}
+
+  .leg,.bubble-legend{gap:8px 12px;font-size:10px;}
+  .ytog button,.owner-filter button{padding:7px 13px;}
+
+  /* Sub-navs bleed by -3rem to meet the desktop panel gutter; retarget to
+     the mobile gutter so they don't hang off the edge. */
+  .subnav{margin-left:-0.9rem!important;margin-right:-0.9rem!important;
+    padding-left:0.9rem!important;padding-right:0.9rem!important;
+    -webkit-overflow-scrolling:touch;scrollbar-width:none;}
+  .subnav::-webkit-scrollbar{display:none;}
+  .subnav-flush{margin-top:-1.4rem!important;}
+  .subnav button{flex:none;}
+
+  /* By Series rows carry ~270px of fixed columns plus badges. Reflow to
+     wrapping lines: chevron + name, then badges/counts, then the bar. */
+  .bs-row{display:flex!important;flex-wrap:wrap;align-items:center;
+    gap:5px 8px!important;padding:10px 12px!important;}
+  .bs-row>*:nth-child(2){flex:1 1 auto;min-width:0;}
+  .bs-row>*:last-child{flex:1 1 100%;margin-top:2px;}
+
+  /* Give book titles the room the author column was taking */
+  .bk-row{grid-template-columns:8px 20px minmax(0,1fr) 84px!important;gap:5px!important;}
+  .bk-head{font-size:8px!important;}
+}
+
+/* ── BOOK CLUB FLYER ON MOBILE ───────────────────────────────── */
+@media(max-width:780px){
+  .bc-mast{padding:1rem 1rem 0.9rem;gap:0.9rem;}
+  .bc-logo{width:66px;height:66px;border-width:3px;}
+  .bc-logo .bc-slab{font-size:1.05rem;}
+  .bc-mast-title{font-size:1.6rem;text-shadow:2px 2px 0 #2b2620;}
+  .bc-mast-sub{font-size:9px;letter-spacing:0.14em;}
+  .bc-edition{margin-left:0;padding:6px 10px;}
+  .bc-edition .bc-slab{font-size:0.9rem;}
+  .bc-marquee{font-size:9px;letter-spacing:0.14em;}
+  .bc-body{padding:1.1rem 1rem 0;}
+  .bc-mo-hd{font-size:1rem;padding:5px 14px 4px;}
+  .bc-grid{grid-template-columns:1fr;gap:14px;}
+  .bc-card{min-height:0;padding:10px;gap:10px;transform:none!important;box-shadow:3px 3px 0 rgba(43,38,32,0.55);}
+  .bc-cov{width:66px;height:99px;}
+  .bc-burst{width:52px;height:52px;font-size:9px;top:-9px;right:-6px;}
+  .bc-form{margin:1.8rem 1rem 0;}
+  .bc-form-inner{padding:1rem;}
+  .bc-form-row{min-width:0;}
+  .bc-form-hd{font-size:1.1rem;}
+  .bc-total{margin-left:0;}
+  .bc-return{width:calc(100% - 2rem);padding:14px 20px;}
+}
 </style>
 </head>
 <body>
@@ -226,7 +336,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
     <button onclick="switchSection('reading')">Reading</button>
     <button onclick="switchSection('buying')">Buying</button>
     <button onclick="switchSection('collecting')">Collecting</button>
-    <button onclick="switchSection('bookclub')" style="margin-left:auto;color:#b5502f">Book Club ✂</button>
+    <button class="bc-btn" onclick="switchSection('bookclub')">Book Club ✂</button>
   </div>
 
   <!-- TRACKING -->
@@ -352,7 +462,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
     <div class="panel" id="tab-byseries">
       <div class="mg" id="bs-m"></div>
       <!-- By Series sub-tabs -->
-      <div style="background:var(--bg3);border-bottom:1px solid var(--border);display:flex;gap:0;overflow-x:auto;margin:1rem -3rem 0;padding-left:3rem">
+      <div class="subnav" style="background:var(--bg3);border-bottom:1px solid var(--border);display:flex;gap:0;overflow-x:auto;margin:1rem -3rem 0;padding-left:3rem">
         <button id="bs-st-universes" onclick="switchBSTab('universes')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid var(--gold2);color:var(--gold);cursor:pointer;margin-bottom:-1px;white-space:nowrap">Universes</button>
         <button id="bs-st-print" onclick="switchBSTab('print')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid transparent;color:var(--text3);cursor:pointer;margin-bottom:-1px;white-space:nowrap">Print &amp; Series</button>
         <button id="bs-st-manga" onclick="switchBSTab('manga')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid transparent;color:var(--text3);cursor:pointer;margin-bottom:-1px;white-space:nowrap">Manga</button>
@@ -416,7 +526,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div class="sl">Order overview</div><div class="mg" id="tbb-m"></div>
       <div class="sl">Pending — unfulfilled &amp; unpaid</div>
       <div class="cb">
-        <div class="or" style="background:var(--bg3);font-family:var(--font-m);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);border-radius:6px 6px 0 0;">
+        <div class="or or-head" style="background:var(--bg3);font-family:var(--font-m);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);border-radius:6px 6px 0 0;">
           <div>Date</div><div>Book</div><div>Series</div><div>Order #</div><div>Status</div>
         </div>
         <div id="tbb-orders"></div>
@@ -486,7 +596,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
 
     <!-- FR sub-tabs rendered inside a container -->
     <div class="panel active" id="tab-col-fr">
-      <div id="fr-subtabs" style="background:var(--bg3);border-bottom:1px solid var(--border);padding:0 3rem;display:flex;gap:0;overflow-x:auto;margin:-2.5rem -3rem 2rem;">
+      <div id="fr-subtabs" class="subnav subnav-flush" style="background:var(--bg3);border-bottom:1px solid var(--border);padding:0 3rem;display:flex;gap:0;overflow-x:auto;margin:-2.5rem -3rem 2rem;">
         <button class="active" id="fr-st-overview" onclick="switchFRTab('fr-overview')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid var(--gold2);color:var(--gold);cursor:pointer;margin-bottom:-1px;white-space:nowrap;transition:all 0.15s">Overview</button>
         <button id="fr-st-series" onclick="switchFRTab('fr-series')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid transparent;color:var(--text3);cursor:pointer;margin-bottom:-1px;white-space:nowrap;transition:all 0.15s">By Series</button>
         <button id="fr-st-completion" onclick="switchFRTab('fr-completion')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid transparent;color:var(--text3);cursor:pointer;margin-bottom:-1px;white-space:nowrap;transition:all 0.15s">Completion</button>
@@ -538,7 +648,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
 
     <!-- DL Panel -->
     <div class="panel" id="tab-col-dl">
-      <div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:0 3rem;display:flex;gap:0;overflow-x:auto;margin:-2.5rem -3rem 2rem;">
+      <div class="subnav subnav-flush" style="background:var(--bg3);border-bottom:1px solid var(--border);padding:0 3rem;display:flex;gap:0;overflow-x:auto;margin:-2.5rem -3rem 2rem;">
         <button class="active" id="dl-st-overview" onclick="switchDLTab('dl-overview')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid var(--gold2);color:var(--gold);cursor:pointer;margin-bottom:-1px;white-space:nowrap">Overview</button>
         <button id="dl-st-series" onclick="switchDLTab('dl-series')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid transparent;color:var(--text3);cursor:pointer;margin-bottom:-1px;white-space:nowrap">By Series</button>
         <button id="dl-st-completion" onclick="switchDLTab('dl-completion')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid transparent;color:var(--text3);cursor:pointer;margin-bottom:-1px;white-space:nowrap">Completion</button>
@@ -578,7 +688,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
 
     <!-- SR Panel -->
     <div class="panel" id="tab-col-sr">
-      <div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:0 3rem;display:flex;gap:0;overflow-x:auto;margin:-2.5rem -3rem 2rem;">
+      <div class="subnav subnav-flush" style="background:var(--bg3);border-bottom:1px solid var(--border);padding:0 3rem;display:flex;gap:0;overflow-x:auto;margin:-2.5rem -3rem 2rem;">
         <button id="sr-st-overview" onclick="switchSRTab('sr-overview')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid var(--gold2);color:var(--gold);cursor:pointer;margin-bottom:-1px;white-space:nowrap">Overview</button>
         <button id="sr-st-publisher" onclick="switchSRTab('sr-publisher')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid transparent;color:var(--text3);cursor:pointer;margin-bottom:-1px;white-space:nowrap">By Publisher</button>
         <button id="sr-st-completion" onclick="switchSRTab('sr-completion')" style="font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:0.6rem 1rem;background:none;border:none;border-bottom:2px solid transparent;color:var(--text3);cursor:pointer;margin-bottom:-1px;white-space:nowrap">Completion</button>
@@ -689,6 +799,16 @@ function assignRoom(title,author,type,genre,sg){
 
 let charts={};
 function dc(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+// Narrow screens: a side legend eats most of the canvas, so drop it below.
+const MQ_NARROW=window.matchMedia('(max-width:780px)');
+function isNarrow(){return MQ_NARROW.matches;}
+function LEGPOS(){return isNarrow()?'bottom':'right';}
+// Rotating a phone crosses the breakpoint; re-render so legends and the
+// JS-built accordion column widths pick up the new layout.
+MQ_NARROW.addEventListener('change',()=>{
+  if(typeof rendered==='undefined')return;
+  rendered.clear();renderTab(curTab);
+});
 
 function n(v){const x=parseInt(v);return isNaN(x)?0:x;}
 function pct(a,b){return b>0?(a/b*100).toFixed(1)+'%':'—';}
@@ -851,7 +971,7 @@ function renderOverview(bm,yd2026){
   const mediaCounts={};for(const b of books)mediaCounts[b.media]=(mediaCounts[b.media]||0)+1;
   const pieLabels=Object.keys(mediaCounts);
   dc('ov-pie');
-  charts['ov-pie']=new Chart(document.getElementById('ov-pie'),{type:'pie',data:{labels:pieLabels,datasets:[{data:Object.values(mediaCounts),backgroundColor:pieLabels.map(l=>MCOL[l]||'#9a9688'),borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{family:'DM Mono',size:10},color:'#5a5850',boxWidth:10}}}}});
+  charts['ov-pie']=new Chart(document.getElementById('ov-pie'),{type:'pie',data:{labels:pieLabels,datasets:[{data:Object.values(mediaCounts),backgroundColor:pieLabels.map(l=>MCOL[l]||'#9a9688'),borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:LEGPOS(),labels:{font:{family:'DM Mono',size:10},color:'#5a5850',boxWidth:10}}}}});
   const fsEl=document.getElementById('ov-focus');
   if(focus.length&&G.bookRows){
     fsEl.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem;margin-bottom:1.5rem">'+focus.map(sn=>{
@@ -1150,7 +1270,7 @@ function renderThisYear(year){
   const mediaCounts={};for(const b of books)if(b.media)mediaCounts[b.media]=(mediaCounts[b.media]||0)+1;
   const pieLbls=Object.keys(mediaCounts);
   dc('ty-pie');
-  charts['ty-pie']=new Chart(document.getElementById('ty-pie'),{type:'pie',data:{labels:pieLbls,datasets:[{data:Object.values(mediaCounts),backgroundColor:pieLbls.map(l=>MCOL[l]||'#9a9688'),borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{family:'DM Mono',size:10},color:'#5a5850',boxWidth:10}}}}});
+  charts['ty-pie']=new Chart(document.getElementById('ty-pie'),{type:'pie',data:{labels:pieLbls,datasets:[{data:Object.values(mediaCounts),backgroundColor:pieLbls.map(l=>MCOL[l]||'#9a9688'),borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:LEGPOS(),labels:{font:{family:'DM Mono',size:10},color:'#5a5850',boxWidth:10}}}}});
   const genreCounts={};for(const b of books)if(b.genre)genreCounts[b.genre]=(genreCounts[b.genre]||0)+1;
   const genreEntries=Object.entries(genreCounts).sort((a,b)=>b[1]-a[1]);
   const genreColors=['#7a6bab','#c9a84c','#4a9b8e','#c4614a','#5a8a4a','#4a7ab5','#8a6a9a','#6a8a4a','#9a6a4a','#4a6a8a'];
@@ -1270,7 +1390,7 @@ function renderCompletion(bm){
   const ttrpgSh=bm.ttrpg.o-bm.ttrpg.r;
   document.getElementById('ttrpg-m').innerHTML=mH(fmt(bm.ttrpg.t),'TTRPG tracked',pct(bm.ttrpg.t,bm.tracked)+' of library')+mH(fmt(bm.ttrpg.r),'TTRPG read',pct(bm.ttrpg.r,bm.ttrpg.t)+' of TTRPG','t')+mH(fmt(bm.ttrpg.o),'TTRPG owned')+mH(fmt(ttrpgSh),'TTRPG on shelf','','c')+mH((ttrpgSh/bm.bpy).toFixed(1)+' yrs','Years to finish shelf');
   dc('ttrpgPie');
-  charts.ttrpgPie=new Chart(document.getElementById('ttrpgPie'),{type:'pie',data:{labels:['FR','DL','SR','Other'],datasets:[{data:[bm.fr.t,bm.dl.t,bm.sr.t,Math.max(0,bm.ttrpg.t-bm.fr.t-bm.dl.t-bm.sr.t)],backgroundColor:['#c9a84c','#4a9b8e','#7a6bab','#e8e0d0'],borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{family:'DM Mono',size:10},color:'#5a5850',boxWidth:10}},tooltip:{callbacks:{label:ctx=>{const tot=ctx.dataset.data.reduce((a,b)=>a+b,0);return` ${fmt(ctx.parsed)} (${(ctx.parsed/tot*100).toFixed(1)}%)`;}}}}}}); 
+  charts.ttrpgPie=new Chart(document.getElementById('ttrpgPie'),{type:'pie',data:{labels:['FR','DL','SR','Other'],datasets:[{data:[bm.fr.t,bm.dl.t,bm.sr.t,Math.max(0,bm.ttrpg.t-bm.fr.t-bm.dl.t-bm.sr.t)],backgroundColor:['#c9a84c','#4a9b8e','#7a6bab','#e8e0d0'],borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:LEGPOS(),labels:{font:{family:'DM Mono',size:10},color:'#5a5850',boxWidth:10}},tooltip:{callbacks:{label:ctx=>{const tot=ctx.dataset.data.reduce((a,b)=>a+b,0);return` ${fmt(ctx.parsed)} (${(ctx.parsed/tot*100).toFixed(1)}%)`;}}}}}}); 
   document.getElementById('ttrpg-prog').innerHTML=[{n:'Forgotten Realms',d:bm.fr,c:'#c9a84c'},{n:'Dragonlance',d:bm.dl,c:'#4a9b8e'},{n:'Shadowrun',d:bm.sr,c:'#7a6bab'}].map(u=>`<div class="pr"><div class="pl">${u.n}</div><div class="pt"><div class="pf" style="width:${u.d.t?u.d.r/u.d.t*100:0}%;background:${u.c}"></div></div><div class="pv">${pct(u.d.r,u.d.t)}</div></div>`).join('');
 }
 
@@ -1415,8 +1535,9 @@ function toggleAcc(aid){
   if(!body)return;
   const isOpen=body.classList.contains('open');
   body.classList.toggle('open',!isOpen);
-  chev.classList.toggle('open',!isOpen);
-  head.classList.toggle('open',!isOpen);
+  // By Series rows have a chevron but no .acc-header element to highlight.
+  if(chev)chev.classList.toggle('open',!isOpen);
+  if(head)head.classList.toggle('open',!isOpen);
 }
 
 function renderComingUp(up){
@@ -1609,7 +1730,7 @@ function renderBuyThisYear(books){
   charts['bty-source']=new Chart(document.getElementById('bty-source'),{
     type:'pie',
     data:{labels:srcLabels,datasets:[{data:srcData,backgroundColor:srcLabels.map(l=>SOURCE_COLORS[l]||'#9a9688'),borderWidth:2,borderColor:'#fff'}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{family:'DM Mono',size:10},color:'#5a5850',boxWidth:10}}}}
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:LEGPOS(),labels:{font:{family:'DM Mono',size:10},color:'#5a5850',boxWidth:10}}}}
   });
   // Genre bars
   const genreEntries=Object.entries(genreCounts).sort((a,b)=>b[1]-a[1]);
@@ -1943,7 +2064,7 @@ function renderFROverview(){
   charts['fr-status-pie']=new Chart(document.getElementById('fr-status-pie'),{
     type:'pie',
     data:{labels:['Complete','Partial','Ready to read','Not owned'],datasets:[{data:[complete,partial,readyToRead,ownedNone],backgroundColor:['#4a9b8e','#c9a84c','#7a6bab','#c4614a'],borderWidth:2,borderColor:'#fff'}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{family:'DM Mono',size:10},color:'#5a5850',boxWidth:10}}}}
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:LEGPOS(),labels:{font:{family:'DM Mono',size:10},color:'#5a5850',boxWidth:10}}}}
   });
   dc('fr-ov-bar');
   charts['fr-ov-bar']=new Chart(document.getElementById('fr-ov-bar'),{
@@ -2213,7 +2334,7 @@ function renderDLOverview(){
   charts['dl-status-pie']=new Chart(document.getElementById('dl-status-pie'),{
     type:'pie',
     data:{labels:['Fully owned','Partial','None owned'],datasets:[{data:[fullyOwned,partial,noneOwned],backgroundColor:['#4a9b8e','#c9a84c','#c4614a'],borderWidth:2,borderColor:'#fff'}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{family:'DM Mono',size:10},color:'#5a5850',boxWidth:10}}}}
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:LEGPOS(),labels:{font:{family:'DM Mono',size:10},color:'#5a5850',boxWidth:10}}}}
   });
   dc('dl-ov-bar');
   charts['dl-ov-bar']=new Chart(document.getElementById('dl-ov-bar'),{
@@ -2428,7 +2549,7 @@ function renderSROverview(){
   charts['sr-pub-pie']=new Chart(document.getElementById('sr-pub-pie'),{
     type:'pie',
     data:{labels:pubNames.map(p=>PUB_LABELS[p]||p),datasets:[{data:pubNames.map(p=>byPublisher[p].length),backgroundColor:pubNames.map(p=>PUB_COLORS[p]||'#9a9688'),borderWidth:2,borderColor:'#fff'}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{family:'DM Mono',size:10},color:'#5a5850',boxWidth:10}}}}
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:LEGPOS(),labels:{font:{family:'DM Mono',size:10},color:'#5a5850',boxWidth:10}}}}
   });
   // Read/owned/need grouped bar
   dc('sr-ov-bar');
@@ -2726,12 +2847,12 @@ function progBar(read,owned,total,h='6px'){
 }
 
 function bookRows(books){
-  return`<div style="display:grid;grid-template-columns:8px 24px 1fr 130px;gap:6px;padding:4px 8px;font-family:var(--font-m);font-size:9px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);background:var(--bg3);border-bottom:1px solid var(--border)"><div></div><div style="text-align:right">#</div><div>Title</div><div>Author</div></div>`+
+  return`<div class="bk-row bk-head" style="display:grid;grid-template-columns:8px 24px 1fr 130px;gap:6px;padding:4px 8px;font-family:var(--font-m);font-size:9px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);background:var(--bg3);border-bottom:1px solid var(--border)"><div></div><div style="text-align:right">#</div><div>Title</div><div>Author</div></div>`+
   books.map(b=>{
     const isRead=b.read,isOwned=b.owned&&!b.read;
     const dot=isRead?'#4a9b8e':isOwned?'#c9a84c':'#c4614a';
     const bg=isRead?'rgba(74,155,142,0.07)':isOwned?'rgba(201,168,76,0.07)':'rgba(196,97,74,0.07)';
-    return`<div style="display:grid;grid-template-columns:8px 24px 1fr 130px;gap:6px;align-items:center;padding:4px 8px;border-bottom:1px solid var(--border);background:${bg};font-size:11px">
+    return`<div class="bk-row" style="display:grid;grid-template-columns:8px 24px 1fr 130px;gap:6px;align-items:center;padding:4px 8px;border-bottom:1px solid var(--border);background:${bg};font-size:11px">
       <div style="width:7px;height:7px;border-radius:50%;background:${dot}"></div>
       <div style="font-family:var(--font-m);font-size:10px;color:var(--text3);text-align:right">${b.seq||''}</div>
       <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.title}</div>
@@ -2786,7 +2907,7 @@ function accHeader(aid,name,genre,complete,seriesCount,readCount,totalCount,bsCo
   const bg=indent?'var(--bg3)':'';
   const nameSize=indent?'12px':'13px';
   const nameFam=isUniverse&&!indent?'font-family:var(--font-d);font-weight:600;':'font-weight:500;';
-  return`<div onclick="toggleAcc('${aid}')" style="display:grid;grid-template-columns:18px 1fr auto auto ${seriesCount!=null?'60px ':''} 70px 120px;gap:8px;align-items:center;padding:${pad};cursor:pointer;background:${bg}" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background='${bg}'">
+  return`<div class="bs-row" onclick="toggleAcc('${aid}')" style="display:grid;grid-template-columns:18px 1fr auto auto ${seriesCount!=null?'60px ':''} 70px 120px;gap:8px;align-items:center;padding:${pad};cursor:pointer;background:${bg}" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background='${bg}'">
     <span id="acc-c-${aid}" style="font-size:9px;color:var(--text3)">▶</span>
     <div style="font-size:${nameSize};${nameFam}overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</div>
     <div>${genreBadge(genre)}</div>
