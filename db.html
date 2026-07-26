@@ -827,8 +827,16 @@ function mediaBadge(med){return{Print:'b-gold',Audio:'b-teal',Manga:'b-purple',C
 const MO_ORD={january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12};
 function relSort(s){if(!s)return 99;const l=s.toLowerCase();for(const[m,v]of Object.entries(MO_ORD))if(l.includes(m))return v;return 99;}
 
+function pageStatsFor(){
+  const ps=(BUNDLE&&BUNDLE.pageStats)||{};
+  const owners=OWNER==='all'?Object.keys(ps):[OWNER];
+  const agg={ownedBooks:0,ownedWith:0,ownedPages:0,readBooks:0,readWith:0,readPages:0};
+  owners.forEach(o=>{const cs=ps[o]||{};Object.values(cs).forEach(c=>{for(const k in agg)agg[k]+=c[k]||0;});});
+  return agg;
+}
 function renderOverview(bm,yd2026){
-  document.getElementById('ov-m').innerHTML=mH(fmt(bm.tracked),'Total tracked')+mH(fmt(bm.read),'Total read',pct(bm.read,bm.tracked)+' of tracked','t')+mH(fmt(bm.owned),'Total owned')+mH(fmt(bm.shelf),'On shelf','owned unread','c')+mH(fmt(bm.needBuy),'Need to buy')+mH(fmt(bm.readNotOwned),'Read not owned','delta where read > owned');
+  const pg=pageStatsFor();
+  document.getElementById('ov-m').innerHTML=mH(fmt(bm.tracked),'Total tracked')+mH(fmt(bm.read),'Total read',pct(bm.read,bm.tracked)+' of tracked','t')+mH(fmt(bm.owned),'Total owned')+mH(fmt(bm.shelf),'On shelf','owned unread','c')+mH(fmt(bm.needBuy),'Need to buy')+mH(fmt(bm.readNotOwned),'Read not owned','delta where read > owned')+mH(fmt(pg.ownedPages),'Pages owned',`${fmt(pg.ownedWith)} of ${fmt(pg.ownedBooks)} books w/ data`)+mH(fmt(pg.readPages),'Pages read',`all-time · ${fmt(pg.readWith)} of ${fmt(pg.readBooks)} w/ data`,'t');
   document.getElementById('ov-c').innerHTML=mH(pct(bm.read,bm.tracked),'Read / tracked','','t')+mH(pct(bm.read,bm.owned),'Read / owned','','t')+mH(pct(bm.owned,bm.tracked),'Owned / tracked')+mH(pct(bm.owned-bm.read,bm.tracked-bm.read),'Owned unread / unread');
   const{books,focus}=yd2026;
   const mcByMedia2026={};
@@ -1922,13 +1930,15 @@ function renderFROverview(){
     else if(o>=deduped)readyToRead++;
     else ownedNone++;
   }
+  const frPg=(BUNDLE.dndPages||{})['Forgotten Realms'];
   document.getElementById('fr-ov-m').innerHTML=
     mH(total,'Total tracked')+
     mH(fmt(read),'Read',pct(read,total)+' of total','t')+
     mH(fmt(owned),'Owned',pct(owned,total)+' of total')+
     mH(fmt(need),'Still needed','','c')+
     mH(complete,'Series complete','all books read','g')+
-    mH(readyToRead,'Ready to read','owned, unstarted');
+    mH(readyToRead,'Ready to read','owned, unstarted')+
+    (frPg?mH(fmt(frPg.ownedPages),'Pages owned',`${frPg.ownedWith} of ${frPg.ownedBooks} w/ data`)+mH(fmt(frPg.readPages),'Pages read',`${frPg.readWith} of ${frPg.readBooks} w/ data`,'t'):'');
   dc('fr-status-pie');
   charts['fr-status-pie']=new Chart(document.getElementById('fr-status-pie'),{
     type:'pie',
@@ -2190,13 +2200,15 @@ function renderDLOverview(){
     else if(o>0)partial++;
     else noneOwned++;
   }
+  const dlPg=(BUNDLE.dndPages||{})['Dragonlance'];
   document.getElementById('dl-ov-m').innerHTML=
     mH(total,'Total tracked')+
     mH(fmt(owned),'Owned',pct(owned,total)+' of total')+
     mH(fmt(need),'Still needed',pct(need,total)+' of total','c')+
     mH(fmt(read),'Read',pct(read,total)+' of total','t')+
     mH(fullyOwned,'Series fully owned','','g')+
-    mH(Object.keys(bySeriesMap).length,'Total series');
+    mH(Object.keys(bySeriesMap).length,'Total series')+
+    (dlPg?mH(fmt(dlPg.ownedPages),'Pages owned',`${dlPg.ownedWith} of ${dlPg.ownedBooks} w/ data`)+mH(fmt(dlPg.readPages),'Pages read',`${dlPg.readWith} of ${dlPg.readBooks} w/ data`,'t'):'');
   dc('dl-status-pie');
   charts['dl-status-pie']=new Chart(document.getElementById('dl-status-pie'),{
     type:'pie',
@@ -2401,13 +2413,15 @@ function renderSROverview(){
   const read=books.filter(b=>b.read).length;
   const owned=books.filter(b=>b.owned).length;
   const need=books.filter(b=>b.need).length;
+  const srPg=(BUNDLE.dndPages||{})['Shadowrun'];
   document.getElementById('sr-ov-m').innerHTML=
     mH(total,'Total tracked')+
     mH(fmt(read),'Read',pct(read,total)+' of total','t')+
     mH(fmt(owned),'Owned',pct(owned,total)+' of total')+
     mH(fmt(need),'Need',pct(need,total)+' of total','c')+
     mH(40,'FASA era','fully read & owned','g')+
-    mH(3,'Publishers','FASA · WizKids · Catalyst');
+    mH(3,'Publishers','FASA · WizKids · Catalyst')+
+    (srPg?mH(fmt(srPg.ownedPages),'Pages owned',`${srPg.ownedWith} of ${srPg.ownedBooks} w/ data`)+mH(fmt(srPg.readPages),'Pages read',`${srPg.readWith} of ${srPg.readBooks} w/ data`,'t'):'');
   // Publisher pie
   const pubNames=Object.keys(byPublisher);
   dc('sr-pub-pie');
