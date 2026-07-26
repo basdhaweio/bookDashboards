@@ -203,6 +203,43 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
 .ov-charts{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem;}
 @media(max-width:680px){.ov-charts{grid-template-columns:1fr;}}
 
+/* ── LOG VIEW ────────────────────────────────────────────────── */
+.log-search{width:100%;font-family:var(--font-b);font-size:16px;padding:12px 14px;border:1px solid var(--border2);border-radius:10px;background:var(--bg2);color:var(--text);margin-bottom:0.8rem;box-shadow:var(--shadow);}
+.log-search:focus{outline:none;border-color:var(--gold2);}
+.log-item{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;box-shadow:var(--shadow);overflow:hidden;}
+.log-item-hd{display:flex;align-items:center;gap:10px;padding:11px 13px;}
+.log-item-info{flex:1;min-width:0;}
+.log-item-title{font-size:13px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.log-item-meta{font-family:var(--font-m);font-size:10px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px;}
+.log-dots{display:flex;gap:4px;flex-shrink:0;}
+.log-dot{width:9px;height:9px;border-radius:50%;}
+.log-acts{display:flex;gap:8px;flex-shrink:0;}
+.log-act{font-family:var(--font-m);font-size:11px;padding:8px 12px;border-radius:8px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);cursor:pointer;white-space:nowrap;transition:all 0.12s;}
+.log-act:hover{border-color:var(--gold2);color:var(--text);}
+.log-act.primary{background:var(--teal);border-color:var(--teal);color:#fff;}
+.log-act.gold{background:var(--gold2);border-color:var(--gold2);color:#fff;}
+.log-exp{display:none;border-top:1px solid var(--border);background:var(--bg3);padding:12px 13px;}
+.log-exp.open{display:block;}
+.log-frow{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+.log-frow label{font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;color:var(--text3);min-width:64px;}
+.log-frow input,.log-frow select{font-family:var(--font-b);font-size:15px;padding:9px 11px;border:1px solid var(--border2);border-radius:8px;background:var(--bg2);color:var(--text);flex:1;min-width:120px;}
+.log-frow input:focus,.log-frow select:focus{outline:none;border-color:var(--gold2);}
+.log-ghost{font-family:var(--font-m);font-size:11px;padding:10px 14px;border-radius:8px;border:1px dashed var(--border2);background:none;color:var(--text3);cursor:pointer;width:100%;text-align:left;}
+.log-ghost:hover{color:var(--text2);border-color:var(--gold2);}
+.log-pend{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--gold2);border-radius:8px;padding:10px 13px;margin-bottom:7px;box-shadow:var(--shadow);}
+.log-pend-desc{font-size:13px;color:var(--text);}
+.log-pend-meta{font-family:var(--font-m);font-size:10px;color:var(--text3);margin-top:2px;}
+.log-badge-pend{display:inline-block;font-family:var(--font-m);font-size:9px;padding:2px 6px;border-radius:3px;background:var(--gold-bg);color:var(--gold);border:1px solid var(--gold2);margin-left:6px;}
+#log-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(80px);background:var(--text);color:var(--bg);font-family:var(--font-m);font-size:12px;padding:11px 18px;border-radius:10px;box-shadow:var(--shadow2);transition:transform 0.25s;z-index:99;max-width:90vw;}
+#log-toast.show{transform:translateX(-50%) translateY(0);}
+.log-setup{background:var(--gold-bg);border:1px solid var(--gold2);border-radius:10px;padding:1rem 1.2rem;margin-bottom:1.2rem;}
+.log-setup .ms{margin-bottom:8px;}
+@media(max-width:780px){
+  .log-item-hd{flex-wrap:wrap;}
+  .log-acts{width:100%;justify-content:flex-end;}
+  .log-act{padding:10px 14px;}
+}
+
 /* ── MOBILE ──────────────────────────────────────────────────── */
 @media(max-width:780px){
   /* Nothing scrolls sideways except things that opt in (tables, nav) */
@@ -336,6 +373,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
     <button onclick="switchSection('reading')">Reading</button>
     <button onclick="switchSection('buying')">Buying</button>
     <button onclick="switchSection('collecting')">Collecting</button>
+    <button onclick="switchSection('log')">Log <span id="log-nav-dot" style="display:none;color:var(--coral)">●</span></button>
     <button class="bc-btn" onclick="switchSection('bookclub')">Book Club ✂</button>
   </div>
 
@@ -718,6 +756,41 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
         <div class="sl" style="margin-top:0.5rem">Reading queue — owned, not yet read</div>
         <div class="tw"><table><thead><tr><th>Title</th><th>Author</th><th>Published</th><th>Format</th><th>Publisher</th></tr></thead><tbody id="sr-read-queue"></tbody></table></div>
       </div>
+    </div>
+  </div>
+
+  <!-- LOG (quick entry → inbox repo → jerry) -->
+  <div id="sec-log" style="display:none">
+    <div class="tab-nav">
+      <button class="active" onclick="switchTab('logbook','log')">Quick Log</button>
+      <button onclick="switchTab('logorders','log')">Orders</button>
+      <button id="log-pending-tab" onclick="switchTab('logpending','log')">Pending</button>
+    </div>
+    <div class="panel active" id="tab-logbook">
+      <div id="log-setup-book"></div>
+      <div class="sl">Finished or acquired a book</div>
+      <input id="log-q" class="log-search" type="search" placeholder="Search title, series, or author…" autocomplete="off" oninput="LOG.search()">
+      <div id="log-results"></div>
+      <div style="margin-top:1.2rem">
+        <button class="log-ghost" onclick="LOG.toggleAdd()">＋ Add a book that isn't in the library yet</button>
+        <div id="log-addform" style="display:none"></div>
+      </div>
+    </div>
+    <div class="panel" id="tab-logorders">
+      <div id="log-setup-orders"></div>
+      <div class="sl">New order</div>
+      <div id="log-orderform"></div>
+      <div class="sl" style="margin-top:1.5rem">Open orders — tap to update</div>
+      <div id="log-orders-open"></div>
+      <div class="sl" style="margin-top:1.5rem">Recent fulfilled</div>
+      <div id="log-orders-done"></div>
+    </div>
+    <div class="panel" id="tab-logpending">
+      <div class="sl">Waiting for jerry</div>
+      <div class="ms" style="margin-bottom:1rem">Changes below are saved in the inbox and will appear in the dashboard after jerry's next sync (~15 min).</div>
+      <div id="log-pending-list"></div>
+      <div class="sl" style="margin-top:2rem">Setup</div>
+      <div id="log-setup-main"></div>
     </div>
   </div>
 
@@ -1836,12 +1909,12 @@ function setOwner(o){
 }
 
 // Section → default tab mapping
-const SEC_DEFAULT={tracking:'overview',reading:'history',buying:'libgrowth',collecting:'col-fr',bookclub:'flyer'};
+const SEC_DEFAULT={tracking:'overview',reading:'history',buying:'libgrowth',collecting:'col-fr',bookclub:'flyer',log:'logbook'};
 
 function switchSection(sec,tab){
   curSec=sec;
   document.querySelectorAll('.sec-nav button').forEach(b=>{const oc=b.getAttribute('onclick');if(oc)b.classList.toggle('active',oc.includes("'"+sec+"'"));});
-  ['tracking','reading','buying','collecting','bookclub'].forEach(s=>{const el=document.getElementById('sec-'+s);if(el)el.style.display=s===sec?'block':'none';});
+  ['tracking','reading','buying','collecting','bookclub','log'].forEach(s=>{const el=document.getElementById('sec-'+s);if(el)el.style.display=s===sec?'block':'none';});
   document.body.classList.toggle('flyer-mode',sec==='bookclub');
   const targetTab=tab||SEC_DEFAULT[sec];
   switchTab(targetTab,sec,true); // true = called from switchSection, skip hash update loop
@@ -1854,7 +1927,9 @@ function switchTab(id,sec,fromSection){
   secEl.querySelectorAll('.tab-nav button').forEach(b=>{const oc=b.getAttribute('onclick');if(oc)b.classList.toggle('active',oc.includes("'"+id+"'"));});
   secEl.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='tab-'+id));
   curTab=id;
+  // Log tabs reflect live inbox state — always re-render on visit (no charts, cheap)
   if(!rendered.has(id)){renderTab(id);rendered.add(id);}
+  else if(id==='logbook'||id==='logorders'||id==='logpending')renderTab(id);
   if(!fromSection){curSec=sec;updateHash(sec,id);}
 }
 
@@ -1867,8 +1942,8 @@ function updateHash(sec,tab){
 function restoreFromHash(){
   const hash=(location.hash||'').replace('#','');
   const[sec,tab]=hash.split('/');
-  const validSecs=new Set(['tracking','reading','buying','collecting','bookclub']);
-  const validTabs=new Set(['overview','bytype','genre','universe','rooms','history','thisyear','completion','byseries','toread','comingup','bookmail','toacquire','someday','libgrowth','buythisyear','col-fr','col-dl','col-sr','flyer']);
+  const validSecs=new Set(['tracking','reading','buying','collecting','bookclub','log']);
+  const validTabs=new Set(['overview','bytype','genre','universe','rooms','history','thisyear','completion','byseries','toread','comingup','bookmail','toacquire','someday','libgrowth','buythisyear','col-fr','col-dl','col-sr','flyer','logbook','logorders','logpending']);
   const validFRTabs=new Set(['fr-overview','fr-series','fr-completion']);
   const validDLTabs=new Set(['dl-overview','dl-series','dl-completion']);
   const validSRTabs=new Set(['sr-overview','sr-publisher','sr-completion']);
@@ -1921,6 +1996,9 @@ function renderTabInner(id){
   else if(id==='libgrowth')renderLibGrowth(H?G.growthMetrics:[],G.books);
   else if(id==='buythisyear')renderBuyThisYear(H?G.growthYear:[]);
   else if(id==='flyer')renderBookClub();
+  else if(id==='logbook')LOG.renderBook();
+  else if(id==='logorders')LOG.renderOrders();
+  else if(id==='logpending')LOG.renderPending();
   else if(id==='col-fr'){switchFRTab('fr-overview');}
   else if(id==='col-dl'){switchDLTab('dl-overview');}
   else if(id==='col-sr'){switchSRTab('sr-overview');}
@@ -3187,6 +3265,302 @@ function bcSetCover(el,url){
   img.src=url;img.alt='cover';
 }
 
+/* ── LOG: quick entry → GitHub inbox repo → jerry ─────────────────
+   Events are small JSON files PUT to <cfg.repo>/inbox/ via the GitHub
+   contents API. jerry polls, applies them to bookdb, moves them to
+   inbox/processed/, and re-exports the bundle. Schema: docs/INBOX.md. */
+const LOG=(()=>{
+  const LS_CFG='library-log-cfg',LS_SENT='library-log-sent';
+  const API='https://api.github.com';
+  let cfg=null,pendCache=null,pendAt=0;
+
+  function getCfg(){if(cfg)return cfg;try{cfg=JSON.parse(localStorage.getItem(LS_CFG))||{};}catch(e){cfg={};}
+    if(!cfg.repo)cfg.repo='basdhaweio/bookInbox';return cfg;}
+  function saveCfg(c){cfg=c;localStorage.setItem(LS_CFG,JSON.stringify(c));}
+  function ready(){const c=getCfg();return!!(c.repo&&c.token);}
+  function hdrs(){return{'Authorization':'Bearer '+getCfg().token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'};}
+
+  // Locally-sent events survive until seen in (or removed from) the inbox.
+  function sent(){try{return JSON.parse(localStorage.getItem(LS_SENT))||[];}catch(e){return[];}}
+  function remember(ev){const s=sent();s.push(ev);localStorage.setItem(LS_SENT,JSON.stringify(s.slice(-80)));}
+
+  function by(book){return OWNER!=='all'?OWNER:((book&&book.owner)||'butthead');}
+  function today(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+  function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+  function b64(s){return btoa(unescape(encodeURIComponent(s)));}
+  function toast(msg,bad){const t=document.getElementById('log-toast');t.textContent=msg;t.style.background=bad?'var(--coral)':'var(--text)';t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),3200);}
+
+  async function submit(type,payload,book){
+    if(!ready()){toast('Set up the inbox first — see Pending tab',true);switchTab('logpending','log');return false;}
+    const ev={v:1,id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),
+      at:new Date().toISOString(),by:by(book),type,
+      bundle_generated_at:BUNDLE?BUNDLE.generated_at:null,payload};
+    const name=ev.at.replace(/[:.]/g,'-')+'-'+type+'-'+ev.id.slice(-4)+'.json';
+    try{
+      const r=await fetch(`${API}/repos/${getCfg().repo}/contents/inbox/${name}`,{
+        method:'PUT',headers:hdrs(),
+        body:JSON.stringify({message:'log: '+type,content:b64(JSON.stringify(ev,null,1))})});
+      if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.message||r.status);}
+      remember(ev);pendCache=null;refreshBadge();
+      return true;
+    }catch(e){toast('Failed to save: '+e.message,true);return false;}
+  }
+
+  // Pending = files in inbox/ (shared truth) ∪ locally-sent not yet listed.
+  async function fetchPending(force){
+    if(!force&&pendCache&&Date.now()-pendAt<60000)return pendCache;
+    let remote=[];
+    if(ready()){
+      try{
+        const r=await fetch(`${API}/repos/${getCfg().repo}/contents/inbox`,{headers:hdrs()});
+        if(r.ok){
+          const files=(await r.json()).filter(f=>f.type==='file'&&f.name.endsWith('.json'));
+          remote=await Promise.all(files.slice(0,50).map(async f=>{
+            try{const rr=await fetch(f.download_url?f.download_url:`${API}/repos/${getCfg().repo}/contents/${f.path}`,f.download_url?{}:{headers:hdrs()});
+              if(f.download_url)return await rr.json();
+              const j=await rr.json();return JSON.parse(decodeURIComponent(escape(atob(j.content))));
+            }catch(e){return null;}}));
+          remote=remote.filter(Boolean);
+        }
+      }catch(e){/* offline — fall back to local */}
+    }
+    const ids=new Set(remote.map(e=>e.id));
+    const local=sent().filter(e=>!ids.has(e.id)&&(!BUNDLE||e.at>BUNDLE.generated_at));
+    pendCache=[...remote,...local].sort((a,b)=>a.at<b.at?1:-1);
+    pendAt=Date.now();
+    return pendCache;
+  }
+
+  function describe(ev){
+    const p=ev.payload||{},b=p.book||{};
+    const who=OWNER_LABEL[ev.by]||ev.by;
+    switch(ev.type){
+      case'finished':return`✓ ${who} finished “${b.title}”${p.date?' · '+p.date:''}`;
+      case'acquired':return`📦 Got “${b.title}”${b.media?' ('+b.media+')':''}`;
+      case'add_book':return`＋ New book “${p.title}”${p.read?' · read':''}${p.owned?' · owned':''}`;
+      case'order_new':return`🧾 New order ${p.order||''} — ${p.books||'?'}`;
+      case'order_update':{const s=Object.entries(p.set||{}).map(([k,v])=>v===true?k:`${k}: ${v}`).join(', ');return`🧾 Order ${p.ref&&p.ref.order||''} → ${s}`;}
+      default:return ev.type;
+    }
+  }
+  function pendingKeys(list){const ks=new Set();(list||[]).forEach(ev=>{const b=ev.payload&&ev.payload.book;if(b)ks.add(ev.type+'|'+b.title+'|'+b.series);});return ks;}
+
+  async function refreshBadge(){
+    const list=await fetchPending().catch(()=>[]);
+    const tab=document.getElementById('log-pending-tab');
+    if(tab)tab.textContent='Pending'+(list.length?` (${list.length})`:'');
+    const dot=document.getElementById('log-nav-dot');
+    if(dot)dot.style.display=list.length?'inline':'none';
+  }
+
+  // ── Setup card ──
+  function setupCard(full){
+    const c=getCfg();
+    if(ready()&&!full)return'';
+    return`<div class="log-setup">
+      <div class="ms"><strong>${ready()?'Inbox connected':'One-time setup'}</strong> — entries are saved to a GitHub repo that jerry watches. Paste a fine-grained token (Contents read/write on the inbox repo only).</div>
+      <div class="log-frow"><label>Repo</label><input class="log-cfg-repo" value="${esc(c.repo)}" placeholder="owner/repo"></div>
+      <div class="log-frow"><label>Token</label><input class="log-cfg-token" type="password" value="${esc(c.token||'')}" placeholder="github_pat_…"></div>
+      <div style="display:flex;gap:8px"><button class="log-act primary" onclick="LOG.saveSetup(this)">Save & test</button>
+      ${ready()?'<button class="log-act" onclick="LOG.forgetSetup()">Forget token</button>':''}</div>
+    </div>`;
+  }
+  async function saveSetup(btn){
+    // The card renders on every Log panel — read from the one that was tapped.
+    const card=btn.closest('.log-setup');
+    const repo=card.querySelector('.log-cfg-repo').value.trim().replace(/^https?:\/\/github\.com\//,'');
+    const token=card.querySelector('.log-cfg-token').value.trim();
+    if(!/^[\w.-]+\/[\w.-]+$/.test(repo))return toast('Repo must look like owner/name',true);
+    if(!token)return toast('Token is required',true);
+    saveCfg({repo,token});
+    try{
+      const r=await fetch(`${API}/repos/${repo}`,{headers:hdrs()});
+      if(!r.ok)throw new Error(r.status===404?'repo not found or token lacks access':'HTTP '+r.status);
+      toast('Connected to '+repo);pendCache=null;
+      renderBook();renderOrders();renderPending();refreshBadge();
+    }catch(e){toast('Check failed: '+e.message,true);}
+  }
+  function forgetSetup(){saveCfg({repo:getCfg().repo});toast('Token removed');renderPending();}
+
+  // ── Quick Log (books) ──
+  let expanded=null;
+  function renderBook(){
+    document.getElementById('log-setup-book').innerHTML=setupCard(false);
+    search();refreshBadge();
+  }
+  function search(){
+    const q=(document.getElementById('log-q').value||'').trim().toLowerCase();
+    const out=document.getElementById('log-results');
+    if(q.length<2){out.innerHTML='<div class="ms" style="padding:8px 2px">Type at least two letters — matches come from the current owner filter ('+(OWNER_LABEL[OWNER]||'Both')+').</div>';return;}
+    const pend=pendingKeys(pendCache);
+    const hits=(G.indBooks||[]).filter(b=>
+      b.title.toLowerCase().includes(q)||b.series.toLowerCase().includes(q)||b.author.toLowerCase().includes(q)).slice(0,30);
+    out.innerHTML=hits.map((b,i)=>{
+      const key=i;
+      const dots=`<div class="log-dots" title="${b.read?'read':''}${b.owned?' owned':''}">
+        ${b.read?'<div class="log-dot" style="background:var(--teal2)"></div>':''}
+        ${b.owned?'<div class="log-dot" style="background:var(--gold2)"></div>':''}
+        ${!b.owned&&!b.read?'<div class="log-dot" style="background:var(--coral)"></div>':''}</div>`;
+      const pendMark=(pend.has('finished|'+b.title+'|'+b.series)||pend.has('acquired|'+b.title+'|'+b.series))?'<span class="log-badge-pend">pending</span>':'';
+      return`<div class="log-item">
+        <div class="log-item-hd">
+          ${dots}
+          <div class="log-item-info">
+            <div class="log-item-title">${esc(b.title)}${pendMark}</div>
+            <div class="log-item-meta">${esc(b.series)}${b.seq?' #'+esc(b.seq):''} · ${esc(b.author)}${b.media?' · '+esc(b.media):''}${OWNER==='all'?' · '+(OWNER_LABEL[b.owner]||''):''}</div>
+          </div>
+          <div class="log-acts">
+            <button class="log-act primary" onclick="LOG.expand(${key},'finished')">✓ Read it</button>
+            <button class="log-act gold" onclick="LOG.expand(${key},'acquired')" ${b.owned?'title="already owned"':''}>📦 Got it</button>
+          </div>
+        </div>
+        <div class="log-exp" id="log-exp-${key}"></div>
+      </div>`;
+    }).join('')||'<div class="ms" style="padding:8px 2px">No matches. Use “Add a book” below if it\'s new.</div>';
+    out._hits=hits;expanded=null;
+  }
+  function expand(i,type){
+    const hits=document.getElementById('log-results')._hits||[];const b=hits[i];if(!b)return;
+    document.querySelectorAll('.log-exp.open').forEach(e=>e.classList.remove('open'));
+    if(expanded===i+type){expanded=null;return;}
+    expanded=i+type;
+    const el=document.getElementById('log-exp-'+i);
+    if(type==='finished'){
+      el.innerHTML=`<div class="log-frow"><label>Finished</label><input type="date" id="log-f-date" value="${today()}"></div>
+        <div class="log-frow"><label>Pages</label><input type="number" id="log-f-pages" placeholder="optional" inputmode="numeric"></div>
+        <button class="log-act primary" onclick="LOG.doFinished(${i})">Log it — ${esc(OWNER_LABEL[by(b)])} read this</button>`;
+    }else{
+      el.innerHTML=`<div class="log-frow"><label>Date</label><input type="date" id="log-a-date" value="${today()}"></div>
+        ${b.owned?'<div class="ms" style="margin-bottom:8px;color:var(--coral)">Heads up: already marked owned — log anyway if this is a new copy/format.</div>':''}
+        <button class="log-act gold" onclick="LOG.doAcquired(${i})">Log it — now owned</button>`;
+    }
+    el.classList.add('open');
+  }
+  function bookRef(b){return{title:b.title,series:b.series,seq:b.seq,author:b.author,media:b.media,owner:b.owner||'butthead'};}
+  async function doFinished(i){
+    const b=(document.getElementById('log-results')._hits||[])[i];if(!b)return;
+    const ok=await submit('finished',{book:bookRef(b),date:document.getElementById('log-f-date').value,
+      pages:+document.getElementById('log-f-pages').value||null},b);
+    if(ok){toast('Logged: finished “'+b.title+'”');search();}
+  }
+  async function doAcquired(i){
+    const b=(document.getElementById('log-results')._hits||[])[i];if(!b)return;
+    const ok=await submit('acquired',{book:bookRef(b),date:document.getElementById('log-a-date').value},b);
+    if(ok){toast('Logged: got “'+b.title+'”');search();}
+  }
+
+  // ── Add-new book ──
+  function toggleAdd(){
+    const f=document.getElementById('log-addform');
+    if(f.style.display==='none'){
+      f.innerHTML=`
+        <div class="cb" style="margin-top:10px">
+        <div class="log-frow"><label>Title *</label><input id="log-n-title"></div>
+        <div class="log-frow"><label>Series</label><input id="log-n-series" placeholder="blank = standalone"></div>
+        <div class="log-frow"><label>Seq #</label><input id="log-n-seq" inputmode="numeric" style="max-width:90px"></div>
+        <div class="log-frow"><label>Author</label><input id="log-n-author" placeholder="Last, First"></div>
+        <div class="log-frow"><label>Media</label><select id="log-n-media"><option>Print</option><option>Audio</option><option>Ebook</option><option>Manga</option><option>Graphic Novel</option><option>Comics</option></select></div>
+        <div class="log-frow"><label>Genre</label><input id="log-n-genre" placeholder="Fantasy, Scifi, …"></div>
+        <div class="log-frow"><label>Universe</label><input id="log-n-universe" placeholder="optional"></div>
+        <div class="log-frow"><label>Status</label>
+          <select id="log-n-status"><option value="owned">Owned, not read</option><option value="read">Read & owned</option><option value="readonly">Read, not owned</option><option value="wish">Neither (wishlist)</option></select></div>
+        <div class="log-frow"><label>Owner</label><select id="log-n-owner"><option value="butthead">Com</option><option value="goblin">Shereen</option></select></div>
+        <button class="log-act primary" onclick="LOG.doAdd()">Add to inbox</button>
+        <div class="ms" style="margin-top:8px">Lands as a proposal in bookdb — jerry-side review decides catalog placement.</div>
+        </div>`;
+      if(OWNER==='goblin')document.getElementById('log-n-owner').value='goblin';
+      f.style.display='block';
+    }else f.style.display='none';
+  }
+  async function doAdd(){
+    const v=id=>document.getElementById(id).value.trim();
+    const title=v('log-n-title');if(!title)return toast('Title is required',true);
+    const st=v('log-n-status');
+    const p={title,series:v('log-n-series'),seq:v('log-n-seq'),author:v('log-n-author'),
+      media:v('log-n-media'),genre:v('log-n-genre'),universe:v('log-n-universe'),
+      owner:v('log-n-owner'),owned:st==='owned'||st==='read',read:st==='read'||st==='readonly'};
+    const ok=await submit('add_book',p,{owner:p.owner});
+    if(ok){toast('Added “'+title+'” to inbox');toggleAdd();}
+  }
+
+  // ── Orders ──
+  function orderRef(o){return{date:o.date,order:o.order,books:o.books,series:o.series,author:o.author};}
+  function renderOrders(){
+    document.getElementById('log-setup-orders').innerHTML=setupCard(false);
+    document.getElementById('log-orderform').innerHTML=`
+      <div class="cb">
+      <div class="log-frow"><label>Date</label><input type="date" id="log-o-date" value="${today()}"></div>
+      <div class="log-frow"><label>Order #</label><input id="log-o-num" placeholder="#TBBSUB…"></div>
+      <div class="log-frow"><label>Books</label><input id="log-o-books" placeholder="e.g. The Sun Eater 1-3"></div>
+      <div class="log-frow"><label>Series</label><input id="log-o-series"></div>
+      <div class="log-frow"><label>Author</label><input id="log-o-author"></div>
+      <div class="log-frow"><label>Count</label><input type="number" id="log-o-count" value="1" inputmode="numeric" style="max-width:90px"></div>
+      <div class="log-frow"><label>Type</label><select id="log-o-type"><option>One-Time</option><option>Subscription</option></select></div>
+      <div class="log-frow"><label>Paid?</label><select id="log-o-paid"><option>Paid</option><option>Unpaid</option></select></div>
+      <button class="log-act primary" onclick="LOG.doNewOrder()">Log order</button>
+      </div>`;
+    // Same classification as the Book Mail tab
+    const open=(G.orders||[]).filter(o=>o.delivered==='Unfulfilled'||o.paid==='Unpaid').slice().reverse();
+    const done=(G.orders||[]).filter(o=>o.delivered==='Fulfilled'&&o.paid==='Paid').slice(-5).reverse();
+    const row=(o,i,canEdit)=>`<div class="log-item">
+      <div class="log-item-hd" ${canEdit?`style="cursor:pointer" onclick="LOG.expandOrder(${i})"`:''}>
+        <div class="log-item-info">
+          <div class="log-item-title">${esc(o.books||'TBD')}</div>
+          <div class="log-item-meta">${esc(o.date)} · ${esc(o.order||'no #')} · ${esc(o.series||'—')}</div>
+        </div>
+        <span class="badge ${o.paid==='Unpaid'?'b-coral':o.delivered==='Fulfilled'?'b-green':'b-gold'}">${o.delivered==='Fulfilled'?'Fulfilled':o.paid==='Unpaid'?'Unpaid':'Unfulfilled'}</span>
+      </div>
+      ${canEdit?`<div class="log-exp" id="log-oexp-${i}"></div>`:''}</div>`;
+    document.getElementById('log-orders-open').innerHTML=open.map((o,i)=>row(o,i,true)).join('')||'<div class="ms">No open orders.</div>';
+    document.getElementById('log-orders-open')._open=open;
+    document.getElementById('log-orders-done').innerHTML=done.map(o=>row(o,-1,false)).join('')||'<div class="ms">—</div>';
+    refreshBadge();
+  }
+  function expandOrder(i){
+    const o=(document.getElementById('log-orders-open')._open||[])[i];if(!o)return;
+    const el=document.getElementById('log-oexp-'+i);
+    if(el.classList.contains('open')){el.classList.remove('open');return;}
+    document.querySelectorAll('#log-orders-open .log-exp.open').forEach(e=>e.classList.remove('open'));
+    el.innerHTML=`
+      <div class="log-frow"><label>Update</label>
+        ${o.paid==='Unpaid'?`<button class="log-act" onclick="LOG.doOrderUpdate(${i},{paid:'Paid'})">Mark paid</button>`:''}
+        <button class="log-act" onclick="LOG.doOrderUpdate(${i},{delivered:'Fulfilled',fulfil:'${today()}'})">Arrived today</button>
+      </div>
+      <div class="log-frow"><label>Tracking</label><input id="log-o-trk-${i}" placeholder="tracking #"><button class="log-act" onclick="LOG.doOrderUpdate(${i},{tracking:document.getElementById('log-o-trk-${i}').value.trim()})">Save</button></div>`;
+    el.classList.add('open');
+  }
+  async function doOrderUpdate(i,set){
+    const o=(document.getElementById('log-orders-open')._open||[])[i];if(!o)return;
+    if(set.tracking==='')return toast('Tracking number is empty',true);
+    const ok=await submit('order_update',{ref:orderRef(o),set});
+    if(ok)toast('Order update logged');
+  }
+  async function doNewOrder(){
+    const v=id=>document.getElementById(id).value.trim();
+    if(!v('log-o-books'))return toast('Books field is required',true);
+    const ok=await submit('order_new',{date:v('log-o-date'),order:v('log-o-num'),books:v('log-o-books'),
+      series:v('log-o-series'),author:v('log-o-author'),count:+v('log-o-count')||1,
+      type:v('log-o-type'),paid:v('log-o-paid')});
+    if(ok){toast('Order logged');renderOrders();}
+  }
+
+  // ── Pending ──
+  async function renderPending(){
+    document.getElementById('log-setup-main').innerHTML=setupCard(true);
+    const el=document.getElementById('log-pending-list');
+    el.innerHTML='<div class="ms">Checking inbox…</div>';
+    const list=await fetchPending(true).catch(()=>sent());
+    el.innerHTML=list.map(ev=>`<div class="log-pend">
+      <div class="log-pend-desc">${esc(describe(ev))}</div>
+      <div class="log-pend-meta">${new Date(ev.at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})} · by ${esc(OWNER_LABEL[ev.by]||ev.by)}</div>
+    </div>`).join('')||'<div class="ms">Nothing pending — jerry is all caught up.</div>';
+    refreshBadge();
+  }
+
+  return{renderBook,renderOrders,renderPending,search,expand,doFinished,doAcquired,
+    toggleAdd,doAdd,doNewOrder,expandOrder,doOrderUpdate,saveSetup,forgetSetup,refreshBadge};
+})();
+
 async function init(){
   try{
     await loadBundle();
@@ -3223,6 +3597,7 @@ async function init(){
     document.getElementById('dash').style.display='block';
     document.getElementById('updateTime').textContent='bookdb · '+new Date(BUNDLE.generated_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
     restoreFromHash(); // restore position from URL hash, or default to overview
+    LOG.refreshBadge(); // pending-entry count in the Log nav
   }catch(e){
     document.getElementById('loading').style.display='none';
     document.getElementById('error').style.display='block';
@@ -3232,5 +3607,6 @@ async function init(){
 }
 init();
 </script>
+<div id="log-toast"></div>
 </body>
 </html>
