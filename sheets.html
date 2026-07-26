@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The Library</title>
+<title>The Library · Sheets</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Caveat:wght@600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -37,11 +37,6 @@ header{background:var(--bg2);padding:2rem 3rem 1.5rem;border-bottom:1px solid va
 @keyframes spin{to{transform:rotate(360deg)}}
 .load-txt{font-family:var(--font-m);font-size:11px;color:var(--text3);}
 #error{display:none;padding:3rem;color:var(--coral);font-family:var(--font-m);}
-.owner-filter{display:inline-flex;border:1px solid var(--border2);border-radius:7px;overflow:hidden;background:var(--bg2)}
-.owner-filter button{font-family:var(--font-m);font-size:11px;letter-spacing:0.04em;padding:5px 13px;background:none;border:none;border-right:1px solid var(--border);color:var(--text3);cursor:pointer;transition:all 0.12s}
-.owner-filter button:last-child{border-right:none}
-.owner-filter button:hover{color:var(--text2);background:var(--bg3)}
-.owner-filter button.active{background:var(--gold2);color:#fff;font-weight:500}
 /* ── BOOK CLUB FLYER ─────────────────────────────────────────── */
 body.flyer-mode header,body.flyer-mode .sec-nav{display:none;}
 body.flyer-mode{background:#8a7a5e;}
@@ -205,16 +200,8 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
 <body>
 
 <header>
-  <div><div class="h-title">The Library</div><div class="h-sub">Personal reading tracker · database edition</div></div>
-  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
-    <div id="owner-filter" class="owner-filter">
-      <button data-o="butthead" class="active" onclick="setOwner('butthead')">Com</button>
-      <button data-o="goblin" onclick="setOwner('goblin')">Shereen</button>
-      <button data-o="all" onclick="setOwner('all')">Both</button>
-    </div>
-    <div id="owner-note" style="font-family:var(--font-m);font-size:9px;color:var(--coral);height:11px"></div>
-    <div class="status"><span class="dot"></span><span id="updateTime">Loading...</span></div>
-  </div>
+  <div><div class="h-title">The Library</div><div class="h-sub">Personal reading tracker · sheets edition (archived)</div></div>
+  <div><div class="status"><span class="dot"></span><span id="updateTime">Loading...</span></div></div>
 </header>
 
 <div id="loading"><div class="spinner"></div><div class="load-txt">Fetching from Google Sheets...</div></div>
@@ -330,7 +317,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       </div>
       <div class="sl">Focus series</div><div id="focus-series"></div>
       <div class="sl">All books this year</div>
-      <div class="tw"><table><thead><tr><th>#</th><th class="nr">Date</th><th>Title</th><th>Genre</th><th>Media</th><th class="nr">Pages</th></tr></thead><tbody id="ty-books"></tbody></table></div>
+      <div class="tw"><table><thead><tr><th>#</th><th class="nr">Date</th><th>Title</th><th>Genre</th><th>Media</th></tr></thead><tbody id="ty-books"></tbody></table></div>
     </div>
     <div class="panel" id="tab-completion">
       <div class="sl">Author completion — bubble chart</div>
@@ -402,12 +389,6 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <button onclick="switchTab('comingup','buying')">Coming Up</button>
       <button onclick="switchTab('bookmail','buying')">Book Mail</button>
       <button onclick="switchTab('toacquire','buying')">To Acquire</button>
-      <button onclick="switchTab('someday','buying')">Someday</button>
-    </div>
-    <div class="panel" id="tab-someday">
-      <div class="sl">Someday watchlist — planned, but nothing owned in the universe or series yet</div>
-      <div class="mg" id="sd-m"></div>
-      <div id="sd-list"></div>
     </div>
     <div class="panel" id="tab-comingup">
       <div class="sl">Upcoming releases</div><div id="upcoming-list"></div>
@@ -434,6 +415,8 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div class="tw"><table><thead><tr><th>Title / Series</th><th>Author</th><th>Type</th><th>Genre</th><th class="nr">Owned</th><th class="nr">Count</th><th class="nr">Gap</th></tr></thead><tbody id="partial-body"></tbody></table></div>
       <div class="sl" style="margin-top:2rem">Read but not owned — digital or borrowed</div>
       <div class="tw"><table><thead><tr><th>Title / Series</th><th>Author</th><th>Type</th><th>Genre</th><th class="nr">Read</th><th class="nr">Owned</th><th class="nr">Gap</th></tr></thead><tbody id="unowned-body"></tbody></table></div>
+      <div class="sl" style="margin-top:2rem">Someday watchlist</div>
+      <div class="tw"><table><thead><tr><th>Series</th><th>Author</th><th class="nr">Count</th><th>Genre</th></tr></thead><tbody id="someday-body"></tbody></table></div>
     </div>
     <div class="panel active" id="tab-libgrowth">
       <div class="sl">Library size over time</div>
@@ -696,17 +679,11 @@ function pctN(a,b){return b>0?+(a/b*100).toFixed(1):0;}
 function fmt(x){return(+x||0).toLocaleString();}
 function age(){return(new Date()-DOB)/(365.25*864e5);}
 
-// DB edition: data comes from a JSON bundle published nightly from bookdb
-// on jerry, not from the Google Sheets API.
-let BUNDLE=null;
-async function loadBundle(){
-  const r=await fetch('data/bookdb.json?v='+Date.now());
-  if(!r.ok)throw new Error(`bundle ${r.status}: ${r.statusText}`);
-  BUNDLE=await r.json();
-}
 async function fr(sid,range){
-  const tab=range.split('!')[0].replace(/^'/,'').replace(/'$/,'');
-  return (BUNDLE.tabs[sid+'|'+tab])||[];
+  const url=`https://sheets.googleapis.com/v4/spreadsheets/${sid}/values/${encodeURIComponent(range)}?key=${API_KEY}`;
+  const r=await fetch(url);
+  if(!r.ok)throw new Error(`API ${r.status}: ${r.statusText} — ${range}`);
+  return(await r.json()).values||[];
 }
 
 function parseBooks(vals){
@@ -715,7 +692,7 @@ function parseBooks(vals){
     const r=vals[i];
     const title=(r[1]||'').trim(),type=(r[0]||'').trim(),count=n(r[2]);
     if(!title||!type||count===0||SKIP.has(title)||title.startsWith('Totals'))continue;
-    rows.push({type,title,count,read:n(r[3]),owned:n(r[4]),author:(r[5]||'').trim(),genre:(r[6]||'').trim(),subgenre:(r[7]||'').trim(),universe:(r[8]||'').trim(),owner:(r[9]||'butthead').trim()});
+    rows.push({type,title,count,read:n(r[3]),owned:n(r[4]),author:(r[5]||'').trim(),genre:(r[6]||'').trim(),subgenre:(r[7]||'').trim(),universe:(r[8]||'').trim()});
   }
   return rows;
 }
@@ -726,7 +703,7 @@ function parseYear(vals){
     const r=vals[i]||[];
     const c0=(r[0]||'').trim(),c6=(r[6]||'').trim();
     const num=n(c0);
-    if(num>0&&r[2])books.push({num,date:(r[1]||'').trim(),title:(r[2]||'').trim(),genre:(r[3]||'').trim(),media:(r[4]||'').trim(),pages:n(r[5])});
+    if(num>0&&r[2])books.push({num,date:(r[1]||'').trim(),title:(r[2]||'').trim(),genre:(r[3]||'').trim(),media:(r[4]||'').trim()});
     const tLabel=(r[6]||'').trim();
     if(i>=57&&i<=67&&['Print','EBook','Audio','Manga','Graphic Novel','Comics','Total','Illustrated Total'].includes(tLabel)){
       targets[tLabel]={total:n(r[7]),bynow:n(r[8]),actual:n(r[9])};
@@ -790,17 +767,12 @@ function calcBooks(rows){
         m.byGenre[r.genre].series.push({title:r.title,type:r.type,count:r.count,read:r.read,owned:r.owned,shelf});
       }
     }
-    const t=r.title.toLowerCase(),sg=r.subgenre.toLowerCase(),uvl=(r.universe||'').toLowerCase();
-    // Match the D&D universes on the universe column, not the series title —
-    // real series names ("The Cleric Quintet") don't contain the universe name.
-    const inFR=uvl==='forgotten realms'||t.includes('forgotten realms');
-    const inDL=uvl==='dragonlance'||t.includes('dragonlance');
-    const inSR=uvl==='shadowrun'||t.includes('shadowrun');
-    if(sg==='ttrpg'||inFR||inDL||inSR||TKW.some(k=>t.includes(k))){
+    const t=r.title.toLowerCase(),sg=r.subgenre.toLowerCase();
+    if(sg==='ttrpg'||TKW.some(k=>t.includes(k))){
       m.ttrpg.t+=r.count;m.ttrpg.r+=r.read;m.ttrpg.o+=r.owned;
-      if(inFR){m.fr.t+=r.count;m.fr.r+=r.read;m.fr.o+=r.owned;}
-      else if(inDL){m.dl.t+=r.count;m.dl.r+=r.read;m.dl.o+=r.owned;}
-      else if(inSR){m.sr.t+=r.count;m.sr.r+=r.read;m.sr.o+=r.owned;}
+      if(t.includes('forgotten realms')){m.fr.t+=r.count;m.fr.r+=r.read;m.fr.o+=r.owned;}
+      else if(t.includes('dragonlance')){m.dl.t+=r.count;m.dl.r+=r.read;m.dl.o+=r.owned;}
+      else if(t.includes('shadowrun')){m.sr.t+=r.count;m.sr.r+=r.read;m.sr.o+=r.owned;}
     }
     const rm=assignRoom(r.title,r.author,r.type,r.genre,r.subgenre);
     if(!m.byRoom[rm])m.byRoom[rm]={tracked:0,read:0,owned:0};
@@ -827,16 +799,8 @@ function mediaBadge(med){return{Print:'b-gold',Audio:'b-teal',Manga:'b-purple',C
 const MO_ORD={january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12};
 function relSort(s){if(!s)return 99;const l=s.toLowerCase();for(const[m,v]of Object.entries(MO_ORD))if(l.includes(m))return v;return 99;}
 
-function pageStatsFor(){
-  const ps=(BUNDLE&&BUNDLE.pageStats)||{};
-  const owners=OWNER==='all'?Object.keys(ps):[OWNER];
-  const agg={ownedBooks:0,ownedWith:0,ownedPages:0,readBooks:0,readWith:0,readPages:0};
-  owners.forEach(o=>{const cs=ps[o]||{};Object.values(cs).forEach(c=>{for(const k in agg)agg[k]+=c[k]||0;});});
-  return agg;
-}
 function renderOverview(bm,yd2026){
-  const pg=pageStatsFor();
-  document.getElementById('ov-m').innerHTML=mH(fmt(bm.tracked),'Total tracked')+mH(fmt(bm.read),'Total read',pct(bm.read,bm.tracked)+' of tracked','t')+mH(fmt(bm.owned),'Total owned')+mH(fmt(bm.shelf),'On shelf','owned unread','c')+mH(fmt(bm.needBuy),'Need to buy')+mH(fmt(bm.readNotOwned),'Read not owned','delta where read > owned')+mH(fmt(pg.ownedPages),'Pages owned',`${fmt(pg.ownedWith)} of ${fmt(pg.ownedBooks)} books w/ data`)+mH(fmt(pg.readPages),'Pages read',`all-time · ${fmt(pg.readWith)} of ${fmt(pg.readBooks)} w/ data`,'t');
+  document.getElementById('ov-m').innerHTML=mH(fmt(bm.tracked),'Total tracked')+mH(fmt(bm.read),'Total read',pct(bm.read,bm.tracked)+' of tracked','t')+mH(fmt(bm.owned),'Total owned')+mH(fmt(bm.shelf),'On shelf','owned unread','c')+mH(fmt(bm.needBuy),'Need to buy')+mH(fmt(bm.readNotOwned),'Read not owned','delta where read > owned');
   document.getElementById('ov-c').innerHTML=mH(pct(bm.read,bm.tracked),'Read / tracked','','t')+mH(pct(bm.read,bm.owned),'Read / owned','','t')+mH(pct(bm.owned,bm.tracked),'Owned / tracked')+mH(pct(bm.owned-bm.read,bm.tracked-bm.read),'Owned unread / unread');
   const{books,focus}=yd2026;
   const mcByMedia2026={};
@@ -1054,19 +1018,14 @@ function renderThisYear(year){
   const currentYear=new Date().getFullYear();
   const isCurrentYear=year===currentYear;
   document.querySelectorAll('#year-tog button').forEach(b=>b.classList.toggle('active',parseInt(b.dataset.y)===year));
-  const{books,targets,focus}=(OWNER==='goblin'?{books:[],targets:{},focus:[]}:(allYD[year]||{books:[],targets:{},focus:[]}));
+  const{books,targets,focus}=allYD[year]||{books:[],targets:{},focus:[]};
   const tot=targets['Total']||{total:0,bynow:0,actual:0};
   const actual=books.length;
-  // Pages metrics from book metadata (coverage varies \u2014 label honestly)
-  const withPages=books.filter(b=>b.pages>0);
-  const pagesSum=withPages.reduce((s,b)=>s+b.pages,0);
-  const avgPages=withPages.length?Math.round(pagesSum/withPages.length):0;
-  const pagesTiles=mH(fmt(pagesSum),'Pages read',`${withPages.length} of ${actual} books have page data`)+mH(withPages.length?fmt(avgPages):'N/A','Avg pages/book','where known');
   if(isCurrentYear){
     const delta=actual-(tot.bynow||0);
-    document.getElementById('ty-m').innerHTML=mH(actual,'Books read',`goal: ${tot.total||'N/A'}`,'t')+mH(tot.total||'N/A','Annual goal')+mH(tot.bynow||'N/A','Target by now')+mH((delta>=0?'+':'')+delta,'vs pace',delta>=0?'on track \u2713':'behind',delta>=0?'t':'c')+pagesTiles;
+    document.getElementById('ty-m').innerHTML=mH(actual,'Books read',`goal: ${tot.total||'N/A'}`,'t')+mH(tot.total||'N/A','Annual goal')+mH(tot.bynow||'N/A','Target by now')+mH((delta>=0?'+':'')+delta,'vs pace',delta>=0?'on track \u2713':'behind',delta>=0?'t':'c');
   }else{
-    document.getElementById('ty-m').innerHTML=mH(actual,'Books read',`goal: ${tot.total||'N/A'}`,'t')+mH(tot.total||'N/A','Annual goal')+mH('N/A','Target by now','past year')+mH('N/A','vs pace','past year')+pagesTiles;
+    document.getElementById('ty-m').innerHTML=mH(actual,'Books read',`goal: ${tot.total||'N/A'}`,'t')+mH(tot.total||'N/A','Annual goal')+mH('N/A','Target by now','past year')+mH('N/A','vs pace','past year');
   }
   const tEl=document.getElementById('ty-targets');
   // Count actual reads per media type from the book list (source of truth)
@@ -1171,7 +1130,7 @@ function renderThisYear(year){
     }).join('')+'</div>';
   }else{fsEl.innerHTML='<div class="ms" style="color:var(--text3);margin-bottom:1.5rem">No focus series data.</div>';}
   const bBadge={Print:'b-gold',Audio:'b-teal',Manga:'b-purple',Comics:'b-green',Ebook:'b-teal',EBook:'b-teal','Graphic Novel':'b-coral'};
-  document.getElementById('ty-books').innerHTML=books.map(b=>`<tr><td class="nr" style="color:var(--text3);font-family:var(--font-m)">${b.num}</td><td class="nr" style="color:var(--text3);font-family:var(--font-m)">${b.date}</td><td>${b.title}</td><td>${b.genre}</td><td><span class="badge ${bBadge[b.media]||'b-gray'}">${b.media}</span></td><td class="nr" style="font-family:var(--font-m);color:var(--text3)">${b.pages>0?fmt(b.pages):'—'}</td></tr>`).join('');
+  document.getElementById('ty-books').innerHTML=books.map(b=>`<tr><td class="nr" style="color:var(--text3);font-family:var(--font-m)">${b.num}</td><td class="nr" style="color:var(--text3);font-family:var(--font-m)">${b.date}</td><td>${b.title}</td><td>${b.genre}</td><td><span class="badge ${bBadge[b.media]||'b-gray'}">${b.media}</span></td></tr>`).join('');
 }
 function renderCompletion(bm){
   // Quadrant bubble: x=% owned of tracked, y=% read of tracked, r=total count (scaled)
@@ -1501,18 +1460,16 @@ function parseGrowthYear(vals){
 }
 
 function renderLibGrowth(growthMetrics,bm){
-  const curYear=new Date().getFullYear();
-  // Both the imported ledger and the live rollup now count the WHOLE library
-  // (main + D&D), so no adjustment is needed — the current dot is exactly
-  // Overview's totals.
   const rows=growthMetrics;
   const years=rows.map(r=>r.year);
+  // Current live numbers from Butthead Series
+  const curYear=new Date().getFullYear();
   const curPlanned=bm.tracked,curOwned=bm.owned,curRead=bm.read;
   // Metrics summary
   const latest=rows[rows.length-1]||{};
   const prev=rows[rows.length-2]||{};
   document.getElementById('lg-m').innerHTML=
-    mH(fmt(curPlanned),'Currently tracked','live · matches Overview','p')+
+    mH(fmt(curPlanned),'Currently tracked','live from library','p')+
     mH(fmt(curOwned),'Currently owned','live from library')+
     mH(fmt(curRead),'Currently read','live from library','t')+
     mH(fmt(latest.yoyBought||0),'Bought last year',String(latest.year||''))+
@@ -1668,51 +1625,10 @@ function renderToAcquire(bookRows,interested){
   document.getElementById('acq-body').innerHTML=unstarted.map(r=>`<tr><td>${r.title}</td><td>${r.author}</td><td>${r.type}</td><td>${r.genre||'—'}</td><td class="nr">${r.count}</td><td>${r.universe||'—'}</td></tr>`).join('');
   document.getElementById('partial-body').innerHTML=partial.map(r=>`<tr><td>${r.title}</td><td>${r.author}</td><td>${r.type}</td><td>${r.genre||'—'}</td><td class="nr">${r.owned}</td><td class="nr">${r.count}</td><td class="nr" style="color:var(--coral)">${r.count-r.owned}</td></tr>`).join('');
   document.getElementById('unowned-body').innerHTML=readNotOwned.map(r=>`<tr><td>${r.title}</td><td>${r.author}</td><td>${r.type}</td><td>${r.genre||'—'}</td><td class="nr" style="color:var(--teal)">${r.read}</td><td class="nr">${r.owned}</td><td class="nr" style="color:var(--coral)">${r.read-r.owned}</td></tr>`).join('');
+  document.getElementById('someday-body').innerHTML=interested.sd.map(s=>`<tr><td>${s.series||s.title}</td><td>${s.author}</td><td class="nr">${s.count||'?'}</td><td>${s.genre||'—'}</td></tr>`).join('');
 }
 
-function renderSomeday(interested){
-  const sd=[...interested.sd].sort((a,b)=>(b.count||0)-(a.count||0));
-  const books=sd.reduce((s,x)=>s+(x.count||0),0);
-  const withGenre=g=>sd.filter(s=>(s.genre||'').toLowerCase().includes(g)).length;
-  document.getElementById('sd-m').innerHTML=mH(sd.length,'Series / titles')+mH(books,'Books if all acquired')+mH(sd.filter(s=>!s.genre).length,'Uncategorized','','c');
-  // Group by genre, biggest first within each
-  const byGenre={};
-  sd.forEach(s=>{const g=s.genre||'Uncategorized';(byGenre[g]=byGenre[g]||[]).push(s);});
-  const genres=Object.keys(byGenre).sort((a,b)=>byGenre[b].length-byGenre[a].length);
-  document.getElementById('sd-list').innerHTML=genres.map(g=>`
-    <div class="sl" style="margin-top:1.5rem">${g} · ${byGenre[g].length}</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px">
-      ${byGenre[g].map(s=>{
-        const title=s.series||s.title||'—';
-        const sub=[s.author,s.count?s.count+' books':''].filter(Boolean).join(' · ');
-        return`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;box-shadow:var(--shadow)">
-          <div style="font-size:12px;font-weight:500;line-height:1.3">${title}</div>
-          ${sub?`<div style="font-family:var(--font-m);font-size:10px;color:var(--text3);margin-top:2px">${sub}</div>`:''}
-        </div>`;
-      }).join('')}
-    </div>`).join('')||'<div style="font-family:var(--font-m);font-size:12px;color:var(--text3);padding:1rem 0">Nothing on the someday list.</div>';
-}
-
-let rendered=new Set(),curSec='tracking',curTab='overview',G={};
-
-// Owner filter — catalog is split by owner; 'all' shows both.
-let OWNER='butthead'; // default to Com's catalog (cleanup focus)
-const OWNER_LABEL={butthead:'Com',goblin:'Shereen',other:'Other'};
-function applyOwner(rerender){
-  const pick=rows=>OWNER==='all'?rows:rows.filter(r=>(r.owner||'butthead')===OWNER);
-  G.bookRows=pick(G.allBookRows||[]);
-  G.indBooks=pick(G.allIndBooks||[]);
-  G.books=calcBooks(G.bookRows);
-  if(rerender){rendered.clear();renderTab(curTab);}
-}
-function setOwner(o){
-  if(o===OWNER)return;
-  OWNER=o;
-  document.querySelectorAll('#owner-filter button').forEach(b=>b.classList.toggle('active',b.dataset.o===o));
-  const note=document.getElementById('owner-note');
-  if(note)note.textContent=o==='goblin'?'Shereen has no reading/buying history yet':'';
-  applyOwner(true);
-}
+let rendered=new Set(),curSec='tracking',G={};
 
 // Section → default tab mapping
 const SEC_DEFAULT={tracking:'overview',reading:'history',buying:'libgrowth',collecting:'col-fr',bookclub:'flyer'};
@@ -1732,7 +1648,6 @@ function switchTab(id,sec,fromSection){
   const secEl=document.getElementById('sec-'+sec);if(!secEl)return;
   secEl.querySelectorAll('.tab-nav button').forEach(b=>{const oc=b.getAttribute('onclick');if(oc)b.classList.toggle('active',oc.includes("'"+id+"'"));});
   secEl.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='tab-'+id));
-  curTab=id;
   if(!rendered.has(id)){renderTab(id);rendered.add(id);}
   if(!fromSection){curSec=sec;updateHash(sec,id);}
 }
@@ -1747,7 +1662,7 @@ function restoreFromHash(){
   const hash=(location.hash||'').replace('#','');
   const[sec,tab]=hash.split('/');
   const validSecs=new Set(['tracking','reading','buying','collecting','bookclub']);
-  const validTabs=new Set(['overview','bytype','genre','universe','rooms','history','thisyear','completion','byseries','toread','comingup','bookmail','toacquire','someday','libgrowth','buythisyear','col-fr','col-dl','col-sr','flyer']);
+  const validTabs=new Set(['overview','bytype','genre','universe','rooms','history','thisyear','completion','byseries','toread','comingup','bookmail','toacquire','libgrowth','buythisyear','col-fr','col-dl','col-sr','flyer']);
   const validFRTabs=new Set(['fr-overview','fr-series','fr-completion']);
   const validDLTabs=new Set(['dl-overview','dl-series','dl-completion']);
   const validSRTabs=new Set(['sr-overview','sr-publisher','sr-completion']);
@@ -1772,20 +1687,13 @@ function restoreFromHash(){
 }
 
 function renderTab(id){
-  try{renderTabInner(id);}catch(e){console.error('renderTab '+id, e);}
-}
-function renderTabInner(id){
   const bm=G.books;
-  // Reading & buying history live only for Com; Shereen (goblin) has none yet,
-  // so pass empty data for her — 'all'/Com show the full log.
-  const H=OWNER!=='goblin';
-  const EMPTY_YD={books:[],targets:{},focus:[]};
-  if(id==='overview')renderOverview(bm,H?(allYD[2026]||EMPTY_YD):EMPTY_YD);
+  if(id==='overview')renderOverview(bm,allYD[2026]||{books:[],targets:{},focus:[]});
   else if(id==='bytype')renderByType(bm);
   else if(id==='genre')renderGenre(bm);
   else if(id==='universe')renderUniverse(bm);
   else if(id==='rooms')renderRooms(bm);
-  else if(id==='history')renderHistory(H?G.metrics:{});
+  else if(id==='history')renderHistory(G.metrics);
   else if(id==='thisyear'){
     if(!document.querySelector('#year-tog button'))document.getElementById('year-tog').innerHTML=YEARS.map(y=>`<button data-y="${y}" onclick="switchYear(${y})">${y}</button>`).join('');
     renderThisYear(tyYear);
@@ -1793,12 +1701,11 @@ function renderTabInner(id){
   else if(id==='completion')renderCompletion(bm);
   else if(id==='byseries')renderBySeries();
   else if(id==='toread')renderToRead(bm);
-  else if(id==='comingup')renderComingUp(H?G.interested.up:[]);
-  else if(id==='bookmail')renderBookMail(H?G.orders:[]);
-  else if(id==='toacquire')renderToAcquire(G.bookRows,H?G.interested:{up:[],sd:[]});
-  else if(id==='someday')renderSomeday(H?G.interested:{up:[],sd:[]});
-  else if(id==='libgrowth')renderLibGrowth(H?G.growthMetrics:[],G.books);
-  else if(id==='buythisyear')renderBuyThisYear(H?G.growthYear:[]);
+  else if(id==='comingup')renderComingUp(G.interested.up);
+  else if(id==='bookmail')renderBookMail(G.orders);
+  else if(id==='toacquire')renderToAcquire(G.bookRows,G.interested);
+  else if(id==='libgrowth')renderLibGrowth(G.growthMetrics,G.books);
+  else if(id==='buythisyear')renderBuyThisYear(G.growthYear);
   else if(id==='flyer')renderBookClub();
   else if(id==='col-fr'){switchFRTab('fr-overview');}
   else if(id==='col-dl'){switchDLTab('dl-overview');}
@@ -1930,15 +1837,13 @@ function renderFROverview(){
     else if(o>=deduped)readyToRead++;
     else ownedNone++;
   }
-  const frPg=(BUNDLE.dndPages||{})['Forgotten Realms'];
   document.getElementById('fr-ov-m').innerHTML=
     mH(total,'Total tracked')+
     mH(fmt(read),'Read',pct(read,total)+' of total','t')+
     mH(fmt(owned),'Owned',pct(owned,total)+' of total')+
     mH(fmt(need),'Still needed','','c')+
     mH(complete,'Series complete','all books read','g')+
-    mH(readyToRead,'Ready to read','owned, unstarted')+
-    (frPg?mH(fmt(frPg.ownedPages),'Pages owned',`${frPg.ownedWith} of ${frPg.ownedBooks} w/ data`)+mH(fmt(frPg.readPages),'Pages read',`${frPg.readWith} of ${frPg.readBooks} w/ data`,'t'):'');
+    mH(readyToRead,'Ready to read','owned, unstarted');
   dc('fr-status-pie');
   charts['fr-status-pie']=new Chart(document.getElementById('fr-status-pie'),{
     type:'pie',
@@ -2200,15 +2105,13 @@ function renderDLOverview(){
     else if(o>0)partial++;
     else noneOwned++;
   }
-  const dlPg=(BUNDLE.dndPages||{})['Dragonlance'];
   document.getElementById('dl-ov-m').innerHTML=
     mH(total,'Total tracked')+
     mH(fmt(owned),'Owned',pct(owned,total)+' of total')+
     mH(fmt(need),'Still needed',pct(need,total)+' of total','c')+
     mH(fmt(read),'Read',pct(read,total)+' of total','t')+
     mH(fullyOwned,'Series fully owned','','g')+
-    mH(Object.keys(bySeriesMap).length,'Total series')+
-    (dlPg?mH(fmt(dlPg.ownedPages),'Pages owned',`${dlPg.ownedWith} of ${dlPg.ownedBooks} w/ data`)+mH(fmt(dlPg.readPages),'Pages read',`${dlPg.readWith} of ${dlPg.readBooks} w/ data`,'t'):'');
+    mH(Object.keys(bySeriesMap).length,'Total series');
   dc('dl-status-pie');
   charts['dl-status-pie']=new Chart(document.getElementById('dl-status-pie'),{
     type:'pie',
@@ -2413,15 +2316,13 @@ function renderSROverview(){
   const read=books.filter(b=>b.read).length;
   const owned=books.filter(b=>b.owned).length;
   const need=books.filter(b=>b.need).length;
-  const srPg=(BUNDLE.dndPages||{})['Shadowrun'];
   document.getElementById('sr-ov-m').innerHTML=
     mH(total,'Total tracked')+
     mH(fmt(read),'Read',pct(read,total)+' of total','t')+
     mH(fmt(owned),'Owned',pct(owned,total)+' of total')+
     mH(fmt(need),'Need',pct(need,total)+' of total','c')+
     mH(40,'FASA era','fully read & owned','g')+
-    mH(3,'Publishers','FASA · WizKids · Catalyst')+
-    (srPg?mH(fmt(srPg.ownedPages),'Pages owned',`${srPg.ownedWith} of ${srPg.ownedBooks} w/ data`)+mH(fmt(srPg.readPages),'Pages read',`${srPg.readWith} of ${srPg.readBooks} w/ data`,'t'):'');
+    mH(3,'Publishers','FASA · WizKids · Catalyst');
   // Publisher pie
   const pubNames=Object.keys(byPublisher);
   dc('sr-pub-pie');
@@ -2567,7 +2468,6 @@ function parseIndividual(vals){
       read:(r[7]||'').trim().toLowerCase()==='x',
       universe:(r[8]||'').trim(),
       notes:(r[9]||'').trim(),
-      owner:(r[10]||'butthead').trim(),
     });
   }
   return books;
@@ -3068,7 +2968,6 @@ function bcSetCover(el,url){
 
 async function init(){
   try{
-    await loadBundle();
     const [booksV,indV,metricsV,intV,ordV,growthMetricsV,growthYearV,frYearV,frSeriesV,dlV,srV,bcV,...yearV]=await Promise.all([
       fr(BOOKS_ID,"'Butthead Series'!A:K").catch(()=>[]),
       fr(BOOKS_ID,"'Butthead Individual'!A:J").catch(()=>[]),
@@ -3084,9 +2983,9 @@ async function init(){
       fr(BOOKS_ID,"'Book Club'!A:G").catch(()=>[]),
       ...YEARS.map(y=>fr(READING_ID,`'${y}'!A:K`).catch(()=>[]))
     ]);
-    G.allBookRows=parseBooks(booksV);
-    G.allIndBooks=parseIndividual(indV);
-    applyOwner(false); // sets G.bookRows / G.indBooks / G.books per OWNER
+    G.bookRows=parseBooks(booksV);
+    G.books=calcBooks(G.bookRows);
+    G.indBooks=parseIndividual(indV);
     G.metrics=parseMetrics(metricsV);
     G.interested=parseInterested(intV);
     G.orders=parseOrders(ordV);
@@ -3100,7 +2999,7 @@ async function init(){
     YEARS.forEach((y,i)=>{allYD[y]=parseYear(yearV[i]);});
     document.getElementById('loading').style.display='none';
     document.getElementById('dash').style.display='block';
-    document.getElementById('updateTime').textContent='bookdb · '+new Date(BUNDLE.generated_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+    document.getElementById('updateTime').textContent='Live · '+new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
     restoreFromHash(); // restore position from URL hash, or default to overview
   }catch(e){
     document.getElementById('loading').style.display='none';
