@@ -330,7 +330,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       </div>
       <div class="sl">Focus series</div><div id="focus-series"></div>
       <div class="sl">All books this year</div>
-      <div class="tw"><table><thead><tr><th>#</th><th class="nr">Date</th><th>Title</th><th>Genre</th><th>Media</th></tr></thead><tbody id="ty-books"></tbody></table></div>
+      <div class="tw"><table><thead><tr><th>#</th><th class="nr">Date</th><th>Title</th><th>Genre</th><th>Media</th><th class="nr">Pages</th></tr></thead><tbody id="ty-books"></tbody></table></div>
     </div>
     <div class="panel" id="tab-completion">
       <div class="sl">Author completion — bubble chart</div>
@@ -726,7 +726,7 @@ function parseYear(vals){
     const r=vals[i]||[];
     const c0=(r[0]||'').trim(),c6=(r[6]||'').trim();
     const num=n(c0);
-    if(num>0&&r[2])books.push({num,date:(r[1]||'').trim(),title:(r[2]||'').trim(),genre:(r[3]||'').trim(),media:(r[4]||'').trim()});
+    if(num>0&&r[2])books.push({num,date:(r[1]||'').trim(),title:(r[2]||'').trim(),genre:(r[3]||'').trim(),media:(r[4]||'').trim(),pages:n(r[5])});
     const tLabel=(r[6]||'').trim();
     if(i>=57&&i<=67&&['Print','EBook','Audio','Manga','Graphic Novel','Comics','Total','Illustrated Total'].includes(tLabel)){
       targets[tLabel]={total:n(r[7]),bynow:n(r[8]),actual:n(r[9])};
@@ -1049,11 +1049,16 @@ function renderThisYear(year){
   const{books,targets,focus}=(OWNER==='goblin'?{books:[],targets:{},focus:[]}:(allYD[year]||{books:[],targets:{},focus:[]}));
   const tot=targets['Total']||{total:0,bynow:0,actual:0};
   const actual=books.length;
+  // Pages metrics from book metadata (coverage varies \u2014 label honestly)
+  const withPages=books.filter(b=>b.pages>0);
+  const pagesSum=withPages.reduce((s,b)=>s+b.pages,0);
+  const avgPages=withPages.length?Math.round(pagesSum/withPages.length):0;
+  const pagesTiles=mH(fmt(pagesSum),'Pages read',`${withPages.length} of ${actual} books have page data`)+mH(withPages.length?fmt(avgPages):'N/A','Avg pages/book','where known');
   if(isCurrentYear){
     const delta=actual-(tot.bynow||0);
-    document.getElementById('ty-m').innerHTML=mH(actual,'Books read',`goal: ${tot.total||'N/A'}`,'t')+mH(tot.total||'N/A','Annual goal')+mH(tot.bynow||'N/A','Target by now')+mH((delta>=0?'+':'')+delta,'vs pace',delta>=0?'on track \u2713':'behind',delta>=0?'t':'c');
+    document.getElementById('ty-m').innerHTML=mH(actual,'Books read',`goal: ${tot.total||'N/A'}`,'t')+mH(tot.total||'N/A','Annual goal')+mH(tot.bynow||'N/A','Target by now')+mH((delta>=0?'+':'')+delta,'vs pace',delta>=0?'on track \u2713':'behind',delta>=0?'t':'c')+pagesTiles;
   }else{
-    document.getElementById('ty-m').innerHTML=mH(actual,'Books read',`goal: ${tot.total||'N/A'}`,'t')+mH(tot.total||'N/A','Annual goal')+mH('N/A','Target by now','past year')+mH('N/A','vs pace','past year');
+    document.getElementById('ty-m').innerHTML=mH(actual,'Books read',`goal: ${tot.total||'N/A'}`,'t')+mH(tot.total||'N/A','Annual goal')+mH('N/A','Target by now','past year')+mH('N/A','vs pace','past year')+pagesTiles;
   }
   const tEl=document.getElementById('ty-targets');
   // Count actual reads per media type from the book list (source of truth)
@@ -1158,7 +1163,7 @@ function renderThisYear(year){
     }).join('')+'</div>';
   }else{fsEl.innerHTML='<div class="ms" style="color:var(--text3);margin-bottom:1.5rem">No focus series data.</div>';}
   const bBadge={Print:'b-gold',Audio:'b-teal',Manga:'b-purple',Comics:'b-green',Ebook:'b-teal',EBook:'b-teal','Graphic Novel':'b-coral'};
-  document.getElementById('ty-books').innerHTML=books.map(b=>`<tr><td class="nr" style="color:var(--text3);font-family:var(--font-m)">${b.num}</td><td class="nr" style="color:var(--text3);font-family:var(--font-m)">${b.date}</td><td>${b.title}</td><td>${b.genre}</td><td><span class="badge ${bBadge[b.media]||'b-gray'}">${b.media}</span></td></tr>`).join('');
+  document.getElementById('ty-books').innerHTML=books.map(b=>`<tr><td class="nr" style="color:var(--text3);font-family:var(--font-m)">${b.num}</td><td class="nr" style="color:var(--text3);font-family:var(--font-m)">${b.date}</td><td>${b.title}</td><td>${b.genre}</td><td><span class="badge ${bBadge[b.media]||'b-gray'}">${b.media}</span></td><td class="nr" style="font-family:var(--font-m);color:var(--text3)">${b.pages>0?fmt(b.pages):'—'}</td></tr>`).join('');
 }
 function renderCompletion(bm){
   // Quadrant bubble: x=% owned of tracked, y=% read of tracked, r=total count (scaled)
