@@ -214,6 +214,18 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
 .wl-tools-r button{font-family:var(--font-m);font-size:10px;letter-spacing:0.04em;padding:4px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:5px;color:var(--text2);cursor:pointer;}
 .wl-tools-r button:hover{background:var(--bg4);}
 .wl-tools-r button.rst{color:var(--coral);border-color:var(--coral);}
+.wl-tools-k{font-size:9.5px;color:var(--text3);letter-spacing:0.02em;}
+.wl-review{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin:-1.25rem 0 1.75rem;box-shadow:var(--shadow);}
+.wl-rv-hd{font-family:var(--font-d);font-size:1rem;font-weight:600;color:var(--text);margin-bottom:4px;}
+.wl-rv-policy{font-family:var(--font-m);font-size:10px;color:var(--text3);line-height:1.6;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.wl-rv-row{display:grid;grid-template-columns:170px minmax(0,1fr);gap:4px 12px;padding:8px 0;border-bottom:1px dashed var(--border);}
+.wl-rv-row:last-child{border-bottom:none;}
+.wl-rv-k{grid-row:span 3;}
+.wl-rv-id{font-family:var(--font-m);font-size:9.5px;color:var(--text3);}
+.wl-rv-t{font-size:12px;font-weight:500;color:var(--text);}
+.wl-rv-d{font-family:var(--font-m);font-size:10px;color:var(--text2);line-height:1.6;word-break:break-word;}
+.wl-rv-e{font-size:11px;color:var(--text3);line-height:1.45;}
+@media(max-width:720px){.wl-rv-row{grid-template-columns:minmax(0,1fr);}.wl-rv-k{grid-row:auto;}}
 /* Universe type sections */
 .uv-section{margin-bottom:2.5rem;}
 .uv-section-title{font-family:var(--font-d);font-size:1.1rem;font-weight:600;color:var(--text);margin-bottom:1rem;padding-bottom:6px;border-bottom:1px solid var(--border);}
@@ -559,6 +571,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div class="mg" id="wl-m"></div>
       <div class="wl-legend" id="wl-legend"></div>
       <div class="wl-tools" id="wl-tools"></div>
+      <div class="wl-review" id="wl-review" style="display:none"></div>
       <div id="wl-buckets"></div>
     </div>
     <div class="panel" id="tab-comingup">
@@ -1787,11 +1800,14 @@ function buildWishlist(interested,orders,bookRows,indBooks,bookClub){
   });
 
   // ── Corrections win over every inference above ──────────────
+  // What the dashboard believed before the correction is kept on `raw`, so a
+  // proposal can show a reviewer the delta rather than just the new value.
   cands.forEach(c=>{
     c.key=wlNorm(c.series||'')+'::'+wlNorm(c.title||'');
     const o=WL_OV[c.key];
     if(!o)return;
     c.ov=o;
+    c.raw={tier:c.tier,catalogGap:!!c.catalogGap,seqDoubt:c.seqDoubt||'',source:c.source};
     if(o.release){c.tier=relTier(o.release,true);c.catalogGap=false;c.ovDate=true;}
     if(o.avail==='out'){c.ovOut=true;c.catalogGap=false;}
     if(o.avail==='unreleased'){c.ovUnreleased=true;c.catalogGap=false;}
@@ -1851,7 +1867,7 @@ function buildWishlist(interested,orders,bookRows,indBooks,bookClub){
   Object.values(buckets).forEach(b=>b.sort(bysort));
   hidden.sort(bysort);
   return{buckets,hidden,handled,deeperPending,seriesFed,seqUntrusted,manualSkipped,
-    subOpen:subCredits.length,live:live.length};
+    subOpen:subCredits.length,live:live.length,all:cands};
 }
 
 const WL_BUCKETS=[
@@ -1869,7 +1885,7 @@ const WL_CAP=36;
 // ── Correction actions ────────────────────────────────────────
 // Cards are addressed by index into the rendered set rather than by key, so
 // titles carrying quotes and apostrophes cannot break out of the handler.
-let WL_ITEMS=[],WL_ARGS=null;
+let WL_ITEMS=[],WL_ARGS=null,WL_ALL=[];
 function wlRerender(){if(WL_ARGS)renderWishlist.apply(null,WL_ARGS);}
 function wlPatch(i,patch){
   const c=WL_ITEMS[i];if(!c)return;
@@ -1902,24 +1918,151 @@ function wlAct(i,what){
     wlPatch(i,{note:v.trim()});
   }
 }
+// ── Proposals ─────────────────────────────────────────────────
+// Nothing this dashboard derives may enter the book register on its own. A
+// correction is a human assertion, and it leaves here as a *proposal* against
+// the register — opened, never applied — so it lands in the same review queue
+// as every other bookdb change and can be closed or withdrawn in bulk.
+//
+// Machine inferences are deliberately NOT exported. A shelf gap is recomputed
+// on every load and discarded; the only way one reaches the register is for a
+// human to click through it on the card, which turns it into a manual assertion
+// carrying the inference alongside it as context.
+const WL_PROP_SCHEMA='bookdb.proposals/v1';
+function wlTierPrecision(t){return t.tier==='tba'?'none':t.tier==='month'?'month':'day';}
+function wlTierValue(t){
+  if(t.tier==='tba')return null;
+  const p=n=>String(n).padStart(2,'0');
+  return t.tier==='month'?`${t.yr}-${p(t.mo)}`:`${t.yr}-${p(t.mo)}-${p(t.day)}`;
+}
+function wlBuildProposals(){
+  const byKey={};(WL_ALL||[]).forEach(c=>{byKey[c.key]=c;});
+  const out=[];let seq=0;
+  Object.keys(WL_OV).sort().forEach(key=>{
+    const o=WL_OV[key]||{},c=byKey[key]||null;
+    const raw=(c&&c.raw)||{};
+    const target={
+      register:'Butthead Individual / Interested',
+      series:(c&&c.series)||o.series||'',
+      title:(c&&c.title)||o.title||'',
+      match:'series+title, case- and punctuation-insensitive',
+      key
+    };
+    if(!c)target.unresolved='no candidate matched this key in the current export — the row may have been renamed or removed';
+    const base=()=>({
+      id:'wl-'+String(++seq).padStart(4,'0'),
+      status:'open',
+      origin:'manual',
+      applies_to_register:true,
+      target:JSON.parse(JSON.stringify(target))
+    });
+    if(o.release){
+      const t=relTier(o.release,true);
+      const p=base();p.kind='release_date.set';
+      p.proposed={release_date:wlTierValue(t),precision:wlTierPrecision(t),as_entered:o.release};
+      p.current={release_date:raw.tier?wlTierValue(raw.tier):null,precision:raw.tier?wlTierPrecision(raw.tier):'unknown'};
+      p.evidence=['entered by hand on the Wishlist tab',
+        raw.tier&&raw.tier.tier!=='tba'?`dashboard had ${relLabel(raw.tier)} at ${raw.tier.tier} precision`
+          :'dashboard had no date from any source'];
+      out.push(p);
+    }
+    if(o.avail){
+      const p=base();p.kind='availability.set';
+      p.proposed={published:o.avail==='out'};
+      p.current={published_inferred:raw.catalogGap===true?true:(raw.tier&&raw.tier.tier!=='tba'?null:false),
+        basis:raw.catalogGap?'shelf gap — sequence position below an owned volume'
+             :raw.seqDoubt?('no inference — '+raw.seqDoubt)
+             :(raw.tier&&raw.tier.tier!=='tba')?('release string, '+raw.tier.tier+' precision')
+             :'no date and no usable sequence'};
+      p.evidence=[o.avail==='out'?'marked published by hand on the Wishlist tab'
+                                 :'marked not-yet-published by hand on the Wishlist tab'];
+      if(raw.catalogGap&&o.avail==='unreleased')
+        p.evidence.push('overrides a shelf-gap inference — the sequence column was not publication order here');
+      out.push(p);
+    }
+    if(o.note){
+      const p=base();p.kind='annotation.add';
+      p.proposed={note:o.note};p.current={note:null};
+      p.evidence=['written by hand on the Wishlist tab'];
+      out.push(p);
+    }
+    if(o.hide){
+      const p=base();p.kind='wishlist.exclude';
+      p.applies_to_register=false;
+      p.proposed={excluded_from_wishlist:true};p.current={excluded_from_wishlist:false};
+      p.evidence=['hidden by hand on the Wishlist tab'];
+      p.scope='dashboard only — this is a display preference, not a claim about the book';
+      out.push(p);
+    }
+  });
+  return{
+    schema:WL_PROP_SCHEMA,
+    generated_at:new Date().toISOString(),
+    generated_by:'The Library dashboard · Wishlist tab',
+    generated_against:(BUNDLE&&BUNDLE.generated_at)||null,
+    owner:OWNER,
+    policy:'Every entry is a human assertion made in the dashboard. Nothing here was applied automatically, and no machine inference is exported on its own. All proposals open in the "open" state and require review before entering the register.',
+    counts:{
+      total:out.length,
+      applies_to_register:out.filter(p=>p.applies_to_register).length,
+      by_kind:out.reduce((m,p)=>{m[p.kind]=(m[p.kind]||0)+1;return m;},{}),
+      unresolved:out.filter(p=>p.target.unresolved).length
+    },
+    proposals:out
+  };
+}
 function wlExport(){
-  const n=Object.keys(WL_OV).length;
-  if(!n){alert('No corrections to export yet.');return;}
-  const blob=new Blob([JSON.stringify(WL_OV,null,2)],{type:'application/json'});
+  if(!Object.keys(WL_OV).length){alert('No corrections to propose yet.');return;}
+  const env=wlBuildProposals();
+  const blob=new Blob([JSON.stringify(env,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='wishlist-corrections.json';
+  a.download='bookdb-proposals-wishlist-'+env.generated_at.slice(0,10)+'.json';
   document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
+// Accepts either a proposals envelope or the flat correction map, so an export
+// taken from another browser can be loaded back without hand-editing.
 function wlImport(){
-  const v=prompt('Paste a corrections JSON export to merge into this browser.');
+  const v=prompt('Paste a proposals envelope or a corrections map to merge into this browser.');
   if(!v)return;
   try{
     const o=JSON.parse(v);
     if(!o||typeof o!=='object')throw new Error('not an object');
-    Object.assign(WL_OV,o);wlOvSave();wlRerender();
+    let added=0;
+    if(Array.isArray(o.proposals)){
+      o.proposals.forEach(p=>{
+        const k=p&&p.target&&p.target.key;if(!k)return;
+        const cur=WL_OV[k]||{title:(p.target||{}).title||'',series:(p.target||{}).series||''};
+        if(p.kind==='release_date.set'&&p.proposed)cur.release=p.proposed.as_entered||p.proposed.release_date||'';
+        else if(p.kind==='availability.set'&&p.proposed)cur.avail=p.proposed.published?'out':'unreleased';
+        else if(p.kind==='annotation.add'&&p.proposed)cur.note=p.proposed.note||'';
+        else if(p.kind==='wishlist.exclude')cur.hide=true;
+        else return;
+        WL_OV[k]=cur;added++;
+      });
+    }else{Object.assign(WL_OV,o);added=Object.keys(o).length;}
+    if(!added){alert('Nothing importable found in that JSON.');return;}
+    wlOvSave();wlRerender();
   }catch(e){alert('Could not read that as JSON: '+e.message);}
+}
+let WL_REVIEW_OPEN=false;
+function wlToggleReview(){WL_REVIEW_OPEN=!WL_REVIEW_OPEN;wlRenderReview();}
+function wlRenderReview(){
+  const el=document.getElementById('wl-review');
+  if(!el)return;
+  if(!WL_REVIEW_OPEN||!Object.keys(WL_OV).length){el.style.display='none';el.innerHTML='';return;}
+  const env=wlBuildProposals();
+  el.style.display='block';
+  el.innerHTML=`<div class="wl-rv-hd">${env.counts.total} proposal${env.counts.total===1?'':'s'} · ${env.counts.applies_to_register} against the register · all open, none applied</div>`
+    +`<div class="wl-rv-policy">${env.policy}</div>`
+    +(env.counts.unresolved?`<div class="wl-flag">↯ ${env.counts.unresolved} target${env.counts.unresolved===1?'':'s'} no longer match a row in the current export — review those by hand.</div>`:'')
+    +env.proposals.map(p=>`<div class="wl-rv-row">
+        <div class="wl-rv-k"><span class="badge ${p.applies_to_register?'b-gold':'b-gray'}">${p.kind}</span> <span class="wl-rv-id">${p.id}</span></div>
+        <div class="wl-rv-t">${p.target.title||p.target.series||'—'}${p.target.series&&p.target.title?' · '+p.target.series:''}</div>
+        <div class="wl-rv-d">proposed ${JSON.stringify(p.proposed)}<br>current ${JSON.stringify(p.current)}</div>
+        <div class="wl-rv-e">${p.evidence.join(' · ')}${p.target.unresolved?' · ⚠ '+p.target.unresolved:''}</div>
+      </div>`).join('');
 }
 function wlClearAll(){
   const n=Object.keys(WL_OV).length;
@@ -1934,7 +2077,7 @@ function renderWishlist(interested,orders,bookRows,indBooks,bookClub){
   wlOvLoad();
   const w=buildWishlist(interested,orders,bookRows,indBooks,bookClub);
   const b=w.buckets;
-  WL_ITEMS=[];
+  WL_ITEMS=[];WL_ALL=w.all||[];
 
   document.getElementById('wl-m').innerHTML=
     mH(b.now.length,'Buy now','on shelves, unowned','t')+
@@ -1952,7 +2095,8 @@ function renderWishlist(interested,orders,bookRows,indBooks,bookClub){
     (w.subOpen?` ${w.subOpen} open subscription credits carry no title yet; releases in those months are flagged rather than hidden.`:'')+`<br>`+
     `<b>Dates.</b> Sheet releases carry no year, so the current one is assumed; day 1 is read as a month placeholder and the day is never displayed. Where no date exists, sequence position can stand in for one — but only where the numbering is actually an order`+
     (w.seqUntrusted?`; ${w.seqUntrusted} apparent gaps were refused because their series numbering repeats, starts at 0, runs fractional, or is a grouping rather than a reading order`:'')+`.<br>`+
-    `<b>Corrections.</b> Every inference here can be wrong, so every card carries buttons to fix it — force it out or unreleased, set a date by hand, attach a note, or hide it. Corrections override everything above, survive reloads, and export as JSON to push back upstream.`;
+    `<b>Corrections.</b> Every inference here can be wrong, so every card carries buttons to fix it — force it out or unreleased, set a date by hand, attach a note, or hide it. Corrections override everything above and survive reloads.<br>`+
+    `<b>Nothing here writes to the register.</b> This page only ever reads the nightly export. A correction is a human assertion, and it leaves as a <b>proposal</b> — opened, never applied — carrying what the dashboard had inferred alongside it, so it goes through the same review as any other bookdb change. Machine inferences are never exported on their own: a shelf gap is recomputed every load and discarded unless you click through it yourself.`;
 
   function card(c,cls){
     const i=WL_ITEMS.push(c)-1;
@@ -1996,13 +2140,20 @@ function renderWishlist(interested,orders,bookRows,indBooks,bookClub){
   }
 
   const ovN=Object.keys(WL_OV).length;
+  const env=ovN?wlBuildProposals():null;
+  const kinds=env?Object.entries(env.counts.by_kind).map(([k,v])=>k+' ×'+v).join(' · '):'';
   document.getElementById('wl-tools').innerHTML=
-    `<div class="wl-tools-l">${ovN?`<b>${ovN}</b> correction${ovN===1?'':'s'} saved in this browser`:'No corrections yet — every card can be fixed with the buttons on it'}</div>
+    `<div class="wl-tools-l">${ovN
+      ?`<b>${env.counts.total}</b> proposal${env.counts.total===1?'':'s'} ready — <b>${env.counts.applies_to_register}</b> against the register, all open and none applied${kinds?`<br><span class="wl-tools-k">${kinds}</span>`:''}`
+      :'No corrections yet — every card can be fixed with the buttons on it. Nothing here writes to the register; corrections leave as proposals for review.'}</div>
      <div class="wl-tools-r">
-       <button onclick="wlExport()">Export</button>
+       ${ovN?`<button onclick="wlToggleReview()">Review</button>`:''}
+       <button onclick="wlExport()">Export proposals</button>
        <button onclick="wlImport()">Import</button>
        ${ovN?`<button class="rst" onclick="wlClearAll()">Clear all</button>`:''}
      </div>`;
+  if(!ovN)WL_REVIEW_OPEN=false;
+  wlRenderReview();
 
   let html='';
   for(const cfg of WL_BUCKETS){
