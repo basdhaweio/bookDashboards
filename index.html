@@ -180,6 +180,29 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
 .or{display:grid;grid-template-columns:90px minmax(0,1fr) 110px 110px 80px;gap:8px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px;}
 .or:last-child{border-bottom:none;}
 .or:hover{background:var(--bg3);}
+/* Wishlist / buy board */
+.wl-bucket{margin-bottom:2.25rem;}
+.wl-bhead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+.wl-btitle{font-family:var(--font-d);font-size:1.15rem;font-weight:600;color:var(--text);}
+.wl-bcount{font-family:var(--font-m);font-size:11px;color:var(--text3);}
+.wl-bsub{font-family:var(--font-m);font-size:11px;color:var(--text3);margin-bottom:12px;line-height:1.5;}
+.wl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;}
+.wl-card{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--border2);border-radius:8px;padding:11px 13px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:5px;}
+.wl-card.t-now{border-left-color:var(--green);}
+.wl-card.t-pre{border-left-color:var(--gold2);}
+.wl-card.t-watch{border-left-color:var(--blue);}
+.wl-card.t-none{border-left-color:var(--border2);}
+.wl-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
+.wl-title{font-size:13px;font-weight:500;line-height:1.3;color:var(--text);}
+.wl-date{font-family:var(--font-m);font-size:10px;color:var(--text3);white-space:nowrap;flex:none;}
+.wl-date.approx{font-style:italic;}
+.wl-sub{font-family:var(--font-m);font-size:10px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;}
+.wl-why{font-size:11px;color:var(--text2);line-height:1.45;border-top:1px dashed var(--border);padding-top:5px;margin-top:1px;}
+.wl-badges{display:flex;gap:4px;flex-wrap:wrap;}
+.wl-flag{font-family:var(--font-m);font-size:10px;color:var(--coral);}
+.wl-empty{font-family:var(--font-m);font-size:11px;color:var(--text3);padding:6px 0;}
+.wl-legend{font-family:var(--font-m);font-size:10.5px;color:var(--text3);line-height:1.7;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:1.75rem;}
+.wl-legend b{color:var(--text2);font-weight:500;}
 /* Universe type sections */
 .uv-section{margin-bottom:2.5rem;}
 .uv-section-title{font-family:var(--font-d);font-size:1.1rem;font-weight:600;color:var(--text);margin-bottom:1rem;padding-bottom:6px;border-bottom:1px solid var(--border);}
@@ -509,6 +532,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
     <div class="tab-nav">
       <button class="active" onclick="switchTab('libgrowth','buying')">Library Growth</button>
       <button onclick="switchTab('buythisyear','buying')">This Year</button>
+      <button onclick="switchTab('wishlist','buying')">Wishlist</button>
       <button onclick="switchTab('comingup','buying')">Coming Up</button>
       <button onclick="switchTab('bookmail','buying')">Book Mail</button>
       <button onclick="switchTab('toacquire','buying')">To Acquire</button>
@@ -518,6 +542,12 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div class="sl">Someday watchlist — planned, but nothing owned in the universe or series yet</div>
       <div class="mg" id="sd-m"></div>
       <div id="sd-list"></div>
+    </div>
+    <div class="panel" id="tab-wishlist">
+      <div class="sl">Wishlist — what to buy next</div>
+      <div class="mg" id="wl-m"></div>
+      <div class="wl-legend" id="wl-legend"></div>
+      <div id="wl-buckets"></div>
     </div>
     <div class="panel" id="tab-comingup">
       <div class="sl">Upcoming releases</div><div id="upcoming-list"></div>
@@ -1540,6 +1570,286 @@ function toggleAcc(aid){
   if(head)head.classList.toggle('open',!isOpen);
 }
 
+// ── WISHLIST ──────────────────────────────────────────────────
+// Release strings on the Interested sheet are hand-typed: they carry no year,
+// and day 1 is used as a "sometime that month" placeholder rather than a real
+// publish day. So we never store a date — we store the precision we can
+// actually defend, and let that tier decide both what the card is allowed to
+// print and which bucket a book is allowed to reach.
+const MO_NAME=['January','February','March','April','May','June','July','August','September','October','November','December'];
+function wlDim(mo,yr){return mo===2?(((yr%4===0&&yr%100!==0)||yr%400===0)?29:28):[31,28,31,30,31,30,31,31,30,31,30,31][mo-1];}
+function wlToday(){const d=new Date();return new Date(d.getFullYear(),d.getMonth(),d.getDate());}
+
+// tier: confirmed (exact day, corroborated by the notification feed)
+//     | dated     (exact day, year assumed to be the current one)
+//     | month     (day unknown — the UI must never print one)
+//     | tba       (no date asserted anywhere)
+function relTier(rel,fromFeed){
+  const s=(rel||'').trim();
+  const none={tier:'tba',mo:0,day:0,yr:0,ord:9e9,assumedYear:false};
+  if(!s)return none;
+  let str=s,yr=0,mo=0,day=0;
+  const iso=s.match(/^(20\d{2})-(\d{1,2})(?:-(\d{1,2}))?/);
+  if(iso){yr=+iso[1];mo=+iso[2];day=iso[3]?+iso[3]:0;}
+  else{
+    const ym=str.match(/\b(20\d{2})\b/);
+    if(ym){yr=+ym[1];str=str.replace(ym[0],' ');}
+    const lo=str.toLowerCase();
+    for(const[m,v]of Object.entries(MO_ORD))if(lo.includes(m)){mo=v;break;}
+    const dm=str.match(/\b(\d{1,2})\b/);
+    day=dm?+dm[1]:0;
+  }
+  if(!mo)return none;
+  const assumedYear=!yr;
+  if(!yr)yr=new Date().getFullYear();
+  if(!day||day===1)return{tier:'month',mo,day:0,yr,ord:yr*1e4+mo*100+99,assumedYear};
+  return{tier:fromFeed?'confirmed':'dated',mo,day,yr,ord:yr*1e4+mo*100+day,assumedYear};
+}
+function relLabel(t){
+  if(t.tier==='tba')return'No date yet';
+  const y=t.yr!==new Date().getFullYear()?' '+t.yr:'';
+  return t.tier==='month'?MO_NAME[t.mo-1]+y:MO_NAME[t.mo-1]+' '+t.day+y;
+}
+// A month-precision book only counts as out once the whole month has passed.
+// That is what stops an unknown day from promoting something to the shelf early.
+function relReleased(t){
+  if(t.tier==='tba')return false;
+  const today=wlToday();
+  return t.tier==='month'?new Date(t.yr,t.mo-1,wlDim(t.mo,t.yr))<today
+                         :new Date(t.yr,t.mo-1,t.day)<=today;
+}
+function relDaysOut(t){
+  if(t.tier==='tba')return 9e5;
+  const d=t.tier==='month'?new Date(t.yr,t.mo-1,wlDim(t.mo,t.yr)):new Date(t.yr,t.mo-1,t.day);
+  return Math.round((d-wlToday())/864e5);
+}
+
+// Placeholder author values — an anthology credit is not an author you collect.
+const WL_ANON=new Set(['various','various authors','anonymous','unknown','multiple','']);
+function wlNorm(s){return(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();}
+// Open sub credits list a broad genre ('SF&F', 'Fantasy'). Flag a release as
+// possibly covered only when that genre could actually apply — a bare month
+// match fires on nearly everything and stops meaning anything.
+function wlGenreTokens(g){
+  const l=(g||'').toLowerCase();
+  if(!l||l==='n/a')return[];
+  const out=[];
+  if(/fantas|sf&f|romantasy/.test(l))out.push('fantasy');
+  if(/sci|sf&f|space/.test(l))out.push('scifi');
+  if(/horror/.test(l))out.push('horror');
+  if(/hist/.test(l))out.push('history');
+  return out;
+}
+function wlGenreOverlap(a,b){
+  const ta=wlGenreTokens(a),tb=wlGenreTokens(b);
+  return ta.length>0&&tb.length>0&&ta.some(x=>tb.includes(x));
+}
+function wlHit(a,b){
+  if(!a||!b)return false;
+  if(a===b)return true;
+  return a.length>=6&&b.length>=6&&(a.includes(b)||b.includes(a));
+}
+
+function buildWishlist(interested,orders,bookRows,indBooks,bookClub){
+  const ind=indBooks||[],rows=bookRows||[];
+
+  // ── Ground truth: everything already handled ────────────────
+  const ownedT=new Set(),readT=new Set();
+  ind.forEach(b=>{const k=wlNorm(b.title);if(!k)return;if(b.owned)ownedT.add(k);if(b.read)readT.add(k);});
+  const ordBlobs=(orders||[]).map(o=>({t:wlNorm(o.books),s:wlNorm(o.series),open:o.delivered!=='Fulfilled'})).filter(o=>o.t||o.s);
+  function onOrder(title,series){
+    const t=wlNorm(title),s=wlNorm(series);
+    return ordBlobs.find(o=>(t&&wlHit(o.t,t))||(s&&o.s&&o.s===s))||null;
+  }
+  // Open subscription credits with no title assigned yet. These may already
+  // cover a release, so books landing in their month get flagged — not hidden,
+  // because the credit might just as easily be something else.
+  const subCredits=(orders||[]).filter(o=>!o.books&&o.delivered!=='Fulfilled')
+    .map(o=>{const t=relTier(o.date,true);return{mo:t.mo,yr:t.yr,genre:o.sub||''};}).filter(c=>c.mo);
+
+  const serStat={};rows.forEach(r=>{serStat[wlNorm(r.title)]={count:r.count,read:r.read,owned:r.owned};});
+  const authorOwned={};ind.forEach(b=>{if(b.owned&&b.author)authorOwned[b.author]=(authorOwned[b.author]||0)+1;});
+
+  const cands=[],seen=new Set(),intSeries=new Set();
+  function push(c){
+    const key=wlNorm(c.title||'')+'|'+wlNorm(c.series||'');
+    if(seen.has(key))return null;
+    seen.add(key);cands.push(c);return c;
+  }
+
+  // Source 1 — the Interested sheet (intent, unreliable dates)
+  [...(interested.up||[]),...(interested.sd||[])].forEach(o=>{
+    if(!(o.title||o.series))return;
+    if(o.series)intSeries.add(wlNorm(o.series));
+    push({title:o.title||'',series:o.series||'',author:o.author,genre:o.genre,
+      status:o.ordered||'',publisher:o.publisher,source:'Interested',
+      tier:relTier(o.release,false),count:o.count});
+  });
+
+  // Source 2 — Book Notification feed. The only real date authority here, so
+  // it upgrades a matching Interested row's tier rather than duplicating it.
+  (bookClub||[]).forEach(b=>{
+    if(!b.title)return;
+    const t=relTier(b.release,true),bt=wlNorm(b.title);
+    const ex=cands.find(c=>wlHit(wlNorm(c.title),bt)||(c.series&&b.series&&wlNorm(c.series)===wlNorm(b.series)&&!c.title));
+    if(ex){
+      ex.corroborated=true;ex.source='Interested + Notification';
+      if(t.tier!=='tba'&&(ex.tier.tier==='tba'||ex.tier.tier==='month'))ex.tier=t;
+      return;
+    }
+    push({title:b.title,series:b.series,author:b.author,genre:b.genre,status:'',
+      publisher:'',source:'Notification',tier:t,corroborated:true});
+  });
+
+  // Source 3 — named future volumes Goodreads has seeded into the catalog.
+  // A series can have several unowned entries, but only the lowest pending
+  // sequence is the book you actually buy next; the rest are noise until it
+  // lands, so they are counted and reported rather than listed.
+  //
+  // The catalog carries no publish dates at all, but sequence position still
+  // settles the availability question for a large slice of them: if you own a
+  // volume that comes *after* the pending one, the pending one is provably
+  // already published. That is a gap on the shelf, buyable today, and it does
+  // not depend on any date being recorded anywhere. Anything at or past the
+  // furthest volume you own could equally be next month or next decade, so it
+  // stays undated.
+  const bySeries={};
+  ind.forEach(b=>{if(b.series)(bySeries[b.series]=bySeries[b.series]||[]).push(b);});
+  let deeperPending=0,seriesFed=0;
+  const seqOf=b=>{const v=parseFloat(b.seq);return isNaN(v)?null:v;};
+  Object.entries(bySeries).forEach(([sname,bs])=>{
+    const owned=bs.filter(b=>b.owned).length;
+    if(!owned)return;
+    const pending=bs.filter(b=>!b.owned&&!b.read)
+      .sort((a,b)=>(seqOf(a)===null?99:seqOf(a))-(seqOf(b)===null?99:seqOf(b)));
+    if(!pending.length)return;
+    if(intSeries.has(wlNorm(sname)))return; // already tracked on the Interested sheet
+    deeperPending+=pending.length-1;
+    const nx=pending[0],ns=seqOf(nx);
+    const held=bs.filter(b=>b.owned||b.read).map(seqOf).filter(v=>v!==null);
+    const maxHeld=held.length?Math.max(...held):null;
+    const isGap=ns!==null&&maxHeld!==null&&ns<maxHeld;
+    if(push({title:nx.title,series:sname,author:nx.author,genre:nx.type,status:'',
+      publisher:'',source:'Catalog / Goodreads',tier:relTier('',false),seq:nx.seq,
+      catalogGap:isGap,maxHeld,
+      seriesOwned:owned,seriesRead:bs.filter(b=>b.read).length,seriesTotal:bs.length}))seriesFed++;
+  });
+
+  // ── Score. Every input here is something we actually know; none of it
+  // depends on a publish date being correct. ──────────────────
+  cands.forEach(c=>{
+    const why=[];let score=0;
+    const st=serStat[wlNorm(c.series||c.title)];
+    const so=c.seriesOwned!==undefined?c.seriesOwned:(st?st.owned:0);
+    const sr=c.seriesRead!==undefined?c.seriesRead:(st?st.read:0);
+    if(sr>0&&so>0){score+=45;why.push(`mid-series — ${sr} read, ${so} owned`);}
+    else if(so>0){score+=25;why.push(`series started — ${so} owned, none read yet`);}
+    const ao=WL_ANON.has((c.author||'').toLowerCase())?0:(authorOwned[c.author]||0);
+    if(ao>=3){score+=15;why.push(`${(c.author||'').split(',')[0]} — ${ao} already on the shelf`);}
+    if(c.tier.tier==='confirmed'){score+=12;why.push('date confirmed by the notification feed');}
+    else if(c.tier.tier==='dated')score+=8;
+    else if(c.tier.tier==='month')why.push('month only — no day published');
+    if(c.catalogGap){score+=10;why.push(`shelf gap — you already own #${c.maxHeld} of this series, so #${c.seq} is out`);}
+    if(c.status==='Someday'){score-=35;why.push('flagged Someday');}
+    c.score=score;c.why=why;
+  });
+
+  // ── Suppress anything already covered ───────────────────────
+  const handled={have:0,ordered:0,owned:0};
+  const live=cands.filter(c=>{
+    if(c.status==='Have'){handled.have++;return false;}
+    if(c.title&&(ownedT.has(wlNorm(c.title))||readT.has(wlNorm(c.title)))){handled.owned++;return false;}
+    if(onOrder(c.title,c.series)){handled.ordered++;return false;}
+    if(c.status==='Ordered'){handled.ordered++;return false;}
+    return true;
+  });
+
+  // ── Bucket by availability, not by date ─────────────────────
+  const buckets={now:[],pre:[],watch:[],none:[]};
+  live.forEach(c=>{
+    const t=c.tier;
+    if(t.mo)c.subCovers=subCredits.some(s=>s.mo===t.mo&&s.yr===t.yr&&wlGenreOverlap(s.genre,c.genre));
+    if(c.catalogGap)buckets.now.push(c);      // provably published, no date needed
+    else if(t.tier==='tba')buckets.none.push(c);
+    else if(relReleased(t))buckets.now.push(c);
+    else if((t.tier==='dated'||t.tier==='confirmed')&&relDaysOut(t)<=60)buckets.pre.push(c);
+    else buckets.watch.push(c);
+  });
+  const bysort=(a,b)=>b.score-a.score||a.tier.ord-b.tier.ord||(a.title||a.series).localeCompare(b.title||b.series);
+  Object.values(buckets).forEach(b=>b.sort(bysort));
+  return{buckets,handled,deeperPending,seriesFed,subOpen:subCredits.length,live:live.length};
+}
+
+const WL_BUCKETS=[
+  {k:'now',cls:'t-now',title:'On shelves now',
+   sub:'Buyable today, by two independent routes: a release date that has passed, or a shelf gap — a volume you own something later than, which proves it is published without needing a date at all. Month-only entries wait for the whole month to elapse, so a missing day can make a book show up late but never early.'},
+  {k:'pre',cls:'t-pre',title:'Preorder window',
+   sub:'Exact-day releases inside the next 60 days. Month-precision entries are deliberately excluded — you cannot preorder against a day nobody published.'},
+  {k:'watch',cls:'t-watch',title:'Watching',
+   sub:'Dated further out, or known only to the month. Nothing to do yet.'},
+  {k:'none',cls:'t-none',title:'No date yet',
+   sub:'Real, named titles with no release date anywhere — next-in-series volumes Goodreads has seeded into the catalog ahead of any schedule, plus undated wishlist entries. Sequence cannot settle these: they sit at or past the furthest volume already owned, so they may be out or may be years away.'}
+];
+const WL_CAP=36;
+
+function renderWishlist(interested,orders,bookRows,indBooks,bookClub){
+  const w=buildWishlist(interested,orders,bookRows,indBooks,bookClub);
+  const b=w.buckets;
+
+  document.getElementById('wl-m').innerHTML=
+    mH(b.now.length,'Buy now','on shelves, unowned','t')+
+    mH(b.pre.length,'Preorder window','next 60 days')+
+    mH(b.watch.length,'Watching','dated further out')+
+    mH(b.none.length,'No date yet','named, unscheduled','c')+
+    mH(w.handled.ordered,'Already ordered','suppressed')+
+    mH(w.handled.have+w.handled.owned,'Already owned','suppressed');
+
+  document.getElementById('wl-legend').innerHTML=
+    `<b>How this is built.</b> Candidates come from three sources: the <b>Interested</b> sheet (intent), the <b>Book Notification</b> feed (the only reliable dates), and the <b>catalog</b>, where Goodreads seeds named future volumes long before a date exists`+
+    (w.seriesFed?` — ${w.seriesFed} series contributed their next unowned volume`+(w.deeperPending?`, with ${w.deeperPending} later volumes held back until it lands`:''):'')+`.<br>`+
+    `<b>Suppression.</b> Anything owned, read, or matched to a Book Mail order is dropped before ranking — ${w.handled.have+w.handled.owned} owned and ${w.handled.ordered} ordered.`+
+    (w.subOpen?` ${w.subOpen} open subscription credits carry no title yet; releases in those months are flagged rather than hidden.`:'')+`<br>`+
+    `<b>Dates.</b> Sheet releases carry no year, so the current one is assumed; day 1 is read as a month placeholder and the day is never displayed. Where no date exists at all, sequence stands in for one — a volume you own something later than is provably published. Ranking uses series progress, author history and source corroboration, so a wrong date can misplace a book's bucket but not its priority.`;
+
+  let html='';
+  for(const cfg of WL_BUCKETS){
+    const list=b[cfg.k],shown=list.slice(0,WL_CAP),hidden=list.length-shown.length;
+    html+=`<div class="wl-bucket">
+      <div class="wl-bhead"><div class="wl-btitle">${cfg.title}</div><div class="wl-bcount">${list.length} ${list.length===1?'title':'titles'}</div></div>
+      <div class="wl-bsub">${cfg.sub}</div>`;
+    if(!list.length){html+=`<div class="wl-empty">Nothing here.</div></div>`;continue;}
+    html+=`<div class="wl-grid">${shown.map(c=>{
+      const t=c.tier;
+      const title=c.title||c.series||'TBD';
+      const sub=[c.series&&c.title?c.series:'',c.author].filter(Boolean).join(' · ');
+      const src=c.source==='Catalog / Goodreads'?'b-purple':c.corroborated?'b-teal':'b-gray';
+      const tierBadge=c.catalogGap?'<span class="badge b-green">sequence-proven</span>'
+                     :t.tier==='confirmed'?'<span class="badge b-teal">confirmed</span>'
+                     :t.tier==='dated'?'<span class="badge b-gold">exact day</span>'
+                     :t.tier==='month'?'<span class="badge b-gray">month only</span>':'';
+      return`<div class="wl-card ${cfg.cls}">
+        <div class="wl-top">
+          <div class="wl-title">${title}</div>
+          <div class="wl-date${!c.catalogGap&&t.tier==='month'?' approx':''}">${c.catalogGap?'Already out':relLabel(t)}</div>
+        </div>
+        ${sub?`<div class="wl-sub">${sub}</div>`:''}
+        <div class="wl-badges">
+          <span class="badge ${src}">${c.source}</span>
+          ${tierBadge}
+          ${c.seq?`<span class="badge b-gray">#${c.seq}</span>`:''}
+          ${c.publisher?`<span class="badge b-gold">${c.publisher}</span>`:''}
+          ${c.genre?`<span class="badge b-purple">${c.genre}</span>`:''}
+        </div>
+        ${c.subCovers?`<div class="wl-flag">↯ open sub credit that month — may already be covered</div>`:''}
+        ${c.why.length?`<div class="wl-why">${c.why.join(' · ')}</div>`:''}
+      </div>`;
+    }).join('')}</div>`;
+    if(hidden>0)html+=`<div class="wl-empty">+ ${hidden} more below the top ${WL_CAP} by rank.</div>`;
+    html+=`</div>`;
+  }
+  document.getElementById('wl-buckets').innerHTML=html;
+}
+
 function renderComingUp(up){
   const sorted=[...up].sort((a,b)=>relSort(a.release)-relSort(b.release));
   const grouped={};
@@ -1914,6 +2224,7 @@ function renderTabInner(id){
   else if(id==='completion')renderCompletion(bm);
   else if(id==='byseries')renderBySeries();
   else if(id==='toread')renderToRead(bm);
+  else if(id==='wishlist')renderWishlist(H?G.interested:{up:[],sd:[]},H?G.orders:[],G.bookRows,G.indBooks,H?G.bookClub:[]);
   else if(id==='comingup')renderComingUp(H?G.interested.up:[]);
   else if(id==='bookmail')renderBookMail(H?G.orders:[]);
   else if(id==='toacquire')renderToAcquire(G.bookRows,H?G.interested:{up:[],sd:[]});
