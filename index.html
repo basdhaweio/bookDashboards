@@ -201,8 +201,19 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
 .wl-badges{display:flex;gap:4px;flex-wrap:wrap;}
 .wl-flag{font-family:var(--font-m);font-size:10px;color:var(--coral);}
 .wl-empty{font-family:var(--font-m);font-size:11px;color:var(--text3);padding:6px 0;}
-.wl-legend{font-family:var(--font-m);font-size:10.5px;color:var(--text3);line-height:1.7;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:1.75rem;}
+.wl-legend{font-family:var(--font-m);font-size:10.5px;color:var(--text3);line-height:1.7;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:1rem;}
 .wl-legend b{color:var(--text2);font-weight:500;}
+.wl-card.ov{border-style:solid;box-shadow:0 0 0 1px var(--gold2),var(--shadow);}
+.wl-fix{display:flex;gap:4px;flex-wrap:wrap;margin-top:2px;padding-top:6px;border-top:1px dashed var(--border);}
+.wl-fix button{font-family:var(--font-m);font-size:9.5px;letter-spacing:0.03em;padding:3px 7px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text3);cursor:pointer;transition:all 0.12s;}
+.wl-fix button:hover{background:var(--bg4);color:var(--text2);border-color:var(--border2);}
+.wl-fix button.rst{color:var(--coral);border-color:var(--coral-bg);background:var(--coral-bg);}
+.wl-tools{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-family:var(--font-m);font-size:10.5px;color:var(--text3);background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:9px 14px;margin-bottom:1.75rem;box-shadow:var(--shadow);}
+.wl-tools b{color:var(--gold);font-weight:500;}
+.wl-tools-r{display:flex;gap:5px;flex-wrap:wrap;}
+.wl-tools-r button{font-family:var(--font-m);font-size:10px;letter-spacing:0.04em;padding:4px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:5px;color:var(--text2);cursor:pointer;}
+.wl-tools-r button:hover{background:var(--bg4);}
+.wl-tools-r button.rst{color:var(--coral);border-color:var(--coral);}
 /* Universe type sections */
 .uv-section{margin-bottom:2.5rem;}
 .uv-section-title{font-family:var(--font-d);font-size:1.1rem;font-weight:600;color:var(--text);margin-bottom:1rem;padding-bottom:6px;border-bottom:1px solid var(--border);}
@@ -547,6 +558,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div class="sl">Wishlist — what to buy next</div>
       <div class="mg" id="wl-m"></div>
       <div class="wl-legend" id="wl-legend"></div>
+      <div class="wl-tools" id="wl-tools"></div>
       <div id="wl-buckets"></div>
     </div>
     <div class="panel" id="tab-comingup">
@@ -765,6 +777,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
         </div>
         <div class="bc-marquee" id="bc-marquee">★ See inside for new releases ★ Books! Books! Books! ★</div>
         <div class="bc-body" id="bc-months"></div>
+        <div class="bc-body" id="bc-extra" style="padding-top:0"></div>
         <div class="bc-form" id="bc-form-wrap">
           <div class="bc-scis">✂</div>
           <div class="bc-form-inner">
@@ -1624,8 +1637,38 @@ function relDaysOut(t){
   return Math.round((d-wlToday())/864e5);
 }
 
+// ── Corrections ───────────────────────────────────────────────
+// Every inference on this board can be wrong, and the catalog is read-only
+// here, so corrections live in the browser and are exportable for pushing back
+// upstream. A correction always wins over anything inferred.
+const WL_OV_KEY='bookdb.wishlist.overrides.v1';
+let WL_OV={};
+function wlOvLoad(){try{WL_OV=JSON.parse(localStorage.getItem(WL_OV_KEY)||'{}')||{};}catch(e){WL_OV={};}}
+function wlOvSave(){try{localStorage.setItem(WL_OV_KEY,JSON.stringify(WL_OV));}catch(e){}}
+
 // Placeholder author values — an anthology credit is not an author you collect.
 const WL_ANON=new Set(['various','various authors','anonymous','unknown','multiple','']);
+// Series names that group rather than order. Their sequence column is a label,
+// not a reading order, so nothing can be inferred from position within them.
+const WL_PSEUDO=/standalone|short stor|graphic novel|collection|antholog|omnibus|novella/i;
+
+// A sequence number only proves publication order when the column genuinely is
+// an order. Repeated numbers mean it is grouping; a 0 or a fractional entry
+// means side material is interleaved; a missing number means the ordering is
+// incomplete. Old Man's War is the case this cannot catch — its short stories
+// and novellas are numbered inline with the novels, so #5 is the second novel
+// and a gap below it proves nothing. That is why a gap is reported as a claim
+// with its assumption stated, and why every card can be corrected by hand.
+function wlSeqTrust(sname,bs){
+  if(WL_PSEUDO.test(sname))return{ok:false,why:'grouping, not a numbered series'};
+  if(bs.length<2)return{ok:false,why:'too few volumes to infer an order'};
+  const nums=bs.map(b=>parseFloat(b.seq));
+  if(nums.some(v=>isNaN(v)))return{ok:false,why:'some volumes carry no sequence number'};
+  if(new Set(nums).size!==nums.length)return{ok:false,why:'repeated sequence numbers — the column groups rather than orders'};
+  if(nums.some(v=>v<=0))return{ok:false,why:'a sequence 0 entry — side material is interleaved'};
+  if(nums.some(v=>v!==Math.floor(v)))return{ok:false,why:'fractional sequences — novellas are interleaved'};
+  return{ok:true};
+}
 function wlNorm(s){return(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();}
 // Open sub credits list a broad genre ('SF&F', 'Fantasy'). Flag a release as
 // possibly covered only when that genre could actually apply — a bare month
@@ -1651,6 +1694,7 @@ function wlHit(a,b){
 }
 
 function buildWishlist(interested,orders,bookRows,indBooks,bookClub){
+  wlOvLoad();
   const ind=indBooks||[],rows=bookRows||[];
 
   // ── Ground truth: everything already handled ────────────────
@@ -1670,7 +1714,7 @@ function buildWishlist(interested,orders,bookRows,indBooks,bookClub){
   const serStat={};rows.forEach(r=>{serStat[wlNorm(r.title)]={count:r.count,read:r.read,owned:r.owned};});
   const authorOwned={};ind.forEach(b=>{if(b.owned&&b.author)authorOwned[b.author]=(authorOwned[b.author]||0)+1;});
 
-  const cands=[],seen=new Set(),intSeries=new Set();
+  const cands=[],seen=new Set(),intSeries=new Set(),intTitles=new Set();
   function push(c){
     const key=wlNorm(c.title||'')+'|'+wlNorm(c.series||'');
     if(seen.has(key))return null;
@@ -1681,6 +1725,7 @@ function buildWishlist(interested,orders,bookRows,indBooks,bookClub){
   [...(interested.up||[]),...(interested.sd||[])].forEach(o=>{
     if(!(o.title||o.series))return;
     if(o.series)intSeries.add(wlNorm(o.series));
+    if(o.title)intTitles.add(wlNorm(o.title));
     push({title:o.title||'',series:o.series||'',author:o.author,genre:o.genre,
       status:o.ordered||'',publisher:o.publisher,source:'Interested',
       tier:relTier(o.release,false),count:o.count});
@@ -1706,16 +1751,19 @@ function buildWishlist(interested,orders,bookRows,indBooks,bookClub){
   // sequence is the book you actually buy next; the rest are noise until it
   // lands, so they are counted and reported rather than listed.
   //
-  // The catalog carries no publish dates at all, but sequence position still
-  // settles the availability question for a large slice of them: if you own a
-  // volume that comes *after* the pending one, the pending one is provably
-  // already published. That is a gap on the shelf, buyable today, and it does
-  // not depend on any date being recorded anywhere. Anything at or past the
-  // furthest volume you own could equally be next month or next decade, so it
-  // stays undated.
+  // The catalog carries no publish dates, but sequence position can stand in
+  // for one — where the numbering is trustworthy. If you own a volume that
+  // comes after the pending one, the pending one is already published. Series
+  // whose numbering fails wlSeqTrust infer nothing and stay undated, and so
+  // does anything at or past the furthest volume owned: The Doors of Stone is
+  // Kingkiller #3 against #1 and #2 owned, which proves nothing about it ever
+  // being published.
+  //
+  // Anything already entered by hand on the Interested sheet is skipped
+  // outright, by series and by title — manual entry always wins over Goodreads.
   const bySeries={};
   ind.forEach(b=>{if(b.series)(bySeries[b.series]=bySeries[b.series]||[]).push(b);});
-  let deeperPending=0,seriesFed=0;
+  let deeperPending=0,seriesFed=0,seqUntrusted=0,manualSkipped=0;
   const seqOf=b=>{const v=parseFloat(b.seq);return isNaN(v)?null:v;};
   Object.entries(bySeries).forEach(([sname,bs])=>{
     const owned=bs.filter(b=>b.owned).length;
@@ -1723,16 +1771,30 @@ function buildWishlist(interested,orders,bookRows,indBooks,bookClub){
     const pending=bs.filter(b=>!b.owned&&!b.read)
       .sort((a,b)=>(seqOf(a)===null?99:seqOf(a))-(seqOf(b)===null?99:seqOf(b)));
     if(!pending.length)return;
-    if(intSeries.has(wlNorm(sname)))return; // already tracked on the Interested sheet
+    if(intSeries.has(wlNorm(sname))){manualSkipped++;return;}
+    const nx=pending[0];
+    if(intTitles.has(wlNorm(nx.title))){manualSkipped++;return;}
     deeperPending+=pending.length-1;
-    const nx=pending[0],ns=seqOf(nx);
+    const trust=wlSeqTrust(sname,bs),ns=seqOf(nx);
     const held=bs.filter(b=>b.owned||b.read).map(seqOf).filter(v=>v!==null);
     const maxHeld=held.length?Math.max(...held):null;
-    const isGap=ns!==null&&maxHeld!==null&&ns<maxHeld;
+    const isGap=trust.ok&&ns!==null&&maxHeld!==null&&ns<maxHeld;
+    if(!trust.ok&&ns!==null&&maxHeld!==null&&ns<maxHeld)seqUntrusted++;
     if(push({title:nx.title,series:sname,author:nx.author,genre:nx.type,status:'',
       publisher:'',source:'Catalog / Goodreads',tier:relTier('',false),seq:nx.seq,
-      catalogGap:isGap,maxHeld,
+      catalogGap:isGap,maxHeld,seqDoubt:trust.ok?'':trust.why,
       seriesOwned:owned,seriesRead:bs.filter(b=>b.read).length,seriesTotal:bs.length}))seriesFed++;
+  });
+
+  // ── Corrections win over every inference above ──────────────
+  cands.forEach(c=>{
+    c.key=wlNorm(c.series||'')+'::'+wlNorm(c.title||'');
+    const o=WL_OV[c.key];
+    if(!o)return;
+    c.ov=o;
+    if(o.release){c.tier=relTier(o.release,true);c.catalogGap=false;c.ovDate=true;}
+    if(o.avail==='out'){c.ovOut=true;c.catalogGap=false;}
+    if(o.avail==='unreleased'){c.ovUnreleased=true;c.catalogGap=false;}
   });
 
   // ── Score. Every input here is something we actually know; none of it
@@ -1746,17 +1808,25 @@ function buildWishlist(interested,orders,bookRows,indBooks,bookClub){
     else if(so>0){score+=25;why.push(`series started — ${so} owned, none read yet`);}
     const ao=WL_ANON.has((c.author||'').toLowerCase())?0:(authorOwned[c.author]||0);
     if(ao>=3){score+=15;why.push(`${(c.author||'').split(',')[0]} — ${ao} already on the shelf`);}
-    if(c.tier.tier==='confirmed'){score+=12;why.push('date confirmed by the notification feed');}
+    if(c.tier.tier==='confirmed'){score+=12;if(!c.ovDate)why.push('date confirmed by the notification feed');}
     else if(c.tier.tier==='dated')score+=8;
     else if(c.tier.tier==='month')why.push('month only — no day published');
-    if(c.catalogGap){score+=10;why.push(`shelf gap — you already own #${c.maxHeld} of this series, so #${c.seq} is out`);}
+    if(c.catalogGap){score+=10;why.push(`shelf gap — #${c.seq} sits below the #${c.maxHeld} you own, assuming the sequence column is publication order`);}
+    else if(c.seqDoubt&&c.source==='Catalog / Goodreads')why.push(`sequence not trusted here — ${c.seqDoubt}`);
     if(c.status==='Someday'){score-=35;why.push('flagged Someday');}
+    if(c.ovOut)why.push('you marked this as out');
+    if(c.ovUnreleased)why.push('you marked this as not published yet');
+    if(c.ovDate)why.push('date set by you');
+    if(c.ov&&c.ov.note)why.push(c.ov.note);
     c.score=score;c.why=why;
   });
 
   // ── Suppress anything already covered ───────────────────────
   const handled={have:0,ordered:0,owned:0};
+  const hidden=[];
   const live=cands.filter(c=>{
+    if(c.ov&&c.ov.hide){hidden.push(c);return false;}
+    if(c.ovOut||c.ovUnreleased||c.ovDate)return true; // a correction keeps it visible
     if(c.status==='Have'){handled.have++;return false;}
     if(c.title&&(ownedT.has(wlNorm(c.title))||readT.has(wlNorm(c.title)))){handled.owned++;return false;}
     if(onOrder(c.title,c.series)){handled.ordered++;return false;}
@@ -1769,7 +1839,9 @@ function buildWishlist(interested,orders,bookRows,indBooks,bookClub){
   live.forEach(c=>{
     const t=c.tier;
     if(t.mo)c.subCovers=subCredits.some(s=>s.mo===t.mo&&s.yr===t.yr&&wlGenreOverlap(s.genre,c.genre));
-    if(c.catalogGap)buckets.now.push(c);      // provably published, no date needed
+    if(c.ovOut)buckets.now.push(c);
+    else if(c.ovUnreleased)buckets.none.push(c);
+    else if(c.catalogGap)buckets.now.push(c);  // published per a trusted sequence
     else if(t.tier==='tba')buckets.none.push(c);
     else if(relReleased(t))buckets.now.push(c);
     else if((t.tier==='dated'||t.tier==='confirmed')&&relDaysOut(t)<=60)buckets.pre.push(c);
@@ -1777,24 +1849,92 @@ function buildWishlist(interested,orders,bookRows,indBooks,bookClub){
   });
   const bysort=(a,b)=>b.score-a.score||a.tier.ord-b.tier.ord||(a.title||a.series).localeCompare(b.title||b.series);
   Object.values(buckets).forEach(b=>b.sort(bysort));
-  return{buckets,handled,deeperPending,seriesFed,subOpen:subCredits.length,live:live.length};
+  hidden.sort(bysort);
+  return{buckets,hidden,handled,deeperPending,seriesFed,seqUntrusted,manualSkipped,
+    subOpen:subCredits.length,live:live.length};
 }
 
 const WL_BUCKETS=[
   {k:'now',cls:'t-now',title:'On shelves now',
-   sub:'Buyable today, by two independent routes: a release date that has passed, or a shelf gap — a volume you own something later than, which proves it is published without needing a date at all. Month-only entries wait for the whole month to elapse, so a missing day can make a book show up late but never early.'},
+   sub:'Buyable today, by two routes: a release date that has passed, or a shelf gap — a volume sitting below one you already own. The gap route assumes the sequence column is publication order, which is an assumption, not a fact; series whose numbering repeats, starts at 0, or runs fractional are excluded outright, and anything left can be corrected on the card. Month-only entries wait for the whole month to elapse, so a missing day makes a book show up late, never early.'},
   {k:'pre',cls:'t-pre',title:'Preorder window',
    sub:'Exact-day releases inside the next 60 days. Month-precision entries are deliberately excluded — you cannot preorder against a day nobody published.'},
   {k:'watch',cls:'t-watch',title:'Watching',
    sub:'Dated further out, or known only to the month. Nothing to do yet.'},
   {k:'none',cls:'t-none',title:'No date yet',
-   sub:'Real, named titles with no release date anywhere — next-in-series volumes Goodreads has seeded into the catalog ahead of any schedule, plus undated wishlist entries. Sequence cannot settle these: they sit at or past the furthest volume already owned, so they may be out or may be years away.'}
+   sub:'Real, named titles with no release date anywhere — next-in-series volumes Goodreads has seeded into the catalog ahead of any schedule, plus undated wishlist entries. Sequence cannot settle these: they sit at or past the furthest volume owned, or their series numbering is not an order. The Doors of Stone belongs here and will stay here until a date exists.'}
 ];
 const WL_CAP=36;
 
+// ── Correction actions ────────────────────────────────────────
+// Cards are addressed by index into the rendered set rather than by key, so
+// titles carrying quotes and apostrophes cannot break out of the handler.
+let WL_ITEMS=[],WL_ARGS=null;
+function wlRerender(){if(WL_ARGS)renderWishlist.apply(null,WL_ARGS);}
+function wlPatch(i,patch){
+  const c=WL_ITEMS[i];if(!c)return;
+  const cur=WL_OV[c.key]||{};
+  const next=Object.assign({},cur,patch,{title:c.title||c.series,series:c.series||''});
+  Object.keys(next).forEach(k=>{if(next[k]===''||next[k]===undefined||next[k]===false)delete next[k];});
+  if(!next.avail&&!next.release&&!next.hide&&!next.note)delete WL_OV[c.key];
+  else WL_OV[c.key]=next;
+  wlOvSave();wlRerender();
+}
+function wlAct(i,what){
+  const c=WL_ITEMS[i];if(!c)return;
+  if(what==='out')wlPatch(i,{avail:'out'});
+  else if(what==='unreleased')wlPatch(i,{avail:'unreleased'});
+  else if(what==='hide')wlPatch(i,{hide:true});
+  else if(what==='show')wlPatch(i,{hide:false});
+  else if(what==='reset'){delete WL_OV[c.key];wlOvSave();wlRerender();}
+  else if(what==='date'){
+    const cur=(WL_OV[c.key]||{}).release||'';
+    const v=prompt('Release date for "'+(c.title||c.series)+'".\n\nAn exact day: 2026-09-14, or September 14 2026\nMonth only (no day claimed): September 2026\nBlank clears the correction.',cur);
+    if(v===null)return;
+    const t=relTier(v,true);
+    if(v.trim()&&t.tier==='tba'){alert('Could not read "'+v+'" as a date. Try 2026-09-14 or September 2026.');return;}
+    wlPatch(i,{release:v.trim()});
+  }
+  else if(what==='note'){
+    const cur=(WL_OV[c.key]||{}).note||'';
+    const v=prompt('Note for "'+(c.title||c.series)+'" — shown on the card and carried in the export.',cur);
+    if(v===null)return;
+    wlPatch(i,{note:v.trim()});
+  }
+}
+function wlExport(){
+  const n=Object.keys(WL_OV).length;
+  if(!n){alert('No corrections to export yet.');return;}
+  const blob=new Blob([JSON.stringify(WL_OV,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='wishlist-corrections.json';
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+function wlImport(){
+  const v=prompt('Paste a corrections JSON export to merge into this browser.');
+  if(!v)return;
+  try{
+    const o=JSON.parse(v);
+    if(!o||typeof o!=='object')throw new Error('not an object');
+    Object.assign(WL_OV,o);wlOvSave();wlRerender();
+  }catch(e){alert('Could not read that as JSON: '+e.message);}
+}
+function wlClearAll(){
+  const n=Object.keys(WL_OV).length;
+  if(!n)return;
+  if(confirm('Discard all '+n+' corrections? This cannot be undone — export first if you want to keep them.')){
+    WL_OV={};wlOvSave();wlRerender();
+  }
+}
+
 function renderWishlist(interested,orders,bookRows,indBooks,bookClub){
+  WL_ARGS=[interested,orders,bookRows,indBooks,bookClub];
+  wlOvLoad();
   const w=buildWishlist(interested,orders,bookRows,indBooks,bookClub);
   const b=w.buckets;
+  WL_ITEMS=[];
 
   document.getElementById('wl-m').innerHTML=
     mH(b.now.length,'Buy now','on shelves, unowned','t')+
@@ -1806,46 +1946,80 @@ function renderWishlist(interested,orders,bookRows,indBooks,bookClub){
 
   document.getElementById('wl-legend').innerHTML=
     `<b>How this is built.</b> Candidates come from three sources: the <b>Interested</b> sheet (intent), the <b>Book Notification</b> feed (the only reliable dates), and the <b>catalog</b>, where Goodreads seeds named future volumes long before a date exists`+
-    (w.seriesFed?` — ${w.seriesFed} series contributed their next unowned volume`+(w.deeperPending?`, with ${w.deeperPending} later volumes held back until it lands`:''):'')+`.<br>`+
+    (w.seriesFed?` — ${w.seriesFed} series contributed their next unowned volume`+(w.deeperPending?`, with ${w.deeperPending} later volumes held back until it lands`:''):'')+`.`+
+    (w.manualSkipped?` ${w.manualSkipped} series were left to Goodreads' account entirely because you had already entered them yourself — manual entry always wins.`:'')+`<br>`+
     `<b>Suppression.</b> Anything owned, read, or matched to a Book Mail order is dropped before ranking — ${w.handled.have+w.handled.owned} owned and ${w.handled.ordered} ordered.`+
     (w.subOpen?` ${w.subOpen} open subscription credits carry no title yet; releases in those months are flagged rather than hidden.`:'')+`<br>`+
-    `<b>Dates.</b> Sheet releases carry no year, so the current one is assumed; day 1 is read as a month placeholder and the day is never displayed. Where no date exists at all, sequence stands in for one — a volume you own something later than is provably published. Ranking uses series progress, author history and source corroboration, so a wrong date can misplace a book's bucket but not its priority.`;
+    `<b>Dates.</b> Sheet releases carry no year, so the current one is assumed; day 1 is read as a month placeholder and the day is never displayed. Where no date exists, sequence position can stand in for one — but only where the numbering is actually an order`+
+    (w.seqUntrusted?`; ${w.seqUntrusted} apparent gaps were refused because their series numbering repeats, starts at 0, runs fractional, or is a grouping rather than a reading order`:'')+`.<br>`+
+    `<b>Corrections.</b> Every inference here can be wrong, so every card carries buttons to fix it — force it out or unreleased, set a date by hand, attach a note, or hide it. Corrections override everything above, survive reloads, and export as JSON to push back upstream.`;
+
+  function card(c,cls){
+    const i=WL_ITEMS.push(c)-1;
+    const t=c.tier;
+    const title=c.title||c.series||'TBD';
+    const sub=[c.series&&c.title?c.series:'',c.author].filter(Boolean).join(' · ');
+    const src=c.source==='Catalog / Goodreads'?'b-purple':c.corroborated?'b-teal':'b-gray';
+    const tierBadge=c.ovOut?'<span class="badge b-green">out — your call</span>'
+                   :c.ovUnreleased?'<span class="badge b-coral">not out — your call</span>'
+                   :c.catalogGap?'<span class="badge b-green">shelf gap</span>'
+                   :t.tier==='confirmed'?'<span class="badge b-teal">'+(c.ovDate?'your date':'confirmed')+'</span>'
+                   :t.tier==='dated'?'<span class="badge b-gold">exact day</span>'
+                   :t.tier==='month'?'<span class="badge b-gray">month only</span>':'';
+    const dateTxt=c.ovOut&&t.tier==='tba'?'Out now':c.catalogGap?'Likely out':relLabel(t);
+    const isHidden=!!(c.ov&&c.ov.hide);
+    return`<div class="wl-card ${cls}${c.ov?' ov':''}">
+      <div class="wl-top">
+        <div class="wl-title">${title}</div>
+        <div class="wl-date${!c.catalogGap&&t.tier==='month'?' approx':''}">${dateTxt}</div>
+      </div>
+      ${sub?`<div class="wl-sub">${sub}</div>`:''}
+      <div class="wl-badges">
+        <span class="badge ${src}">${c.source}</span>
+        ${tierBadge}
+        ${c.seq?`<span class="badge b-gray">#${c.seq}</span>`:''}
+        ${c.publisher?`<span class="badge b-gold">${c.publisher}</span>`:''}
+        ${c.genre?`<span class="badge b-purple">${c.genre}</span>`:''}
+      </div>
+      ${c.subCovers?`<div class="wl-flag">↯ open sub credit that month — may already be covered</div>`:''}
+      ${c.why.length?`<div class="wl-why">${c.why.join(' · ')}</div>`:''}
+      <div class="wl-fix">
+        ${isHidden?`<button onclick="wlAct(${i},'show')">Restore</button>`
+          :`<button onclick="wlAct(${i},'out')" title="Force into On shelves now">Out now</button>
+            <button onclick="wlAct(${i},'unreleased')" title="Force into No date yet">Not out</button>
+            <button onclick="wlAct(${i},'date')" title="Set the release date by hand">Date…</button>
+            <button onclick="wlAct(${i},'note')" title="Attach a note">Note…</button>
+            <button onclick="wlAct(${i},'hide')" title="Remove from the board">Hide</button>`}
+        ${c.ov?`<button class="rst" onclick="wlAct(${i},'reset')" title="Discard corrections for this title">Reset</button>`:''}
+      </div>
+    </div>`;
+  }
+
+  const ovN=Object.keys(WL_OV).length;
+  document.getElementById('wl-tools').innerHTML=
+    `<div class="wl-tools-l">${ovN?`<b>${ovN}</b> correction${ovN===1?'':'s'} saved in this browser`:'No corrections yet — every card can be fixed with the buttons on it'}</div>
+     <div class="wl-tools-r">
+       <button onclick="wlExport()">Export</button>
+       <button onclick="wlImport()">Import</button>
+       ${ovN?`<button class="rst" onclick="wlClearAll()">Clear all</button>`:''}
+     </div>`;
 
   let html='';
   for(const cfg of WL_BUCKETS){
-    const list=b[cfg.k],shown=list.slice(0,WL_CAP),hidden=list.length-shown.length;
+    const list=b[cfg.k],shown=list.slice(0,WL_CAP),over=list.length-shown.length;
     html+=`<div class="wl-bucket">
       <div class="wl-bhead"><div class="wl-btitle">${cfg.title}</div><div class="wl-bcount">${list.length} ${list.length===1?'title':'titles'}</div></div>
       <div class="wl-bsub">${cfg.sub}</div>`;
     if(!list.length){html+=`<div class="wl-empty">Nothing here.</div></div>`;continue;}
-    html+=`<div class="wl-grid">${shown.map(c=>{
-      const t=c.tier;
-      const title=c.title||c.series||'TBD';
-      const sub=[c.series&&c.title?c.series:'',c.author].filter(Boolean).join(' · ');
-      const src=c.source==='Catalog / Goodreads'?'b-purple':c.corroborated?'b-teal':'b-gray';
-      const tierBadge=c.catalogGap?'<span class="badge b-green">sequence-proven</span>'
-                     :t.tier==='confirmed'?'<span class="badge b-teal">confirmed</span>'
-                     :t.tier==='dated'?'<span class="badge b-gold">exact day</span>'
-                     :t.tier==='month'?'<span class="badge b-gray">month only</span>':'';
-      return`<div class="wl-card ${cfg.cls}">
-        <div class="wl-top">
-          <div class="wl-title">${title}</div>
-          <div class="wl-date${!c.catalogGap&&t.tier==='month'?' approx':''}">${c.catalogGap?'Already out':relLabel(t)}</div>
-        </div>
-        ${sub?`<div class="wl-sub">${sub}</div>`:''}
-        <div class="wl-badges">
-          <span class="badge ${src}">${c.source}</span>
-          ${tierBadge}
-          ${c.seq?`<span class="badge b-gray">#${c.seq}</span>`:''}
-          ${c.publisher?`<span class="badge b-gold">${c.publisher}</span>`:''}
-          ${c.genre?`<span class="badge b-purple">${c.genre}</span>`:''}
-        </div>
-        ${c.subCovers?`<div class="wl-flag">↯ open sub credit that month — may already be covered</div>`:''}
-        ${c.why.length?`<div class="wl-why">${c.why.join(' · ')}</div>`:''}
-      </div>`;
-    }).join('')}</div>`;
-    if(hidden>0)html+=`<div class="wl-empty">+ ${hidden} more below the top ${WL_CAP} by rank.</div>`;
+    html+=`<div class="wl-grid">${shown.map(c=>card(c,cfg.cls)).join('')}</div>`;
+    if(over>0)html+=`<div class="wl-empty">+ ${over} more below the top ${WL_CAP} by rank.</div>`;
     html+=`</div>`;
+  }
+  if(w.hidden.length){
+    html+=`<div class="wl-bucket">
+      <div class="wl-bhead"><div class="wl-btitle">Hidden by you</div><div class="wl-bcount">${w.hidden.length} ${w.hidden.length===1?'title':'titles'}</div></div>
+      <div class="wl-bsub">Removed from the board by hand. Nothing is deleted — restore any of these at any time.</div>
+      <div class="wl-grid">${w.hidden.map(c=>card(c,'t-none')).join('')}</div></div>`;
   }
   document.getElementById('wl-buckets').innerHTML=html;
 }
@@ -3397,9 +3571,33 @@ function bcBuildItems(){
     items.push({title:b.title,author:b.author,series:b.series,genre:b.genre,release:b.release,ordered:'',publisher:'',isbn:b.isbn,notes:b.notes,isNew:true});
   }
   items.forEach(it=>{const p=bcRelParts(it.release);it.mo=p.mo;it.moName=p.moName;it.day=p.day;});
-  items.sort((a,b)=>a.mo-b.mo||(a.day||99)-(b.day||99));
-  items.forEach((it,i)=>{it.num=101+i;it.key=bcKey(it.title)+'|'+bcKey(it.author);});
-  return items;
+  // A flyer is dated. Releases from earlier in the year that were already
+  // acquired are last term's pamphlet — drop them. Earlier ones still not
+  // acquired are not "coming", they are on the shelf, and get their own section.
+  const curMo=new Date().getMonth()+1;
+  items.forEach(it=>{it.past=it.mo!==99&&it.mo<curMo;
+    it.secured=it.ordered==='Have'||it.ordered==='Preordered'||it.ordered==='Ordered';});
+  const live=items.filter(it=>!(it.past&&it.secured));
+  live.sort((a,b)=>a.mo-b.mo||(a.day||99)-(b.day||99));
+  live.forEach((it,i)=>{it.num=101+i;it.key=bcKey(it.title)+'|'+bcKey(it.author);});
+  return live;
+}
+// Unfulfilled Book Mail orders — the "pending orders" half of the pamphlet.
+function bcPendingOrders(){
+  return (G.orders||[]).filter(o=>o.delivered!=='Fulfilled'&&(o.books||o.series))
+    .map(o=>{const t=relTier(o.date,true);return{
+      title:o.books||o.series,author:o.author,series:o.books&&o.series?o.series:'',
+      order:o.order,paid:o.paid,type:o.type,count:o.count,
+      when:t.tier==='tba'?o.date:relLabel(t),ord:t.ord};})
+    .sort((a,b)=>a.ord-b.ord);
+}
+// Top of the buy board, minus anything already printed elsewhere in the flyer.
+function bcThingsToBuy(exclude){
+  if(typeof buildWishlist!=='function')return[];
+  try{
+    const w=buildWishlist(G.interested,G.orders,G.bookRows,G.indBooks,G.bookClub);
+    return w.buckets.now.filter(c=>!exclude.has(bcKey(c.title||c.series))).slice(0,8);
+  }catch(e){console.error('bcThingsToBuy',e);return[];}
 }
 function bcBurst(it){
   if(it.isNew)return['bc-b-new','NEW!'];
@@ -3419,9 +3617,14 @@ function renderBookClub(){
   const byMo={};
   items.forEach(it=>{(byMo[it.moName]=byMo[it.moName]||[]).push(it);});
   const moOrder=Object.keys(byMo).sort((a,b)=>(byMo[a][0].mo)-(byMo[b][0].mo));
+  const headFor=mo=>{
+    if(mo==='Date TBA')return'Date TBA';
+    const g=byMo[mo];
+    return g[0].past?'Still on the shelf — '+mo:'Coming in '+mo;
+  };
   document.getElementById('bc-months').innerHTML=moOrder.map(mo=>`
     <div class="bc-mo">
-      <div class="bc-mo-hd bc-slab">${mo==='Date TBA'?'Date TBA':'Coming in '+mo}</div>
+      <div class="bc-mo-hd bc-slab">${headFor(mo)}</div>
       <div class="bc-grid">
         ${byMo[mo].map(it=>{
           const[bcls,btxt]=bcBurst(it);
@@ -3442,6 +3645,47 @@ function renderBookClub(){
         }).join('')}
       </div>
     </div>`).join('');
+  // Pending orders + things to buy — the other two thirds of the pamphlet.
+  const printed=new Set(items.map(it=>bcKey(it.title)));
+  const pend=bcPendingOrders(),buy=bcThingsToBuy(printed);
+  let extra='';
+  if(pend.length)extra+=`
+    <div class="bc-mo">
+      <div class="bc-mo-hd bc-slab">Your pending orders</div>
+      <div class="bc-grid">
+        ${pend.map(o=>`<div class="bc-card${o.paid==='Paid'?'':' bc-have'}">
+          <div class="bc-burst ${o.paid==='Paid'?'bc-b-blue':'bc-b-gold'}">${o.paid==='Paid'?'ON THE WAY':'UNPAID'}</div>
+          <div class="bc-info">
+            <div class="bc-item">${bcEsc(o.order||o.type||'ORDER')}</div>
+            <div class="bc-title bc-slab">${bcEsc(o.title)}</div>
+            ${o.author?`<div class="bc-auth">by ${bcEsc(o.author)}</div>`:''}
+            ${o.series?`<div class="bc-ser">${bcEsc(o.series)}</div>`:''}
+            <div class="bc-tag">${o.count>1?o.count+' books · ':''}${bcEsc(o.type||'')} — not delivered yet</div>
+            <div class="bc-rel">📅 ordered ${bcEsc(o.when||'—')}</div>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  if(buy.length)extra+=`
+    <div class="bc-mo">
+      <div class="bc-mo-hd bc-slab">Things to buy — out now</div>
+      <div class="bc-grid">
+        ${buy.map(c=>`<div class="bc-card">
+          <div class="bc-burst">GET IT!</div>
+          <div class="bc-cov" data-cov="${bcEsc(bcKey(c.title)+'|'+bcKey(c.author))}" data-t="${bcEsc(c.title)}" data-a="${bcEsc(c.author||'')}" data-i=""><div class="bc-cov-none">Cover<br>art<br>coming<br>soon!</div></div>
+          <div class="bc-info">
+            <div class="bc-item">${c.seq?'VOLUME #'+bcEsc(c.seq):'FROM THE WISHLIST'}</div>
+            <div class="bc-title bc-slab">${bcEsc(c.title||c.series)}</div>
+            ${c.author?`<div class="bc-auth">by ${bcEsc(c.author)}</div>`:''}
+            ${c.series&&c.title?`<div class="bc-ser">${bcEsc(c.series)}</div>`:''}
+            <div class="bc-tag">${bcEsc(c.why[0]||'On the shelf and unowned')}</div>
+            <div class="bc-rel">📅 ${c.catalogGap?'LIKELY OUT':'OUT NOW'}</div>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  document.getElementById('bc-extra').innerHTML=extra;
+
   // Order form: everything not already secured
   const orderable=items.filter(it=>it.ordered!=='Have'&&it.ordered!=='Preordered');
   const checked=bcGetChecked();
@@ -3452,7 +3696,10 @@ function renderBookClub(){
       <div class="bc-form-row-t">${bcEsc(it.title)}</div>
     </div>`).join('')||'<div style="font-size:12px;padding:8px 0">Nothing to order — you\'re all caught up!</div>';
   bcTally();
-  document.getElementById('bc-foot').textContent='The Library Book Club · sources: Interested sheet'+(G.bookClub&&G.bookClub.length?' + Book Notification ('+G.bookClub.length+' titles)':'')+' · covers via Open Library';
+  document.getElementById('bc-foot').textContent='The Library Book Club · sources: Interested sheet'
+    +(G.bookClub&&G.bookClub.length?' + Book Notification ('+G.bookClub.length+' titles)':' · Book Notification feed is empty')
+    +(pend.length?' · '+pend.length+' pending orders':'')+(buy.length?' · '+buy.length+' picks from the wishlist':'')
+    +' · covers via Open Library';
   bcFetchCovers();
 }
 function bcGetChecked(){try{return JSON.parse(localStorage.getItem('bcOrder')||'{}');}catch(e){return{};}}
