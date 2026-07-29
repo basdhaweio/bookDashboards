@@ -80,15 +80,33 @@ flow), not a direct catalog insert.
 Empty `series` means standalone.
 
 ### `order_new`
-Append to Book Mail Orders.
+Two shapes, discriminated by `list`.
+
+`list: "bookmail"` — Com's model: one row per order, appended to Book Mail
+Orders (`by` is `butthead`):
 ```json
-{"date": "2026-07-26", "order": "#TBBSUB123456", "books": "The Sun Eater 1-3",
- "series": "Sun Eater", "author": "Christopher Ruocchio", "count": 3,
- "type": "One-Time", "paid": "Paid"}
+{"list": "bookmail", "date": "2026-07-26", "order": "#TBBSUB123456",
+ "books": "The Sun Eater 1-3", "series": "Sun Eater",
+ "author": "Christopher Ruocchio", "count": 3, "type": "One-Time", "paid": "Paid"}
+```
+
+`list: "bookboxes"` — Shereen's model: one row per book in a subscription-box
+lifecycle, matching her Book Boxes sheet (`by` is `goblin`). `title` may be
+empty — she pre-logs boxes before titles are announced. `want` is
+Yes/Unsure/No; there is no paid field because subscriptions auto-charge
+(`date` is the charge date):
+```json
+{"list": "bookboxes", "date": "2026-08-01", "vendor": "FairyLoot",
+ "box": "Adult", "title": "Alchemised", "author": "SenLinYu",
+ "want": "Unsure", "eta": "2026-09-01", "order": "3660411", "notes": ""}
 ```
 
 ### `order_update`
-Update an existing order, referenced by its bundle strings.
+Update an existing order, referenced by its bundle strings. Carries the same
+`list` discriminator; currently the UI only emits updates for `bookmail`
+(Book Boxes rows aren't in the bundle yet, so there is nothing to tap).
+Expected `set` keys for `bookboxes` once wired: `received` (date or "Yes"),
+`want` (Yes/Unsure/No), `ordered` ("CANCELLED"), `tracking`, `eta`.
 ```json
 {"ref": {"date": "December 9, 2024", "order": "#TBBSUB247048", "books": "The Sun Eater 1-3",
          "series": "Sun Eater", "author": "Christopher Ruocchio"},
