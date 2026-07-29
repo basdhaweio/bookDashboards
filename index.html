@@ -3290,10 +3290,10 @@ const LOG=(()=>{
   function b64(s){return btoa(unescape(encodeURIComponent(s)));}
   function toast(msg,bad){const t=document.getElementById('log-toast');t.textContent=msg;t.style.background=bad?'var(--coral)':'var(--text)';t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),3200);}
 
-  async function submit(type,payload,book){
+  async function submit(type,payload,book,forceBy){
     if(!ready()){toast('Set up the inbox first — see Pending tab',true);switchTab('logpending','log');return false;}
     const ev={v:1,id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),
-      at:new Date().toISOString(),by:by(book),type,
+      at:new Date().toISOString(),by:forceBy||by(book),type,
       bundle_generated_at:BUNDLE?BUNDLE.generated_at:null,payload};
     const name=ev.at.replace(/[:.]/g,'-')+'-'+type+'-'+ev.id.slice(-4)+'.json';
     try{
@@ -3338,7 +3338,9 @@ const LOG=(()=>{
       case'finished':return`✓ ${who} finished “${b.title}”${p.date?' · '+p.date:''}`;
       case'acquired':return`📦 Got “${b.title}”${b.media?' ('+b.media+')':''}`;
       case'add_book':return`＋ New book “${p.title}”${p.read?' · read':''}${p.owned?' · owned':''}`;
-      case'order_new':return`🧾 New order ${p.order||''} — ${p.books||'?'}`;
+      case'order_new':return p.list==='bookboxes'
+        ?`🎁 Box: ${p.vendor}${p.box?' '+p.box:''} — ${p.title||'title TBA'}${p.want&&p.want!=='Yes'?' · want: '+p.want:''}`
+        :`🧾 New order ${p.order||''} — ${p.books||'?'}`;
       case'order_update':{const s=Object.entries(p.set||{}).map(([k,v])=>v===true?k:`${k}: ${v}`).join(', ');return`🧾 Order ${p.ref&&p.ref.order||''} → ${s}`;}
       default:return ev.type;
     }
@@ -3484,10 +3486,39 @@ const LOG=(()=>{
   }
 
   // ── Orders ──
+  // Two order models: Com's Book Mail is one row per order (paid/fulfilled);
+  // Shereen's Book Boxes is one row per book flowing through a subscription
+  // lifecycle (want?/ordered?/received?, vendor × box tier, ETA).
+  let orderStyle=null;
+  const BOX_VENDORS=['FairyLoot','Illumicrate','OwlCrate','FaeCrate','Bookish','Darkly','AcryliPics','Broken Binding','LitJoy','Lavish Library','Page & Wick','Starbright','Regular SE','Cookbook'];
+  const BOX_TIERS=['YA','Adult','Romantasy','Epic Fantasy','Cosy Fantasy','Box','Exclusive','Starbright','Bookish','Darkly','Regular SE'];
   function orderRef(o){return{date:o.date,order:o.order,books:o.books,series:o.series,author:o.author};}
+  function setOrderStyle(s){orderStyle=s;renderOrders();}
   function renderOrders(){
+    if(!orderStyle)orderStyle=OWNER==='goblin'?'bookboxes':'bookmail';
     document.getElementById('log-setup-orders').innerHTML=setupCard(false);
-    document.getElementById('log-orderform').innerHTML=`
+    const tog=`<div class="ytog" style="margin-bottom:1rem">
+      <button class="${orderStyle==='bookmail'?'active':''}" onclick="LOG.setOrderStyle('bookmail')">Book Mail · Com</button>
+      <button class="${orderStyle==='bookboxes'?'active':''}" onclick="LOG.setOrderStyle('bookboxes')">Book Box · Shereen</button></div>`;
+    if(orderStyle==='bookboxes'){
+      document.getElementById('log-orderform').innerHTML=tog+`
+      <div class="cb">
+      <div class="log-frow"><label>Vendor</label><input id="log-b-vendor" list="log-box-vendors" placeholder="FairyLoot, Illumicrate, …"><datalist id="log-box-vendors">${BOX_VENDORS.map(v=>`<option>${v}</option>`).join('')}</datalist></div>
+      <div class="log-frow"><label>Box</label><input id="log-b-box" list="log-box-tiers" placeholder="YA, Adult, Exclusive, …"><datalist id="log-box-tiers">${BOX_TIERS.map(v=>`<option>${v}</option>`).join('')}</datalist></div>
+      <div class="log-frow"><label>Title</label><input id="log-b-title" placeholder="blank if not announced yet"></div>
+      <div class="log-frow"><label>Author</label><input id="log-b-author" placeholder="Last, First"></div>
+      <div class="log-frow"><label>Want?</label><select id="log-b-want"><option>Yes</option><option>Unsure</option><option>No</option></select></div>
+      <div class="log-frow"><label>Charged</label><input type="date" id="log-b-date" value="${today()}"></div>
+      <div class="log-frow"><label>ETA</label><input type="date" id="log-b-eta"></div>
+      <div class="log-frow"><label>Order #</label><input id="log-b-num" placeholder="optional"></div>
+      <div class="log-frow"><label>Notes</label><input id="log-b-notes" placeholder="Book 2, Sept YA box, …"></div>
+      <button class="log-act primary" onclick="LOG.doNewBoxOrder()">Log box order</button>
+      </div>`;
+      document.getElementById('log-orders-open').innerHTML='<div class="ms">Shereen\'s open boxes will show here once jerry ingests the Book Boxes sheet into bookdb — new entries above work now and queue in the inbox.</div>';
+      document.getElementById('log-orders-done').innerHTML='<div class="ms">—</div>';
+      refreshBadge();return;
+    }
+    document.getElementById('log-orderform').innerHTML=tog+`
       <div class="cb">
       <div class="log-frow"><label>Date</label><input type="date" id="log-o-date" value="${today()}"></div>
       <div class="log-frow"><label>Order #</label><input id="log-o-num" placeholder="#TBBSUB…"></div>
@@ -3532,16 +3563,25 @@ const LOG=(()=>{
   async function doOrderUpdate(i,set){
     const o=(document.getElementById('log-orders-open')._open||[])[i];if(!o)return;
     if(set.tracking==='')return toast('Tracking number is empty',true);
-    const ok=await submit('order_update',{ref:orderRef(o),set});
+    const ok=await submit('order_update',{list:'bookmail',ref:orderRef(o),set},null,'butthead');
     if(ok)toast('Order update logged');
   }
   async function doNewOrder(){
     const v=id=>document.getElementById(id).value.trim();
     if(!v('log-o-books'))return toast('Books field is required',true);
-    const ok=await submit('order_new',{date:v('log-o-date'),order:v('log-o-num'),books:v('log-o-books'),
+    const ok=await submit('order_new',{list:'bookmail',date:v('log-o-date'),order:v('log-o-num'),books:v('log-o-books'),
       series:v('log-o-series'),author:v('log-o-author'),count:+v('log-o-count')||1,
-      type:v('log-o-type'),paid:v('log-o-paid')});
+      type:v('log-o-type'),paid:v('log-o-paid')},null,'butthead');
     if(ok){toast('Order logged');renderOrders();}
+  }
+  async function doNewBoxOrder(){
+    const v=id=>document.getElementById(id).value.trim();
+    if(!v('log-b-vendor'))return toast('Vendor is required',true);
+    // Title may be blank — Shereen pre-logs boxes before titles are announced
+    const ok=await submit('order_new',{list:'bookboxes',date:v('log-b-date'),vendor:v('log-b-vendor'),
+      box:v('log-b-box'),title:v('log-b-title'),author:v('log-b-author'),want:v('log-b-want'),
+      eta:v('log-b-eta'),order:v('log-b-num'),notes:v('log-b-notes')},null,'goblin');
+    if(ok){toast('Box order logged'+(v('log-b-title')?': “'+v('log-b-title')+'”':''));renderOrders();}
   }
 
   // ── Pending ──
@@ -3558,7 +3598,7 @@ const LOG=(()=>{
   }
 
   return{renderBook,renderOrders,renderPending,search,expand,doFinished,doAcquired,
-    toggleAdd,doAdd,doNewOrder,expandOrder,doOrderUpdate,saveSetup,forgetSetup,refreshBadge};
+    toggleAdd,doAdd,doNewOrder,doNewBoxOrder,setOrderStyle,expandOrder,doOrderUpdate,saveSetup,forgetSetup,refreshBadge};
 })();
 
 async function init(){
