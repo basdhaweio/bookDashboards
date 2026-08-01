@@ -6,6 +6,9 @@ This document is self-contained. You do not need to read the dashboard source to
 implement against it. A real generated example lives beside this file at
 [`sample-proposals.json`](./sample-proposals.json) — code against that fixture.
 
+The dashboard-side backlog is in [`next-work.md`](./next-work.md); items 6, 7
+and 8 there are the ones waiting on decisions made here.
+
 ---
 
 ## Why this exists

@@ -7,11 +7,14 @@ This file exists so a later session can pick the work up cold. Read
 **[Open work](#open-work)** first — the rest is context for why things are the
 way they are.
 
-> **Working on bookdb/jerry rather than this repo?** Read
-> [`docs/proposals-contract.md`](docs/proposals-contract.md) instead — it is
-> self-contained and written for that side, with a real fixture at
-> [`docs/sample-proposals.json`](docs/sample-proposals.json). This file covers
-> the dashboard side only.
+**Handoff docs:**
+
+| File | For |
+|---|---|
+| this file | what was built on the dashboard and why |
+| [`docs/next-work.md`](docs/next-work.md) | **the backlog — start here to pick up work** |
+| [`docs/proposals-contract.md`](docs/proposals-contract.md) | the bookdb/jerry side; self-contained, no dashboard context needed |
+| [`docs/sample-proposals.json`](docs/sample-proposals.json) | real generated fixture to code the ingest against |
 
 ---
 
