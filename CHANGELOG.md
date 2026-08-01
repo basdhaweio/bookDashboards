@@ -7,6 +7,12 @@ This file exists so a later session can pick the work up cold. Read
 **[Open work](#open-work)** first — the rest is context for why things are the
 way they are.
 
+> **Working on bookdb/jerry rather than this repo?** Read
+> [`docs/proposals-contract.md`](docs/proposals-contract.md) instead — it is
+> self-contained and written for that side, with a real fixture at
+> [`docs/sample-proposals.json`](docs/sample-proposals.json). This file covers
+> the dashboard side only.
+
 ---
 
 ## What was added
@@ -151,6 +157,10 @@ af61a0a  data: batch 6 - all proposals closed except Star Wars
 So proposals get **opened → reviewed → closed or withdrawn**, in batches. The
 envelope matches that lifecycle (`status: "open"`) but the field names are
 guesses.
+
+The full contract, written for the jerry side, is in
+[`docs/proposals-contract.md`](docs/proposals-contract.md), with a real
+generated fixture at [`docs/sample-proposals.json`](docs/sample-proposals.json).
 
 **To do:** once the real proposals table exists, remap `wlBuildProposals` to it.
 Contained change — one function builds the envelope, one consumes it on import.

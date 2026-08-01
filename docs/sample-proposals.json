@@ -1,0 +1,147 @@
+{
+  "schema": "bookdb.proposals/v1",
+  "generated_at": "2026-07-27T00:00:00.000Z",
+  "generated_by": "The Library dashboard · Wishlist tab",
+  "generated_against": "2026-07-26T21:04:31.514777+00:00",
+  "owner": "butthead",
+  "policy": "Every entry is a human assertion made in the dashboard. Nothing here was applied automatically, and no machine inference is exported on its own. All proposals open in the \"open\" state and require review before entering the register.",
+  "counts": {
+    "total": 5,
+    "applies_to_register": 4,
+    "by_kind": {
+      "release_date.set": 2,
+      "wishlist.exclude": 1,
+      "availability.set": 1,
+      "annotation.add": 1
+    },
+    "unresolved": 0
+  },
+  "proposals": [
+    {
+      "id": "wl-0001",
+      "status": "open",
+      "origin": "manual",
+      "applies_to_register": true,
+      "target": {
+        "register": "Butthead Individual / Interested",
+        "series": "?",
+        "title": "Scion",
+        "match": "series+title, case- and punctuation-insensitive",
+        "key": "::scion"
+      },
+      "kind": "release_date.set",
+      "proposed": {
+        "release_date": "2026-09",
+        "precision": "month",
+        "as_entered": "September 2026"
+      },
+      "current": {
+        "release_date": "2026-09",
+        "precision": "month"
+      },
+      "evidence": [
+        "entered by hand on the Wishlist tab",
+        "dashboard had September at month precision"
+      ]
+    },
+    {
+      "id": "wl-0002",
+      "status": "open",
+      "origin": "manual",
+      "applies_to_register": false,
+      "target": {
+        "register": "Butthead Individual / Interested",
+        "series": "Avatar the Last Airbender",
+        "title": "Imbalance",
+        "match": "series+title, case- and punctuation-insensitive",
+        "key": "avatar the last airbender::imbalance"
+      },
+      "kind": "wishlist.exclude",
+      "proposed": {
+        "excluded_from_wishlist": true
+      },
+      "current": {
+        "excluded_from_wishlist": false
+      },
+      "evidence": [
+        "hidden by hand on the Wishlist tab"
+      ],
+      "scope": "dashboard only — this is a display preference, not a claim about the book"
+    },
+    {
+      "id": "wl-0003",
+      "status": "open",
+      "origin": "manual",
+      "applies_to_register": true,
+      "target": {
+        "register": "Butthead Individual / Interested",
+        "series": "Dresden Files",
+        "title": "Grave Peril",
+        "match": "series+title, case- and punctuation-insensitive",
+        "key": "dresden files::grave peril"
+      },
+      "kind": "availability.set",
+      "proposed": {
+        "published": false
+      },
+      "current": {
+        "published_inferred": true,
+        "basis": "shelf gap — sequence position below an owned volume"
+      },
+      "evidence": [
+        "marked not-yet-published by hand on the Wishlist tab",
+        "overrides a shelf-gap inference — the sequence column was not publication order here"
+      ]
+    },
+    {
+      "id": "wl-0004",
+      "status": "open",
+      "origin": "manual",
+      "applies_to_register": true,
+      "target": {
+        "register": "Butthead Individual / Interested",
+        "series": "Kingkiller Chronicles",
+        "title": "The Doors of Stone",
+        "match": "series+title, case- and punctuation-insensitive",
+        "key": "kingkiller chronicles::the doors of stone"
+      },
+      "kind": "release_date.set",
+      "proposed": {
+        "release_date": "2027-03-09",
+        "precision": "day",
+        "as_entered": "2027-03-09"
+      },
+      "current": {
+        "release_date": null,
+        "precision": "none"
+      },
+      "evidence": [
+        "entered by hand on the Wishlist tab",
+        "dashboard had no date from any source"
+      ]
+    },
+    {
+      "id": "wl-0005",
+      "status": "open",
+      "origin": "manual",
+      "applies_to_register": true,
+      "target": {
+        "register": "Butthead Individual / Interested",
+        "series": "Old Kingdom",
+        "title": "Clariel",
+        "match": "series+title, case- and punctuation-insensitive",
+        "key": "old kingdom::clariel"
+      },
+      "kind": "annotation.add",
+      "proposed": {
+        "note": "paperback only — wait for the hardback"
+      },
+      "current": {
+        "note": null
+      },
+      "evidence": [
+        "written by hand on the Wishlist tab"
+      ]
+    }
+  ]
+}
