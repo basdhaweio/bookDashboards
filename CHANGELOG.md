@@ -105,13 +105,15 @@ Corrections beat every inference, survive reloads via `localStorage`
 dropped it, and hidden titles get their own restorable section.
 
 They export as a `bookdb.proposals/v1` envelope — typed proposals opened against
-the register, **never applied**:
+the register, **never applied**. Book Mail arrivals (below) share the same
+envelope, so one export covers both surfaces:
 
 | Kind | `applies_to_register` |
 |---|---|
 | `release_date.set` | yes — value + precision |
 | `availability.set` | yes — published true/false |
 | `annotation.add` | yes — note |
+| `order.received` | yes — arrival date + fulfilled status |
 | `wishlist.exclude` | **no** — hiding a card is a display preference |
 
 Each carries `current` alongside `proposed` so a reviewer sees the delta, plus
@@ -124,7 +126,27 @@ it on the card. When a correction contradicts an inference the proposal says so
 outright — marking Grave Peril unpublished exports with *"overrides a shelf-gap
 inference — the sequence column was not publication order here"*.
 
-### 4. Book Club flyer
+### 4. Order arrival dates (Book Mail tab)
+
+Receipt doesn't get recorded the day the box arrives, so arrival is **picked,
+not stamped**. Every pending order row carries a native date picker capped at
+today — backdating is the normal case, and nothing is ever auto-filled with
+today unless you press the *Today* shortcut.
+
+Recording an arrival asserts two things (the date, and that the order is now
+fulfilled), so the proposal carries both rather than leaving `Delivered` to be
+inferred on ingest. Kind is `order.received`; it targets **Book Mail Orders**
+rather than the catalog, so its target block has its own shape.
+
+Order keys are composite — `order + ordered_date + books` — because **12 of 22**
+pending rows have no order number at all (subscription credits with no title
+assigned yet). Any one part may be empty; the ordered date is what keeps those
+rows distinguishable.
+
+An arrival logged against a still-`Unpaid` order gets an extra evidence line
+saying so, since it usually means the payment side is stale too.
+
+### 5. Book Club flyer
 
 It was populated (32 items) but stale: a **July** flyer opened with April and
 May, every card stamped HAVE IT, because it had no time filter. Now:

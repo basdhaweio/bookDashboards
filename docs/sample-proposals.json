@@ -6,9 +6,10 @@
   "owner": "butthead",
   "policy": "Every entry is a human assertion made in the dashboard. Nothing here was applied automatically, and no machine inference is exported on its own. All proposals open in the \"open\" state and require review before entering the register.",
   "counts": {
-    "total": 5,
-    "applies_to_register": 4,
+    "total": 7,
+    "applies_to_register": 6,
     "by_kind": {
+      "order.received": 2,
       "release_date.set": 2,
       "wishlist.exclude": 1,
       "availability.set": 1,
@@ -19,6 +20,65 @@
   "proposals": [
     {
       "id": "wl-0001",
+      "status": "open",
+      "origin": "manual",
+      "applies_to_register": true,
+      "kind": "order.received",
+      "target": {
+        "register": "Book Mail Orders",
+        "order": "#TBBSUB669328",
+        "ordered_date": "May 1, 2026",
+        "books": "Ruin",
+        "match": "order number + ordered date + books, case- and punctuation-insensitive",
+        "key": "tbbsub669328|may 1 2026|ruin"
+      },
+      "proposed": {
+        "received_date": "2026-07-14",
+        "received_date_long": "July 14, 2026",
+        "delivered": "Fulfilled"
+      },
+      "current": {
+        "received_date": null,
+        "delivered": "Unfulfilled",
+        "paid": "Paid"
+      },
+      "evidence": [
+        "arrival date picked by hand on the Book Mail tab",
+        "receipt is recorded after the fact, so this date is asserted rather than observed"
+      ]
+    },
+    {
+      "id": "wl-0002",
+      "status": "open",
+      "origin": "manual",
+      "applies_to_register": true,
+      "kind": "order.received",
+      "target": {
+        "register": "Book Mail Orders",
+        "order": "",
+        "ordered_date": "August 1, 2026",
+        "books": "Piranesi",
+        "match": "order number + ordered date + books, case- and punctuation-insensitive",
+        "key": "|august 1 2026|piranesi"
+      },
+      "proposed": {
+        "received_date": "2026-07-02",
+        "received_date_long": "July 2, 2026",
+        "delivered": "Fulfilled"
+      },
+      "current": {
+        "received_date": null,
+        "delivered": "Unfulfilled",
+        "paid": "Unpaid"
+      },
+      "evidence": [
+        "arrival date picked by hand on the Book Mail tab",
+        "receipt is recorded after the fact, so this date is asserted rather than observed",
+        "order is still marked Unpaid — confirm before closing"
+      ]
+    },
+    {
+      "id": "wl-0003",
       "status": "open",
       "origin": "manual",
       "applies_to_register": true,
@@ -45,7 +105,7 @@
       ]
     },
     {
-      "id": "wl-0002",
+      "id": "wl-0004",
       "status": "open",
       "origin": "manual",
       "applies_to_register": false,
@@ -69,7 +129,7 @@
       "scope": "dashboard only — this is a display preference, not a claim about the book"
     },
     {
-      "id": "wl-0003",
+      "id": "wl-0005",
       "status": "open",
       "origin": "manual",
       "applies_to_register": true,
@@ -94,7 +154,7 @@
       ]
     },
     {
-      "id": "wl-0004",
+      "id": "wl-0006",
       "status": "open",
       "origin": "manual",
       "applies_to_register": true,
@@ -121,7 +181,7 @@
       ]
     },
     {
-      "id": "wl-0005",
+      "id": "wl-0007",
       "status": "open",
       "origin": "manual",
       "applies_to_register": true,

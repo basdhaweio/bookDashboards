@@ -177,7 +177,14 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
 .uc-title{font-size:13px;font-weight:500;color:var(--text);margin-bottom:2px;}
 .uc-meta{font-family:var(--font-m);font-size:11px;color:var(--text3);}
 .uc-badges{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap;}
-.or{display:grid;grid-template-columns:90px minmax(0,1fr) 110px 110px 80px;gap:8px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px;}
+.or{display:grid;grid-template-columns:90px minmax(0,1fr) 110px 110px 80px 150px;gap:8px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px;}
+/* Order arrival picker */
+.ord-arr{display:flex;align-items:center;gap:4px;}
+.ord-arr input[type=date]{font-family:var(--font-m);font-size:10px;padding:3px 5px;border:1px solid var(--border2);border-radius:4px;background:var(--bg2);color:var(--text2);width:118px;cursor:pointer;}
+.ord-arr input[type=date]:hover{border-color:var(--gold2);}
+.ord-arr.set input[type=date]{border-color:var(--gold2);background:var(--gold-bg);color:var(--gold);font-weight:500;}
+.ord-arr button{font-family:var(--font-m);font-size:9.5px;padding:3px 5px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text3);cursor:pointer;}
+.ord-arr button:hover{background:var(--bg4);color:var(--text2);}
 .or:last-child{border-bottom:none;}
 .or:hover{background:var(--bg3);}
 /* Wishlist / buy board */
@@ -295,6 +302,8 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
   .or>*:nth-child(5){order:3;justify-self:end;}
   .or>*:nth-child(3){order:4;}
   .or>*:nth-child(4){order:5;justify-self:end;}
+  .or>*:nth-child(6){order:6;grid-column:1/-1;justify-self:start;margin-top:4px;}
+  .ord-arr input[type=date]{font-size:12px;padding:5px 7px;width:145px;}
 
   /* Accordions: name flexes, the numeric columns become narrow implicit tracks */
   .acc-header,.acc-body .acc-inner>div[style*="grid"]{
@@ -582,10 +591,11 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div class="sl">Pending — unfulfilled &amp; unpaid</div>
       <div class="cb">
         <div class="or or-head" style="background:var(--bg3);font-family:var(--font-m);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);border-radius:6px 6px 0 0;">
-          <div>Date</div><div>Book</div><div>Series</div><div>Order #</div><div>Status</div>
+          <div>Ordered</div><div>Book</div><div>Series</div><div>Order #</div><div>Status</div><div>Arrived</div>
         </div>
         <div id="tbb-orders"></div>
       </div>
+      <div class="wl-tools" id="tbb-tools" style="margin-top:1rem"></div>
       <div class="sl">Full order history</div>
       <div class="tw"><table><thead><tr><th>Date</th><th>Books</th><th>Series</th><th>Author</th><th>Type</th><th class="nr">Count</th><th>Status</th></tr></thead><tbody id="tbb-all"></tbody></table></div>
     </div>
@@ -1659,6 +1669,29 @@ let WL_OV={};
 function wlOvLoad(){try{WL_OV=JSON.parse(localStorage.getItem(WL_OV_KEY)||'{}')||{};}catch(e){WL_OV={};}}
 function wlOvSave(){try{localStorage.setItem(WL_OV_KEY,JSON.stringify(WL_OV));}catch(e){}}
 
+// Order arrivals. Receipt often gets recorded days after the box actually
+// turns up, so the arrival date is picked rather than stamped — any past date
+// is valid, and the default is nothing at all rather than today.
+const ORD_OV_KEY='bookdb.orders.arrivals.v1';
+let ORD_OV={};
+function ordOvLoad(){try{ORD_OV=JSON.parse(localStorage.getItem(ORD_OV_KEY)||'{}')||{};}catch(e){ORD_OV={};}}
+function ordOvSave(){try{localStorage.setItem(ORD_OV_KEY,JSON.stringify(ORD_OV));}catch(e){}}
+// Order numbers are blank on 12 of 22 pending rows (unassigned sub credits), so
+// the key is composite and tolerates any one part being empty.
+function ordKey(o){return[wlNorm(o.order||''),wlNorm(o.date||''),wlNorm(o.books||o.series||'')].join('|');}
+// <input type="date"> speaks YYYY-MM-DD; the sheet's Fulfil column reads
+// "June 3, 2025". Convert by parts — new Date() on a bare ISO date shifts a day
+// via UTC, which is the difference between "arrived Sunday" and "arrived Monday".
+function ordISOToLong(iso){
+  const m=(iso||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!m)return'';
+  return`${MO_NAME[+m[2]-1]} ${+m[3]}, ${m[1]}`;
+}
+function ordTodayISO(){
+  const d=new Date(),p=n=>String(n).padStart(2,'0');
+  return`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+}
+
 // Placeholder author values — an anthology credit is not an author you collect.
 const WL_ANON=new Set(['various','various authors','anonymous','unknown','multiple','']);
 // Series names that group rather than order. Their sequence column is a label,
@@ -1936,8 +1969,34 @@ function wlTierValue(t){
   return t.tier==='month'?`${t.yr}-${p(t.mo)}`:`${t.yr}-${p(t.mo)}-${p(t.day)}`;
 }
 function wlBuildProposals(){
+  wlOvLoad();ordOvLoad();
   const byKey={};(WL_ALL||[]).forEach(c=>{byKey[c.key]=c;});
   const out=[];let seq=0;
+  // Order arrivals. Recording one asserts both the date and that the order is
+  // now fulfilled, so the proposal carries both rather than leaving the status
+  // to be inferred on ingest.
+  const ordByKey={};(G.orders||[]).forEach(o=>{ordByKey[ordKey(o)]=o;});
+  Object.keys(ORD_OV).sort().forEach(key=>{
+    const v=ORD_OV[key]||{},o=ordByKey[key]||null;
+    const p={
+      id:'wl-'+String(++seq).padStart(4,'0'),
+      status:'open',origin:'manual',applies_to_register:true,
+      kind:'order.received',
+      target:{register:'Book Mail Orders',
+        order:(o&&o.order)||v.order||'',
+        ordered_date:(o&&o.date)||v.date||'',
+        books:(o&&o.books)||v.books||'',
+        match:'order number + ordered date + books, case- and punctuation-insensitive',
+        key},
+      proposed:{received_date:v.received,received_date_long:ordISOToLong(v.received),delivered:'Fulfilled'},
+      current:{received_date:(o&&o.fulfil)||null,delivered:(o&&o.delivered)||'Unfulfilled',paid:(o&&o.paid)||null},
+      evidence:['arrival date picked by hand on the Book Mail tab',
+        'receipt is recorded after the fact, so this date is asserted rather than observed']
+    };
+    if(!o)p.target.unresolved='no order matched this key in the current export — the row may have changed';
+    else if(o.paid==='Unpaid')p.evidence.push('order is still marked Unpaid — confirm before closing');
+    out.push(p);
+  });
   Object.keys(WL_OV).sort().forEach(key=>{
     const o=WL_OV[key]||{},c=byKey[key]||null;
     const raw=(c&&c.raw)||{};
@@ -2011,8 +2070,11 @@ function wlBuildProposals(){
     proposals:out
   };
 }
+// Corrections come from two surfaces now — Wishlist cards and Book Mail
+// arrivals — but they leave in one envelope.
+function wlPropCount(){wlOvLoad();ordOvLoad();return Object.keys(WL_OV).length+Object.keys(ORD_OV).length;}
 function wlExport(){
-  if(!Object.keys(WL_OV).length){alert('No corrections to propose yet.');return;}
+  if(!wlPropCount()){alert('No corrections to propose yet.');return;}
   const env=wlBuildProposals();
   const blob=new Blob([JSON.stringify(env,null,2)],{type:'application/json'});
   const a=document.createElement('a');
@@ -2034,6 +2096,12 @@ function wlImport(){
       o.proposals.forEach(p=>{
         const k=p&&p.target&&p.target.key;if(!k)return;
         const cur=WL_OV[k]||{title:(p.target||{}).title||'',series:(p.target||{}).series||''};
+        if(p.kind==='order.received'){
+          if(!p.proposed||!p.proposed.received_date)return;
+          ORD_OV[k]={received:p.proposed.received_date,order:(p.target||{}).order||'',
+            date:(p.target||{}).ordered_date||'',books:(p.target||{}).books||''};
+          added++;return;
+        }
         if(p.kind==='release_date.set'&&p.proposed)cur.release=p.proposed.as_entered||p.proposed.release_date||'';
         else if(p.kind==='availability.set'&&p.proposed)cur.avail=p.proposed.published?'out':'unreleased';
         else if(p.kind==='annotation.add'&&p.proposed)cur.note=p.proposed.note||'';
@@ -2043,7 +2111,8 @@ function wlImport(){
       });
     }else{Object.assign(WL_OV,o);added=Object.keys(o).length;}
     if(!added){alert('Nothing importable found in that JSON.');return;}
-    wlOvSave();wlRerender();
+    wlOvSave();ordOvSave();wlRerender();
+    if(ORD_ARGS)renderBookMail(ORD_ARGS);
   }catch(e){alert('Could not read that as JSON: '+e.message);}
 }
 let WL_REVIEW_OPEN=false;
@@ -2051,7 +2120,7 @@ function wlToggleReview(){WL_REVIEW_OPEN=!WL_REVIEW_OPEN;wlRenderReview();}
 function wlRenderReview(){
   const el=document.getElementById('wl-review');
   if(!el)return;
-  if(!WL_REVIEW_OPEN||!Object.keys(WL_OV).length){el.style.display='none';el.innerHTML='';return;}
+  if(!WL_REVIEW_OPEN||!wlPropCount()){el.style.display='none';el.innerHTML='';return;}
   const env=wlBuildProposals();
   el.style.display='block';
   el.innerHTML=`<div class="wl-rv-hd">${env.counts.total} proposal${env.counts.total===1?'':'s'} · ${env.counts.applies_to_register} against the register · all open, none applied</div>`
@@ -2139,7 +2208,7 @@ function renderWishlist(interested,orders,bookRows,indBooks,bookClub){
     </div>`;
   }
 
-  const ovN=Object.keys(WL_OV).length;
+  const ovN=wlPropCount();
   const env=ovN?wlBuildProposals():null;
   const kinds=env?Object.entries(env.counts.by_kind).map(([k,v])=>k+' ×'+v).join(' · '):'';
   document.getElementById('wl-tools').innerHTML=
@@ -2228,11 +2297,56 @@ function renderComingUp(up){
   document.getElementById('upcoming-list').innerHTML=html;
 }
 
+// Arrival is recorded, not detected — the picker takes any past date so a box
+// that turned up last Tuesday can be logged on Friday with the right date.
+let ORD_PENDING=[],ORD_ARGS=null;
+function ordSetArrival(i,iso){
+  const o=ORD_PENDING[i];if(!o)return;
+  const k=ordKey(o);
+  if(!iso)delete ORD_OV[k];
+  else ORD_OV[k]={received:iso,order:o.order||'',date:o.date||'',books:o.books||o.series||''};
+  ordOvSave();
+  if(ORD_ARGS)renderBookMail(ORD_ARGS);
+}
+function ordClearArrivals(){
+  const n=Object.keys(ORD_OV).length;if(!n)return;
+  if(confirm('Discard all '+n+' recorded arrival'+(n===1?'':'s')+'? Export first if you want to keep them.')){
+    ORD_OV={};ordOvSave();if(ORD_ARGS)renderBookMail(ORD_ARGS);
+  }
+}
 function renderBookMail(orders){
+  ORD_ARGS=orders;ordOvLoad();
   const pending=orders.filter(o=>o.delivered==='Unfulfilled'||o.paid==='Unpaid');
   const ful=orders.filter(o=>o.delivered==='Fulfilled'&&o.paid==='Paid');
-  document.getElementById('tbb-m').innerHTML=mH(orders.length,'Total orders')+mH(ful.length,'Fulfilled','','t')+mH(pending.length,'Pending','','c')+mH(orders.reduce((s,o)=>s+o.count,0),'Books ordered');
-  document.getElementById('tbb-orders').innerHTML=pending.map(o=>{const sb=o.paid==='Unpaid'?'b-coral':'b-gold',sl=o.paid==='Unpaid'?'Unpaid':'Unfulfilled';return`<div class="or"><div style="font-family:var(--font-m);font-size:11px;color:var(--text3)">${o.date}</div><div style="font-size:12px">${o.books||'TBD'}</div><div style="font-size:11px;color:var(--text3)">${o.series||'—'}</div><div style="font-family:var(--font-m);font-size:10px;color:var(--text3)">${o.order||'—'}</div><div><span class="badge ${sb}">${sl}</span></div></div>`;}).join('');
+  ORD_PENDING=pending;
+  const recorded=pending.filter(o=>ORD_OV[ordKey(o)]).length;
+  document.getElementById('tbb-m').innerHTML=mH(orders.length,'Total orders')+mH(ful.length,'Fulfilled','','t')+mH(pending.length,'Pending','','c')+mH(recorded,'Arrivals logged','awaiting review',recorded?'t':'')+mH(orders.reduce((s,o)=>s+o.count,0),'Books ordered');
+  document.getElementById('tbb-orders').innerHTML=pending.map((o,i)=>{
+    const sb=o.paid==='Unpaid'?'b-coral':'b-gold',sl=o.paid==='Unpaid'?'Unpaid':'Unfulfilled';
+    const got=(ORD_OV[ordKey(o)]||{}).received||'';
+    return`<div class="or">
+      <div style="font-family:var(--font-m);font-size:11px;color:var(--text3)">${o.date}</div>
+      <div style="font-size:12px">${o.books||'TBD'}</div>
+      <div style="font-size:11px;color:var(--text3)">${o.series||'—'}</div>
+      <div style="font-family:var(--font-m);font-size:10px;color:var(--text3)">${o.order||'—'}</div>
+      <div><span class="badge ${got?'b-green':sb}">${got?'Arrived':sl}</span></div>
+      <div class="ord-arr${got?' set':''}">
+        <input type="date" value="${got}" max="${ordTodayISO()}"
+          aria-label="Arrival date for ${(o.books||o.order||o.date||'order').replace(/"/g,'&quot;')}"
+          onchange="ordSetArrival(${i},this.value)">
+        ${got?`<button onclick="ordSetArrival(${i},'')" title="Clear this arrival">✕</button>`
+             :`<button onclick="ordSetArrival(${i},ordTodayISO())" title="Arrived today">Today</button>`}
+      </div>
+    </div>`;}).join('');
+  const oN=Object.keys(ORD_OV).length;
+  document.getElementById('tbb-tools').innerHTML=
+    `<div class="wl-tools-l">${oN
+      ?`<b>${oN}</b> arrival${oN===1?'':'s'} recorded — exported as <span class="wl-tools-k">order.received</span> proposals, never written to the register`
+      :'Pick an arrival date on any pending order. Backdating is expected — nothing is stamped with today unless you ask for it.'}</div>
+     <div class="wl-tools-r">
+       <button onclick="wlExport()">Export proposals</button>
+       ${oN?`<button class="rst" onclick="ordClearArrivals()">Clear arrivals</button>`:''}
+     </div>`;
   document.getElementById('tbb-all').innerHTML=[...orders].reverse().map(o=>`<tr><td style="font-family:var(--font-m);font-size:11px;white-space:nowrap">${o.date}</td><td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.books||'—'}</td><td>${o.series||'—'}</td><td>${o.author||'—'}</td><td>${o.type||'—'}</td><td class="nr">${o.count||1}</td><td style="white-space:nowrap"><span class="badge ${o.paid==='Paid'?'b-green':'b-coral'}">${o.paid}</span> <span class="badge ${o.delivered==='Fulfilled'?'b-teal':'b-gold'}">${o.delivered}</span></td></tr>`).join('');
 }
 

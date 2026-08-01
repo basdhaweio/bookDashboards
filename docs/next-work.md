@@ -89,7 +89,18 @@ plausible shapes:
 
 My read: fold Someday, keep Coming Up. But it's your dashboard.
 
-## 4. Wishlist cards have no cover art — **ready, cheap**
+## 4. Arrivals can only be recorded on pending orders — **ready if it bites**
+
+The arrival picker on the Book Mail tab covers the 22 pending rows. Orders
+already marked `Fulfilled` get no picker, so a wrong `Fulfil` date on a
+historical row can't be corrected from the dashboard. All 57 currently have one,
+so this is only a problem if one of them is wrong.
+
+Adding a picker to the full order history table would reuse `ordSetArrival` and
+the `order.received` kind unchanged — only the render path in `renderBookMail`
+needs it.
+
+## 5. Wishlist cards have no cover art — **ready, cheap**
 
 The flyer already fetches Open Library covers with a localStorage cache
 (`bcFetchCovers`, 30-day hits / 3-day misses). The Wishlist shows none. Reusing
@@ -98,7 +109,7 @@ that path on the buy-now bucket would make the board scannable.
 Keep the existing cache TTLs — the short miss TTL exists because a cover often
 appears only at release.
 
-## 5. Corrections are per-browser — **accepted for now, revisit if it bites**
+## 6. Corrections are per-browser — **accepted for now, revisit if it bites**
 
 `localStorage` only. Moving machines means Export → Import by hand. That is a
 consequence of the no-write-path rule and is currently fine.
@@ -107,7 +118,7 @@ If it becomes annoying, the option that does **not** break the rule is loading a
 committed corrections file as a read-only baseline that localStorage overlays.
 Do not add a write path to the register to solve this.
 
-## 6. "Already proposed" state — **blocked on jerry**
+## 7. "Already proposed" state — **blocked on jerry**
 
 The Wishlist can't tell that a title already has an open proposal, so the same
 correction can be exported twice. Fixing it needs open proposals echoed back in
@@ -117,7 +128,7 @@ correction can be exported twice. Fixing it needs open proposals echoed back in
 Once that field exists, the dashboard side is small: read it in `loadBundle`,
 match on the same key, badge the card.
 
-## 7. Schema reconcile — **blocked on jerry**
+## 8. Schema reconcile — **blocked on jerry**
 
 `wlBuildProposals` invents `bookdb.proposals/v1` because no proposals table
 existed and jerry wasn't reachable. When the real table lands, remap it — one
@@ -127,7 +138,7 @@ function out, one (`wlImport`) in.
 A stale fixture is worse than no fixture, because the jerry side will code
 against it.
 
-## 8. Notification feed — **blocked on jerry, highest value there**
+## 9. Notification feed — **blocked on jerry, highest value there**
 
 The `Book Club` source tab is header-only. It is the only reliable date source
 in the system. Parsing, tier upgrading and corroboration scoring are already

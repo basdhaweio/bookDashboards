@@ -6,8 +6,8 @@ This document is self-contained. You do not need to read the dashboard source to
 implement against it. A real generated example lives beside this file at
 [`sample-proposals.json`](./sample-proposals.json) — code against that fixture.
 
-The dashboard-side backlog is in [`next-work.md`](./next-work.md); items 6, 7
-and 8 there are the ones waiting on decisions made here.
+The dashboard-side backlog is in [`next-work.md`](./next-work.md); items 7, 8
+and 9 there are the ones waiting on decisions made here.
 
 ---
 
@@ -76,7 +76,7 @@ since moved — **compare before applying**, don't assume.
 | `status` | string | always `"open"` on export |
 | `origin` | string | always `"manual"` — see [Machine inferences](#machine-inferences-are-never-exported) |
 | `applies_to_register` | bool | `false` means dashboard-only; do not write it to the register |
-| `kind` | string | one of the four below |
+| `kind` | string | one of the five below |
 | `target` | object | which row this is about |
 | `proposed` | object | the asserted value |
 | `current` | object | what the dashboard believed instead |
@@ -89,7 +89,39 @@ since moved — **compare before applying**, don't assume.
 | `release_date.set` | true | `{release_date, precision, as_entered}` |
 | `availability.set` | true | `{published: bool}` |
 | `annotation.add` | true | `{note: string}` |
+| `order.received` | true | `{received_date, received_date_long, delivered}` |
 | `wishlist.exclude` | **false** | `{excluded_from_wishlist: true}` |
+
+### `order.received` — arrival dates
+
+Targets **Book Mail Orders**, not the book catalog, so its `target` block has a
+different shape (see below). Recording an arrival asserts two things at once —
+the date, and that the order is now fulfilled — so the proposal carries both
+rather than leaving `Delivered` to be inferred on ingest:
+
+```json
+"proposed": { "received_date": "2026-07-14",
+              "received_date_long": "July 14, 2026",
+              "delivered": "Fulfilled" },
+"current":  { "received_date": null, "delivered": "Unfulfilled", "paid": "Paid" }
+```
+
+`received_date` is ISO `YYYY-MM-DD`. `received_date_long` is the same date
+preformatted to match the sheet's existing `Fulfil` column style
+(`"June 3, 2025"`) — use whichever your storage wants; they are the same day.
+The conversion is done by string parts, not `new Date()`, because parsing a bare
+ISO date shifts it a day through UTC.
+
+**These dates are asserted, not observed.** Receipt gets recorded days after the
+box actually turns up, so the picker accepts any past date and is never
+auto-stamped with today. Every one of these proposals carries the evidence line
+*"receipt is recorded after the fact, so this date is asserted rather than
+observed"*. An arrival on a still-`Unpaid` order gets an extra line saying so —
+worth a second look before closing, since it may mean the payment side is also
+out of date.
+
+All 57 currently-fulfilled orders have a `Fulfil` date, so treat that column as
+required once `Delivered` flips to `Fulfilled`.
 
 ### Targeting
 
@@ -105,6 +137,24 @@ since moved — **compare before applying**, don't assume.
 
 `key` is `normalise(series) + "::" + normalise(title)` where normalise is
 lowercase, all non-alphanumerics collapsed to single spaces, trimmed.
+
+`order.received` targets an order row instead, and its key is
+`normalise(order) + "|" + normalise(ordered_date) + "|" + normalise(books)`:
+
+```json
+"target": {
+  "register": "Book Mail Orders",
+  "order": "#TBBSUB669328",
+  "ordered_date": "May 1, 2026",
+  "books": "Ruin",
+  "match": "order number + ordered date + books, case- and punctuation-insensitive",
+  "key": "tbbsub669328|may 1 2026|ruin"
+}
+```
+
+It is composite because **12 of 22 pending orders have no order number** — they
+are subscription credits with no title assigned yet. Any one part may be empty;
+the ordered date is what makes those rows distinguishable.
 
 **This is the weakest part of the contract.** It breaks on a rename. If bookdb
 has stable row IDs, switching to them is the single highest-value change you can
