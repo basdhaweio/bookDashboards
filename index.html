@@ -834,6 +834,7 @@ const BOOKS_ID='1IRQ0VENyj_H_MENOOPBB4W3F8pQo4UeMdoj__9dUm3k';
 const READING_ID='1KeUuBxJkXD0EqSBX-qsu2sadRaAhf2p8Q8OPjiX-ceE';
 const GROWTH_ID='1PBjnRAqbim6FJrYkv9iwf0R1CFsV7lFD0yGocFZWmYI';
 const FR_ID='1_vivOgWjSRnPO5doL_GIb33PD8sPO0Ya1MM_rf293lg';
+const GOBLIN_BOX_ID='14I40HgBRGqFt58TT3Y2y8rt41o4KkyWS2PCfbeuISOA'; // Shereen's books · Book Boxes
 // DL data lives in the same sheet as FR
 const DL_TAB='DL';
 const DOB=new Date(1985,10,1),START=new Date(2000,8,1);
@@ -964,6 +965,21 @@ function parseOrders(vals){
     orders.push({date:(r[0]||'').trim(),order:(r[1]||'').trim(),books:(r[2]||'').trim(),series:(r[3]||'').trim(),author:(r[4]||'').trim(),paid:(r[5]||'').trim(),delivered:(r[6]||'').trim(),tracking:(r[7]||'').trim(),fulfil:(r[8]||'').trim(),type:(r[9]||'').trim(),sub:(r[10]||'').trim(),count:n(r[12])});
   }
   return orders;
+}
+
+function parseBoxes(vals){
+  // Shereen's Book Boxes (from bookdb book_boxes via publish.py; layout
+  // mirrors her sheet): Author|Title|Show?|Want?|Ordered?|Received?|Source|Box|
+  // Order date|ETA|Order Number|Tracking #|Notes
+  const boxes=[];
+  for(let i=1;i<vals.length;i++){
+    const r=vals[i];if(!(r[6]||'').trim()&&!(r[1]||'').trim())continue;
+    boxes.push({author:(r[0]||'').trim(),title:(r[1]||'').trim(),want:(r[3]||'').trim(),
+      ordered:(r[4]||'').trim(),received:(r[5]||'').trim(),vendor:(r[6]||'').trim(),
+      box:(r[7]||'').trim(),date:(r[8]||'').trim(),eta:(r[9]||'').trim(),
+      order:(r[10]||'').trim(),tracking:(r[11]||'').trim(),notes:(r[12]||'').trim()});
+  }
+  return boxes;
 }
 
 function calcBooks(rows){
@@ -1666,12 +1682,38 @@ function renderComingUp(up){
   document.getElementById('upcoming-list').innerHTML=html;
 }
 
+// ── Order pending-change flags (shared by the Log panel and Book Mail tab) ──
+// Keys mirror the inbox refs so an in-flight order_update/order_new can be
+// matched back to its bundle row. Maps live in G.pendOrd (built by the LOG
+// module after each inbox poll); decorate runs post-render because the poll
+// is async and may finish after the tab has drawn.
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function ordKeyMail(o){return[(o.order||'').trim(),(o.books||'').trim(),(o.date||'').trim()].join('|');}
+function ordKeyBox(b){return[(b.vendor||'').trim(),(b.box||'').trim(),(b.title||'').trim(),(b.order||'').trim(),(b.date||'').trim()].join('|');}
+function ordPendChip(sets){
+  const kv=Object.entries(sets).filter(([k])=>k!=='__new');
+  const full=kv.map(([k,v])=>`${k}: ${v}`).join(', ')||'new entry — not yet in the register';
+  const short=kv.map(([k])=>k).join(', ')||'new';
+  return` <span class="log-badge-pend" title="${esc(full)}">pending · ${esc(short)}</span>`;
+}
+function decorateOrderPending(){
+  if(!G.pendOrd)return;
+  document.querySelectorAll('[data-okey]').forEach(el=>{
+    const old=el.querySelector('.log-badge-pend');
+    const m=el.getAttribute('data-olist')==='box'?G.pendOrd.box:G.pendOrd.mail;
+    const sets=m.get(el.getAttribute('data-okey'));
+    if(old)old.remove();
+    if(sets)el.insertAdjacentHTML('beforeend',ordPendChip(sets));
+  });
+}
+
 function renderBookMail(orders){
   const pending=orders.filter(o=>o.delivered==='Unfulfilled'||o.paid==='Unpaid');
   const ful=orders.filter(o=>o.delivered==='Fulfilled'&&o.paid==='Paid');
   document.getElementById('tbb-m').innerHTML=mH(orders.length,'Total orders')+mH(ful.length,'Fulfilled','','t')+mH(pending.length,'Pending','','c')+mH(orders.reduce((s,o)=>s+o.count,0),'Books ordered');
-  document.getElementById('tbb-orders').innerHTML=pending.map(o=>{const sb=o.paid==='Unpaid'?'b-coral':'b-gold',sl=o.paid==='Unpaid'?'Unpaid':'Unfulfilled';return`<div class="or"><div style="font-family:var(--font-m);font-size:11px;color:var(--text3)">${o.date}</div><div style="font-size:12px">${o.books||'TBD'}</div><div style="font-size:11px;color:var(--text3)">${o.series||'—'}</div><div style="font-family:var(--font-m);font-size:10px;color:var(--text3)">${o.order||'—'}</div><div><span class="badge ${sb}">${sl}</span></div></div>`;}).join('');
-  document.getElementById('tbb-all').innerHTML=[...orders].reverse().map(o=>`<tr><td style="font-family:var(--font-m);font-size:11px;white-space:nowrap">${o.date}</td><td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.books||'—'}</td><td>${o.series||'—'}</td><td>${o.author||'—'}</td><td>${o.type||'—'}</td><td class="nr">${o.count||1}</td><td style="white-space:nowrap"><span class="badge ${o.paid==='Paid'?'b-green':'b-coral'}">${o.paid}</span> <span class="badge ${o.delivered==='Fulfilled'?'b-teal':'b-gold'}">${o.delivered}</span></td></tr>`).join('');
+  document.getElementById('tbb-orders').innerHTML=pending.map(o=>{const sb=o.paid==='Unpaid'?'b-coral':'b-gold',sl=o.paid==='Unpaid'?'Unpaid':'Unfulfilled';return`<div class="or"><div style="font-family:var(--font-m);font-size:11px;color:var(--text3)">${o.date}</div><div style="font-size:12px">${o.books||'TBD'}</div><div style="font-size:11px;color:var(--text3)">${o.series||'—'}</div><div style="font-family:var(--font-m);font-size:10px;color:var(--text3)">${o.order||'—'}</div><div data-okey="${esc(ordKeyMail(o))}"><span class="badge ${sb}">${sl}</span></div></div>`;}).join('');
+  document.getElementById('tbb-all').innerHTML=[...orders].reverse().map(o=>`<tr><td style="font-family:var(--font-m);font-size:11px;white-space:nowrap">${o.date}</td><td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.books||'—'}</td><td>${o.series||'—'}</td><td>${o.author||'—'}</td><td>${o.type||'—'}</td><td class="nr">${o.count||1}</td><td style="white-space:nowrap" data-okey="${esc(ordKeyMail(o))}"><span class="badge ${o.paid==='Paid'?'b-green':'b-coral'}">${o.paid}</span> <span class="badge ${o.delivered==='Fulfilled'?'b-teal':'b-gold'}">${o.delivered}</span></td></tr>`).join('');
+  decorateOrderPending();
 }
 
 function parseGrowthMetrics(vals){
@@ -3341,18 +3383,40 @@ const LOG=(()=>{
       case'order_new':return p.list==='bookboxes'
         ?`🎁 Box: ${p.vendor}${p.box?' '+p.box:''} — ${p.title||'title TBA'}${p.want&&p.want!=='Yes'?' · want: '+p.want:''}`
         :`🧾 New order ${p.order||''} — ${p.books||'?'}`;
-      case'order_update':{const s=Object.entries(p.set||{}).map(([k,v])=>v===true?k:`${k}: ${v}`).join(', ');return`🧾 Order ${p.ref&&p.ref.order||''} → ${s}`;}
+      case'order_update':{const s=Object.entries(p.set||{}).map(([k,v])=>v===true?k:`${k}: ${v}`).join(', ');
+        return p.list==='bookboxes'
+          ?`🎁 ${(p.ref&&p.ref.vendor)||''}${p.ref&&p.ref.box?' '+p.ref.box:''} — ${(p.ref&&p.ref.title)||'TBA'} → ${s}`
+          :`🧾 Order ${p.ref&&p.ref.order||''} → ${s}`;}
       default:return ev.type;
     }
   }
   function pendingKeys(list){const ks=new Set();(list||[]).forEach(ev=>{const b=ev.payload&&ev.payload.book;if(b)ks.add(ev.type+'|'+b.title+'|'+b.series);});return ks;}
+  // Order-level pending: key → merged pending set, split by order model, so
+  // rows in the Log panel AND the Book Mail tab can flag in-flight changes.
+  function buildPendMaps(list){
+    const m={mail:new Map(),box:new Map()};
+    (list||[]).forEach(ev=>{
+      const p=ev.payload||{};
+      if(ev.type!=='order_new'&&ev.type!=='order_update')return;
+      const isBox=p.list==='bookboxes';
+      const src=ev.type==='order_update'?(p.ref||{}):p;
+      const tgt=isBox?m.box:m.mail;
+      const k=isBox?ordKeyBox(src):ordKeyMail(src);
+      const sets=tgt.get(k)||{};
+      Object.assign(sets,ev.type==='order_update'?(p.set||{}):{__new:true});
+      tgt.set(k,sets);
+    });
+    G.pendOrd=m;
+  }
 
   async function refreshBadge(){
     const list=await fetchPending().catch(()=>[]);
+    buildPendMaps(list);
     const tab=document.getElementById('log-pending-tab');
     if(tab)tab.textContent='Pending'+(list.length?` (${list.length})`:'');
     const dot=document.getElementById('log-nav-dot');
     if(dot)dot.style.display=list.length?'inline':'none';
+    decorateOrderPending();
   }
 
   // ── Setup card ──
@@ -3514,8 +3578,20 @@ const LOG=(()=>{
       <div class="log-frow"><label>Notes</label><input id="log-b-notes" placeholder="Book 2, Sept YA box, …"></div>
       <button class="log-act primary" onclick="LOG.doNewBoxOrder()">Log box order</button>
       </div>`;
-      document.getElementById('log-orders-open').innerHTML='<div class="ms">Shereen\'s open boxes will show here once jerry ingests the Book Boxes sheet into bookdb — new entries above work now and queue in the inbox.</div>';
-      document.getElementById('log-orders-done').innerHTML='<div class="ms">—</div>';
+      const openB=(G.boxes||[]).filter(b=>!b.received&&b.ordered!=='CANCELLED').slice().reverse();
+      const doneB=(G.boxes||[]).filter(b=>b.received).slice(-5).reverse();
+      const brow=(b,i,canEdit)=>`<div class="log-item">
+        <div class="log-item-hd" ${canEdit?`style="cursor:pointer" onclick="LOG.expandBox(${i})"`:''}>
+          <div class="log-item-info">
+            <div class="log-item-title" data-okey="${esc(ordKeyBox(b))}" data-olist="box">${esc(b.title||'Title TBA')}</div>
+            <div class="log-item-meta">${esc(b.vendor||'—')}${b.box?' · '+esc(b.box):''}${b.date?' · charged '+esc(b.date):''}${b.eta?' · ETA '+esc(b.eta):''}${b.author?' · '+esc(b.author):''}</div>
+          </div>
+          <span class="badge ${b.want==='No'?'b-coral':b.want==='Unsure'?'b-gold':'b-green'}">${esc(b.want||'—')}</span>
+        </div>
+        ${canEdit?`<div class="log-exp" id="log-bexp-${i}"></div>`:''}</div>`;
+      document.getElementById('log-orders-open').innerHTML=openB.map((b,i)=>brow(b,i,true)).join('')||'<div class="ms">No open boxes.</div>';
+      document.getElementById('log-orders-open')._openB=openB;
+      document.getElementById('log-orders-done').innerHTML=doneB.map(b=>brow(b,-1,false)).join('')||'<div class="ms">—</div>';
       refreshBadge();return;
     }
     document.getElementById('log-orderform').innerHTML=tog+`
@@ -3536,7 +3612,7 @@ const LOG=(()=>{
     const row=(o,i,canEdit)=>`<div class="log-item">
       <div class="log-item-hd" ${canEdit?`style="cursor:pointer" onclick="LOG.expandOrder(${i})"`:''}>
         <div class="log-item-info">
-          <div class="log-item-title">${esc(o.books||'TBD')}</div>
+          <div class="log-item-title" data-okey="${esc(ordKeyMail(o))}">${esc(o.books||'TBD')}</div>
           <div class="log-item-meta">${esc(o.date)} · ${esc(o.order||'no #')} · ${esc(o.series||'—')}</div>
         </div>
         <span class="badge ${o.paid==='Unpaid'?'b-coral':o.delivered==='Fulfilled'?'b-green':'b-gold'}">${o.delivered==='Fulfilled'?'Fulfilled':o.paid==='Unpaid'?'Unpaid':'Unfulfilled'}</span>
@@ -3547,6 +3623,7 @@ const LOG=(()=>{
     document.getElementById('log-orders-done').innerHTML=done.map(o=>row(o,-1,false)).join('')||'<div class="ms">—</div>';
     refreshBadge();
   }
+  const MAIL_EDIT=['date','order','books','series','author','count','type'];
   function expandOrder(i){
     const o=(document.getElementById('log-orders-open')._open||[])[i];if(!o)return;
     const el=document.getElementById('log-oexp-'+i);
@@ -3555,16 +3632,75 @@ const LOG=(()=>{
     el.innerHTML=`
       <div class="log-frow"><label>Update</label>
         ${o.paid==='Unpaid'?`<button class="log-act" onclick="LOG.doOrderUpdate(${i},{paid:'Paid'})">Mark paid</button>`:''}
-        <button class="log-act" onclick="LOG.doOrderUpdate(${i},{delivered:'Fulfilled',fulfil:'${today()}'})">Arrived today</button>
+        <button class="log-act" onclick="LOG.toggleRow('log-o-arr-${i}')">Arrived</button>
+        <button class="log-act" onclick="LOG.toggleRow('log-o-edit-${i}')">Edit details</button>
       </div>
-      <div class="log-frow"><label>Tracking</label><input id="log-o-trk-${i}" placeholder="tracking #"><button class="log-act" onclick="LOG.doOrderUpdate(${i},{tracking:document.getElementById('log-o-trk-${i}').value.trim()})">Save</button></div>`;
+      <div class="log-frow" id="log-o-arr-${i}" style="display:none"><label>On</label>
+        <input type="date" id="log-o-arrd-${i}" value="${today()}">
+        <button class="log-act primary" onclick="LOG.doOrderUpdate(${i},{delivered:'Fulfilled',fulfil:document.getElementById('log-o-arrd-${i}').value})">Confirm arrival</button></div>
+      <div class="log-frow"><label>Tracking</label><input id="log-o-trk-${i}" value="${esc(o.tracking||'')}" placeholder="tracking #"><button class="log-act" onclick="LOG.doOrderUpdate(${i},{tracking:document.getElementById('log-o-trk-${i}').value.trim()})">Save</button></div>
+      <div id="log-o-edit-${i}" style="display:none">
+        ${MAIL_EDIT.map(f=>`<div class="log-frow"><label>${f==='date'?'Ordered':f[0].toUpperCase()+f.slice(1)}</label><input id="log-oe-${f}-${i}" value="${esc(String(o[f]??''))}"></div>`).join('')}
+        <button class="log-act primary" onclick="LOG.saveOrderEdit(${i})">Save changed fields</button>
+      </div>`;
     el.classList.add('open');
   }
+  function toggleRow(id){const e=document.getElementById(id);if(e)e.style.display=e.style.display==='none'?'':'none';}
   async function doOrderUpdate(i,set){
     const o=(document.getElementById('log-orders-open')._open||[])[i];if(!o)return;
     if(set.tracking==='')return toast('Tracking number is empty',true);
     const ok=await submit('order_update',{list:'bookmail',ref:orderRef(o),set},null,'butthead');
-    if(ok)toast('Order update logged');
+    if(ok){toast('Order update logged');renderOrders();}
+  }
+  async function saveOrderEdit(i){
+    const o=(document.getElementById('log-orders-open')._open||[])[i];if(!o)return;
+    const set={};
+    for(const f of MAIL_EDIT){
+      const v=document.getElementById(`log-oe-${f}-${i}`).value.trim();
+      if(v!==String(o[f]??'').trim())set[f]=v;
+    }
+    if(!Object.keys(set).length)return toast('Nothing changed',true);
+    const ok=await submit('order_update',{list:'bookmail',ref:orderRef(o),set},null,'butthead');
+    if(ok){toast('Order edit logged');renderOrders();}
+  }
+  // ── Box updates (Shereen) — ref carries the bundle strings incl. charge
+  // date, because pre-logged boxes repeat (vendor, box) with blank titles.
+  const BOX_EDIT=['title','author','vendor','box','want','eta','order','notes','tracking'];
+  function boxRef(b){return{vendor:b.vendor,box:b.box,title:b.title,order:b.order,date:b.date};}
+  function expandBox(i){
+    const b=(document.getElementById('log-orders-open')._openB||[])[i];if(!b)return;
+    const el=document.getElementById('log-bexp-'+i);
+    if(el.classList.contains('open')){el.classList.remove('open');return;}
+    document.querySelectorAll('#log-orders-open .log-exp.open').forEach(e=>e.classList.remove('open'));
+    el.innerHTML=`
+      <div class="log-frow"><label>Update</label>
+        <button class="log-act" onclick="LOG.toggleRow('log-b-arr-${i}')">Arrived</button>
+        <button class="log-act" onclick="LOG.doBoxUpdate(${i},{ordered:'CANCELLED'})">Mark cancelled</button>
+      </div>
+      <div class="log-frow" id="log-b-arr-${i}" style="display:none"><label>On</label>
+        <input type="date" id="log-b-arrd-${i}" value="${today()}">
+        <button class="log-act primary" onclick="LOG.doBoxUpdate(${i},{received:document.getElementById('log-b-arrd-${i}').value})">Confirm arrival</button></div>
+      ${BOX_EDIT.map(f=>`<div class="log-frow"><label>${f==='order'?'Order #':f==='eta'?'ETA':f[0].toUpperCase()+f.slice(1)}</label>${
+        f==='want'?`<select id="log-be-${f}-${i}">${['Yes','Unsure','No'].map(w=>`<option${b.want===w?' selected':''}>${w}</option>`).join('')}</select>`
+        :`<input id="log-be-${f}-${i}" ${f==='eta'?'type="date"':''} value="${esc(b[f]||'')}">`}</div>`).join('')}
+      <button class="log-act primary" onclick="LOG.saveBoxEdit(${i})">Save changed fields</button>`;
+    el.classList.add('open');
+  }
+  async function doBoxUpdate(i,set){
+    const b=(document.getElementById('log-orders-open')._openB||[])[i];if(!b)return;
+    const ok=await submit('order_update',{list:'bookboxes',ref:boxRef(b),set},null,'goblin');
+    if(ok){toast('Box update logged');renderOrders();}
+  }
+  async function saveBoxEdit(i){
+    const b=(document.getElementById('log-orders-open')._openB||[])[i];if(!b)return;
+    const set={};
+    for(const f of BOX_EDIT){
+      const v=document.getElementById(`log-be-${f}-${i}`).value.trim();
+      if(v!==(b[f]||'').trim())set[f]=v;
+    }
+    if(!Object.keys(set).length)return toast('Nothing changed',true);
+    const ok=await submit('order_update',{list:'bookboxes',ref:boxRef(b),set},null,'goblin');
+    if(ok){toast('Box edit logged');renderOrders();}
   }
   async function doNewOrder(){
     const v=id=>document.getElementById(id).value.trim();
@@ -3598,13 +3734,14 @@ const LOG=(()=>{
   }
 
   return{renderBook,renderOrders,renderPending,search,expand,doFinished,doAcquired,
-    toggleAdd,doAdd,doNewOrder,doNewBoxOrder,setOrderStyle,expandOrder,doOrderUpdate,saveSetup,forgetSetup,refreshBadge};
+    toggleAdd,doAdd,doNewOrder,doNewBoxOrder,setOrderStyle,expandOrder,doOrderUpdate,
+    toggleRow,saveOrderEdit,expandBox,doBoxUpdate,saveBoxEdit,saveSetup,forgetSetup,refreshBadge};
 })();
 
 async function init(){
   try{
     await loadBundle();
-    const [booksV,indV,metricsV,intV,ordV,growthMetricsV,growthYearV,frYearV,frSeriesV,dlV,srV,bcV,...yearV]=await Promise.all([
+    const [booksV,indV,metricsV,intV,ordV,growthMetricsV,growthYearV,frYearV,frSeriesV,dlV,srV,bcV,boxesV,...yearV]=await Promise.all([
       fr(BOOKS_ID,"'Butthead Series'!A:K").catch(()=>[]),
       fr(BOOKS_ID,"'Butthead Individual'!A:J").catch(()=>[]),
       fr(READING_ID,'Metrics!A:G').catch(()=>[]),
@@ -3617,8 +3754,10 @@ async function init(){
       fr(FR_ID,"'DL'!A:H").catch(()=>[]),
       fr(FR_ID,"'SR'!A:H").catch(()=>[]),
       fr(BOOKS_ID,"'Book Club'!A:G").catch(()=>[]),
+      fr(GOBLIN_BOX_ID,"'Book Boxes'!A:M").catch(()=>[]),
       ...YEARS.map(y=>fr(READING_ID,`'${y}'!A:K`).catch(()=>[]))
     ]);
+    G.boxes=parseBoxes(boxesV);
     G.allBookRows=parseBooks(booksV);
     G.allIndBooks=parseIndividual(indV);
     applyOwner(false); // sets G.bookRows / G.indBooks / G.books per OWNER
