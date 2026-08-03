@@ -95,6 +95,17 @@ flows through `finished`/`acquired` so the event feeds stay truthful. A
 retitle that collides with an existing book's title parks as a proposal
 instead of applying (duplicate guard).
 
+### `meta_add`
+Add a value to a picklist vocabulary (the Metadata tab). Applies to
+`meta_vocab` on jerry; the published bundle's `bookdb|Meta Vocab` tab is the
+union of values in use and these additions, so a value exists in the
+dropdowns before any row uses it.
+```json
+{"kind": "genre", "value": "Romantasy"}
+```
+`kind` is one of `genre, sub_genre, media, publisher, vendor, box`.
+Duplicate adds are no-ops.
+
 ### `order_new`
 Two shapes, discriminated by `list`.
 

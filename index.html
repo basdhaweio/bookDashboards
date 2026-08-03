@@ -765,6 +765,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <button class="active" onclick="switchTab('logbook','log')">Books</button>
       <button onclick="switchTab('logorders','log')">Orders</button>
       <button id="log-pending-tab" onclick="switchTab('logpending','log')">Pending</button>
+      <button onclick="switchTab('logmeta','log')">Metadata</button>
     </div>
     <div class="panel active" id="tab-logbook">
       <div id="log-setup-book"></div>
@@ -791,6 +792,12 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div id="log-pending-list"></div>
       <div class="sl" style="margin-top:2rem">Setup</div>
       <div id="log-setup-main"></div>
+    </div>
+    <div class="panel" id="tab-logmeta">
+      <div id="log-setup-meta"></div>
+      <div class="sl">Metadata vocabularies</div>
+      <div class="ms" style="margin-bottom:1rem">These feed the picklists on the Books and Orders forms. Add a value here first, then it's selectable everywhere — even before any book uses it.</div>
+      <div id="log-meta-list"></div>
     </div>
   </div>
 
@@ -1971,7 +1978,7 @@ function switchTab(id,sec,fromSection){
   curTab=id;
   // Log tabs reflect live inbox state — always re-render on visit (no charts, cheap)
   if(!rendered.has(id)){renderTab(id);rendered.add(id);}
-  else if(id==='logbook'||id==='logorders'||id==='logpending')renderTab(id);
+  else if(id==='logbook'||id==='logorders'||id==='logpending'||id==='logmeta')renderTab(id);
   if(!fromSection){curSec=sec;updateHash(sec,id);}
 }
 
@@ -1985,7 +1992,7 @@ function restoreFromHash(){
   const hash=(location.hash||'').replace('#','');
   const[sec,tab]=hash.split('/');
   const validSecs=new Set(['tracking','reading','buying','collecting','bookclub','log']);
-  const validTabs=new Set(['overview','bytype','genre','universe','rooms','history','thisyear','completion','byseries','toread','comingup','bookmail','toacquire','someday','libgrowth','buythisyear','col-fr','col-dl','col-sr','flyer','logbook','logorders','logpending']);
+  const validTabs=new Set(['overview','bytype','genre','universe','rooms','history','thisyear','completion','byseries','toread','comingup','bookmail','toacquire','someday','libgrowth','buythisyear','col-fr','col-dl','col-sr','flyer','logbook','logorders','logpending','logmeta']);
   const validFRTabs=new Set(['fr-overview','fr-series','fr-completion']);
   const validDLTabs=new Set(['dl-overview','dl-series','dl-completion']);
   const validSRTabs=new Set(['sr-overview','sr-publisher','sr-completion']);
@@ -2041,6 +2048,7 @@ function renderTabInner(id){
   else if(id==='logbook')LOG.renderBook();
   else if(id==='logorders')LOG.renderOrders();
   else if(id==='logpending')LOG.renderPending();
+  else if(id==='logmeta')LOG.renderMeta();
   else if(id==='col-fr'){switchFRTab('fr-overview');}
   else if(id==='col-dl'){switchDLTab('dl-overview');}
   else if(id==='col-sr'){switchSRTab('sr-overview');}
@@ -3383,6 +3391,7 @@ const LOG=(()=>{
       case'acquired':return`📦 Got “${b.title}”${b.media?' ('+b.media+')':''}`;
       case'add_book':return`＋ New book “${p.title}”${p.read?' · read':''}${p.owned?' · owned':''}`;
       case'book_update':return`✎ “${b.title}” → ${Object.keys(p.set||{}).join(', ')}`;
+      case'meta_add':return`🏷 New ${p.kind}: ${p.value}`;
       case'order_new':return p.list==='bookboxes'
         ?`🎁 Box: ${p.vendor}${p.box?' '+p.box:''} — ${p.title||'title TBA'}${p.want&&p.want!=='Yes'?' · want: '+p.want:''}`
         :`🧾 New order ${p.order||''} — ${p.books||'?'}`;
@@ -3501,10 +3510,9 @@ const LOG=(()=>{
         <button class="log-act primary" onclick="LOG.doFinished(${i})">Log it — ${esc(OWNER_LABEL[by(b)])} read this</button>`;
     }else if(type==='edit'){
       const cur=bookEditCur(b);
-      el.innerHTML=BOOK_EDIT.map(f=>`<div class="log-frow"><label>${BOOK_EDIT_LBL[f]||f}</label><input id="log-bke-${f}-${i}" ${f==='media'?'list="log-media-kinds"':''} value="${esc(cur[f]||'')}" ${f==='series'?'placeholder="blank = standalone"':''}></div>`).join('')
-        +`<datalist id="log-media-kinds"><option>Print</option><option>Audio</option><option>eBook</option><option>Manga</option><option>Graphic Novel</option><option>Comics</option></datalist>
-        <button class="log-act primary" onclick="LOG.saveBookEdit(${i})">Save changed fields</button>
-        <div class="ms" style="margin-top:6px">Only changed fields are sent. Status stays with ✓/📦.</div>`;
+      el.innerHTML=BOOK_EDIT.map(f=>`<div class="log-frow"><label>${BOOK_EDIT_LBL[f]||f}</label>${VOCAB_FIELDS.includes(f)?`<select id="log-bke-${f}-${i}">${selOpts(f,cur[f]||'')}</select>`:`<input id="log-bke-${f}-${i}" value="${esc(cur[f]||'')}" ${f==='series'?'placeholder="blank = standalone"':''}>`}</div>`).join('')
+        +`<button class="log-act primary" onclick="LOG.saveBookEdit(${i})">Save changed fields</button>
+        <div class="ms" style="margin-top:6px">Only changed fields are sent. Status stays with ✓/📦. Missing a genre or publisher? Add it under Metadata first.</div>`;
     }else{
       el.innerHTML=`<div class="log-frow"><label>Date</label><input type="date" id="log-a-date" value="${today()}"></div>
         ${b.owned?'<div class="ms" style="margin-bottom:8px;color:var(--coral)">Heads up: already marked owned — log anyway if this is a new copy/format.</div>':''}
@@ -3516,6 +3524,19 @@ const LOG=(()=>{
   // indBooks as .type, sub_genre as .subGenre — mapped in bookEditCur).
   const BOOK_EDIT=['title','series','seq','author','genre','sub_genre','media','universe','publisher','notes'];
   const BOOK_EDIT_LBL={title:'Title',series:'Series',seq:'Seq #',author:'Author',genre:'Genre',sub_genre:'Sub-genre',media:'Media',universe:'Universe',publisher:'Publisher',notes:'Notes'};
+  // Enum-ish fields render as strict picklists; new values enter via Metadata.
+  const VOCAB_FIELDS=['genre','sub_genre','media','publisher'];
+  function vocabFor(kind){
+    const vals=((G.vocab&&G.vocab[kind])||[]).slice();
+    (pendCache||[]).forEach(ev=>{const p=ev.payload||{};
+      if(ev.type==='meta_add'&&p.kind===kind&&p.value&&!vals.includes(p.value))vals.push(p.value);});
+    return vals.sort((a,b)=>a.localeCompare(b));
+  }
+  function selOpts(kind,cur){
+    const vals=vocabFor(kind);
+    if(cur&&!vals.includes(cur))vals.unshift(cur); // never hide the stored value
+    return'<option value=""></option>'+vals.map(v=>`<option${v===cur?' selected':''}>${esc(v)}</option>`).join('');
+  }
   function bookEditCur(b){return{title:b.title,series:realSeries(b),seq:b.seq||'',author:b.author,genre:b.type||'',sub_genre:b.subGenre||'',media:b.media||'',universe:b.universe||'',publisher:b.publisher||'',notes:b.notes||''};}
   async function saveBookEdit(i){
     const b=(document.getElementById('log-results')._hits||[])[i];if(!b)return;
@@ -3554,11 +3575,11 @@ const LOG=(()=>{
         <div class="log-frow"><label>Series</label><input id="log-n-series" placeholder="blank = standalone"></div>
         <div class="log-frow"><label>Seq #</label><input id="log-n-seq" inputmode="numeric" style="max-width:90px"></div>
         <div class="log-frow"><label>Author</label><input id="log-n-author" placeholder="Last, First"></div>
-        <div class="log-frow"><label>Media</label><select id="log-n-media"><option>Print</option><option>Audio</option><option>eBook</option><option>Manga</option><option>Graphic Novel</option><option>Comics</option></select></div>
-        <div class="log-frow"><label>Genre</label><input id="log-n-genre" placeholder="Fantasy, Scifi, …"></div>
-        <div class="log-frow"><label>Sub-genre</label><input id="log-n-subgenre" placeholder="optional"></div>
+        <div class="log-frow"><label>Media</label><select id="log-n-media">${selOpts('media','Print')}</select></div>
+        <div class="log-frow"><label>Genre</label><select id="log-n-genre">${selOpts('genre','')}</select></div>
+        <div class="log-frow"><label>Sub-genre</label><select id="log-n-subgenre">${selOpts('sub_genre','')}</select></div>
         <div class="log-frow"><label>Universe</label><input id="log-n-universe" placeholder="optional"></div>
-        <div class="log-frow"><label>Publisher</label><input id="log-n-publisher" placeholder="optional"></div>
+        <div class="log-frow"><label>Publisher</label><select id="log-n-publisher">${selOpts('publisher','')}</select></div>
         <div class="log-frow"><label>Notes</label><input id="log-n-notes" placeholder="optional"></div>
         <div class="log-frow"><label>Status</label>
           <select id="log-n-status" onchange="LOG.addDates()"><option value="owned">Owned, not read</option><option value="read">Read & owned</option><option value="readonly">Read, not owned</option><option value="wish">Neither (wishlist)</option></select></div>
@@ -3596,9 +3617,7 @@ const LOG=(()=>{
   // Two order models: Com's Book Mail is one row per order (paid/fulfilled);
   // Shereen's Book Boxes is one row per book flowing through a subscription
   // lifecycle (want?/ordered?/received?, vendor × box tier, ETA).
-  let orderStyle=null;
-  const BOX_VENDORS=['FairyLoot','Illumicrate','OwlCrate','FaeCrate','Bookish','Darkly','AcryliPics','Broken Binding','LitJoy','Lavish Library','Page & Wick','Starbright','Regular SE','Cookbook'];
-  const BOX_TIERS=['YA','Adult','Romantasy','Epic Fantasy','Cosy Fantasy','Box','Exclusive','Starbright','Bookish','Darkly','Regular SE'];
+  let orderStyle=null; // vendor/box picklists come from the vocab (Metadata tab)
   function orderRef(o){return{date:o.date,order:o.order,books:o.books,series:o.series,author:o.author};}
   function setOrderStyle(s){orderStyle=s;renderOrders();}
   function renderOrders(){
@@ -3610,8 +3629,8 @@ const LOG=(()=>{
     if(orderStyle==='bookboxes'){
       document.getElementById('log-orderform').innerHTML=tog+`
       <div class="cb">
-      <div class="log-frow"><label>Vendor</label><input id="log-b-vendor" list="log-box-vendors" placeholder="FairyLoot, Illumicrate, …"><datalist id="log-box-vendors">${BOX_VENDORS.map(v=>`<option>${v}</option>`).join('')}</datalist></div>
-      <div class="log-frow"><label>Box</label><input id="log-b-box" list="log-box-tiers" placeholder="YA, Adult, Exclusive, …"><datalist id="log-box-tiers">${BOX_TIERS.map(v=>`<option>${v}</option>`).join('')}</datalist></div>
+      <div class="log-frow"><label>Vendor</label><select id="log-b-vendor">${selOpts('vendor','')}</select></div>
+      <div class="log-frow"><label>Box</label><select id="log-b-box">${selOpts('box','')}</select></div>
       <div class="log-frow"><label>Title</label><input id="log-b-title" placeholder="blank if not announced yet"></div>
       <div class="log-frow"><label>Author</label><input id="log-b-author" placeholder="Last, First"></div>
       <div class="log-frow"><label>Want?</label><select id="log-b-want"><option>Yes</option><option>Unsure</option><option>No</option></select></div>
@@ -3727,6 +3746,7 @@ const LOG=(()=>{
         <button class="log-act primary" onclick="LOG.doBoxUpdate(${i},{received:document.getElementById('log-b-arrd-${i}').value})">Confirm arrival</button></div>
       ${BOX_EDIT.map(f=>`<div class="log-frow"><label>${f==='order'?'Order #':f==='eta'?'ETA':f[0].toUpperCase()+f.slice(1)}</label>${
         f==='want'?`<select id="log-be-${f}-${i}">${['Yes','Unsure','No'].map(w=>`<option${b.want===w?' selected':''}>${w}</option>`).join('')}</select>`
+        :(f==='vendor'||f==='box')?`<select id="log-be-${f}-${i}">${selOpts(f,b[f]||'')}</select>`
         :`<input id="log-be-${f}-${i}" ${f==='eta'?'type="date"':''} value="${esc(b[f]||'')}">`}</div>`).join('')}
       <button class="log-act primary" onclick="LOG.saveBoxEdit(${i})">Save changed fields</button>`;
     el.classList.add('open');
@@ -3767,6 +3787,28 @@ const LOG=(()=>{
     if(ok){toast('Box order logged'+(v('log-b-title')?': “'+v('log-b-title')+'”':''));renderOrders();}
   }
 
+  // ── Metadata (vocabulary management) ──
+  const META_TAB_KINDS=[['genre','Genre'],['sub_genre','Sub-genre'],['media','Media'],['publisher','Publisher'],['vendor','Box vendor'],['box','Box tier']];
+  function renderMeta(){
+    document.getElementById('log-setup-meta').innerHTML=setupCard(false);
+    document.getElementById('log-meta-list').innerHTML=META_TAB_KINDS.map(([k,lbl])=>{
+      const vals=vocabFor(k);
+      return`<div class="cb" style="margin-bottom:12px">
+        <div class="sl">${lbl} <span style="font-weight:normal;color:var(--text3)">· ${vals.length}</span></div>
+        <div class="ms" style="margin:6px 0 8px">${vals.map(esc).join(' · ')||'—'}</div>
+        <div class="log-frow"><label>New</label><input id="log-mv-${k}" placeholder="add a ${lbl.toLowerCase()}"><button class="log-act" onclick="LOG.doMetaAdd('${k}')">Add</button></div>
+      </div>`;}).join('');
+    refreshBadge();
+  }
+  async function doMetaAdd(kind){
+    const el=document.getElementById('log-mv-'+kind);
+    const value=el.value.trim();
+    if(!value)return toast('Value is empty',true);
+    if(vocabFor(kind).some(v=>v.toLowerCase()===value.toLowerCase()))return toast('Already in the list',true);
+    const ok=await submit('meta_add',{kind,value},null,'butthead');
+    if(ok){toast('Added “'+value+'” — selectable now, permanent after jerry syncs');renderMeta();}
+  }
+
   // ── Pending ──
   async function renderPending(){
     document.getElementById('log-setup-main').innerHTML=setupCard(true);
@@ -3780,7 +3822,7 @@ const LOG=(()=>{
     refreshBadge();
   }
 
-  return{renderBook,renderOrders,renderPending,search,expand,doFinished,doAcquired,
+  return{renderBook,renderOrders,renderPending,renderMeta,doMetaAdd,search,expand,doFinished,doAcquired,
     toggleAdd,doAdd,addDates,saveBookEdit,doNewOrder,doNewBoxOrder,setOrderStyle,expandOrder,doOrderUpdate,
     toggleRow,saveOrderEdit,expandBox,doBoxUpdate,saveBoxEdit,saveSetup,forgetSetup,refreshBadge};
 })();
@@ -3807,6 +3849,15 @@ async function init(){
     G.boxes=parseBoxes(boxesV);
     G.allBookRows=parseBooks(booksV);
     G.allIndBooks=parseIndividual(indV);
+    // Picklist vocabularies: published union of in-use values + meta_vocab
+    // additions; derived from loaded data when the bundle predates the tab.
+    G.vocab={};
+    (BUNDLE.tabs['bookdb|Meta Vocab']||[]).slice(1).forEach(r=>{if(r[1])(G.vocab[r[0]]=G.vocab[r[0]]||[]).push(r[1]);});
+    if(!Object.keys(G.vocab).length){
+      const add=(k,v)=>{if(!v)return;const a=G.vocab[k]=G.vocab[k]||[];if(!a.includes(v))a.push(v);};
+      G.allIndBooks.forEach(b=>{add('genre',b.type);add('sub_genre',b.subGenre);add('media',b.media);add('publisher',b.publisher);});
+      (G.boxes||[]).forEach(b=>{add('vendor',b.vendor);add('box',b.box);});
+    }
     applyOwner(false); // sets G.bookRows / G.indBooks / G.books per OWNER
     G.metrics=parseMetrics(metricsV);
     G.interested=parseInterested(intV);
