@@ -766,6 +766,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <button class="active" onclick="switchTab('logbook','log')">Books</button>
       <button onclick="switchTab('logorders','log')">Orders</button>
       <button id="log-pending-tab" onclick="switchTab('logpending','log')">Pending</button>
+      <button id="log-proposed-tab" onclick="switchTab('logproposed','log')">Proposed</button>
       <button onclick="switchTab('logmeta','log')">Metadata</button>
     </div>
     <div class="panel active" id="tab-logbook">
@@ -792,6 +793,12 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div class="ms" style="margin-bottom:1rem">Changes below are saved in the inbox and will appear in the dashboard after jerry's next sync (~15 min).</div>
       <div id="log-pending-list"></div>
       <div id="log-setup-main"></div>
+    </div>
+    <div class="panel" id="tab-logproposed">
+      <div id="log-setup-proposed"></div>
+      <div class="sl">Proposed — needs your call</div>
+      <div class="ms" style="margin-bottom:1rem">Suggestions from jerry and other systems (series completion, imports). Nothing enters the register until you Add it; Drop closes it. Decisions apply on the next sync (~15 min).</div>
+      <div id="log-proposed-list"></div>
     </div>
     <div class="panel" id="tab-logmeta">
       <div id="log-setup-meta"></div>
@@ -1978,7 +1985,7 @@ function switchTab(id,sec,fromSection){
   curTab=id;
   // Log tabs reflect live inbox state — always re-render on visit (no charts, cheap)
   if(!rendered.has(id)){renderTab(id);rendered.add(id);}
-  else if(id==='logbook'||id==='logorders'||id==='logpending'||id==='logmeta')renderTab(id);
+  else if(id==='logbook'||id==='logorders'||id==='logpending'||id==='logproposed'||id==='logmeta')renderTab(id);
   if(!fromSection){curSec=sec;updateHash(sec,id);}
 }
 
@@ -1992,7 +1999,7 @@ function restoreFromHash(){
   const hash=(location.hash||'').replace('#','');
   const[sec,tab]=hash.split('/');
   const validSecs=new Set(['tracking','reading','buying','collecting','bookclub','log']);
-  const validTabs=new Set(['overview','bytype','genre','universe','rooms','history','thisyear','completion','byseries','toread','comingup','bookmail','toacquire','someday','libgrowth','buythisyear','col-fr','col-dl','col-sr','flyer','logbook','logorders','logpending','logmeta']);
+  const validTabs=new Set(['overview','bytype','genre','universe','rooms','history','thisyear','completion','byseries','toread','comingup','bookmail','toacquire','someday','libgrowth','buythisyear','col-fr','col-dl','col-sr','flyer','logbook','logorders','logpending','logproposed','logmeta']);
   const validFRTabs=new Set(['fr-overview','fr-series','fr-completion']);
   const validDLTabs=new Set(['dl-overview','dl-series','dl-completion']);
   const validSRTabs=new Set(['sr-overview','sr-publisher','sr-completion']);
@@ -2048,6 +2055,7 @@ function renderTabInner(id){
   else if(id==='logbook')LOG.renderBook();
   else if(id==='logorders')LOG.renderOrders();
   else if(id==='logpending')LOG.renderPending();
+  else if(id==='logproposed')LOG.renderProposed();
   else if(id==='logmeta')LOG.renderMeta();
   else if(id==='col-fr'){switchFRTab('fr-overview');}
   else if(id==='col-dl'){switchDLTab('dl-overview');}
@@ -3394,6 +3402,7 @@ const LOG=(()=>{
       case'add_book':return`＋ New book “${p.title}”${p.read?' · read':''}${p.owned?' · owned':''}`;
       case'book_update':return`✎ “${b.title}” → ${Object.keys(p.set||{}).join(', ')}`;
       case'meta_add':return`🏷 New ${p.kind}: ${p.value}`;
+      case'proposal_decide':return`${p.decision==='approve'?'✔ Add':'✖ Drop'}: ${p.target||('proposal '+p.id)}`;
       case'order_new':return p.list==='bookboxes'
         ?`🎁 Box: ${p.vendor}${p.box?' '+p.box:''} — ${p.title||'title TBA'}${p.want&&p.want!=='Yes'?' · want: '+p.want:''}`
         :`🧾 New order ${p.order||''} — ${p.books||'?'}`;
@@ -3829,6 +3838,52 @@ const LOG=(()=>{
     if(ok){toast('Box order logged'+(v('log-b-title')?': “'+v('log-b-title')+'”':''));renderOrders();}
   }
 
+  // ── Proposed (Add/Drop review of machine suggestions) ──
+  function propDecisions(){
+    const m=new Map();
+    (pendCache||[]).forEach(ev=>{const p=ev.payload||{};
+      if(ev.type==='proposal_decide'&&p.id)m.set(p.id,p.decision);});
+    return m;
+  }
+  function propSummary(p){
+    // Known payload shape (add_book_from_inbox): show the human bits
+    try{const j=JSON.parse(p.proposal);
+      if(j&&j.title){const bits=[j.series&&'series '+j.series,j.seq&&'#'+j.seq,j.author,
+        j.owned===false&&'tracked only (not owned)'].filter(Boolean).join(' · ');
+        return bits;}
+    }catch(e){}
+    return p.proposal.length>140?p.proposal.slice(0,140)+'…':p.proposal;
+  }
+  function renderProposed(){
+    document.getElementById('log-setup-proposed').innerHTML=hintCard();
+    const el=document.getElementById('log-proposed-list');
+    const dec=propDecisions();
+    const open=(G.proposals||[]);
+    el.innerHTML=open.map(p=>{
+      const d=dec.get(p.id);
+      return`<div class="cb" style="margin-bottom:10px">
+        <div class="log-item-hd" style="align-items:flex-start">
+          <div class="log-item-info">
+            <div class="log-item-title">${esc(p.target)}${d?` <span class="log-badge-pend">${d==='approve'?'Add':'Drop'} pending</span>`:''}</div>
+            <div class="log-item-meta">${esc(p.kind)}${p.recommend&&p.recommend!=='review'?' · recommends '+esc(p.recommend):''}${propSummary(p)?' · '+esc(propSummary(p)):''}</div>
+            ${p.note?`<div class="ms" style="margin-top:4px">${esc(p.note)}</div>`:''}
+          </div>
+          <div class="log-acts">${d?'':`
+            <button class="log-act primary" onclick="LOG.doPropDecide(${p.id},'approve')">Add</button>
+            <button class="log-act" onclick="LOG.doPropDecide(${p.id},'reject')">Drop</button>`}
+          </div>
+        </div>
+      </div>`;}).join('')||'<div class="ms">Nothing proposed — the register has no open suggestions.</div>';
+    const tab=document.getElementById('log-proposed-tab');
+    if(tab)tab.textContent='Proposed'+(open.length?` (${open.length})`:'');
+    refreshBadge();
+  }
+  async function doPropDecide(id,decision){
+    const p=(G.proposals||[]).find(x=>x.id===id);if(!p)return;
+    const ok=await submit('proposal_decide',{id:p.id,target:p.target,kind:p.kind,decision},null,'butthead');
+    if(ok){toast((decision==='approve'?'Adding ':'Dropping ')+'“'+p.target+'”');renderProposed();}
+  }
+
   // ── Metadata (vocabulary management) ──
   const META_TAB_KINDS=[['genre','Genre'],['sub_genre','Sub-genre'],['media','Media'],['publisher','Publisher'],['vendor','Box vendor'],['box','Box tier']];
   function renderMeta(){
@@ -3868,7 +3923,7 @@ const LOG=(()=>{
     refreshBadge();
   }
 
-  return{renderBook,renderOrders,renderPending,renderMeta,doMetaAdd,search,expand,doFinished,doAcquired,
+  return{renderBook,renderOrders,renderPending,renderProposed,doPropDecide,renderMeta,doMetaAdd,search,expand,doFinished,doAcquired,
     toggleAdd,doAdd,addDates,saveBookEdit,doNewOrder,doNewBoxOrder,setOrderStyle,expandOrder,doOrderUpdate,
     toggleRow,saveOrderEdit,expandBox,doBoxUpdate,saveBoxEdit,saveSetup,forgetSetup,refreshBadge};
 })();
@@ -3895,6 +3950,13 @@ async function init(){
     G.boxes=parseBoxes(boxesV);
     G.allBookRows=parseBooks(booksV);
     G.allIndBooks=parseIndividual(indV);
+    // Open proposals for the Proposed tab (Id|Kind|Target|Proposal|Recommend|Note)
+    G.proposals=(BUNDLE.tabs['bookdb|Proposals']||[]).slice(1).map(r=>({
+      id:+r[0],kind:(r[1]||'').trim(),target:(r[2]||'').trim(),
+      proposal:(r[3]||'').trim(),recommend:(r[4]||'').trim(),note:(r[5]||'').trim()
+    })).filter(p=>p.id);
+    const pt=document.getElementById('log-proposed-tab');
+    if(pt&&G.proposals.length)pt.textContent=`Proposed (${G.proposals.length})`;
     // Picklist vocabularies: published union of in-use values + meta_vocab
     // additions; derived from loaded data when the bundle predates the tab.
     G.vocab={};
