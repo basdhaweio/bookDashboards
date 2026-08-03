@@ -74,10 +74,26 @@ A book not in the catalog. Create as a **proposal** (existing bookdb review
 flow), not a direct catalog insert.
 ```json
 {"title": "…", "series": "", "seq": "", "author": "…", "media": "Print",
- "genre": "Fantasy", "universe": "", "owner": "goblin",
- "owned": true, "read": false}
+ "genre": "Fantasy", "sub_genre": "", "universe": "", "publisher": "",
+ "notes": "", "owner": "goblin", "owned": true, "read": false,
+ "acquired_on": "2026-08-03", "read_on": ""}
 ```
-Empty `series` means standalone.
+Empty `series` means standalone. `acquired_on`/`read_on` are optional ISO
+dates; when the approved proposal is applied they create the matching
+acquisition/read events alongside the book, dated.
+
+### `book_update`
+Edit register fields on an existing book — the Log view's ✎ action. Same
+`book` reference as `finished`/`acquired`; `set` carries only changed fields.
+```json
+{"book": {…}, "set": {"genre": "Fantasy", "publisher": "Tor", "series": "…"}}
+```
+Allowed keys: `title, series, seq, author, genre, sub_genre, media, universe,
+publisher, notes`. `series`/`universe` are names — resolved to rows, created
+if new; blank clears them. Status (`owned`/`read`) is NOT settable here — that
+flows through `finished`/`acquired` so the event feeds stay truthful. A
+retitle that collides with an existing book's title parks as a proposal
+instead of applying (duplicate guard).
 
 ### `order_new`
 Two shapes, discriminated by `list`.

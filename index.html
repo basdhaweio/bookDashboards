@@ -762,13 +762,13 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
   <!-- LOG (quick entry → inbox repo → jerry) -->
   <div id="sec-log" style="display:none">
     <div class="tab-nav">
-      <button class="active" onclick="switchTab('logbook','log')">Quick Log</button>
+      <button class="active" onclick="switchTab('logbook','log')">Books</button>
       <button onclick="switchTab('logorders','log')">Orders</button>
       <button id="log-pending-tab" onclick="switchTab('logpending','log')">Pending</button>
     </div>
     <div class="panel active" id="tab-logbook">
       <div id="log-setup-book"></div>
-      <div class="sl">Finished or acquired a book</div>
+      <div class="sl">Finished, acquired, or fixing up a book</div>
       <input id="log-q" class="log-search" type="search" placeholder="Search title, series, or author…" autocomplete="off" oninput="LOG.search()">
       <div id="log-results"></div>
       <div style="margin-top:1.2rem">
@@ -2809,6 +2809,8 @@ function parseIndividual(vals){
       universe:(r[8]||'').trim(),
       notes:(r[9]||'').trim(),
       owner:(r[10]||'butthead').trim(),
+      subGenre:(r[11]||'').trim(),
+      publisher:(r[12]||'').trim(),
     });
   }
   return books;
@@ -3380,6 +3382,7 @@ const LOG=(()=>{
       case'finished':return`✓ ${who} finished “${b.title}”${p.date?' · '+p.date:''}`;
       case'acquired':return`📦 Got “${b.title}”${b.media?' ('+b.media+')':''}`;
       case'add_book':return`＋ New book “${p.title}”${p.read?' · read':''}${p.owned?' · owned':''}`;
+      case'book_update':return`✎ “${b.title}” → ${Object.keys(p.set||{}).join(', ')}`;
       case'order_new':return p.list==='bookboxes'
         ?`🎁 Box: ${p.vendor}${p.box?' '+p.box:''} — ${p.title||'title TBA'}${p.want&&p.want!=='Yes'?' · want: '+p.want:''}`
         :`🧾 New order ${p.order||''} — ${p.books||'?'}`;
@@ -3467,7 +3470,7 @@ const LOG=(()=>{
         ${b.read?'<div class="log-dot" style="background:var(--teal2)"></div>':''}
         ${b.owned?'<div class="log-dot" style="background:var(--gold2)"></div>':''}
         ${!b.owned&&!b.read?'<div class="log-dot" style="background:var(--coral)"></div>':''}</div>`;
-      const pendMark=(pend.has('finished|'+b.title+'|'+b.series)||pend.has('acquired|'+b.title+'|'+b.series))?'<span class="log-badge-pend">pending</span>':'';
+      const pendMark=(['finished','acquired','book_update'].some(t=>pend.has(t+'|'+b.title+'|'+realSeries(b))))?'<span class="log-badge-pend">pending</span>':'';
       return`<div class="log-item">
         <div class="log-item-hd">
           ${dots}
@@ -3478,6 +3481,7 @@ const LOG=(()=>{
           <div class="log-acts">
             <button class="log-act primary" onclick="LOG.expand(${key},'finished')">✓ Read it</button>
             <button class="log-act gold" onclick="LOG.expand(${key},'acquired')" ${b.owned?'title="already owned"':''}>📦 Got it</button>
+            <button class="log-act" onclick="LOG.expand(${key},'edit')" title="edit register details">✎</button>
           </div>
         </div>
         <div class="log-exp" id="log-exp-${key}"></div>
@@ -3495,6 +3499,12 @@ const LOG=(()=>{
       el.innerHTML=`<div class="log-frow"><label>Finished</label><input type="date" id="log-f-date" value="${today()}"></div>
         <div class="log-frow"><label>Pages</label><input type="number" id="log-f-pages" placeholder="optional" inputmode="numeric"></div>
         <button class="log-act primary" onclick="LOG.doFinished(${i})">Log it — ${esc(OWNER_LABEL[by(b)])} read this</button>`;
+    }else if(type==='edit'){
+      const cur=bookEditCur(b);
+      el.innerHTML=BOOK_EDIT.map(f=>`<div class="log-frow"><label>${BOOK_EDIT_LBL[f]||f}</label><input id="log-bke-${f}-${i}" ${f==='media'?'list="log-media-kinds"':''} value="${esc(cur[f]||'')}" ${f==='series'?'placeholder="blank = standalone"':''}></div>`).join('')
+        +`<datalist id="log-media-kinds"><option>Print</option><option>Audio</option><option>eBook</option><option>Manga</option><option>Graphic Novel</option><option>Comics</option></datalist>
+        <button class="log-act primary" onclick="LOG.saveBookEdit(${i})">Save changed fields</button>
+        <div class="ms" style="margin-top:6px">Only changed fields are sent. Status stays with ✓/📦.</div>`;
     }else{
       el.innerHTML=`<div class="log-frow"><label>Date</label><input type="date" id="log-a-date" value="${today()}"></div>
         ${b.owned?'<div class="ms" style="margin-bottom:8px;color:var(--coral)">Heads up: already marked owned — log anyway if this is a new copy/format.</div>':''}
@@ -3502,7 +3512,26 @@ const LOG=(()=>{
     }
     el.classList.add('open');
   }
-  function bookRef(b){return{title:b.title,series:b.series,seq:b.seq,author:b.author,media:b.media,owner:b.owner||'butthead'};}
+  // Register fields editable per book; UI key = inbox set key (genre lives in
+  // indBooks as .type, sub_genre as .subGenre — mapped in bookEditCur).
+  const BOOK_EDIT=['title','series','seq','author','genre','sub_genre','media','universe','publisher','notes'];
+  const BOOK_EDIT_LBL={title:'Title',series:'Series',seq:'Seq #',author:'Author',genre:'Genre',sub_genre:'Sub-genre',media:'Media',universe:'Universe',publisher:'Publisher',notes:'Notes'};
+  function bookEditCur(b){return{title:b.title,series:realSeries(b),seq:b.seq||'',author:b.author,genre:b.type||'',sub_genre:b.subGenre||'',media:b.media||'',universe:b.universe||'',publisher:b.publisher||'',notes:b.notes||''};}
+  async function saveBookEdit(i){
+    const b=(document.getElementById('log-results')._hits||[])[i];if(!b)return;
+    const cur=bookEditCur(b),set={};
+    for(const f of BOOK_EDIT){
+      const v=document.getElementById(`log-bke-${f}-${i}`).value.trim();
+      if(v!==(cur[f]||'').trim())set[f]=v;
+    }
+    if(!Object.keys(set).length)return toast('Nothing changed',true);
+    const ok=await submit('book_update',{book:bookRef(b),set},b);
+    if(ok){toast('Edit logged for “'+b.title+'”');search();}
+  }
+  // 'Standalones' is a synthetic bundle label for series-less books (no real
+  // series carries that name) — jerry matches on the true, empty series.
+  function realSeries(b){return b.series==='Standalones'?'':b.series;}
+  function bookRef(b){return{title:b.title,series:realSeries(b),seq:b.seq,author:b.author,media:b.media,owner:b.owner||'butthead'};}
   async function doFinished(i){
     const b=(document.getElementById('log-results')._hits||[])[i];if(!b)return;
     const ok=await submit('finished',{book:bookRef(b),date:document.getElementById('log-f-date').value,
@@ -3525,11 +3554,16 @@ const LOG=(()=>{
         <div class="log-frow"><label>Series</label><input id="log-n-series" placeholder="blank = standalone"></div>
         <div class="log-frow"><label>Seq #</label><input id="log-n-seq" inputmode="numeric" style="max-width:90px"></div>
         <div class="log-frow"><label>Author</label><input id="log-n-author" placeholder="Last, First"></div>
-        <div class="log-frow"><label>Media</label><select id="log-n-media"><option>Print</option><option>Audio</option><option>Ebook</option><option>Manga</option><option>Graphic Novel</option><option>Comics</option></select></div>
+        <div class="log-frow"><label>Media</label><select id="log-n-media"><option>Print</option><option>Audio</option><option>eBook</option><option>Manga</option><option>Graphic Novel</option><option>Comics</option></select></div>
         <div class="log-frow"><label>Genre</label><input id="log-n-genre" placeholder="Fantasy, Scifi, …"></div>
+        <div class="log-frow"><label>Sub-genre</label><input id="log-n-subgenre" placeholder="optional"></div>
         <div class="log-frow"><label>Universe</label><input id="log-n-universe" placeholder="optional"></div>
+        <div class="log-frow"><label>Publisher</label><input id="log-n-publisher" placeholder="optional"></div>
+        <div class="log-frow"><label>Notes</label><input id="log-n-notes" placeholder="optional"></div>
         <div class="log-frow"><label>Status</label>
-          <select id="log-n-status"><option value="owned">Owned, not read</option><option value="read">Read & owned</option><option value="readonly">Read, not owned</option><option value="wish">Neither (wishlist)</option></select></div>
+          <select id="log-n-status" onchange="LOG.addDates()"><option value="owned">Owned, not read</option><option value="read">Read & owned</option><option value="readonly">Read, not owned</option><option value="wish">Neither (wishlist)</option></select></div>
+        <div class="log-frow" id="log-n-acqrow"><label>Acquired</label><input type="date" id="log-n-acqdate" value="${today()}"></div>
+        <div class="log-frow" id="log-n-readrow" style="display:none"><label>Read on</label><input type="date" id="log-n-readdate"></div>
         <div class="log-frow"><label>Owner</label><select id="log-n-owner"><option value="butthead">Com</option><option value="goblin">Shereen</option></select></div>
         <button class="log-act primary" onclick="LOG.doAdd()">Add to inbox</button>
         <div class="ms" style="margin-top:8px">Lands as a proposal in bookdb — jerry-side review decides catalog placement.</div>
@@ -3538,13 +3572,22 @@ const LOG=(()=>{
       f.style.display='block';
     }else f.style.display='none';
   }
+  function addDates(){
+    // date rows follow the status: acquired-date when owned, read-date when read
+    const st=document.getElementById('log-n-status').value;
+    document.getElementById('log-n-acqrow').style.display=(st==='owned'||st==='read')?'':'none';
+    document.getElementById('log-n-readrow').style.display=(st==='read'||st==='readonly')?'':'none';
+  }
   async function doAdd(){
     const v=id=>document.getElementById(id).value.trim();
     const title=v('log-n-title');if(!title)return toast('Title is required',true);
     const st=v('log-n-status');
+    const owned=st==='owned'||st==='read',read=st==='read'||st==='readonly';
     const p={title,series:v('log-n-series'),seq:v('log-n-seq'),author:v('log-n-author'),
-      media:v('log-n-media'),genre:v('log-n-genre'),universe:v('log-n-universe'),
-      owner:v('log-n-owner'),owned:st==='owned'||st==='read',read:st==='read'||st==='readonly'};
+      media:v('log-n-media'),genre:v('log-n-genre'),sub_genre:v('log-n-subgenre'),
+      universe:v('log-n-universe'),publisher:v('log-n-publisher'),notes:v('log-n-notes'),
+      owner:v('log-n-owner'),owned,read,
+      acquired_on:owned?v('log-n-acqdate'):'',read_on:read?v('log-n-readdate'):''};
     const ok=await submit('add_book',p,{owner:p.owner});
     if(ok){toast('Added “'+title+'” to inbox');toggleAdd();}
   }
@@ -3737,7 +3780,7 @@ const LOG=(()=>{
   }
 
   return{renderBook,renderOrders,renderPending,search,expand,doFinished,doAcquired,
-    toggleAdd,doAdd,doNewOrder,doNewBoxOrder,setOrderStyle,expandOrder,doOrderUpdate,
+    toggleAdd,doAdd,addDates,saveBookEdit,doNewOrder,doNewBoxOrder,setOrderStyle,expandOrder,doOrderUpdate,
     toggleRow,saveOrderEdit,expandBox,doBoxUpdate,saveBoxEdit,saveSetup,forgetSetup,refreshBadge};
 })();
 
