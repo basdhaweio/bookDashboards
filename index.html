@@ -1711,8 +1711,8 @@ function renderBookMail(orders){
   const pending=orders.filter(o=>o.delivered==='Unfulfilled'||o.paid==='Unpaid');
   const ful=orders.filter(o=>o.delivered==='Fulfilled'&&o.paid==='Paid');
   document.getElementById('tbb-m').innerHTML=mH(orders.length,'Total orders')+mH(ful.length,'Fulfilled','','t')+mH(pending.length,'Pending','','c')+mH(orders.reduce((s,o)=>s+o.count,0),'Books ordered');
-  document.getElementById('tbb-orders').innerHTML=pending.map(o=>{const sb=o.paid==='Unpaid'?'b-coral':'b-gold',sl=o.paid==='Unpaid'?'Unpaid':'Unfulfilled';return`<div class="or"><div style="font-family:var(--font-m);font-size:11px;color:var(--text3)">${o.date}</div><div style="font-size:12px">${esc(o.books||(o.sub&&o.sub!=='N/A'?o.sub+' credit — TBD':'TBD'))}</div><div style="font-size:11px;color:var(--text3)">${esc(o.series||(o.type==='Sub'?(o.sub&&o.sub!=='N/A'?o.sub+' sub':'sub'):'—'))}</div><div style="font-family:var(--font-m);font-size:10px;color:var(--text3)">${o.order||'—'}</div><div data-okey="${esc(ordKeyMail(o))}"><span class="badge ${sb}">${sl}</span></div></div>`;}).join('');
-  document.getElementById('tbb-all').innerHTML=[...orders].reverse().map(o=>`<tr><td style="font-family:var(--font-m);font-size:11px;white-space:nowrap">${o.date}</td><td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.books||'—'}</td><td>${o.series||'—'}</td><td>${o.author||'—'}</td><td>${esc(o.type||'—')}${o.type==='Sub'&&o.sub&&o.sub!=='N/A'?' · '+esc(o.sub):''}</td><td class="nr">${o.count||1}</td><td style="white-space:nowrap" data-okey="${esc(ordKeyMail(o))}"><span class="badge ${o.paid==='Paid'?'b-green':'b-coral'}">${o.paid}</span> <span class="badge ${o.delivered==='Fulfilled'?'b-teal':'b-gold'}">${o.delivered}</span></td></tr>`).join('');
+  document.getElementById('tbb-orders').innerHTML=pending.map(o=>{const sb=o.paid==='Unpaid'?'b-coral':o.tracking?'b-teal':'b-gold',sl=o.paid==='Unpaid'?'Unpaid':o.tracking?'Shipped':'Unfulfilled';return`<div class="or"><div style="font-family:var(--font-m);font-size:11px;color:var(--text3)">${o.date}</div><div style="font-size:12px">${esc(o.books||(o.sub&&o.sub!=='N/A'?o.sub+' credit — TBD':'TBD'))}</div><div style="font-size:11px;color:var(--text3)">${esc(o.series||(o.type==='Sub'?(o.sub&&o.sub!=='N/A'?o.sub+' sub':'sub'):'—'))}</div><div style="font-family:var(--font-m);font-size:10px;color:var(--text3)">${o.order||'—'}</div><div data-okey="${esc(ordKeyMail(o))}"><span class="badge ${sb}">${sl}</span></div></div>`;}).join('');
+  document.getElementById('tbb-all').innerHTML=[...orders].reverse().map(o=>`<tr><td style="font-family:var(--font-m);font-size:11px;white-space:nowrap">${o.date}</td><td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.books||'—'}</td><td>${o.series||'—'}</td><td>${o.author||'—'}</td><td>${esc(o.type||'—')}${o.type==='Sub'&&o.sub&&o.sub!=='N/A'?' · '+esc(o.sub):''}</td><td class="nr">${o.count||1}</td><td style="white-space:nowrap" data-okey="${esc(ordKeyMail(o))}"><span class="badge ${o.paid==='Paid'?'b-green':'b-coral'}">${o.paid}</span> <span class="badge ${o.delivered==='Fulfilled'?'b-teal':'b-gold'}">${o.delivered==='Fulfilled'?'Fulfilled':o.tracking?'Shipped':o.delivered}</span></td></tr>`).join('');
   decorateOrderPending();
 }
 
@@ -3659,7 +3659,7 @@ const LOG=(()=>{
           <div class="log-item-title" data-okey="${esc(ordKeyMail(o))}">${esc(o.books||(o.sub&&o.sub!=='N/A'?o.sub+' credit — title TBD':'TBD'))}</div>
           <div class="log-item-meta">${esc(o.date)}${o.type==='Sub'?' · '+esc(o.sub&&o.sub!=='N/A'?o.sub+' subscription':'subscription'):''} · ${esc(o.order||'no #')}${o.series?' · '+esc(o.series):''}</div>
         </div>
-        <span class="badge ${o.paid==='Unpaid'?'b-coral':o.delivered==='Fulfilled'?'b-green':'b-gold'}">${o.delivered==='Fulfilled'?'Fulfilled':o.paid==='Unpaid'?'Unpaid':'Unfulfilled'}</span>
+        <span class="badge ${o.paid==='Unpaid'?'b-coral':o.delivered==='Fulfilled'?'b-green':o.tracking?'b-teal':'b-gold'}">${o.delivered==='Fulfilled'?'Fulfilled':o.paid==='Unpaid'?'Unpaid':o.tracking?'Shipped':'Unfulfilled'}</span>
       </div>
       ${canEdit?`<div class="log-exp" id="log-oexp-${i}"></div>`:''}</div>`;
     document.getElementById('log-orders-open').innerHTML=open.map((o,i)=>row(o,i,true)).join('')||'<div class="ms">No open orders.</div>';
@@ -3677,6 +3677,7 @@ const LOG=(()=>{
       <div class="log-frow"><label>Update</label>
         ${o.paid==='Unpaid'?`<button class="log-act" onclick="LOG.doOrderUpdate(${i},{paid:'Paid'})">Mark paid</button>`:''}
         <button class="log-act" onclick="LOG.toggleRow('log-o-arr-${i}')">Arrived</button>
+        ${!o.tracking?`<button class="log-act" onclick="LOG.doOrderUpdate(${i},{tracking:'Shipped'})" title="shipped, no tracking number — paste a number below if one turns up later">Shipped</button>`:''}
         <button class="log-act" onclick="LOG.toggleRow('log-o-edit-${i}')">Edit details</button>
       </div>
       <div class="log-frow" id="log-o-arr-${i}" style="display:none"><label>On</label>
