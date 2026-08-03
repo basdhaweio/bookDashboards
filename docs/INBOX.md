@@ -110,6 +110,19 @@ must still match the row — a proposal that changed since the bundle was
 published is skipped for re-review rather than decided blind. Already-decided
 or archived proposals are no-ops.
 
+### `sync_request`
+Ask jerry to pull an external source now. Results arrive as PROPOSALS on the
+Proposed tab — a sync never writes the register directly (Goodreads burned it
+once; the 2026-07-24 rule stands).
+```json
+{"source": "goodreads"}
+```
+`source` is `goodreads` | `libib` | `all`. Goodreads needs the My Books RSS
+URL (shelf=read, with `key=`) in `jobs/.goodreads_rss` on jerry; it also runs
+nightly at 02:20. Libib has no API — its "sync" is the dashboard's Import
+Libib CSV button, which diffs a fresh export client-side and queues new
+titles as `add_book` events.
+
 ### `meta_add`
 Add a value to a picklist vocabulary (the Metadata tab). Applies to
 `meta_vocab` on jerry; the published bundle's `bookdb|Meta Vocab` tab is the

@@ -798,6 +798,11 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div id="log-setup-proposed"></div>
       <div class="sl">Proposed — needs your call</div>
       <div class="ms" style="margin-bottom:1rem">Suggestions from jerry and other systems (series completion, imports). Nothing enters the register until you Add it; Drop closes it. Decisions apply on the next sync (~15 min).</div>
+      <div style="display:flex;gap:8px;margin-bottom:1.2rem;flex-wrap:wrap">
+        <button class="log-act" onclick="LOG.doSyncRequest('goodreads')">⟳ Sync Goodreads</button>
+        <button class="log-act" onclick="document.getElementById('log-libib-file').click()">⇪ Import Libib CSV</button>
+        <input type="file" id="log-libib-file" accept=".csv,text/csv" style="display:none" onchange="LOG.importLibib(this)">
+      </div>
       <div id="log-proposed-list"></div>
     </div>
     <div class="panel" id="tab-logmeta">
@@ -3403,6 +3408,7 @@ const LOG=(()=>{
       case'book_update':return`✎ “${b.title}” → ${Object.keys(p.set||{}).join(', ')}`;
       case'meta_add':return`🏷 New ${p.kind}: ${p.value}`;
       case'proposal_decide':return`${p.decision==='approve'?'✔ Add':'✖ Drop'}: ${p.target||('proposal '+p.id)}`;
+      case'sync_request':return`⟳ Sync from ${p.source||'all sources'}`;
       case'order_new':return p.list==='bookboxes'
         ?`🎁 Box: ${p.vendor}${p.box?' '+p.box:''} — ${p.title||'title TBA'}${p.want&&p.want!=='Yes'?' · want: '+p.want:''}`
         :`🧾 New order ${p.order||''} — ${p.books||'?'}`;
@@ -3884,6 +3890,52 @@ const LOG=(()=>{
     if(ok){toast((decision==='approve'?'Adding ':'Dropping ')+'“'+p.target+'”');renderProposed();}
   }
 
+  // ── Sync: on-demand pulls that land as proposals ──
+  async function doSyncRequest(source){
+    const ok=await submit('sync_request',{source},null,'butthead');
+    if(ok)toast('Sync requested — results appear here as proposals within ~15–30 min');
+  }
+  // Libib has no API: the sync is a fresh CSV export parsed HERE, diffed
+  // against the register; new titles leave as add_book events (which land as
+  // proposals). Nothing is written directly.
+  function csvParse(text){
+    const rows=[];let row=[],f='',q=false;
+    for(let i=0;i<text.length;i++){const c=text[i];
+      if(q){if(c==='"'){if(text[i+1]==='"'){f+='"';i++;}else q=false;}else f+=c;}
+      else if(c==='"')q=true;
+      else if(c===','){row.push(f);f='';}
+      else if(c==='\n'||c==='\r'){if(f!==''||row.length){row.push(f);rows.push(row);row=[];f='';}if(c==='\r'&&text[i+1]==='\n')i++;}
+      else f+=c;}
+    if(f!==''||row.length){row.push(f);rows.push(row);}
+    return rows;
+  }
+  async function importLibib(input){
+    const file=input.files&&input.files[0];input.value='';
+    if(!file)return;
+    const rows=csvParse(await file.text());
+    const hdr=rows[0].map(h=>h.trim().toLowerCase());
+    const col=n=>hdr.indexOf(n);
+    if(col('title')<0||col('item_type')<0)return toast('Not a Libib export — expected item_type/title columns',true);
+    const have=new Set((G.allIndBooks||[]).map(b=>b.title.toLowerCase().replace(/[^a-z0-9]/g,'')));
+    const fresh=rows.slice(1).filter(r=>(r[col('item_type')]||'').trim()==='book')
+      .map(r=>({title:(r[col('title')]||'').trim(),author:(r[col('creators')]||'').trim(),
+        publisher:(r[col('publisher')]||'').trim(),added:(r[col('added')]||'').trim()}))
+      .filter(b=>b.title&&!have.has(b.title.toLowerCase().replace(/[^a-z0-9]/g,'')));
+    if(!fresh.length)return toast('No new titles — every book in that export is already in the register');
+    const CAP=40;
+    const batch=fresh.slice(0,CAP);
+    toast(`Sending ${batch.length} new title${batch.length>1?'s':''} as proposals${fresh.length>CAP?` (${fresh.length-CAP} more — re-import after reviewing)`:''}…`);
+    let sent=0;
+    for(const b of batch){
+      const ok=await submit('add_book',{title:b.title,series:'',seq:'',author:b.author,
+        media:'',genre:'',sub_genre:'',universe:'',publisher:b.publisher,
+        notes:'via Libib import',owner:'butthead',owned:true,read:false,
+        acquired_on:/^\d{4}-\d{2}-\d{2}$/.test(b.added)?b.added:'',read_on:''},{owner:'butthead'});
+      if(ok)sent++;else break;
+    }
+    toast(`Libib import: ${sent} of ${batch.length} queued — review under Proposed after jerry syncs`);
+  }
+
   // ── Metadata (vocabulary management) ──
   const META_TAB_KINDS=[['genre','Genre'],['sub_genre','Sub-genre'],['media','Media'],['publisher','Publisher'],['vendor','Box vendor'],['box','Box tier']];
   function renderMeta(){
@@ -3923,7 +3975,7 @@ const LOG=(()=>{
     refreshBadge();
   }
 
-  return{renderBook,renderOrders,renderPending,renderProposed,doPropDecide,renderMeta,doMetaAdd,search,expand,doFinished,doAcquired,
+  return{renderBook,renderOrders,renderPending,renderProposed,doPropDecide,doSyncRequest,importLibib,renderMeta,doMetaAdd,search,expand,doFinished,doAcquired,
     toggleAdd,doAdd,addDates,saveBookEdit,doNewOrder,doNewBoxOrder,setOrderStyle,expandOrder,doOrderUpdate,
     toggleRow,saveOrderEdit,expandBox,doBoxUpdate,saveBoxEdit,saveSetup,forgetSetup,refreshBadge};
 })();
