@@ -89,11 +89,14 @@ Edit register fields on an existing book — the Log view's ✎ action. Same
 {"book": {…}, "set": {"genre": "Fantasy", "publisher": "Tor", "series": "…"}}
 ```
 Allowed keys: `title, series, seq, author, genre, sub_genre, media, universe,
-publisher, notes`. `series`/`universe` are names — resolved to rows, created
-if new; blank clears them. Status (`owned`/`read`) is NOT settable here — that
-flows through `finished`/`acquired` so the event feeds stay truthful. A
-retitle that collides with an existing book's title parks as a proposal
-instead of applying (duplicate guard).
+publisher, notes, read_on, acquired_on`. `series`/`universe` are names —
+resolved to rows, created if new; blank clears them. `read_on`/`acquired_on`
+are ISO date corrections: they set the book's date (+year, src) and, when the
+book has exactly one matching event row, sync that row too — with several
+rows none are touched and the result note says so. Status (`owned`/`read`) is
+NOT settable here — that flows through `finished`/`acquired` so the event
+feeds stay truthful. A retitle that collides with an existing book's title
+parks as a proposal instead of applying (duplicate guard).
 
 ### `meta_add`
 Add a value to a picklist vocabulary (the Metadata tab). Applies to
