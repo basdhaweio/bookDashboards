@@ -1755,6 +1755,38 @@ function parseGrowthYear(vals){
   return books;
 }
 
+// Ledger rows that entered via the register (approved proposals, order
+// fulfilment) carry only Num/Date/Title/Author — Genre/Format aren't copied
+// across from the catalog, so This Year showed them blank even though the
+// book's own record has them. Fill the blanks from the catalog. Source is
+// deliberately left alone: the catalog's Publisher is who printed the book,
+// not the shop it was bought from.
+function enrichGrowthYearFromRegister(books,ind){
+  if(!books.length||!ind||!ind.length)return books;
+  const byTitle=new Map();
+  for(const b of ind){
+    const k=b.title.toLowerCase();
+    if(!byTitle.has(k))byTitle.set(k,[]);
+    byTitle.get(k).push(b);
+  }
+  const norm=s=>(s||'').toLowerCase().replace(/[^a-z]/g,'');
+  for(const g of books){
+    if(g.genre&&g.format)continue;
+    const hits=byTitle.get(g.title.toLowerCase());
+    if(!hits)continue;
+    // Author is corroboration, not the key — the ledger and the catalog are
+    // typed separately and disagree on spelling often enough. When several
+    // catalog rows share a title, only fill if the survivors agree.
+    const sameAuthor=hits.filter(b=>norm(b.author)===norm(g.author));
+    const pool=sameAuthor.length?sameAuthor:hits;
+    const genres=[...new Set(pool.map(b=>b.type).filter(Boolean))];
+    const medias=[...new Set(pool.map(b=>b.media).filter(Boolean))];
+    if(!g.genre&&genres.length===1)g.genre=genres[0];
+    if(!g.format&&medias.length===1)g.format=medias[0];
+  }
+  return books;
+}
+
 function renderLibGrowth(growthMetrics,bm){
   const curYear=new Date().getFullYear();
   // Both the imported ledger and the live rollup now count the WHOLE library
@@ -1837,9 +1869,11 @@ function renderBuyThisYear(books){
   // Metrics
   const sourceCounts={},genreCounts={},formatCounts={},monthlyCounts={};
   for(const b of books){
-    sourceCounts[b.source]=(sourceCounts[b.source]||0)+1;
-    genreCounts[b.genre]=(genreCounts[b.genre]||0)+1;
-    formatCounts[b.format]=(formatCounts[b.format]||0)+1;
+    // Skip blanks — an unknown source is not a source, and a ''-keyed entry
+    // inflates the Sources count and draws an unlabelled bar in the charts.
+    if(b.source)sourceCounts[b.source]=(sourceCounts[b.source]||0)+1;
+    if(b.genre)genreCounts[b.genre]=(genreCounts[b.genre]||0)+1;
+    if(b.format)formatCounts[b.format]=(formatCounts[b.format]||0)+1;
     if(b.date){const mo=parseInt(b.date.split('/')[0]);if(mo>=1&&mo<=12)monthlyCounts[mo]=(monthlyCounts[mo]||0)+1;}
   }
   const topSource=Object.entries(sourceCounts).sort((a,b)=>b[1]-a[1])[0]||['—',0];
@@ -1875,7 +1909,7 @@ function renderBuyThisYear(books){
   const maxF=formatEntries[0]?.[1]||1;
   document.getElementById('bty-format').innerHTML='<div class="cbt">Books by format</div>'+formatEntries.map(([f,count])=>{const p=count/maxF*100;return`<div class="pr"><div class="pl">${f}</div><div class="pt"><div class="pf" style="width:${p.toFixed(1)}%;background:${FORMAT_COLORS[f]||'#9a9688'}"></div></div><div class="pv">${count}</div></div>`;}).join('');
   // List
-  document.getElementById('bty-list').innerHTML=books.map(b=>`<tr><td class="nr" style="color:var(--text3);font-family:var(--font-m)">${b.num}</td><td class="nr" style="color:var(--text3);font-family:var(--font-m)">${b.date}</td><td>${b.title}</td><td>${b.author||'—'}</td><td>${b.genre||'—'}</td><td><span class="badge ${FORMAT_COLORS[b.format]?'b-gold':'b-gray'}" style="background:${(FORMAT_COLORS[b.format]||'#9a9688')+'18'};color:${FORMAT_COLORS[b.format]||'#9a9688'}">${b.format}</span></td><td style="font-family:var(--font-m);font-size:11px;color:var(--text2)">${b.source}</td></tr>`).join('');
+  document.getElementById('bty-list').innerHTML=books.map(b=>`<tr><td class="nr" style="color:var(--text3);font-family:var(--font-m)">${b.num}</td><td class="nr" style="color:var(--text3);font-family:var(--font-m)">${b.date}</td><td>${b.title}</td><td>${b.author||'—'}</td><td>${b.genre||'—'}</td><td>${b.format?`<span class="badge ${FORMAT_COLORS[b.format]?'b-gold':'b-gray'}" style="background:${(FORMAT_COLORS[b.format]||'#9a9688')+'18'};color:${FORMAT_COLORS[b.format]||'#9a9688'}">${b.format}</span>`:'—'}</td><td style="font-family:var(--font-m);font-size:11px;color:var(--text2)">${b.source||'—'}</td></tr>`).join('');
 }
 
 
@@ -4023,7 +4057,7 @@ async function init(){
     G.interested=parseInterested(intV);
     G.orders=parseOrders(ordV);
     G.growthMetrics=parseGrowthMetrics(growthMetricsV);
-    G.growthYear=parseGrowthYear(growthYearV);
+    G.growthYear=enrichGrowthYearFromRegister(parseGrowthYear(growthYearV), G.allIndBooks);
     G.frBooks=parseFRYearCatalog(frYearV);
     G.frSeries=enrichFRSeriesFromYearCatalog(parseFRSeries(frSeriesV), G.frBooks);
     G.dlData=parseDL(dlV);
