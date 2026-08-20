@@ -3660,15 +3660,23 @@ const LOG=(()=>{
       const norm=s=>(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
       const q=norm(document.getElementById(inId).value);
       if(q.length<3){out.innerHTML='';return;}
-      const hits=(G.allIndBooks||[]).filter(b=>{
+      // Register + the DL/FR/SR collectible catalogs — those ~590 books live
+      // only in catalog tabs, not the register, so the register alone misses them.
+      const cands=[
+        ...(G.allIndBooks||[]),
+        ...(G.frBooks||[]).map(b=>({...b,cat:'Forgotten Realms catalog'})),
+        ...((G.dlData||{}).books||[]).map(b=>({...b,cat:'Dragonlance catalog'})),
+        ...((G.srData||{}).books||[]).map(b=>({...b,cat:'Shadowrun catalog'})),
+      ];
+      const hits=cands.filter(b=>{
         const t=norm(b.title);
         return t.includes(q)||(t.length>3&&q.includes(t));
       });
-      if(!hits.length){out.innerHTML='<div class="ms" style="margin:2px 0 8px">✓ Nothing similar in the library</div>';return;}
+      if(!hits.length){out.innerHTML='<div class="ms" style="margin:2px 0 8px">✓ Nothing similar in the library or catalogs</div>';return;}
       out.innerHTML='<div class="ms" style="margin:2px 0 4px;color:var(--coral)">Already in the library?</div>'
         +hits.slice(0,5).map(b=>`<div class="log-pend" style="padding:7px 11px">
-          <div class="log-pend-desc" style="font-size:12px">${esc(b.title)}${b.read?' <span style="color:var(--teal)">· read</span>':b.owned?' <span style="color:var(--gold)">· owned</span>':' <span style="color:var(--text3)">· tracked, not owned</span>'}</div>
-          <div class="log-pend-meta">${esc(b.series)}${b.seq?' #'+esc(b.seq):''} · ${esc(b.author)} · ${OWNER_LABEL[b.owner]||b.owner}</div>
+          <div class="log-pend-desc" style="font-size:12px">${esc(b.title)}${b.read?' <span style="color:var(--teal)">· read</span>':b.owned?' <span style="color:var(--gold)">· owned</span>':` <span style="color:var(--text3)">· ${b.cat?'not owned':'tracked, not owned'}</span>`}</div>
+          <div class="log-pend-meta">${b.cat?esc(b.cat)+(b.series?' · '+esc(b.series):'')+' · '+esc(b.author):`${esc(b.series)}${b.seq?' #'+esc(b.seq):''} · ${esc(b.author)} · ${OWNER_LABEL[b.owner]||b.owner}`}</div>
         </div>`).join('')
         +(hits.length>5?`<div class="ms" style="margin-bottom:8px">+${hits.length-5} more</div>`:'');
     },150);
