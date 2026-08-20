@@ -3370,7 +3370,11 @@ const LOG=(()=>{
         method:'PUT',headers:hdrs(),
         body:JSON.stringify({message:'log: '+type,content:b64(JSON.stringify(ev,null,1))})});
       if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.message||r.status);}
-      remember(ev);pendCache=null;refreshBadge();
+      // Insert optimistically rather than nulling the cache — synchronous
+      // re-renders (e.g. Proposed after a decision) read pendCache, and an
+      // empty window there brings decided rows' buttons back. pendAt=0 still
+      // forces the next fetch to reconcile with the real inbox listing.
+      remember(ev);if(pendCache)pendCache.unshift(ev);pendAt=0;refreshBadge();
       return true;
     }catch(e){toast('Failed to save: '+e.message,true);return false;}
   }
@@ -3899,9 +3903,13 @@ const LOG=(()=>{
 
   // ── Proposed (Add/Drop review of machine suggestions) ──
   function propDecisions(){
+    // Cache first, then this device's remembered sends as a backstop — the
+    // cache can be mid-refetch, and a decision must never look undone.
     const m=new Map();
-    (pendCache||[]).forEach(ev=>{const p=ev.payload||{};
-      if(ev.type==='proposal_decide'&&p.id)m.set(p.id,p.decision);});
+    const fold=ev=>{const p=ev.payload||{};
+      if(ev.type==='proposal_decide'&&p.id!=null)m.set(p.id,p.decision);};
+    (pendCache||[]).forEach(fold);
+    sent().filter(e=>!BUNDLE||e.at>BUNDLE.generated_at).forEach(fold);
     return m;
   }
   function propSummary(p){
