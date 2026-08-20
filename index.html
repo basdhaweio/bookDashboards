@@ -3619,12 +3619,38 @@ const LOG=(()=>{
   }
 
   // ── Add-new book ──
+  // Live "do I already have this?" check under the Title fields. Searches the
+  // whole catalog across BOTH owners (a dupe in the other owner's shelf still
+  // matters), using the same normalization as the Libib importer.
+  let dupeT=null;
+  function dupeCheck(inId,outId){
+    clearTimeout(dupeT);
+    dupeT=setTimeout(()=>{
+      const out=document.getElementById(outId);if(!out)return;
+      const norm=s=>(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+      const q=norm(document.getElementById(inId).value);
+      if(q.length<3){out.innerHTML='';return;}
+      const hits=(G.allIndBooks||[]).filter(b=>{
+        const t=norm(b.title);
+        return t.includes(q)||(t.length>3&&q.includes(t));
+      });
+      if(!hits.length){out.innerHTML='<div class="ms" style="margin:2px 0 8px">✓ Nothing similar in the library</div>';return;}
+      out.innerHTML='<div class="ms" style="margin:2px 0 4px;color:var(--coral)">Already in the library?</div>'
+        +hits.slice(0,5).map(b=>`<div class="log-pend" style="padding:7px 11px">
+          <div class="log-pend-desc" style="font-size:12px">${esc(b.title)}${b.read?' <span style="color:var(--teal)">· read</span>':b.owned?' <span style="color:var(--gold)">· owned</span>':' <span style="color:var(--text3)">· tracked, not owned</span>'}</div>
+          <div class="log-pend-meta">${esc(b.series)}${b.seq?' #'+esc(b.seq):''} · ${esc(b.author)} · ${OWNER_LABEL[b.owner]||b.owner}</div>
+        </div>`).join('')
+        +(hits.length>5?`<div class="ms" style="margin-bottom:8px">+${hits.length-5} more</div>`:'');
+    },150);
+  }
+
   function toggleAdd(){
     const f=document.getElementById('log-addform');
     if(f.style.display==='none'){
       f.innerHTML=`
         <div class="cb" style="margin-top:10px">
-        <div class="log-frow"><label>Title *</label><input id="log-n-title"></div>
+        <div class="log-frow"><label>Title *</label><input id="log-n-title" oninput="LOG.dupeCheck('log-n-title','log-n-dupes')"></div>
+        <div id="log-n-dupes"></div>
         <div class="log-frow"><label>Series</label><input id="log-n-series" list="log-dl-series" placeholder="blank = standalone"></div>${entityDatalists()}
         <div class="log-frow"><label>Seq #</label><input id="log-n-seq" inputmode="numeric" style="max-width:90px"></div>
         <div class="log-frow"><label>Author</label><input id="log-n-author" placeholder="e.g. Sophie Jordan"></div>
@@ -3685,7 +3711,8 @@ const LOG=(()=>{
       <div class="cb">
       <div class="log-frow"><label>Vendor</label>${vocabInput('log-b-vendor','vendor','')}</div>
       <div class="log-frow"><label>Box</label>${vocabInput('log-b-box','box','')}</div>
-      <div class="log-frow"><label>Title</label><input id="log-b-title" placeholder="blank if not announced yet"></div>
+      <div class="log-frow"><label>Title</label><input id="log-b-title" placeholder="blank if not announced yet" oninput="LOG.dupeCheck('log-b-title','log-b-dupes')"></div>
+      <div id="log-b-dupes"></div>
       <div class="log-frow"><label>Author</label><input id="log-b-author" placeholder="e.g. Sophie Jordan"></div>
       <div class="log-frow"><label>Want?</label><select id="log-b-want"><option>Yes</option><option>Unsure</option><option>No</option></select></div>
       <div class="log-frow"><label>Charged</label><input type="date" id="log-b-date" value="${today()}"></div>
@@ -3975,7 +4002,7 @@ const LOG=(()=>{
     refreshBadge();
   }
 
-  return{renderBook,renderOrders,renderPending,renderProposed,doPropDecide,doSyncRequest,importLibib,renderMeta,doMetaAdd,search,expand,doFinished,doAcquired,
+  return{renderBook,renderOrders,renderPending,renderProposed,doPropDecide,doSyncRequest,importLibib,renderMeta,doMetaAdd,dupeCheck,search,expand,doFinished,doAcquired,
     toggleAdd,doAdd,addDates,saveBookEdit,doNewOrder,doNewBoxOrder,setOrderStyle,expandOrder,doOrderUpdate,
     toggleRow,saveOrderEdit,expandBox,doBoxUpdate,saveBoxEdit,saveSetup,forgetSetup,refreshBadge};
 })();

@@ -188,5 +188,7 @@ is the arrival date. `delivered: "Fulfilled"` + a `fulfil` date is the UI's
 5. If anything was applied, re-export the bundle and push to the dashboards
    repo as usual.
 
-Steps 1–4 are implemented in `tools/apply_inbox.py`; the bookdb-specific
-apply functions are seams to fill in.
+The live consumer implementing this contract runs on jerry inside the bookdb
+codebase (the original `tools/apply_inbox.py` skeleton in this repo was
+superseded by it and has been removed). This document is the contract of
+record: dashboard-side event changes land here first.
