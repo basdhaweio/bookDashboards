@@ -82,6 +82,11 @@ Empty `series` means standalone. `acquired_on`/`read_on` are optional ISO
 dates; when the approved proposal is applied they create the matching
 acquisition/read events alongside the book, dated.
 
+`author` is free text as typed — the entry forms hint natural order
+("Sophie Jordan"), not the catalog's "Last, First". Normalize to catalog
+convention during proposal review; the form does not auto-invert because
+that mangles names like "Ursula K. Le Guin" or "SenLinYu".
+
 ### `book_update`
 Edit register fields on an existing book — the Log view's ✎ action. Same
 `book` reference as `finished`/`acquired`; `set` carries only changed fields.
