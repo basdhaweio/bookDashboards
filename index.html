@@ -231,6 +231,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
 .log-pend-desc{font-size:13px;color:var(--text);}
 .log-pend-meta{font-family:var(--font-m);font-size:10px;color:var(--text3);margin-top:2px;}
 .log-badge-pend{display:inline-block;font-family:var(--font-m);font-size:9px;padding:2px 6px;border-radius:3px;background:var(--gold-bg);color:var(--gold);border:1px solid var(--gold2);margin-left:6px;}
+.log-badge-data{display:inline-block;font-family:var(--font-m);font-size:9px;padding:2px 6px;border-radius:3px;background:var(--coral-bg);color:var(--coral);border:1px solid var(--coral);margin-left:6px;}
 #log-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(80px);background:var(--text);color:var(--bg);font-family:var(--font-m);font-size:12px;padding:11px 18px;border-radius:10px;box-shadow:var(--shadow2);transition:transform 0.25s;z-index:99;max-width:90vw;}
 #log-toast.show{transform:translateX(-50%) translateY(0);}
 .log-setup{background:var(--gold-bg);border:1px solid var(--gold2);border-radius:10px;padding:1rem 1.2rem;margin-bottom:1.2rem;}
@@ -773,6 +774,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div id="log-setup-book"></div>
       <div class="sl">Finished, acquired, or fixing up a book</div>
       <input id="log-q" class="log-search" type="search" placeholder="Search title, series, or author…" autocomplete="off" oninput="LOG.search()">
+      <div id="log-needs-bar"></div>
       <div id="log-results"></div>
       <div style="margin-top:1.2rem">
         <button class="log-ghost" onclick="LOG.toggleAdd()">＋ Add a book that isn't in the library yet</button>
@@ -3482,17 +3484,26 @@ const LOG=(()=>{
 
   // ── Quick Log (books) ──
   let expanded=null;
+  // Core register fields the dashboards can't chart without. Books approved
+  // from Proposed often land with these blank — surface them for follow-up.
+  function needsData(b){
+    const m=[];
+    if(!b.author)m.push('author');
+    if(!b.type)m.push('genre');
+    if(!b.media)m.push('media');
+    return m;
+  }
   function renderBook(){
     document.getElementById('log-setup-book').innerHTML=hintCard();
+    const n=(G.indBooks||[]).filter(b=>needsData(b).length).length;
+    document.getElementById('log-needs-bar').innerHTML=n
+      ?`<button class="log-ghost" style="margin-bottom:0.8rem;border-color:var(--coral);color:var(--coral)" onclick="LOG.showNeedsData()">⚠ ${n} book${n===1?'':'s'} missing genre, media, or author — review</button>`
+      :'';
     search();refreshBadge();
   }
-  function search(){
-    const q=(document.getElementById('log-q').value||'').trim().toLowerCase();
+  function renderHits(hits,emptyMsg){
     const out=document.getElementById('log-results');
-    if(q.length<2){out.innerHTML='<div class="ms" style="padding:8px 2px">Type at least two letters — matches come from the current owner filter ('+(OWNER_LABEL[OWNER]||'Both')+').</div>';return;}
     const pend=pendingKeys(pendCache);
-    const hits=(G.indBooks||[]).filter(b=>
-      b.title.toLowerCase().includes(q)||b.series.toLowerCase().includes(q)||b.author.toLowerCase().includes(q)).slice(0,30);
     out.innerHTML=hits.map((b,i)=>{
       const key=i;
       const dots=`<div class="log-dots" title="${b.read?'read':''}${b.owned?' owned':''}">
@@ -3500,11 +3511,13 @@ const LOG=(()=>{
         ${b.owned?'<div class="log-dot" style="background:var(--gold2)"></div>':''}
         ${!b.owned&&!b.read?'<div class="log-dot" style="background:var(--coral)"></div>':''}</div>`;
       const pendMark=(['finished','acquired','book_update'].some(t=>pend.has(t+'|'+b.title+'|'+realSeries(b))))?'<span class="log-badge-pend">pending</span>':'';
+      const miss=needsData(b);
+      const missMark=miss.length?`<span class="log-badge-data">needs ${miss.join(', ')}</span>`:'';
       return`<div class="log-item">
         <div class="log-item-hd">
           ${dots}
           <div class="log-item-info">
-            <div class="log-item-title">${esc(b.title)}${pendMark}</div>
+            <div class="log-item-title">${esc(b.title)}${pendMark}${missMark}</div>
             <div class="log-item-meta">${esc(b.series)}${b.seq?' #'+esc(b.seq):''} · ${esc(b.author)}${b.media?' · '+esc(b.media):''}${OWNER==='all'?' · '+(OWNER_LABEL[b.owner]||''):''}</div>
           </div>
           <div class="log-acts">
@@ -3515,8 +3528,21 @@ const LOG=(()=>{
         </div>
         <div class="log-exp" id="log-exp-${key}"></div>
       </div>`;
-    }).join('')||'<div class="ms" style="padding:8px 2px">No matches. Use “Add a book” below if it\'s new.</div>';
+    }).join('')||emptyMsg;
     out._hits=hits;expanded=null;
+  }
+  function search(){
+    const q=(document.getElementById('log-q').value||'').trim().toLowerCase();
+    if(q.length<2){document.getElementById('log-results').innerHTML='<div class="ms" style="padding:8px 2px">Type at least two letters — matches come from the current owner filter ('+(OWNER_LABEL[OWNER]||'Both')+').</div>';return;}
+    const hits=(G.indBooks||[]).filter(b=>
+      b.title.toLowerCase().includes(q)||b.series.toLowerCase().includes(q)||b.author.toLowerCase().includes(q)).slice(0,30);
+    renderHits(hits,'<div class="ms" style="padding:8px 2px">No matches. Use “Add a book” below if it\'s new.</div>');
+  }
+  function showNeedsData(){
+    document.getElementById('log-q').value='';
+    const hits=(G.indBooks||[]).filter(b=>needsData(b).length)
+      .sort((a,b)=>a.title.localeCompare(b.title)).slice(0,100);
+    renderHits(hits,'<div class="ms" style="padding:8px 2px">All caught up — every book has its core fields.</div>');
   }
   function expand(i,type){
     const hits=document.getElementById('log-results')._hits||[];const b=hits[i];if(!b)return;
@@ -4002,7 +4028,7 @@ const LOG=(()=>{
     refreshBadge();
   }
 
-  return{renderBook,renderOrders,renderPending,renderProposed,doPropDecide,doSyncRequest,importLibib,renderMeta,doMetaAdd,dupeCheck,search,expand,doFinished,doAcquired,
+  return{renderBook,renderOrders,renderPending,renderProposed,doPropDecide,doSyncRequest,importLibib,renderMeta,doMetaAdd,dupeCheck,showNeedsData,search,expand,doFinished,doAcquired,
     toggleAdd,doAdd,addDates,saveBookEdit,doNewOrder,doNewBoxOrder,setOrderStyle,expandOrder,doOrderUpdate,
     toggleRow,saveOrderEdit,expandBox,doBoxUpdate,saveBoxEdit,saveSetup,forgetSetup,refreshBadge};
 })();
