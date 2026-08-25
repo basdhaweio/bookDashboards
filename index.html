@@ -3343,7 +3343,7 @@ const LOG=(()=>{
       case'add_book':return`＋ New book “${p.title}”${p.read?' · read':''}${p.owned?' · owned':''}`;
       case'book_update':return`✎ “${b.title}” → ${Object.keys(p.set||{}).join(', ')}`;
       case'meta_add':return`🏷 New ${p.kind}: ${p.value}`;
-      case'proposal_decide':return`${p.decision==='approve'?'✔ Add':'✖ Drop'}: ${p.target||('proposal '+p.id)}`;
+      case'proposal_decide':return`${p.decision==='approve'?'✔ Add':'✖ Drop'}${p.set?' (edited: '+Object.keys(p.set).join(', ')+')':''}: ${p.target||('proposal '+p.id)}`;
       case'sync_request':return`⟳ Sync from ${p.source||'all sources'}`;
       case'order_new':return p.list==='bookboxes'
         ?`🎁 Box: ${p.vendor}${p.box?' '+p.box:''} — ${p.title||'title TBA'}${p.want&&p.want!=='Yes'?' · want: '+p.want:''}`
@@ -3870,13 +3870,56 @@ const LOG=(()=>{
           </div>
           <div class="log-acts">${d?'':`
             <button class="log-act primary" onclick="LOG.doPropDecide(${p.id},'approve')">Add</button>
+            ${propEditCur(p)?`<button class="log-act" onclick="LOG.propEdit(${p.id})" title="adjust values, then add">✎</button>`:''}
             <button class="log-act" onclick="LOG.doPropDecide(${p.id},'reject')">Drop</button>`}
           </div>
         </div>
+        <div class="log-exp" id="log-pexp-${p.id}"></div>
       </div>`;}).join('')||'<div class="ms">Nothing proposed — the register has no open suggestions.</div>';
     const tab=document.getElementById('log-proposed-tab');
     if(tab)tab.textContent='Proposed'+(open.length?` (${open.length})`:'');
     refreshBadge();
+  }
+  // The editable payload behind a proposal card, keyed like book_update's set.
+  // Only add_book_from_inbox rows carry a parseable payload; anything else
+  // returns null and the card stays Add/Drop-only.
+  function propEditCur(p){
+    try{const j=JSON.parse(p.proposal);
+      if(!j||!j.title)return null;
+      return{title:j.title||'',series:j.series||'',seq:j.seq||'',author:j.author||'',
+        genre:j.genre||'',sub_genre:j.sub_genre||'',media:j.media||'',universe:j.universe||'',
+        publisher:j.publisher||'',read_on:j.read_on||'',acquired_on:j.acquired_on||'',notes:j.notes||''};
+    }catch(e){return null;}
+  }
+  let propExpanded=null;
+  function propEdit(id){
+    const p=(G.proposals||[]).find(x=>x.id===id);const cur=p&&propEditCur(p);if(!cur)return;
+    document.querySelectorAll('.log-exp.open').forEach(e=>e.classList.remove('open'));
+    if(propExpanded===id){propExpanded=null;return;}
+    propExpanded=id;
+    const el=document.getElementById('log-pexp-'+id);
+    el.innerHTML=BOOK_EDIT.map(f=>`<div class="log-frow"><label>${BOOK_EDIT_LBL[f]||f}</label>${
+      VOCAB_FIELDS.includes(f)?vocabInput(`log-pke-${f}-${id}`,f,cur[f]||'')
+      :DATE_FIELDS.includes(f)?`<input type="date" id="log-pke-${f}-${id}" value="${esc(cur[f]||'')}">`
+      :`<input id="log-pke-${f}-${id}" value="${esc(cur[f]||'')}" ${f==='series'?'list="log-dl-series" placeholder="blank = standalone"':f==='universe'?'list="log-dl-universe"':''}>`}</div>`).join('')
+      +entityDatalists()
+      +`<button class="log-act primary" onclick="LOG.doPropDecideSet(${id})">Add with these values</button>
+      <div class="ms" style="margin-top:6px">Only changed fields ride along as <code>set</code> — the add lands with your values. Needs jerry's consumer to know the set contract; older consumers apply the add unchanged.</div>`;
+    el.classList.add('open');
+  }
+  async function doPropDecideSet(id){
+    const p=(G.proposals||[]).find(x=>x.id===id);const cur=p&&propEditCur(p);if(!cur)return;
+    const set={};
+    for(const f of BOOK_EDIT){
+      const el=document.getElementById(`log-pke-${f}-${id}`);if(!el)continue;
+      const v=el.value.trim();
+      if(v!==(cur[f]||'').trim())set[f]=v;
+    }
+    const bad=vetVocab(set);if(bad)return toast(bad,true);
+    const payload={id:p.id,target:p.target,kind:p.kind,decision:'approve'};
+    if(Object.keys(set).length)payload.set=set;
+    const ok=await submit('proposal_decide',payload,null,'butthead');
+    if(ok){propExpanded=null;toast('Adding “'+p.target+'”'+(payload.set?' with '+Object.keys(set).length+' adjusted field'+(Object.keys(set).length>1?'s':''):''));renderProposed();}
   }
   async function doPropDecide(id,decision){
     const p=(G.proposals||[]).find(x=>x.id===id);if(!p)return;
@@ -3993,7 +4036,7 @@ const LOG=(()=>{
     refreshBadge();
   }
 
-  return{renderBook,renderOrders,renderPending,renderProposed,doPropDecide,doSyncRequest,importLibib,renderMeta,doMetaAdd,dupeCheck,showNeedsData,search,expand,doFinished,doAcquired,
+  return{renderBook,renderOrders,renderPending,renderProposed,doPropDecide,propEdit,doPropDecideSet,doSyncRequest,importLibib,renderMeta,doMetaAdd,dupeCheck,showNeedsData,search,expand,doFinished,doAcquired,
     toggleAdd,doAdd,addDates,saveBookEdit,doNewOrder,doNewBoxOrder,setOrderStyle,expandOrder,doOrderUpdate,
     toggleRow,saveOrderEdit,expandBox,doBoxUpdate,saveBoxEdit,saveSetup,forgetSetup,refreshBadge};
 })();
