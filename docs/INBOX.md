@@ -115,6 +115,27 @@ must still match the row — a proposal that changed since the bundle was
 published is skipped for re-review rather than decided blind. Already-decided
 or archived proposals are no-ops.
 
+An approve may carry an optional `set` — the Proposed tab's ✎ action — so
+the reviewer can adjust values in the same tap that accepts them:
+```json
+{"id": 3415, "kind": "add_book_from_inbox",
+ "target": "- / Song of Silver, Flame Like Night", "decision": "approve",
+ "set": {"author": "Zhao, Amelie Wen", "series": "Song of the Last Kingdom",
+         "seq": "1", "genre": "Fantasy, Young Adult"}}
+```
+Allowed keys are `book_update`'s: `title, series, seq, author, genre,
+sub_genre, media, universe, publisher, notes, read_on, acquired_on`. The
+`target` guard is evaluated against the **unedited** proposal row first; the
+consumer then merges `set` into the proposal's payload before marking it
+`approved`, so `apply_fixes.py` runs unchanged and the add lands with the
+adjusted values. `series`/`universe` are names — resolved to rows, created
+if new; blank clears; the UI snaps vocab fields (`genre, sub_genre, media,
+publisher`) to canonical casing before sending. Status (`owned`/`read`) is
+not settable here, same as `book_update`. `set` on a `reject` is ignored.
+Consumers predating this field silently apply the add unedited — update
+jerry before relying on ✎; a plain approve (no `set`) is byte-compatible
+with the old shape.
+
 ### `sync_request`
 Ask jerry to pull an external source now. Results arrive as PROPOSALS on the
 Proposed tab — a sync never writes the register directly (Goodreads burned it
