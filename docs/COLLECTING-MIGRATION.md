@@ -232,8 +232,14 @@ ones stay out until series.genre is filled — a separate decision.
 
 ## Phase 3 — jerry: retire the old shape (after Phase 2 merges)
 
-- Stop publishing the four catalog tabs (delete the four blocks in
-  `publish.py` and the `dndPages` map if the dashboard no longer reads it).
+- **Stop publishing the four catalog tabs: DONE (2026-08-31).** Phase 2
+  merged to main as 84a8458 and deployed; the four `1_vivOgW…` tab blocks
+  (and the now-unused `DND_ID` constant) are deleted from `publish.py`.
+  Bundle went 27 → 23 tabs; both `index.html` and the vestigial `db.html`
+  verified rendering the slimmed bundle with zero console errors and
+  unchanged counts (FR 307/298/138/9, DL 156/54/1/105, SR 86/49/43/37).
+  `dndPages` stays — the Collecting overview page tiles still read it
+  (re-point them at pageStats-style register queries before deleting it).
 - ~~If the collecting sheet was still a live source, archive it read-only.~~
   Not needed — Phase 1 established the sheet has not been a source since
   2026-07-24.
