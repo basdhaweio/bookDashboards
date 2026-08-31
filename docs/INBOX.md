@@ -75,12 +75,18 @@ flow), not a direct catalog insert.
 ```json
 {"title": "…", "series": "", "seq": "", "author": "…", "media": "Print",
  "genre": "Fantasy", "sub_genre": "", "universe": "", "publisher": "",
+ "pub_date": "", "need": false,
  "notes": "", "owner": "goblin", "owned": true, "read": false,
  "acquired_on": "2026-08-03", "read_on": ""}
 ```
 Empty `series` means standalone. `acquired_on`/`read_on` are optional ISO
 dates; when the approved proposal is applied they create the matching
 acquisition/read events alongside the book, dated.
+
+`universe` was accepted by the form but silently dropped when the approved
+proposal was applied; since the collecting migration it decides whether a book
+reaches the Collecting section, so it is now resolved (and created if new)
+just like `series`.
 
 `author` is free text as typed — the entry forms hint natural order
 ("Sophie Jordan"), not the catalog's "Last, First". Normalize to catalog
@@ -94,14 +100,31 @@ Edit register fields on an existing book — the Log view's ✎ action. Same
 {"book": {…}, "set": {"genre": "Fantasy", "publisher": "Tor", "series": "…"}}
 ```
 Allowed keys: `title, series, seq, author, genre, sub_genre, media, universe,
-publisher, notes, read_on, acquired_on`. `series`/`universe` are names —
-resolved to rows, created if new; blank clears them. `read_on`/`acquired_on`
-are ISO date corrections: they set the book's date (+year, src) and, when the
-book has exactly one matching event row, sync that row too — with several
-rows none are touched and the result note says so. Status (`owned`/`read`) is
-NOT settable here — that flows through `finished`/`acquired` so the event
-feeds stay truthful. A retitle that collides with an existing book's title
-parks as a proposal instead of applying (duplicate guard).
+publisher, pub_date, need, notes, read_on, acquired_on`. `series`/`universe`
+are names — resolved to rows, created if new; blank clears them.
+`read_on`/`acquired_on` are ISO date corrections: they set the book's date
+(+year, src) and, when the book has exactly one matching event row, sync that
+row too — with several rows none are touched and the result note says so.
+Status (`owned`/`read`) is NOT settable here — that flows through
+`finished`/`acquired` so the event feeds stay truthful. A retitle that
+collides with an existing book's title parks as a proposal instead of
+applying (duplicate guard).
+
+**`pub_date`** — publication date, kept at whatever precision the source
+actually had: `YYYY`, `YYYY-MM`, or `YYYY-MM-DD`. Input is normalized, so
+`July 1990`, `1990-07`, and `2010-May-14` all work; a year-only source stays
+year-only rather than gaining an invented month. Anything unparseable is
+rejected with an error rather than guessed at. Distinct from the enrichment
+`publish_date` in `book_meta`, which is a third party's claim about the same
+book.
+
+**`need`** — an explicit boolean, and the one flag that IS settable here while
+`owned`/`read` are not. It is a want, not a status: no event feed records
+"started needing this", so `book_update` is its only editing path. It has to
+stay distinguishable from "not owned" — a book tracked but not being hunted
+for has `need: false`, and inferring one from the other would erase exactly
+the difference the collecting checklists depend on. Accepts JSON booleans and
+the sheets' own vocabulary (`x`, `yes`, `1`).
 
 ### `proposal_decide`
 Add/Drop from the Proposed tab. Sets `approved` on the `fix_proposals` row;

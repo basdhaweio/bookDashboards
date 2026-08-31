@@ -854,7 +854,6 @@ const API_KEY='AIzaSyAhfCAYNMD4iyxdaQlM11BbppxwwqTWrxg';
 const BOOKS_ID='1IRQ0VENyj_H_MENOOPBB4W3F8pQo4UeMdoj__9dUm3k';
 const READING_ID='1KeUuBxJkXD0EqSBX-qsu2sadRaAhf2p8Q8OPjiX-ceE';
 const GROWTH_ID='1PBjnRAqbim6FJrYkv9iwf0R1CFsV7lFD0yGocFZWmYI';
-const FR_ID='1_vivOgWjSRnPO5doL_GIb33PD8sPO0Ya1MM_rf293lg';
 const GOBLIN_BOX_ID='14I40HgBRGqFt58TT3Y2y8rt41o4KkyWS2PCfbeuISOA'; // Shereen's books · Book Boxes
 // DL data lives in the same sheet as FR
 const DL_TAB='DL';
@@ -2070,84 +2069,78 @@ function renderTabInner(id){
 }
 
 // ── FR PARSERS ────────────────────────────────────────────────
-function parseFRYearCatalog(vals){
-  // Year rows: col A = 4-digit year, no author
-  // Book rows: must have both title and author
-  // Skips totals rows (blank title or numeric-only content)
-  const books=[];
-  let currentYear=null;
-  for(const r of vals){
-    const title=(r[0]||'').trim();
-    const author=(r[1]||'').trim();
-    const datePub=(r[2]||'').trim();
-    const fmt=(r[3]||'').trim();
-    const readRaw=(r[4]||'').trim().toLowerCase();
-    const ownedRaw=(r[5]||'').trim().toLowerCase();
-    const needRaw=(r[6]||'').trim().toLowerCase();
-    if(title&&/^\d{4}$/.test(title)&&!author){currentYear=parseInt(title);continue;}
-    if(!title||!author||!currentYear)continue;
-    books.push({year:currentYear,title,author,date:datePub,format:fmt,
-      read:readRaw==='x',owned:ownedRaw==='x',need:needRaw==='x'});
-  }
-  return books;
+// ── COLLECTING FROM THE REGISTER ──────────────────────────────
+// Phase 2 of docs/COLLECTING-MIGRATION.md: the FR/DL/SR views read register
+// rows routed by the bundle's universe collecting flag (bookdb|Universes tab)
+// instead of the four legacy catalog tabs. The structures below keep the
+// exact shapes the renderers always consumed, so no renderer changed and no
+// count moves; parity old-tabs vs register was verified field-by-field
+// (totals, per-series, per-year, per-publisher, needed/queue sets) before
+// the old parsers were removed.
+const MONTH_NAMES=['January','February','March','April','May','June','July',
+  'August','September','October','November','December'];
+function fmtPub(pd){
+  // PubDate is an ISO prefix (YYYY | YYYY-MM | YYYY-MM-DD) at the precision
+  // the source had. Render it the way the old catalog tabs displayed dates:
+  // 'July 1990' for month+year, '2010-May-14' for full dates, bare year as-is.
+  if(!pd)return'';
+  const m=pd.match(/^(\d{4})(?:-(\d{2}))?(?:-(\d{2}))?$/);
+  if(!m)return pd;
+  if(!m[2])return m[1];
+  const mon=MONTH_NAMES[parseInt(m[2])-1]||m[2];
+  if(!m[3])return mon+' '+m[1];
+  return m[1]+'-'+mon.slice(0,3)+'-'+parseInt(m[3]);
 }
+function buildCollecting(){
+  // Universe flags come from the bundle, not a hardcoded list: flag a fourth
+  // universe in bookdb and it routes here with no dashboard change.
+  G.collectingUniverses=new Set((BUNDLE.tabs['bookdb|Universes']||[]).slice(1)
+    .filter(r=>((r[1]||'')+'').trim().toLowerCase()==='x')
+    .map(r=>((r[0]||'')+'').trim()));
+  const all=G.allIndBooks||[];   // both owners, like the old catalog tabs
+  const of=u=>all.filter(b=>b.universe===u);
+  const yearOf=b=>parseInt((b.pubDate||'').slice(0,4))||0;
 
-function parseFRSeries(vals){
-  // Flat format: col A = book title, col B = series name, col C = dupe number
-  // Header row: Title | Series | Dupe
-  // Row 1 may be a totals row (blank title) - skipped by the title check
-  const series={};
-  if(!vals.length)return series;
-  for(let i=1;i<vals.length;i++){
-    const r=vals[i];
-    const title=(r[0]||'').trim();
-    const sname=(r[1]||'').trim();
-    const dupeRaw=(r[2]||'').trim();
-    if(!title||!sname)continue;
-    // Skip if title looks like a header or pure number
-    if(title.toLowerCase()==='title')continue;
-    if(!series[sname])series[sname]=[];
-    series[sname].push({title,dupe:dupeRaw&&dupeRaw!=='1',dupeGroup:dupeRaw||'1'});
+  // FR: book list ordered year desc / title asc (the Year Catalog's order —
+  // renderFRCompletion's needed table relies on it for tie-breaks).
+  const frRows=of('Forgotten Realms');
+  G.frBooks=frRows.map(b=>({year:yearOf(b),title:b.title,author:b.author,
+      date:fmtPub(b.pubDate),format:b.media,read:b.read,owned:b.owned,need:b.need}))
+    .sort((a,b)=>b.year-a.year||(a.title<b.title?-1:a.title>b.title?1:0));
+  // FR series map: register series links replace the Series-tab title join.
+  // 'Standalones' is parseIndividual's synthetic name for series-less rows —
+  // those were never in the old Series tab, so they stay out of the map.
+  const frSeries={};
+  for(const b of frRows){
+    if(b.series==='Standalones')continue;
+    (frSeries[b.series]=frSeries[b.series]||[]).push({title:b.title,dupe:false,
+      dupeGroup:'1',author:b.author,date:fmtPub(b.pubDate),format:b.media,
+      read:b.read,owned:b.owned,need:b.need,year:yearOf(b)});
   }
-  return series;
-}
+  G.frSeries=frSeries;
 
-function enrichFRSeriesFromYearCatalog(series, ycBooks){
-  // Normalize title for matching: lowercase, strip parentheticals, strip punctuation
-  function normTitle(t){
-    return t.toLowerCase()
-      .replace(/\s*\(.*?\)\s*/g,'')  // strip (Homecoming 2), (Brimstone Angels Series 4) etc
-      .replace(/[-']/g,' ')           // hyphen/apostrophe → space
-      .replace(/\s+/g,' ')
-      .trim();
-  }
-  // Build two lookups: exact and normalized
-  const ycExact={}, ycNorm={};
-  for(const b of ycBooks){
-    ycExact[b.title.toLowerCase()]=b;
-    const n=normTitle(b.title);
-    if(!ycNorm[n])ycNorm[n]=b; // first match wins if multiple normalize the same
-  }
-  const enriched={};
-  for(const[sName,books] of Object.entries(series)){
-    enriched[sName]=books.map(b=>{
-      // Try exact match first, then normalized
-      const yc=ycExact[b.title.toLowerCase()]||ycNorm[normTitle(b.title)];
-      return{
-        title:b.title,
-        dupe:b.dupe,
-        dupeGroup:b.dupeGroup,
-        author:yc?yc.author:'',
-        date:yc?yc.date:'',
-        format:yc?yc.format:'',
-        read:yc?yc.read:false,
-        owned:yc?yc.owned:false,
-        need:yc?yc.need:false,
-        year:yc?yc.year:0,
-      };
-    });
-  }
-  return enriched;
+  // DL: chronological by pub date. seriesMetrics was parsed but never
+  // rendered (and the bundle's DL tab stopped carrying the embedded metrics
+  // rows long ago), so it is gone rather than faked.
+  const dlBooks=of('Dragonlance').map(b=>({title:b.title,author:b.author,
+      date:fmtPub(b.pubDate),series:b.series,read:b.read,owned:b.owned,need:b.need,
+      _pd:b.pubDate||''}))
+    .sort((a,b)=>a._pd<b._pd?-1:a._pd>b._pd?1:0);
+  const dlMap={};
+  for(const b of dlBooks)(dlMap[b.series]=dlMap[b.series]||[]).push(b);
+  G.dlData={books:dlBooks,bySeriesMap:dlMap};
+
+  // SR: catalog index order (register Sequence carries the old idx column).
+  // need is the register flag now — seeded from "not owned", the SR sheet's
+  // own semantic, so the counts are unchanged.
+  const PUBLISHERS=['FASA Books','WizKid Books','Catalyst'];
+  const srBooks=of('Shadowrun').map(b=>({num:b.seq,title:b.title,author:b.author,
+      date:fmtPub(b.pubDate),owned:b.owned,read:b.read,need:b.need,
+      format:b.media,publisher:b.publisher}))
+    .sort((a,b)=>(parseInt(a.num)||0)-(parseInt(b.num)||0));
+  const byPublisher={};
+  for(const pub of PUBLISHERS)byPublisher[pub]=srBooks.filter(b=>b.publisher===pub);
+  G.srData={books:srBooks,byPublisher};
 }
 
 // ── FR SUB-TAB NAVIGATION ─────────────────────────────────────
@@ -2384,48 +2377,6 @@ function renderFRCompletion(){
   ).join('');
 }
 
-// ── DL PARSER ─────────────────────────────────────────────────
-function parseDL(vals){
-  const books=[];
-  const seriesMetrics={};
-  let inMetrics=false;
-  for(const r of vals){
-    const col0=(r[0]||'').trim();
-    const col1=(r[1]||'').trim();
-    const col2=(r[2]||'').trim();
-    const col3=(r[3]||'').trim();
-    const col4=(r[4]||'').trim().toLowerCase();
-    const col5=(r[5]||'').trim().toLowerCase();
-    const col6=(r[6]||'').trim().toLowerCase();
-    // Blank row → switch to metrics
-    if(!col0&&!col1&&!col3)continue;
-    // Metrics section: col3 has Series header or series names
-    if(!col0&&!col1&&col3){
-      if(col3==='Series'||col3==='Totals')continue;
-      seriesMetrics[col3]={count:n(r[4]),owned:n(r[5]),need:n(r[6])};
-      continue;
-    }
-    // Totals row (col0 blank, col4 is a number)
-    if(!col0&&col4&&/^\d+$/.test(col4))continue;
-    // Decade header: col0 ends in 's', no other data
-    if(col0.match(/^\d{4}s$/)&&!col1)continue;
-    // Skip header row
-    if(col0==='Title')continue;
-    if(!col0||!col1)continue;
-    books.push({
-      title:col0,author:col1,date:col2,series:col3,
-      read:col4==='x',owned:col5==='x',need:col6==='x'
-    });
-  }
-  // Group by series
-  const bySeriesMap={};
-  for(const b of books){
-    if(!bySeriesMap[b.series])bySeriesMap[b.series]=[];
-    bySeriesMap[b.series].push(b);
-  }
-  return{books,bySeriesMap,seriesMetrics};
-}
-
 // ── DL SUB-TAB NAVIGATION ─────────────────────────────────────
 const dlRendered=new Set();
 function switchDLTab(tabId){
@@ -2618,29 +2569,6 @@ function renderDLCompletion(){
   document.getElementById('dl-owned-unread').innerHTML=ownedUnread.map(b=>
     `<tr><td>${b.title}</td><td style="color:var(--text2)">${b.series}</td><td style="color:var(--text2)">${b.author}</td><td style="font-family:var(--font-m);font-size:11px;color:var(--text3)">${b.date}</td></tr>`
   ).join('');
-}
-
-// ── SR PARSER ─────────────────────────────────────────────────
-function parseSR(vals){
-  const books=[];
-  const PUBLISHERS=['FASA Books','WizKid Books','Catalyst'];
-  for(const r of vals){
-    const num=(r[0]||'').trim();
-    const title=(r[1]||'').trim().replace(/\n/g,' ');
-    const author=(r[2]||'').trim().replace(/\n/g,' ');
-    const date=(r[3]||'').trim();
-    const owned=(r[4]||'').trim().toLowerCase()==='x';
-    const read=(r[5]||'').trim().toLowerCase()==='x';
-    const fmt=(r[6]||'').trim();
-    const publisher=(r[7]||'').trim();
-    if(!title||title==='Title')continue;
-    if(!publisher)continue;
-    books.push({num,title,author,date,owned,read,need:!owned,format:fmt,publisher});
-  }
-  // Group by publisher
-  const byPublisher={};
-  for(const pub of PUBLISHERS) byPublisher[pub]=books.filter(b=>b.publisher===pub);
-  return{books,byPublisher};
 }
 
 // ── SR SUB-TAB NAVIGATION ─────────────────────────────────────
@@ -2836,6 +2764,8 @@ function parseIndividual(vals){
       publisher:(r[12]||'').trim(),
       readOn:(r[13]||'').trim(),
       acquiredOn:(r[14]||'').trim(),
+      pubDate:(r[15]||'').trim(),
+      need:(r[16]||'').trim().toLowerCase()==='x',
     });
   }
   return books;
@@ -3563,7 +3493,7 @@ const LOG=(()=>{
       el.innerHTML=BOOK_EDIT.map(f=>`<div class="log-frow"><label>${BOOK_EDIT_LBL[f]||f}</label>${
         VOCAB_FIELDS.includes(f)?vocabInput(`log-bke-${f}-${i}`,f,cur[f]||'')
         :DATE_FIELDS.includes(f)?`<input type="date" id="log-bke-${f}-${i}" value="${esc(cur[f]||'')}">`
-        :`<input id="log-bke-${f}-${i}" value="${esc(cur[f]||'')}" ${f==='series'?'list="log-dl-series" placeholder="blank = standalone"':f==='universe'?'list="log-dl-universe"':''}>`}</div>`).join('')
+        :`<input id="log-bke-${f}-${i}" value="${esc(cur[f]||'')}" ${f==='series'?'list="log-dl-series" placeholder="blank = standalone"':f==='universe'?'list="log-dl-universe"':f==='pub_date'?'placeholder="1990 · July 1990 · 1990-07-14"':f==='need'?'placeholder="x = hunting for it, blank = not"':''}>`}</div>`).join('')
         +entityDatalists()
         +`<button class="log-act primary" onclick="LOG.saveBookEdit(${i})">Save changed fields</button>
         <div class="ms" style="margin-top:6px">Only changed fields are sent. Status stays with ✓/📦. Missing a genre or publisher? Add it under Metadata first.</div>`;
@@ -3581,8 +3511,8 @@ const LOG=(()=>{
   }
   // Register fields editable per book; UI key = inbox set key (genre lives in
   // indBooks as .type, sub_genre as .subGenre — mapped in bookEditCur).
-  const BOOK_EDIT=['title','series','seq','author','genre','sub_genre','media','universe','publisher','read_on','acquired_on','notes'];
-  const BOOK_EDIT_LBL={title:'Title',series:'Series',seq:'Seq #',author:'Author',genre:'Genre',sub_genre:'Sub-genre',media:'Media',universe:'Universe',publisher:'Publisher',read_on:'Date read',acquired_on:'Date acquired',notes:'Notes'};
+  const BOOK_EDIT=['title','series','seq','author','genre','sub_genre','media','universe','publisher','pub_date','need','read_on','acquired_on','notes'];
+  const BOOK_EDIT_LBL={title:'Title',series:'Series',seq:'Seq #',author:'Author',genre:'Genre',sub_genre:'Sub-genre',media:'Media',universe:'Universe',publisher:'Publisher',pub_date:'Published',need:'Need',read_on:'Date read',acquired_on:'Date acquired',notes:'Notes'};
   const DATE_FIELDS=['read_on','acquired_on'];
   // Enum-ish fields are type-ahead inputs backed by the vocabulary; values not
   // in the list are rejected on save (add them under Metadata first), and a
@@ -3619,7 +3549,7 @@ const LOG=(()=>{
     }
     return null;
   }
-  function bookEditCur(b){return{title:b.title,series:realSeries(b),seq:b.seq||'',author:b.author,genre:b.type||'',sub_genre:b.subGenre||'',media:b.media||'',universe:b.universe||'',publisher:b.publisher||'',read_on:b.readOn||'',acquired_on:b.acquiredOn||'',notes:b.notes||''};}
+  function bookEditCur(b){return{title:b.title,series:realSeries(b),seq:b.seq||'',author:b.author,genre:b.type||'',sub_genre:b.subGenre||'',media:b.media||'',universe:b.universe||'',publisher:b.publisher||'',pub_date:b.pubDate||'',need:b.need?'x':'',read_on:b.readOn||'',acquired_on:b.acquiredOn||'',notes:b.notes||''};}
   async function saveBookEdit(i){
     const b=(document.getElementById('log-results')._hits||[])[i];if(!b)return;
     const cur=bookEditCur(b),set={};
@@ -3660,14 +3590,9 @@ const LOG=(()=>{
       const norm=s=>(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
       const q=norm(document.getElementById(inId).value);
       if(q.length<3){out.innerHTML='';return;}
-      // Register + the DL/FR/SR collectible catalogs — those ~590 books live
-      // only in catalog tabs, not the register, so the register alone misses them.
-      const cands=[
-        ...(G.allIndBooks||[]),
-        ...(G.frBooks||[]).map(b=>({...b,cat:'Forgotten Realms catalog'})),
-        ...((G.dlData||{}).books||[]).map(b=>({...b,cat:'Dragonlance catalog'})),
-        ...((G.srData||{}).books||[]).map(b=>({...b,cat:'Shadowrun catalog'})),
-      ];
+      // The register is the whole library since the collecting migration —
+      // FR/DL/SR rows included — so one sweep covers everything, once.
+      const cands=G.allIndBooks||[];
       const hits=cands.filter(b=>{
         const t=norm(b.title);
         return t.includes(q)||(t.length>3&&q.includes(t));
@@ -3981,28 +3906,52 @@ const LOG=(()=>{
   async function importLibib(input){
     const file=input.files&&input.files[0];input.value='';
     if(!file)return;
+    // A Libib export belongs to ONE person's shelf, so the import is scoped
+    // to the selected owner: the diff is against THAT owner's books (a book
+    // Com also has is still new for Shereen), and the events carry that
+    // owner. 2026-08-23 lesson: this used to hardcode butthead and diff
+    // against everyone's books, so Shereen's import queued under Com and
+    // silently dropped every shared title.
+    if(OWNER==='all')return toast('Pick Com or Shereen in the header first — a Libib export is one person’s shelf',true);
+    const owner=OWNER;
     const rows=csvParse(await file.text());
     const hdr=rows[0].map(h=>h.trim().toLowerCase());
     const col=n=>hdr.indexOf(n);
     if(col('title')<0||col('item_type')<0)return toast('Not a Libib export — expected item_type/title columns',true);
-    const have=new Set((G.allIndBooks||[]).map(b=>b.title.toLowerCase().replace(/[^a-z0-9]/g,'')));
+    const nt=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    // "Already have" = this owner's register rows + anything already in
+    // flight for them: pending add_book events and open proposals. Without
+    // the in-flight part, re-importing before a publish+reload re-queues the
+    // same titles (the bundle the diff runs against lags by a cycle).
+    const have=new Set((G.allIndBooks||[]).filter(b=>(b.owner||'butthead')===owner).map(b=>nt(b.title)));
+    let inflight=0;
+    (pendCache||[]).forEach(ev=>{const p=ev.payload||{};
+      if(ev.type==='add_book'&&(p.owner||'butthead')===owner&&p.title&&!have.has(nt(p.title))){have.add(nt(p.title));inflight++;}});
+    (G.proposals||[]).forEach(pr=>{if(pr.kind!=='add_book_from_inbox')return;
+      try{const p=JSON.parse(pr.proposal);if((p.owner||'butthead')===owner&&p.title&&!have.has(nt(p.title))){have.add(nt(p.title));inflight++;}}catch(e){}});
+    const seen=new Set();
+    let dupes=0;
     const fresh=rows.slice(1).filter(r=>(r[col('item_type')]||'').trim()==='book')
       .map(r=>({title:(r[col('title')]||'').trim(),author:(r[col('creators')]||'').trim(),
         publisher:(r[col('publisher')]||'').trim(),added:(r[col('added')]||'').trim()}))
-      .filter(b=>b.title&&!have.has(b.title.toLowerCase().replace(/[^a-z0-9]/g,'')));
-    if(!fresh.length)return toast('No new titles — every book in that export is already in the register');
-    const CAP=40;
+      .filter(b=>{if(!b.title||have.has(nt(b.title)))return false;
+        if(seen.has(nt(b.title))){dupes++;return false;}  // same title twice in the export
+        seen.add(nt(b.title));return true;});
+    if(!fresh.length)return toast(`No new titles for ${OWNER_LABEL[owner]} — everything in that export is already on the shelf${inflight?' or in review':''}`);
+    const CAP=250;
     const batch=fresh.slice(0,CAP);
-    toast(`Sending ${batch.length} new title${batch.length>1?'s':''} as proposals${fresh.length>CAP?` (${fresh.length-CAP} more — re-import after reviewing)`:''}…`);
+    toast(`${OWNER_LABEL[owner]}: sending ${batch.length} new title${batch.length>1?'s':''} as proposals`
+      +(inflight?` · ${inflight} already in review skipped`:'')+(dupes?` · ${dupes} duplicate row${dupes>1?'s':''} in the export skipped`:'')
+      +(fresh.length>CAP?` (${fresh.length-CAP} more — re-import after reviewing)`:'')+'…');
     let sent=0;
     for(const b of batch){
       const ok=await submit('add_book',{title:b.title,series:'',seq:'',author:b.author,
         media:'',genre:'',sub_genre:'',universe:'',publisher:b.publisher,
-        notes:'via Libib import',owner:'butthead',owned:true,read:false,
-        acquired_on:/^\d{4}-\d{2}-\d{2}$/.test(b.added)?b.added:'',read_on:''},{owner:'butthead'});
+        notes:'via Libib import',owner,owned:true,read:false,
+        acquired_on:/^\d{4}-\d{2}-\d{2}$/.test(b.added)?b.added:'',read_on:''},{owner},owner);
       if(ok)sent++;else break;
     }
-    toast(`Libib import: ${sent} of ${batch.length} queued — review under Proposed after jerry syncs`);
+    toast(`Libib import for ${OWNER_LABEL[owner]}: ${sent} of ${batch.length} queued — review under Proposed after jerry syncs`);
   }
 
   // ── Metadata (vocabulary management) ──
@@ -4052,7 +4001,10 @@ const LOG=(()=>{
 async function init(){
   try{
     await loadBundle();
-    const [booksV,indV,metricsV,intV,ordV,growthMetricsV,growthYearV,frYearV,frSeriesV,dlV,srV,bcV,boxesV,...yearV]=await Promise.all([
+    // The four legacy FR/DL/SR catalog tabs are no longer read: the
+    // Collecting section derives from the register (buildCollecting below).
+    // jerry keeps publishing them through the transition; Phase 3 stops that.
+    const [booksV,indV,metricsV,intV,ordV,growthMetricsV,growthYearV,bcV,boxesV,...yearV]=await Promise.all([
       fr(BOOKS_ID,"'Butthead Series'!A:K").catch(()=>[]),
       fr(BOOKS_ID,"'Butthead Individual'!A:J").catch(()=>[]),
       fr(READING_ID,'Metrics!A:G').catch(()=>[]),
@@ -4060,10 +4012,6 @@ async function init(){
       fr(BOOKS_ID,"'Book Mail Orders'!A:M").catch(()=>[]),
       fr(GROWTH_ID,'Metrics!A:G').catch(()=>[]),
       fr(GROWTH_ID,'2026!A:G').catch(()=>[]),
-      fr(FR_ID,"'Year Catalog'!A:H").catch(()=>[]),
-      fr(FR_ID,"'Series'!A:H").catch(()=>[]),
-      fr(FR_ID,"'DL'!A:H").catch(()=>[]),
-      fr(FR_ID,"'SR'!A:H").catch(()=>[]),
       fr(BOOKS_ID,"'Book Club'!A:G").catch(()=>[]),
       fr(GOBLIN_BOX_ID,"'Book Boxes'!A:M").catch(()=>[]),
       ...YEARS.map(y=>fr(READING_ID,`'${y}'!A:K`).catch(()=>[]))
@@ -4093,10 +4041,7 @@ async function init(){
     G.orders=parseOrders(ordV);
     G.growthMetrics=parseGrowthMetrics(growthMetricsV);
     G.growthYear=parseGrowthYear(growthYearV);
-    G.frBooks=parseFRYearCatalog(frYearV);
-    G.frSeries=enrichFRSeriesFromYearCatalog(parseFRSeries(frSeriesV), G.frBooks);
-    G.dlData=parseDL(dlV);
-    G.srData=parseSR(srV);
+    buildCollecting();
     G.bookClub=parseBookClub(bcV);
     YEARS.forEach((y,i)=>{allYD[y]=parseYear(yearV[i]);});
     document.getElementById('loading').style.display='none';
