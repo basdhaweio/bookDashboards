@@ -457,7 +457,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div class="sl">Reading velocity — books per month</div>
       <div class="tw">
         <table>
-          <thead><tr><th>Year</th><th class="nr">Print</th><th class="nr">eBook</th><th class="nr">Audio</th><th class="nr">Manga</th><th class="nr">GN</th><th class="nr">Comics</th><th class="nr">Total</th></tr></thead>
+          <thead><tr><th>Year</th><th class="nr">Print</th><th class="nr">eBook</th><th class="nr">Audio</th><th class="nr">Manga</th><th class="nr">GN</th><th class="nr">Comics</th><th class="nr">Shorts</th><th class="nr">Total</th></tr></thead>
           <tbody id="velBody"></tbody>
         </table>
       </div>
@@ -860,8 +860,10 @@ const DL_TAB='DL';
 const DOB=new Date(1985,10,1),START=new Date(2000,8,1);
 const YEARS=[2026,2025,2024,2023,2022,2021];
 // Canonical media casing is 'eBook' everywhere (bookdb migration 012).
-const MEDIA=['Print','eBook','Audio','Manga','Graphic Novel','Comics'];
-const MCOL={Print:'#c9a84c',eBook:'#4a7ab5',Audio:'#4a9b8e',Manga:'#7a6bab','Graphic Novel':'#c4614a',Comics:'#5a8a4a',Total:'#1a1a18'};
+// 'Short Stories' is its own media per John (2026-09-02) — collections are
+// called out separately, never folded into Print.
+const MEDIA=['Print','eBook','Audio','Manga','Graphic Novel','Comics','Short Stories'];
+const MCOL={Print:'#c9a84c',eBook:'#4a7ab5',Audio:'#4a9b8e',Manga:'#7a6bab','Graphic Novel':'#c4614a',Comics:'#5a8a4a','Short Stories':'#9a6a4a',Total:'#1a1a18'};
 const TKCOL=['#c9a84c','#4a9b8e','#7a6bab','#c4614a','#5a8a4a','#4a7ab5','#8a6a9a','#6a8a4a','#9a6a4a','#4a6a8a','#8a4a6a','#6a9a6a','#aa8a3a','#3a8a8a','#8a3a8a'];
 const SKIP=new Set(['Time in years','Recreational books per year','Time in months','Current Library Remaining','Rate of 50/yr','Rate of 100/yr','Rate of 150/yr','Days','Weeks per book','At pace, years to finish all current books','TTF FR:','Finish all planned books','Books per month','Weeks per','Read/Planned','Owned/Planned']);
 const TKW=['forgotten realms','dragonlance','shadowrun','resident evil','myst','warhammer'];
@@ -943,10 +945,10 @@ function parseYear(vals){
     const num=n(c0);
     if(num>0&&r[2])books.push({num,date:(r[1]||'').trim(),title:(r[2]||'').trim(),genre:(r[3]||'').trim(),media:(r[4]||'').trim(),pages:n(r[5])});
     const tLabel=(r[6]||'').trim();
-    if(i>=57&&i<=67&&['Print','eBook','Audio','Manga','Graphic Novel','Comics','Total','Illustrated Total'].includes(tLabel)){
+    if(i>=57&&i<=67&&['Print','eBook','Audio','Manga','Graphic Novel','Comics','Short Stories','Total','Illustrated Total'].includes(tLabel)){
       targets[tLabel]={total:n(r[7]),bynow:n(r[8]),actual:n(r[9])};
     }
-    if(i>=67&&c6&&!['Print','eBook','Audio','Manga','Graphic Novel','Comics','Total','Illustrated Total','Targets','Series Focus',''].includes(c6)){
+    if(i>=67&&c6&&!['Print','eBook','Audio','Manga','Graphic Novel','Comics','Short Stories','Total','Illustrated Total','Targets','Series Focus',''].includes(c6)){
       focus.push(c6);
     }
   }
@@ -1053,7 +1055,7 @@ function calcBooks(rows){
 }
 
 function mH(val,lbl,sub='',cls=''){return`<div class="m"><div class="mv ${cls}">${val}</div><div class="ml">${lbl}</div>${sub?`<div class="ms">${sub}</div>`:''}</div>`;}
-function mediaBadge(med){return{Print:'b-gold',Audio:'b-teal',Manga:'b-purple',Comics:'b-green',eBook:'b-teal','Graphic Novel':'b-coral'}[med]||'b-gray';}
+function mediaBadge(med){return{Print:'b-gold',Audio:'b-teal',Manga:'b-purple',Comics:'b-green',eBook:'b-teal','Graphic Novel':'b-coral','Short Stories':'b-coral'}[med]||'b-gray';}
 const MO_ORD={january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12};
 function relSort(s){if(!s)return 99;const l=s.toLowerCase();for(const[m,v]of Object.entries(MO_ORD))if(l.includes(m))return v;return 99;}
 
@@ -1400,7 +1402,7 @@ function renderThisYear(year){
       return`<div class="cb" style="margin:0"><div class="cbt">${sn}</div><div style="display:flex;gap:12px;margin-bottom:8px;font-family:var(--font-m);font-size:11px;color:var(--text3)"><span>read <strong style="color:var(--teal)">${totalRead}</strong></span><span>series size <strong style="color:var(--text)">${totalCount}</strong></span></div><div class="pr"><div class="pl">Read</div><div class="pt"><div class="pf" style="width:${rp.toFixed(1)}%;background:#4a9b8e"></div></div><div class="pv">${rp.toFixed(0)}%</div></div></div>`;
     }).join('')+'</div>';
   }else{fsEl.innerHTML='<div class="ms" style="color:var(--text3);margin-bottom:1.5rem">No focus series data.</div>';}
-  const bBadge={Print:'b-gold',Audio:'b-teal',Manga:'b-purple',Comics:'b-green',eBook:'b-teal','Graphic Novel':'b-coral'};
+  const bBadge={Print:'b-gold',Audio:'b-teal',Manga:'b-purple',Comics:'b-green',eBook:'b-teal','Graphic Novel':'b-coral','Short Stories':'b-coral'};
   document.getElementById('ty-books').innerHTML=books.map(b=>`<tr><td class="nr" style="color:var(--text3);font-family:var(--font-m)">${b.num}</td><td class="nr" style="color:var(--text3);font-family:var(--font-m)">${b.date}</td><td>${b.title}</td><td>${b.genre}</td><td><span class="badge ${bBadge[b.media]||'b-gray'}">${b.media}</span></td><td class="nr" style="font-family:var(--font-m);color:var(--text3)">${b.pages>0?fmt(b.pages):'—'}</td></tr>`).join('');
 }
 function renderCompletion(bm){
@@ -1834,7 +1836,7 @@ function renderLibGrowth(growthMetrics,bm){
 
 function renderBuyThisYear(books){
   const SOURCE_COLORS={'Tombolo':'#c9a84c','The Broken Binding':'#4a9b8e','Illumicrate':'#7a6bab','B&N':'#4a7ab5','Amazon':'#c4614a','Dark Carnival':'#5a8a4a','Brotherwise':'#8a6a9a','Wilson\'s Book World':'#9a6a4a'};
-  const FORMAT_COLORS={'Print':'#c9a84c','Manga':'#7a6bab','Comics':'#5a8a4a','eBook':'#4a7ab5','Audio':'#4a9b8e','Graphic Novel':'#c4614a'};
+  const FORMAT_COLORS={'Print':'#c9a84c','Manga':'#7a6bab','Comics':'#5a8a4a','eBook':'#4a7ab5','Audio':'#4a9b8e','Graphic Novel':'#c4614a','Short Stories':'#9a6a4a'};
   const GENRE_COLORS=['#7a6bab','#c9a84c','#4a9b8e','#c4614a','#5a8a4a','#4a7ab5','#8a6a9a','#6a8a4a','#9a6a4a','#4a6a8a'];
   // Metrics
   const sourceCounts={},genreCounts={},formatCounts={},monthlyCounts={};
