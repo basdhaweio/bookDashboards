@@ -3518,6 +3518,7 @@ const LOG=(()=>{
         <div class="ms" style="margin-top:6px">Only changed fields are sent. Status stays with ✓/📦. Missing a genre or publisher? Add it under Metadata first.</div>`;
     }else{
       el.innerHTML=`<div class="log-frow"><label>Date</label><input type="date" id="log-a-date" value="${today()}"></div>
+        <div class="log-frow"><label>Source</label>${vocabInput('log-a-source','source','')}</div>
         ${b.owned?'<div class="ms" style="margin-bottom:8px;color:var(--coral)">Heads up: already marked owned — log anyway if this is a new copy/format.</div>':''}
         <button class="log-act gold" onclick="LOG.doAcquired(${i})">Log it — now owned</button>`;
     }
@@ -3559,11 +3560,15 @@ const LOG=(()=>{
       <datalist id="log-dl-universe">${unis.map(v=>`<option>${esc(v)}</option>`).join('')}</datalist>`;
   }
   // Returns null if ok; on ok, snaps values in `set` to canonical casing.
+  // The shop rides as `source` (acquired events) or `source_store` (add_book
+  // payloads); both vet against the same 'source' vocabulary.
+  const VET_KINDS=Object.assign(Object.fromEntries(VOCAB_FIELDS.map(f=>[f,f])),
+    {vendor:'vendor',box:'box',source:'source',source_store:'source'});
   function vetVocab(set){
-    for(const f of VOCAB_FIELDS.concat(['vendor','box'])){
+    for(const f in VET_KINDS){
       if(!(f in set)||!set[f])continue;
-      const hit=vocabFor(f).find(v=>v.toLowerCase()===set[f].toLowerCase());
-      if(!hit)return f+': “'+set[f]+'” isn’t in the list — add it under Metadata first';
+      const hit=vocabFor(VET_KINDS[f]).find(v=>v.toLowerCase()===set[f].toLowerCase());
+      if(!hit)return VET_KINDS[f]+': “'+set[f]+'” isn’t in the list — add it under Metadata first';
       set[f]=hit;
     }
     return null;
@@ -3593,7 +3598,10 @@ const LOG=(()=>{
   }
   async function doAcquired(i){
     const b=(document.getElementById('log-results')._hits||[])[i];if(!b)return;
-    const ok=await submit('acquired',{book:bookRef(b),date:document.getElementById('log-a-date').value},b);
+    const p={book:bookRef(b),date:document.getElementById('log-a-date').value,
+      source:(document.getElementById('log-a-source')?.value||'').trim()};
+    const bad=vetVocab(p);if(bad)return toast(bad,true);
+    const ok=await submit('acquired',p,b);
     if(ok){toast('Logged: got “'+b.title+'”');search();}
   }
 
@@ -3645,6 +3653,7 @@ const LOG=(()=>{
         <div class="log-frow"><label>Status</label>
           <select id="log-n-status" onchange="LOG.addDates()"><option value="owned">Owned, not read</option><option value="read">Read & owned</option><option value="readonly">Read, not owned</option><option value="wish">Neither (wishlist)</option></select></div>
         <div class="log-frow" id="log-n-acqrow"><label>Acquired</label><input type="date" id="log-n-acqdate" value="${today()}"></div>
+        <div class="log-frow" id="log-n-srcrow"><label>Source</label>${vocabInput('log-n-source','source','')}</div>
         <div class="log-frow" id="log-n-readrow" style="display:none"><label>Read on</label><input type="date" id="log-n-readdate"></div>
         <div class="log-frow"><label>Owner</label><select id="log-n-owner"><option value="butthead">Com</option><option value="goblin">Shereen</option></select></div>
         <button class="log-act primary" onclick="LOG.doAdd()">Add to inbox</button>
@@ -3655,9 +3664,12 @@ const LOG=(()=>{
     }else f.style.display='none';
   }
   function addDates(){
-    // date rows follow the status: acquired-date when owned, read-date when read
+    // date rows follow the status: acquired-date (and its shop) when owned,
+    // read-date when read
     const st=document.getElementById('log-n-status').value;
-    document.getElementById('log-n-acqrow').style.display=(st==='owned'||st==='read')?'':'none';
+    const owned=(st==='owned'||st==='read')?'':'none';
+    document.getElementById('log-n-acqrow').style.display=owned;
+    document.getElementById('log-n-srcrow').style.display=owned;
     document.getElementById('log-n-readrow').style.display=(st==='read'||st==='readonly')?'':'none';
   }
   async function doAdd(){
@@ -3669,7 +3681,8 @@ const LOG=(()=>{
       media:v('log-n-media'),genre:v('log-n-genre'),sub_genre:v('log-n-subgenre'),
       universe:v('log-n-universe'),publisher:v('log-n-publisher'),notes:v('log-n-notes'),
       owner:v('log-n-owner'),owned,read,
-      acquired_on:owned?v('log-n-acqdate'):'',read_on:read?v('log-n-readdate'):''};
+      acquired_on:owned?v('log-n-acqdate'):'',read_on:read?v('log-n-readdate'):'',
+      source_store:owned?v('log-n-source'):''};
     const bad=vetVocab(p);if(bad)return toast(bad,true);
     const ok=await submit('add_book',p,{owner:p.owner});
     if(ok){toast('Added “'+title+'” to inbox');toggleAdd();}
@@ -4017,7 +4030,7 @@ const LOG=(()=>{
   }
 
   // ── Metadata (vocabulary management) ──
-  const META_TAB_KINDS=[['genre','Genre'],['sub_genre','Sub-genre'],['media','Media'],['publisher','Publisher'],['vendor','Box vendor'],['box','Box tier']];
+  const META_TAB_KINDS=[['genre','Genre'],['sub_genre','Sub-genre'],['media','Media'],['publisher','Publisher'],['source','Shop / source'],['vendor','Box vendor'],['box','Box tier']];
   function renderMeta(){
     document.getElementById('log-setup-meta').innerHTML=
       `<details ${ready()?'':'open'} style="margin-bottom:1.2rem">

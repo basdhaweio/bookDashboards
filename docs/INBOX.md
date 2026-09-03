@@ -64,10 +64,13 @@ Shereen's). Idempotency: skip if that (title, date) pair is already logged.
 ### `acquired`
 Mark the book owned.
 ```json
-{"book": {…}, "date": "2026-07-26"}
+{"book": {…}, "date": "2026-07-26", "source": "The Broken Binding"}
 ```
 May arrive for an already-owned book (new copy/format) — apply your own rule;
-the UI warns before sending.
+the UI warns before sending. `source` is the shop the copy came from (the
+acquisition's `source_store`, NOT the publisher) — optional, vetted against
+the `source` vocabulary client-side. Acquiring also clears the book's `need`
+flag: the hunt is over.
 
 ### `add_book`
 A book not in the catalog. Create as a **proposal** (existing bookdb review
@@ -77,11 +80,15 @@ flow), not a direct catalog insert.
  "genre": "Fantasy", "sub_genre": "", "universe": "", "publisher": "",
  "pub_date": "", "need": false,
  "notes": "", "owner": "goblin", "owned": true, "read": false,
- "acquired_on": "2026-08-03", "read_on": ""}
+ "acquired_on": "2026-08-03", "read_on": "", "source_store": "Tombolo"}
 ```
 Empty `series` means standalone. `acquired_on`/`read_on` are optional ISO
 dates; when the approved proposal is applied they create the matching
-acquisition/read events alongside the book, dated.
+acquisition/read events alongside the book, dated. `source_store` is the
+shop the copy came from (never the publisher); it rides the acquisition,
+which is created when a date OR a shop is present — a shop with no date
+records an undated acquisition (year NULL) rather than dropping the
+provenance.
 
 `universe` was accepted by the form but silently dropped when the approved
 proposal was applied; since the collecting migration it decides whether a book
