@@ -3425,18 +3425,22 @@ const LOG=(()=>{
   let expanded=null;
   // Core register fields the dashboards can't chart without. Books approved
   // from Proposed often land with these blank — surface them for follow-up.
+  // Placeholder titles ("<Series> #N" shelf-slot rows, the two Word and Void
+  // shorts) are data debt too: they hold a count but not a book, so they ride
+  // the same review list until renamed via ✎.
   function needsData(b){
     const m=[];
     if(!b.author)m.push('author');
     if(!b.type)m.push('genre');
     if(!b.media)m.push('media');
+    if(/#\d+$/.test(b.title)||/^Word and Void Short Story/.test(b.title))m.push('real title');
     return m;
   }
   function renderBook(){
     document.getElementById('log-setup-book').innerHTML=hintCard();
     const n=(G.indBooks||[]).filter(b=>needsData(b).length).length;
     document.getElementById('log-needs-bar').innerHTML=n
-      ?`<button class="log-ghost" style="margin-bottom:0.8rem;border-color:var(--coral);color:var(--coral)" onclick="LOG.showNeedsData()">⚠ ${n} book${n===1?'':'s'} missing genre, media, or author — review</button>`
+      ?`<button class="log-ghost" style="margin-bottom:0.8rem;border-color:var(--coral);color:var(--coral)" onclick="LOG.showNeedsData()">⚠ ${n} book${n===1?'':'s'} missing genre, media, author, or a real title — review</button>`
       :'';
     search();refreshBadge();
   }
@@ -3482,6 +3486,16 @@ const LOG=(()=>{
     const hits=(G.indBooks||[]).filter(b=>needsData(b).length)
       .sort((a,b)=>a.title.localeCompare(b.title)).slice(0,100);
     renderHits(hits,'<div class="ms" style="padding:8px 2px">All caught up — every book has its core fields.</div>');
+    // Register-wide debts that aren't one book's blank field — kept with the
+    // review list so a cleanup pass sees the whole picture (John, 2026-09-03).
+    document.getElementById('log-results').insertAdjacentHTML('afterbegin',
+      `<div class="cb" style="margin-bottom:10px"><div class="cbt">Register-wide data debts</div>
+        <div class="ms" style="line-height:1.6">
+        · “#N” titles below are shelf-slot placeholders — rename via ✎ when the real book is identified<br>
+        · Discworld rows carry reading-order subseries (City Watch, Rincewind…) in Sub-genre — a real sub-series field is future schema work<br>
+        · Audiobook durations have no data source yet, so Audio time metrics stay empty<br>
+        · Shereen's catalog awaits her cleaned-up list — special editions and nonfiction are still not ingested<br>
+        · ~200 pre-2021 reads/acquisitions remain undecoded “Series #N” ledger events: dates exist, exact books unknown</div></div>`);
   }
   function expand(i,type){
     const hits=document.getElementById('log-results')._hits||[];const b=hits[i];if(!b)return;

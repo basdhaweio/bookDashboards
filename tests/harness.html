@@ -1,0 +1,156 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>bookDashboards render harness</title>
+<style>
+  body{font:14px/1.5 system-ui,sans-serif;margin:20px;color:#222;background:#faf9f6}
+  h1{font-size:18px}
+  .r{padding:6px 10px;border-left:4px solid #ccc;margin:4px 0;background:#fff}
+  .ok{border-color:#4a9b8e}.fail{border-color:#c4614a;background:#fdf3f1}
+  .d{color:#777;font-size:12px}
+  #sum{font-weight:600;margin:10px 0}
+  iframe{width:1280px;max-width:100%;height:720px;border:1px solid #ddd;background:#fff}
+  code{background:#f0efe9;padding:1px 4px;border-radius:3px}
+</style>
+</head>
+<body>
+<h1>bookDashboards render harness</h1>
+<p class="d">Loads <code>/index.html</code> against the local <code>/data/bookdb.json</code> and
+asserts the rendered numbers against the bundle itself. Run it any time via the
+dev server: <code>py -m http.server 8123 --directory bookDashboards</code> then open
+<code>http://localhost:8123/tests/harness.html</code>. Every check recomputes its
+expectation from the bundle, so ordinary data drift never fails it — only a
+rendering/math/lookup slip does.</p>
+<div id="sum">running…</div>
+<div id="out"></div>
+<iframe id="fr" src="/index.html"></iframe>
+<script>
+const results=[],errors=[];
+const res=(name,ok,detail)=>results.push({name,ok:!!ok,detail:detail||''});
+const norm=s=>parseInt(String(s??'').replace(/[^0-9]/g,''),10);
+const fr=document.getElementById('fr');
+fr.addEventListener('load',()=>{try{fr.contentWindow.addEventListener('error',e=>errors.push(e.message||'error'));}catch(_){/* cross-origin only if misconfigured */}});
+
+function draw(){
+  const out=document.getElementById('out');
+  out.innerHTML=results.map(r=>`<div class="r ${r.ok?'ok':'fail'}">${r.ok?'✅':'❌'} ${r.name}${r.detail?`<div class="d">${r.detail}</div>`:''}</div>`).join('');
+  const bad=results.filter(r=>!r.ok).length;
+  document.getElementById('sum').textContent=bad?`${bad} of ${results.length} checks FAILED`:`All ${results.length} checks passed`;
+  document.title=(bad?'❌ ':'✅ ')+'bookDashboards render harness';
+}
+
+const parseOrdDate=raw=>{
+  raw=(raw||'').trim();
+  let m=raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(m)return new Date(+m[1],+m[2]-1,+m[3]);
+  const t=Date.parse(raw);
+  return isNaN(t)?null:new Date(t);
+};
+
+async function check(name,fn){
+  try{await fn();}catch(e){res(name,false,'threw: '+e);}
+}
+
+async function main(){
+  const raw=await(await fetch('/data/bookdb.json',{cache:'no-store'})).text();
+  const d=JSON.parse(raw);
+  const tabs=d.tabs;
+  const tget=suf=>{const hit=Object.entries(tabs).find(([k])=>k.endsWith('|'+suf));return hit&&hit[1];};
+  const w=()=>fr.contentWindow, doc=()=>fr.contentDocument;
+  // textContent, never innerText: innerText is layout-dependent and comes up
+  // empty for panels the iframe hasn't reflowed yet. textContent always
+  // carries the rendered markup's text, and the number-before-label regexes
+  // tolerate the missing whitespace.
+  const ptxt=id=>doc().getElementById('tab-'+id)?.textContent||'';
+  const go=async(id,group)=>{w().switchTab(id,group);await new Promise(r=>setTimeout(r,600));};
+  const waitFor=async(pred,ms)=>{const t=Date.now();while(Date.now()-t<(ms||4000)){try{if(pred())return true;}catch(_){}await new Promise(r=>setTimeout(r,200));}return false;};
+
+  // wait for the app's initial render
+  await waitFor(()=>/TOTAL TRACKED/i.test(ptxt('overview'))&&norm((ptxt('overview').match(/([\d,]+)\s*TOTAL TRACKED/i)||[])[1]),20000);
+
+  await check('overview renders',async()=>{
+    res('overview renders',/TOTAL TRACKED/i.test(ptxt('overview')));
+  });
+
+  const ind=tget('Butthead Individual');
+  await check('tracked total matches the register',async()=>{
+    const per={};for(const r of ind.slice(1))per[r[10]]=(per[r[10]]||0)+1;
+    const all=ind.length-1,shown=norm((ptxt('overview').match(/([\d,]+)\s*TOTAL TRACKED/i)||[])[1]);
+    res('tracked total matches the register',[all,per.butthead||0,per.goblin||0].includes(shown),
+        `shown ${shown} · register: all ${all}, Com ${per.butthead||0}, Shereen ${per.goblin||0}`);
+  });
+
+  await check('History media columns follow the Metrics rows',async()=>{
+    await go('history','reading');
+    const metrics=Object.entries(tabs).map(([k,v])=>v).find(v=>v&&v[0]&&v[0][0]==='Metric');
+    const media=metrics.slice(1,-1).map(r=>r[0]); // drop header + Total
+    const headCells=doc().querySelectorAll('#tab-history table thead th').length;
+    const rowCells=doc().querySelector('#velBody tr')?.children.length||0;
+    res('History media columns follow the Metrics rows',
+        headCells===media.length+2&&rowCells===media.length+2,
+        `media ${media.length} -> expect ${media.length+2} cells; header ${headCells}, row ${rowCells}`);
+  });
+
+  await check('This Year shows targets',async()=>{
+    await go('thisyear','reading');
+    const ok=await waitFor(()=>/Annual goal/.test(ptxt('thisyear'))&&/Progress vs targets/.test(ptxt('thisyear')));
+    res('This Year shows targets',ok);
+  });
+
+  await check('Buy This Year table matches the ledger tab',async()=>{
+    await go('buythisyear','buying');
+    const y=new Date().getFullYear();
+    const growth=Object.entries(tabs).find(([k,v])=>k.endsWith('|'+y)&&v&&v[0]&&v[0][0]==='Num'&&v[0][5]==='Format');
+    const want=growth?growth[1].slice(1).filter(r=>r[0]&&r[2]).length:0;
+    const got=doc().querySelectorAll('#bty-list tr').length;
+    res('Buy This Year table matches the ledger tab',got===want,`table ${got} rows vs tab ${want}`);
+  });
+
+  await check('Book Mail history is complete and newest-first',async()=>{
+    await go('bookmail','buying');
+    const orders=tget('Book Mail Orders');
+    const want=orders.slice(1).filter(r=>r[0]||r[2]).length;
+    const trs=[...doc().querySelectorAll('#tbb-all tr')];
+    const first=parseOrdDate(trs[0]?.children[0]?.innerText),last=parseOrdDate(trs[trs.length-1]?.children[0]?.innerText);
+    res('Book Mail history is complete and newest-first',
+        trs.length===want&&(!first||!last||first>=last),
+        `table ${trs.length} vs tab ${want}; first ${trs[0]?.children[0]?.innerText} >= last ${trs[trs.length-1]?.children[0]?.innerText}`);
+  });
+
+  await check('Collecting FR overview matches the register',async()=>{
+    await go('col-fr','collecting');
+    await waitFor(()=>/Total tracked/.test(ptxt('col-fr')));
+    const fro=ind.slice(1).filter(r=>r[8]==='Forgotten Realms');
+    const want={tracked:fro.length,read:fro.filter(r=>r[7]==='x').length,
+                owned:fro.filter(r=>r[6]==='x').length,need:fro.filter(r=>r[16]==='x').length};
+    const t=ptxt('col-fr');
+    const shown={tracked:norm((t.match(/([\d,]+)\s*Total tracked/)||[])[1]),
+                 read:norm((t.match(/([\d,]+)\s*Read/)||[])[1]),
+                 owned:norm((t.match(/([\d,]+)\s*Owned/)||[])[1]),
+                 need:norm((t.match(/([\d,]+)\s*Still needed/)||[])[1])};
+    const ok=Object.keys(want).every(k=>shown[k]===want[k]);
+    res('Collecting FR overview matches the register',ok,
+        `shown ${JSON.stringify(shown)} vs register ${JSON.stringify(want)}`);
+  });
+
+  await check('Proposed count matches open proposals',async()=>{
+    await go('logproposed','log');
+    const want=tget('Proposals').length-1;
+    const label=doc().getElementById('log-proposed-tab')?.textContent||'';
+    const got=norm((label.match(/\((\d+)\)/)||[])[1])||0;
+    res('Proposed count matches open proposals',got===want||(want===0&&!/\(/.test(label)),
+        `label "${label}" vs tab ${want} rows`);
+  });
+
+  await check('bundle carries no stray ebook casings',async()=>{
+    res('bundle carries no stray ebook casings',!raw.includes('"Ebook"')&&!raw.includes('"EBook"'));
+  });
+
+  res('no runtime errors in the app',errors.length===0,errors.slice(0,3).join(' | '));
+  draw();
+}
+main().catch(e=>{res('harness ran',false,String(e));draw();});
+</script>
+</body>
+</html>
