@@ -1731,11 +1731,12 @@ function decorateOrderPending(){
 }
 
 function renderBookMail(orders){
-  const pending=orders.filter(o=>o.delivered==='Unfulfilled'||o.paid==='Unpaid');
+  const pending=orders.filter(o=>o.delivered!=='Cancelled'&&(o.delivered==='Unfulfilled'||o.paid==='Unpaid'));
   const ful=orders.filter(o=>o.delivered==='Fulfilled'&&o.paid==='Paid');
-  document.getElementById('tbb-m').innerHTML=mH(orders.length,'Total orders')+mH(ful.length,'Fulfilled','','t')+mH(pending.length,'Pending','','c')+mH(orders.reduce((s,o)=>s+o.count,0),'Books ordered');
+  // Books ordered excludes cancelled orders — those books are never coming.
+  document.getElementById('tbb-m').innerHTML=mH(orders.length,'Total orders')+mH(ful.length,'Fulfilled','','t')+mH(pending.length,'Pending','','c')+mH(orders.filter(o=>o.delivered!=='Cancelled').reduce((s,o)=>s+o.count,0),'Books ordered');
   document.getElementById('tbb-orders').innerHTML=pending.map(o=>{const sb=o.paid==='Unpaid'?'b-coral':o.tracking?'b-teal':'b-gold',sl=o.paid==='Unpaid'?'Unpaid':o.tracking?'Shipped':'Unfulfilled';return`<div class="or"><div style="font-family:var(--font-m);font-size:11px;color:var(--text3)">${o.date}</div><div style="font-size:12px">${esc(o.books||(o.sub&&o.sub!=='N/A'?o.sub+' credit — TBD':'TBD'))}</div><div style="font-size:11px;color:var(--text3)">${esc(o.series||(o.type==='Sub'?(o.sub&&o.sub!=='N/A'?o.sub+' sub':'sub'):'—'))}</div><div style="font-family:var(--font-m);font-size:10px;color:var(--text3)">${o.order||'—'}</div><div data-okey="${esc(ordKeyMail(o))}"><span class="badge ${sb}">${sl}</span></div></div>`;}).join('');
-  document.getElementById('tbb-all').innerHTML=[...orders].reverse().map(o=>`<tr><td style="font-family:var(--font-m);font-size:11px;white-space:nowrap">${o.date}</td><td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.books||'—'}</td><td>${o.series||'—'}</td><td>${o.author||'—'}</td><td>${esc(o.type||'—')}${o.type==='Sub'&&o.sub&&o.sub!=='N/A'?' · '+esc(o.sub):''}</td><td class="nr">${o.count||1}</td><td style="white-space:nowrap" data-okey="${esc(ordKeyMail(o))}"><span class="badge ${o.paid==='Paid'?'b-green':'b-coral'}">${o.paid}</span> <span class="badge ${o.delivered==='Fulfilled'?'b-teal':'b-gold'}">${o.delivered==='Fulfilled'?'Fulfilled':o.tracking?'Shipped':o.delivered}</span></td></tr>`).join('');
+  document.getElementById('tbb-all').innerHTML=[...orders].reverse().map(o=>`<tr><td style="font-family:var(--font-m);font-size:11px;white-space:nowrap">${o.date}</td><td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.books||'—'}</td><td>${o.series||'—'}</td><td>${o.author||'—'}</td><td>${esc(o.type||'—')}${o.type==='Sub'&&o.sub&&o.sub!=='N/A'?' · '+esc(o.sub):''}</td><td class="nr">${o.count||1}</td><td style="white-space:nowrap" data-okey="${esc(ordKeyMail(o))}">${o.delivered==='Cancelled'?'<span class="badge b-gray">Cancelled</span>':`<span class="badge ${o.paid==='Paid'?'b-green':'b-coral'}">${o.paid}</span> <span class="badge ${o.delivered==='Fulfilled'?'b-teal':'b-gold'}">${o.delivered==='Fulfilled'?'Fulfilled':o.tracking?'Shipped':o.delivered}</span>`}</td></tr>`).join('');
   decorateOrderPending();
 }
 
@@ -3745,8 +3746,9 @@ const LOG=(()=>{
       <div class="log-frow"><label>Paid?</label><select id="log-o-paid"><option>Paid</option><option>Unpaid</option></select></div>
       <button class="log-act primary" onclick="LOG.doNewOrder()">Log order</button>
       </div>`;
-    // Same classification as the Book Mail tab
-    const open=(G.orders||[]).filter(o=>o.delivered==='Unfulfilled'||o.paid==='Unpaid').slice().reverse();
+    // Same classification as the Book Mail tab. Cancelled is terminal: never
+    // an open order, whatever the paid state says.
+    const open=(G.orders||[]).filter(o=>o.delivered!=='Cancelled'&&(o.delivered==='Unfulfilled'||o.paid==='Unpaid')).slice().reverse();
     const done=(G.orders||[]).filter(o=>o.delivered==='Fulfilled'&&o.paid==='Paid').slice(-5).reverse();
     const row=(o,i,canEdit)=>`<div class="log-item">
       <div class="log-item-hd" ${canEdit?`style="cursor:pointer" onclick="LOG.expandOrder(${i})"`:''}>
@@ -3774,6 +3776,7 @@ const LOG=(()=>{
         <button class="log-act" onclick="LOG.toggleRow('log-o-arr-${i}')">Arrived</button>
         ${!o.tracking?`<button class="log-act" onclick="LOG.doOrderUpdate(${i},{tracking:'Shipped'})" title="shipped, no tracking number — paste a number below if one turns up later">Shipped</button>`:''}
         <button class="log-act" onclick="LOG.toggleRow('log-o-edit-${i}')">Edit details</button>
+        <button class="log-act" style="border-color:var(--coral);color:var(--coral)" onclick="if(confirm('Cancel this order? It leaves the open list and shows as Cancelled in history.'))LOG.doOrderUpdate(${i},{delivered:'Cancelled'})">Cancel order</button>
       </div>
       <div class="log-frow" id="log-o-arr-${i}" style="display:none"><label>On</label>
         <input type="date" id="log-o-arrd-${i}" value="${today()}">

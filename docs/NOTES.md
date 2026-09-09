@@ -18,5 +18,7 @@ publish.
 - **Book Mail — duplicate Sun Eater order.** Two active unfulfilled orders
   both say "The Sun Eater 6-7": #TBBSUB751375 (July 1, 2026, order id 64) and
   #TBBSUB795281 (2026-08-03, order id 165). Different order numbers, so one
-  was probably re-placed or double-logged. John: Mark cancelled on whichever
-  isn't the live order (Log → Orders, or Book Mail tab).
+  was probably re-placed or double-logged. John: tap the order in
+  Log → Orders and use **Cancel order** (added 2026-09-09) on whichever
+  isn't the live one — it drops from the open list and shows Cancelled in
+  history.
