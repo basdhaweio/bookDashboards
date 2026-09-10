@@ -774,6 +774,16 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div id="log-setup-book"></div>
       <div class="sl">Finished, acquired, or fixing up a book</div>
       <input id="log-q" class="log-search" type="search" placeholder="Search title, series, or author…" autocomplete="off" oninput="LOG.search()">
+      <div class="log-frow" style="margin:6px 0 2px;gap:6px;align-items:center">
+        <select id="log-br-mode" onchange="LOG.brMode()" style="max-width:110px">
+          <option value="author">Author</option>
+          <option value="series">Series</option>
+          <option value="universe">Universe</option>
+        </select>
+        <input id="log-br-q" list="log-dl-br" placeholder="browse everything by…" autocomplete="off" oninput="LOG.browse()">
+        <datalist id="log-dl-br"></datalist>
+        <label class="ms" style="white-space:nowrap"><input type="checkbox" id="log-br-need" onchange="LOG.browse()"> need only</label>
+      </div>
       <div id="log-needs-bar"></div>
       <div id="log-results"></div>
       <div style="margin-top:1.2rem">
@@ -3443,41 +3453,107 @@ const LOG=(()=>{
     document.getElementById('log-needs-bar').innerHTML=n
       ?`<button class="log-ghost" style="margin-bottom:0.8rem;border-color:var(--coral);color:var(--coral)" onclick="LOG.showNeedsData()">⚠ ${n} book${n===1?'':'s'} missing genre, media, author, or a real title — review</button>`
       :'';
-    search();refreshBadge();
+    brFillList();search();refreshBadge();
+  }
+  function rowHTML(b,key,pend){
+    const dots=`<div class="log-dots" title="${b.read?'read':''}${b.owned?' owned':''}">
+      ${b.read?'<div class="log-dot" style="background:var(--teal2)"></div>':''}
+      ${b.owned?'<div class="log-dot" style="background:var(--gold2)"></div>':''}
+      ${!b.owned&&!b.read?'<div class="log-dot" style="background:var(--coral)"></div>':''}</div>`;
+    const pendMark=(['finished','acquired','book_update'].some(t=>pend.has(t+'|'+b.title+'|'+realSeries(b))))?'<span class="log-badge-pend">pending</span>':'';
+    const needMark=b.need?'<span class="badge b-coral" style="margin-left:6px">NEED</span>':'';
+    const miss=needsData(b);
+    const missMark=miss.length?`<span class="log-badge-data">needs ${miss.join(', ')}</span>`:'';
+    return`<div class="log-item">
+      <div class="log-item-hd">
+        ${dots}
+        <div class="log-item-info">
+          <div class="log-item-title">${esc(b.title)}${pendMark}${needMark}${missMark}</div>
+          <div class="log-item-meta">${esc(b.series)}${b.seq?' #'+esc(b.seq):''} · ${esc(b.author)}${b.media?' · '+esc(b.media):''}${b.pubDate?' · '+esc(b.pubDate):''}${OWNER==='all'?' · '+(OWNER_LABEL[b.owner]||''):''}</div>
+        </div>
+        <div class="log-acts">
+          <button class="log-act primary" onclick="LOG.expand(${key},'finished')">✓ Read it</button>
+          <button class="log-act gold" onclick="LOG.expand(${key},'acquired')" ${b.owned?'title="already owned"':''}>📦 Got it</button>
+          <button class="log-act" onclick="LOG.expand(${key},'edit')" title="edit register details">✎</button>
+        </div>
+      </div>
+      <div class="log-exp" id="log-exp-${key}"></div>
+    </div>`;
   }
   function renderHits(hits,emptyMsg){
     const out=document.getElementById('log-results');
     const pend=pendingKeys(pendCache);
-    out.innerHTML=hits.map((b,i)=>{
-      const key=i;
-      const dots=`<div class="log-dots" title="${b.read?'read':''}${b.owned?' owned':''}">
-        ${b.read?'<div class="log-dot" style="background:var(--teal2)"></div>':''}
-        ${b.owned?'<div class="log-dot" style="background:var(--gold2)"></div>':''}
-        ${!b.owned&&!b.read?'<div class="log-dot" style="background:var(--coral)"></div>':''}</div>`;
-      const pendMark=(['finished','acquired','book_update'].some(t=>pend.has(t+'|'+b.title+'|'+realSeries(b))))?'<span class="log-badge-pend">pending</span>':'';
-      const miss=needsData(b);
-      const missMark=miss.length?`<span class="log-badge-data">needs ${miss.join(', ')}</span>`:'';
-      return`<div class="log-item">
-        <div class="log-item-hd">
-          ${dots}
-          <div class="log-item-info">
-            <div class="log-item-title">${esc(b.title)}${pendMark}${missMark}</div>
-            <div class="log-item-meta">${esc(b.series)}${b.seq?' #'+esc(b.seq):''} · ${esc(b.author)}${b.media?' · '+esc(b.media):''}${OWNER==='all'?' · '+(OWNER_LABEL[b.owner]||''):''}</div>
-          </div>
-          <div class="log-acts">
-            <button class="log-act primary" onclick="LOG.expand(${key},'finished')">✓ Read it</button>
-            <button class="log-act gold" onclick="LOG.expand(${key},'acquired')" ${b.owned?'title="already owned"':''}>📦 Got it</button>
-            <button class="log-act" onclick="LOG.expand(${key},'edit')" title="edit register details">✎</button>
-          </div>
-        </div>
-        <div class="log-exp" id="log-exp-${key}"></div>
-      </div>`;
-    }).join('')||emptyMsg;
+    out.innerHTML=hits.map((b,i)=>rowHTML(b,i,pend)).join('')||emptyMsg;
     out._hits=hits;expanded=null;
+  }
+  // ── Browse: the review view — everything by an author/series/universe,
+  // grouped universe ▸ series, books in sequence order, with owned/read dots
+  // and NEED badges. Series counts come from the whole register so an author
+  // filter can't make a series look more complete than it is (John, 2026-09-10).
+  function brFillList(){
+    const m=document.getElementById('log-br-mode').value;
+    const src=(G.indBooks||[]);
+    let vals;
+    if(m==='author')vals=[...new Set(src.map(b=>b.author).filter(Boolean))];
+    else if(m==='series')vals=[...new Set(src.map(b=>b.series).filter(s=>s&&s!=='Standalones'))];
+    else vals=[...new Set(src.map(b=>b.universe).filter(Boolean))];
+    document.getElementById('log-dl-br').innerHTML=vals.sort((a,b)=>a.localeCompare(b)).map(v=>`<option>${esc(v)}</option>`).join('');
+  }
+  function brMode(){brFillList();document.getElementById('log-br-q').value='';browse();}
+  let brT=null;
+  function browse(){
+    clearTimeout(brT);
+    brT=setTimeout(()=>{
+      const m=document.getElementById('log-br-mode').value;
+      const q=(document.getElementById('log-br-q').value||'').trim().toLowerCase();
+      const needOnly=document.getElementById('log-br-need').checked;
+      if(!q&&!needOnly)return;
+      document.getElementById('log-q').value='';
+      const hits=(G.indBooks||[]).filter(b=>{
+        if(needOnly&&!b.need)return false;
+        if(!q)return true;
+        if(m==='author')return(b.author||'').toLowerCase().includes(q);
+        if(m==='series')return(b.series||'').toLowerCase().includes(q);
+        return(b.universe||'').toLowerCase().includes(q);
+      });
+      const seqN=b=>{const n=parseFloat(b.seq);return isNaN(n)?9e9:n;};
+      const sKey=b=>b.series==='Standalones'?'￿':(b.series||'').toLowerCase();
+      hits.sort((a,b)=>
+        (a.universe||'￿').toLowerCase().localeCompare((b.universe||'￿').toLowerCase())
+        ||sKey(a).localeCompare(sKey(b))
+        ||seqN(a)-seqN(b)
+        ||(a.pubDate||'~').localeCompare(b.pubDate||'~')
+        ||a.title.localeCompare(b.title));
+      const tot={};
+      for(const b of (G.indBooks||[])){
+        const k=b.series+'|'+b.owner;
+        const t=tot[k]=tot[k]||{n:0,o:0,r:0};
+        t.n++;if(b.owned)t.o++;if(b.read)t.r++;
+      }
+      const out=document.getElementById('log-results');
+      const pend=pendingKeys(pendCache);
+      const cap=400,shown=hits.slice(0,cap);
+      let html='',lastU=null,lastS=null;
+      shown.forEach((b,i)=>{
+        const u=b.universe||'';
+        if(u!==lastU){lastU=u;lastS=null;if(u)html+=`<div class="sl" style="margin:12px 0 4px">${esc(u)}</div>`;}
+        if(b.series!==lastS){
+          lastS=b.series;
+          const t=tot[b.series+'|'+b.owner]||{n:0,o:0,r:0};
+          html+=`<div class="ms" style="margin:8px 0 4px;font-weight:600">${esc(b.series)}${b.series!=='Standalones'?` — owned ${t.o}/${t.n} · read ${t.r}`:''}</div>`;
+        }
+        html+=rowHTML(b,i,pend);
+      });
+      const nNeed=hits.filter(b=>b.need).length;
+      const sum=`<div class="ms" style="margin:4px 0 6px">${hits.length} book${hits.length===1?'':'s'}${hits.length>cap?` (showing ${cap})`:''} · owned ${hits.filter(b=>b.owned).length} · read ${hits.filter(b=>b.read).length}${nNeed?` · <span style="color:var(--coral)">needed ${nNeed}</span>`:''} — anything missing here isn't tracked yet</div>`;
+      out.innerHTML=hits.length?sum+html:'<div class="ms" style="padding:8px 2px">Nothing in the register matches.</div>';
+      out._hits=shown;expanded=null;
+    },200);
   }
   function search(){
     const q=(document.getElementById('log-q').value||'').trim().toLowerCase();
     if(q.length<2){document.getElementById('log-results').innerHTML='<div class="ms" style="padding:8px 2px">Type at least two letters — matches come from the current owner filter ('+(OWNER_LABEL[OWNER]||'Both')+').</div>';return;}
+    const br=document.getElementById('log-br-q');if(br)br.value='';
     const hits=(G.indBooks||[]).filter(b=>
       b.title.toLowerCase().includes(q)||b.series.toLowerCase().includes(q)||b.author.toLowerCase().includes(q)).slice(0,30);
     renderHits(hits,'<div class="ms" style="padding:8px 2px">No matches. Use “Add a book” below if it\'s new.</div>');
@@ -4071,7 +4147,7 @@ const LOG=(()=>{
     refreshBadge();
   }
 
-  return{renderBook,renderOrders,renderPending,renderProposed,doPropDecide,propEdit,doPropDecideSet,doSyncRequest,importLibib,renderMeta,doMetaAdd,dupeCheck,showNeedsData,search,expand,doFinished,doAcquired,
+  return{renderBook,renderOrders,renderPending,renderProposed,doPropDecide,propEdit,doPropDecideSet,doSyncRequest,importLibib,renderMeta,doMetaAdd,dupeCheck,showNeedsData,search,browse,brMode,expand,doFinished,doAcquired,
     toggleAdd,doAdd,addDates,saveBookEdit,doNewOrder,doNewBoxOrder,setOrderStyle,expandOrder,doOrderUpdate,
     toggleRow,saveOrderEdit,expandBox,doBoxUpdate,saveBoxEdit,saveSetup,forgetSetup,refreshBadge};
 })();
