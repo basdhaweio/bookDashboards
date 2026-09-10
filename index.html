@@ -3469,7 +3469,7 @@ const LOG=(()=>{
         ${dots}
         <div class="log-item-info">
           <div class="log-item-title">${esc(b.title)}${pendMark}${needMark}${missMark}</div>
-          <div class="log-item-meta">${esc(b.series)}${b.seq?' #'+esc(b.seq):''} · ${esc(b.author)}${b.media?' · '+esc(b.media):''}${b.pubDate?' · '+esc(b.pubDate):''}${OWNER==='all'?' · '+(OWNER_LABEL[b.owner]||''):''}</div>
+          <div class="log-item-meta">${esc(b.series)}${b.seq?' #'+esc(b.seq):''} · ${esc(b.author)}${b.media?' · '+esc(b.media):''}${b.pubDate?' · '+esc(b.pubDate):''}${OWNER==='all'?' · '+(OWNER_LABEL[b.owner]||''):''}${(G.inCopy&&G.inCopy[b.title.toLowerCase().replace(/[^a-z0-9]/g,'')+'|'+b.owner]||[]).map(t=>` · <span style="color:var(--purple)">in: ${esc(t)}</span>`).join('')}</div>
         </div>
         <div class="log-acts">
           <button class="log-act primary" onclick="LOG.expand(${key},'finished')">✓ Read it</button>
@@ -3596,6 +3596,12 @@ const LOG=(()=>{
     }else{
       el.innerHTML=`<div class="log-frow"><label>Date</label><input type="date" id="log-a-date" value="${today()}"></div>
         <div class="log-frow"><label>Source</label>${vocabInput('log-a-source','source','')}</div>
+        <div class="log-frow"><label>Omnibus?</label><label class="ms"><input type="checkbox" id="log-a-omni-${i}" onchange="LOG.toggleRow('log-a-omnirow-${i}')"> came inside a larger volume</label></div>
+        <div id="log-a-omnirow-${i}" style="display:none">
+          <div class="log-frow"><label>Edition</label><input id="log-a-omnit-${i}" placeholder="e.g. Theft of Swords"></div>
+          <div class="log-frow"><label>Contains</label><textarea id="log-a-contains-${i}" rows="3" placeholder="every work in the volume, one per line — including this one is fine" style="flex:1;font:inherit"></textarea></div>
+          <div class="ms" style="margin-bottom:6px">All listed works get marked owned with this date and source; titles not in the register park as add proposals tied to the copy.</div>
+        </div>
         ${b.owned?'<div class="ms" style="margin-bottom:8px;color:var(--coral)">Heads up: already marked owned — log anyway if this is a new copy/format.</div>':''}
         <button class="log-act gold" onclick="LOG.doAcquired(${i})">Log it — now owned</button>`;
     }
@@ -3677,9 +3683,16 @@ const LOG=(()=>{
     const b=(document.getElementById('log-results')._hits||[])[i];if(!b)return;
     const p={book:bookRef(b),date:document.getElementById('log-a-date').value,
       source:(document.getElementById('log-a-source')?.value||'').trim()};
+    if(document.getElementById(`log-a-omni-${i}`)?.checked){
+      const t=(document.getElementById(`log-a-omnit-${i}`).value||'').trim();
+      const lines=(document.getElementById(`log-a-contains-${i}`).value||'').split('\n').map(s=>s.trim()).filter(Boolean);
+      if(!t)return toast('Name the omnibus edition',true);
+      if(!lines.length)return toast('List the works the volume contains',true);
+      p.omnibus_title=t;p.contains=lines;
+    }
     const bad=vetVocab(p);if(bad)return toast(bad,true);
     const ok=await submit('acquired',p,b);
-    if(ok){toast('Logged: got “'+b.title+'”');search();}
+    if(ok){toast('Logged: got “'+b.title+'”'+(p.omnibus_title?' via “'+p.omnibus_title+'”':''));search();}
   }
 
   // ── Add-new book ──
@@ -3727,6 +3740,11 @@ const LOG=(()=>{
         <div class="log-frow"><label>Universe</label><input id="log-n-universe" list="log-dl-universe" placeholder="optional"></div>
         <div class="log-frow"><label>Publisher</label>${vocabInput('log-n-publisher','publisher','')}</div>
         <div class="log-frow"><label>Notes</label><input id="log-n-notes" placeholder="optional"></div>
+        <div class="log-frow"><label>Omnibus?</label><label class="ms"><input type="checkbox" id="log-n-omni" onchange="document.getElementById('log-n-omnirow').style.display=this.checked?'':'none'"> one volume containing several works</label></div>
+        <div id="log-n-omnirow" style="display:none">
+          <div class="ms" style="margin:2px 0 6px">Title above = the edition on the spine (never a register row). List the works it contains, one per line, optional trailing #seq — they get the series/author/genre entered here.</div>
+          <div class="log-frow"><label>Contains</label><textarea id="log-n-contains" rows="4" placeholder="The Crown Conspiracy #1&#10;Avempartha #2" style="flex:1;font:inherit"></textarea></div>
+        </div>
         <div class="log-frow"><label>Status</label>
           <select id="log-n-status" onchange="LOG.addDates()"><option value="owned">Owned, not read</option><option value="read">Read & owned</option><option value="readonly">Read, not owned</option><option value="wish">Neither (wishlist)</option></select></div>
         <div class="log-frow" id="log-n-acqrow"><label>Acquired</label><input type="date" id="log-n-acqdate" value="${today()}"></div>
@@ -3760,6 +3778,11 @@ const LOG=(()=>{
       owner:v('log-n-owner'),owned,read,
       acquired_on:owned?v('log-n-acqdate'):'',read_on:read?v('log-n-readdate'):'',
       source_store:owned?v('log-n-source'):''};
+    if(document.getElementById('log-n-omni').checked){
+      const lines=(document.getElementById('log-n-contains').value||'').split('\n').map(s=>s.trim()).filter(Boolean);
+      if(lines.length<2)return toast('An omnibus needs at least two contained works, one per line',true);
+      p.omnibus=true;p.contains=lines;
+    }
     const bad=vetVocab(p);if(bad)return toast(bad,true);
     const ok=await submit('add_book',p,{owner:p.owner});
     if(ok){toast('Added “'+title+'” to inbox');toggleAdd();}
@@ -3820,6 +3843,10 @@ const LOG=(()=>{
       <div class="log-frow"><label>Type</label><select id="log-o-type"><option>One-Time</option><option value="Sub">Subscription</option></select></div>
       <div class="log-frow"><label>Sub</label><input id="log-o-sub" list="log-sub-kinds" placeholder="SF&amp;F, Fantasy, …"><datalist id="log-sub-kinds"><option>SF&amp;F</option><option>Fantasy</option><option>Sci-fi</option><option>N/A</option></datalist></div>
       <div class="log-frow"><label>Paid?</label><select id="log-o-paid"><option>Paid</option><option>Unpaid</option></select></div>
+      <div class="log-frow"><label>Omnibus?</label><label class="ms"><input type="checkbox" id="log-o-omni" onchange="LOG.toggleRow('log-o-omnirow')"> one volume containing several works</label></div>
+      <div id="log-o-omnirow" style="display:none">
+        <div class="log-frow"><label>Contains</label><textarea id="log-o-contains" rows="3" placeholder="works inside, one per line (optional #seq)&#10;— arrival marks each one owned automatically" style="flex:1;font:inherit"></textarea></div>
+      </div>
       <button class="log-act primary" onclick="LOG.doNewOrder()">Log order</button>
       </div>`;
     // Same classification as the Book Mail tab. Cancelled is terminal: never
@@ -3928,10 +3955,16 @@ const LOG=(()=>{
     // Subscription credits are pre-logged before a title is assigned — allow
     // blank Books when the order is a sub with its kind named.
     if(!v('log-o-books')&&!(v('log-o-type')==='Sub'&&v('log-o-sub')))return toast('Books required (or mark it a Sub and name which)',true);
-    const ok=await submit('order_new',{list:'bookmail',date:v('log-o-date'),order:v('log-o-num'),books:v('log-o-books'),
+    const p={list:'bookmail',date:v('log-o-date'),order:v('log-o-num'),books:v('log-o-books'),
       series:v('log-o-series'),author:v('log-o-author'),count:+v('log-o-count')||1,
-      type:v('log-o-type'),sub:v('log-o-sub'),paid:v('log-o-paid')},null,'butthead');
-    if(ok){toast('Order logged');renderOrders();}
+      type:v('log-o-type'),sub:v('log-o-sub'),paid:v('log-o-paid')};
+    if(document.getElementById('log-o-omni').checked){
+      const lines=v('log-o-contains').split('\n').map(s=>s.trim()).filter(Boolean);
+      if(lines.length<2)return toast('An omnibus order needs its contained works, one per line',true);
+      p.contains=lines;p.count=lines.length;
+    }
+    const ok=await submit('order_new',p,null,'butthead');
+    if(ok){toast('Order logged'+(p.contains?' (omnibus of '+p.contains.length+')':''));renderOrders();}
   }
   async function doNewBoxOrder(){
     const v=id=>document.getElementById(id).value.trim();
@@ -4184,6 +4217,11 @@ async function init(){
     // additions; derived from loaded data when the bundle predates the tab.
     G.vocab={};
     (BUNDLE.tabs['bookdb|Meta Vocab']||[]).slice(1).forEach(r=>{if(r[1])(G.vocab[r[0]]=G.vocab[r[0]]||[]).push(r[1]);});
+    // Copies (omnibus/collection objects): map each contained work title to
+    // its edition title(s) so rows can chip "in: Theft of Swords".
+    G.copies=(BUNDLE.tabs['bookdb|Copies']||[]).slice(1).map(r=>({id:r[0],title:r[1],owner:r[2],publisher:r[3],format:r[4],store:r[5],acquired:r[6],notes:r[7],contains:(r[8]||'').split('|').filter(Boolean)}));
+    G.inCopy={};
+    for(const c of G.copies)for(const t of c.contains){const k=t.toLowerCase().replace(/[^a-z0-9]/g,'')+'|'+c.owner;(G.inCopy[k]=G.inCopy[k]||[]).push(c.title);}
     if(!Object.keys(G.vocab).length){
       const add=(k,v)=>{if(!v)return;const a=G.vocab[k]=G.vocab[k]||[];if(!a.includes(v))a.push(v);};
       G.allIndBooks.forEach(b=>{add('genre',b.type);add('sub_genre',b.subGenre);add('media',b.media);add('publisher',b.publisher);});

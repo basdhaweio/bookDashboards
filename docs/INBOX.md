@@ -72,6 +72,21 @@ acquisition's `source_store`, NOT the publisher) — optional, vetted against
 the `source` vocabulary client-side. Acquiring also clears the book's `need`
 flag: the hunt is over.
 
+**Omnibus** (docs/OMNIBUS.md): when the acquired object is one volume
+containing several works, add `omnibus_title` (the edition on the spine) and
+`contains` (all works in the volume, in order — strings with optional
+trailing ` #seq`; listing the anchor book itself is fine and fixes its
+position):
+```json
+{"book": {…The Crown Conspiracy…}, "date": "2026-09-15",
+ "source": "The Broken Binding", "omnibus_title": "Theft of Swords",
+ "contains": ["The Crown Conspiracy #1", "Avempartha #2"]}
+```
+The consumer records one `copies` row, links the anchor, and runs every
+other listed work through the same owned+dated-acquisition logic (exact
+title match per owner; misses park as `add_book_from_inbox` proposals
+carrying the copy id, so approving them completes the copy's contents).
+
 ### `add_book`
 A book not in the catalog. Create as a **proposal** (existing bookdb review
 flow), not a direct catalog insert.
@@ -99,6 +114,15 @@ just like `series`.
 ("Sophie Jordan"), not the catalog's "Last, First". Normalize to catalog
 convention during proposal review; the form does not auto-invert because
 that mangles names like "Ursula K. Le Guin" or "SenLinYu".
+
+**Omnibus** (docs/OMNIBUS.md): `omnibus: true` flips the payload's meaning —
+`title` becomes the EDITION title (never a register row) and `contains`
+lists the works, one entry each (optional trailing ` #seq`). Shared fields
+(series/author/genre/media/universe/…) apply to every contained work. On
+approval, each work is created — or linked when a same-owner title already
+exists — with owned/read and dated events applied per work, and the copy +
+contents recorded. `copy_id`/`copy_position` appear only on jerry-parked
+proposals from an omnibus Got-it or arrival; clients never send them.
 
 ### `book_update`
 Edit register fields on an existing book — the Log view's ✎ action. Same
@@ -132,6 +156,16 @@ stay distinguishable from "not owned" — a book tracked but not being hunted
 for has `need: false`, and inferring one from the other would erase exactly
 the difference the collecting checklists depend on. Accepts JSON booleans and
 the sheets' own vocabulary (`x`, `yes`, `1`).
+
+### `order_new` / `order_update` — omnibus contents
+A Book Mail order may declare its contained works up front: `contains` on
+`order_new` (list of titles, optional trailing ` #seq`), stored on the order
+and editable later via `order_update` `set.contains` (newline-separated).
+When such an order is marked arrived, the arrival records the copy (titled
+by the order's Books field) and marks each declared work owned with a dated
+acquisition — no itemize proposal needed; only titles that fail exact match
+park as proposals. Multi-book orders WITHOUT declared contents keep the old
+behavior: an itemize proposal, never a guess.
 
 ### `proposal_decide`
 Add/Drop from the Proposed tab. Sets `approved` on the `fix_proposals` row;
