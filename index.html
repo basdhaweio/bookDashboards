@@ -995,7 +995,7 @@ function parseOrders(vals){
   const orders=[];
   for(let i=1;i<vals.length;i++){
     const r=vals[i];if(!r[0]&&!r[2])continue;
-    orders.push({date:(r[0]||'').trim(),order:(r[1]||'').trim(),books:(r[2]||'').trim(),series:(r[3]||'').trim(),author:(r[4]||'').trim(),paid:(r[5]||'').trim(),delivered:(r[6]||'').trim(),tracking:(r[7]||'').trim(),fulfil:(r[8]||'').trim(),type:(r[9]||'').trim(),sub:(r[10]||'').trim(),count:n(r[12])});
+    orders.push({date:(r[0]||'').trim(),order:(r[1]||'').trim(),books:(r[2]||'').trim(),series:(r[3]||'').trim(),author:(r[4]||'').trim(),paid:(r[5]||'').trim(),delivered:(r[6]||'').trim(),tracking:(r[7]||'').trim(),fulfil:(r[8]||'').trim(),type:(r[9]||'').trim(),sub:(r[10]||'').trim(),count:n(r[12]),contains:(r[13]||'').trim()});
   }
   return orders;
 }
@@ -3857,7 +3857,7 @@ const LOG=(()=>{
       <div class="log-item-hd" ${canEdit?`style="cursor:pointer" onclick="LOG.expandOrder(${i})"`:''}>
         <div class="log-item-info">
           <div class="log-item-title" data-okey="${esc(ordKeyMail(o))}">${esc(o.books||(o.sub&&o.sub!=='N/A'?o.sub+' credit — title TBD':'TBD'))}</div>
-          <div class="log-item-meta">${esc(o.date)}${o.type==='Sub'?' · '+esc(o.sub&&o.sub!=='N/A'?o.sub+' subscription':'subscription'):''} · ${esc(o.order||'no #')}${o.series?' · '+esc(o.series):''}</div>
+          <div class="log-item-meta">${esc(o.date)}${o.type==='Sub'?' · '+esc(o.sub&&o.sub!=='N/A'?o.sub+' subscription':'subscription'):''} · ${esc(o.order||'no #')}${o.series?' · '+esc(o.series):''}${o.contains?` · <span style="color:var(--purple)">omnibus of ${o.contains.split('\n').filter(Boolean).length}</span>`:''}</div>
         </div>
         <span class="badge ${o.paid==='Unpaid'?'b-coral':o.delivered==='Fulfilled'?'b-green':o.tracking?'b-teal':'b-gold'}">${o.delivered==='Fulfilled'?'Fulfilled':o.paid==='Unpaid'?'Unpaid':o.tracking?'Shipped':'Unfulfilled'}</span>
       </div>
@@ -3867,7 +3867,7 @@ const LOG=(()=>{
     document.getElementById('log-orders-done').innerHTML=done.map(o=>row(o,-1,false)).join('')||'<div class="ms">—</div>';
     refreshBadge();
   }
-  const MAIL_EDIT=['date','order','books','series','author','count','type','sub'];
+  const MAIL_EDIT=['date','order','books','series','author','count','type','sub','contains'];
   function expandOrder(i){
     const o=(document.getElementById('log-orders-open')._open||[])[i];if(!o)return;
     const el=document.getElementById('log-oexp-'+i);
@@ -3886,7 +3886,9 @@ const LOG=(()=>{
         <button class="log-act primary" onclick="LOG.doOrderUpdate(${i},{delivered:'Fulfilled',fulfil:document.getElementById('log-o-arrd-${i}').value})">Confirm arrival</button></div>
       <div class="log-frow"><label>Tracking</label><input id="log-o-trk-${i}" value="${esc(o.tracking||'')}" placeholder="tracking #"><button class="log-act" onclick="LOG.doOrderUpdate(${i},{tracking:document.getElementById('log-o-trk-${i}').value.trim()})">Save</button></div>
       <div id="log-o-edit-${i}" style="display:none">
-        ${MAIL_EDIT.map(f=>`<div class="log-frow"><label>${f==='date'?'Ordered':f[0].toUpperCase()+f.slice(1)}</label><input id="log-oe-${f}-${i}" value="${esc(String(o[f]??''))}"></div>`).join('')}
+        ${MAIL_EDIT.map(f=>f==='contains'
+          ?`<div class="log-frow"><label>Contains</label><textarea id="log-oe-${f}-${i}" rows="3" placeholder="omnibus? list the works inside, one per line (optional #seq) — arrival then marks each one owned" style="flex:1;font:inherit">${esc(String(o[f]??''))}</textarea></div>`
+          :`<div class="log-frow"><label>${f==='date'?'Ordered':f[0].toUpperCase()+f.slice(1)}</label><input id="log-oe-${f}-${i}" value="${esc(String(o[f]??''))}"></div>`).join('')}
         <button class="log-act primary" onclick="LOG.saveOrderEdit(${i})">Save changed fields</button>
       </div>`;
     el.classList.add('open');
