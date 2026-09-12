@@ -788,6 +788,8 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div id="log-results"></div>
       <div style="margin-top:1.2rem">
         <button class="log-ghost" onclick="LOG.toggleAdd()">＋ Add a book that isn't in the library yet</button>
+        <button class="log-ghost" onclick="LOG.toggleTrack()" style="margin-left:6px">🔍 Track a whole series</button>
+        <div id="log-trackform" style="display:none"></div>
         <div id="log-addform" style="display:none"></div>
       </div>
     </div>
@@ -3360,6 +3362,7 @@ const LOG=(()=>{
       case'book_update':return`✎ “${b.title}” → ${Object.keys(p.set||{}).join(', ')}`;
       case'meta_add':return`🏷 New ${p.kind}: ${p.value}`;
       case'proposal_decide':return`${p.decision==='approve'?'✔ Add':'✖ Drop'}${p.set?' (edited: '+Object.keys(p.set).join(', ')+')':''}: ${p.target||('proposal '+p.id)}`;
+      case'track_series':return`🔍 Track series: ${p.series}${p.author?' ('+p.author+')':''}`;
       case'sync_request':return`⟳ Sync from ${p.source||'all sources'}`;
       case'order_new':return p.list==='bookboxes'
         ?`🎁 Box: ${p.vendor}${p.box?' '+p.box:''} — ${p.title||'title TBA'}${p.want&&p.want!=='Yes'?' · want: '+p.want:''}`
@@ -3757,6 +3760,25 @@ const LOG=(()=>{
       if(OWNER==='goblin')document.getElementById('log-n-owner').value='goblin';
       f.style.display='block';
     }else f.style.display='none';
+  }
+  function toggleTrack(){
+    const f=document.getElementById('log-trackform');
+    if(f.style.display==='none'){
+      f.innerHTML=`<div class="cb" style="margin-top:10px">
+        <div class="ms" style="margin-bottom:6px">Looks the series up (Wikidata roster when it exists, otherwise a Google Books author sweep) and parks every book as a proposal on the Proposed tab — nothing enters the register until you Add it. Candidates from a sweep may include noise: Drop those.</div>
+        <div class="log-frow"><label>Series *</label><input id="log-t-series" placeholder="e.g. Gods of the Ragnarok Era"></div>
+        <div class="log-frow"><label>Author</label><input id="log-t-author" placeholder="strongly recommended — filters the lookup"></div>
+        <button class="log-act primary" onclick="LOG.doTrackSeries()">Find the books</button>
+        </div>`;
+      f.style.display='block';
+    }else f.style.display='none';
+  }
+  async function doTrackSeries(){
+    const s=document.getElementById('log-t-series').value.trim();
+    const a=document.getElementById('log-t-author').value.trim();
+    if(!s)return toast('Series name required',true);
+    const ok=await submit('track_series',{series:s,author:a},null,'butthead');
+    if(ok){toast('Tracking request sent — proposals appear on the Proposed tab within ~15 min');toggleTrack();}
   }
   function addDates(){
     // date rows follow the status: acquired-date (and its shop) when owned,
@@ -4183,7 +4205,7 @@ const LOG=(()=>{
   }
 
   return{renderBook,renderOrders,renderPending,renderProposed,doPropDecide,propEdit,doPropDecideSet,doSyncRequest,importLibib,renderMeta,doMetaAdd,dupeCheck,showNeedsData,search,browse,brMode,expand,doFinished,doAcquired,
-    toggleAdd,doAdd,addDates,saveBookEdit,doNewOrder,doNewBoxOrder,setOrderStyle,expandOrder,doOrderUpdate,
+    toggleAdd,doAdd,addDates,toggleTrack,doTrackSeries,saveBookEdit,doNewOrder,doNewBoxOrder,setOrderStyle,expandOrder,doOrderUpdate,
     toggleRow,saveOrderEdit,expandBox,doBoxUpdate,saveBoxEdit,saveSetup,forgetSetup,refreshBadge};
 })();
 

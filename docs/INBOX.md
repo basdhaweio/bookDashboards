@@ -201,6 +201,19 @@ Consumers predating this field silently apply the add unedited — update
 jerry before relying on ✎; a plain approve (no `set`) is byte-compatible
 with the old shape.
 
+### `track_series`
+Start tracking a whole series — the Books tab's 🔍 action.
+```json
+{"series": "Gods of the Ragnarok Era", "author": "Matt Larkin"}
+```
+PROPOSALS only, never register writes: jerry looks the series up on
+Wikidata (an entity roster with ordinals = confident, ordered proposals)
+and falls back to a Google Books author sweep (unordered CANDIDATES —
+each proposal's note says so; Drop the noise, set seq via ✎ on approval).
+Titles already in the register are skipped; everything proposes as
+owned=false; the hydrator fills pub_date/genre in the same cycle. `author`
+is optional but strongly recommended — it filters both lookups.
+
 ### `sync_request`
 Ask jerry to pull an external source now. Results arrive as PROPOSALS on the
 Proposed tab — a sync never writes the register directly (Goodreads burned it
