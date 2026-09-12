@@ -99,7 +99,9 @@ flow), not a direct catalog insert.
 ```
 Empty `series` means standalone. `acquired_on`/`read_on` are optional ISO
 dates; when the approved proposal is applied they create the matching
-acquisition/read events alongside the book, dated. `source_store` is the
+acquisition/read events alongside the book, dated. Blank `media` defaults
+to **Print** at apply time (John, 2026-09-12: "it's print unless it's a
+comic or manga") — set it explicitly for anything that isn't. `source_store` is the
 shop the copy came from (never the publisher); it rides the acquisition,
 which is created when a date OR a shop is present — a shop with no date
 records an undated acquisition (year NULL) rather than dropping the
