@@ -197,6 +197,11 @@ adjusted values. `series`/`universe` are names — resolved to rows, created
 if new; blank clears; the UI snaps vocab fields (`genre, sub_genre, media,
 publisher`) to canonical casing before sending. Status (`owned`/`read`) is
 not settable here, same as `book_update`. `set` on a `reject` is ignored.
+
+`decision: "edit"` (the ✎'s **Save without adding**) merges `set` into the
+payload and LEAVES THE PROPOSAL OPEN — same key rules, note-tagged
+`[EDITED …]`; a later plain approve applies the saved values. An `edit`
+with no `set` is a no-op.
 Consumers predating this field silently apply the add unedited — update
 jerry before relying on ✎; a plain approve (no `set`) is byte-compatible
 with the old shape.

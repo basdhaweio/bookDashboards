@@ -3361,7 +3361,7 @@ const LOG=(()=>{
       case'add_book':return`＋ New book “${p.title}”${p.read?' · read':''}${p.owned?' · owned':''}`;
       case'book_update':return`✎ “${b.title}” → ${Object.keys(p.set||{}).join(', ')}`;
       case'meta_add':return`🏷 New ${p.kind}: ${p.value}`;
-      case'proposal_decide':return`${p.decision==='approve'?'✔ Add':'✖ Drop'}${p.set?' (edited: '+Object.keys(p.set).join(', ')+')':''}: ${p.target||('proposal '+p.id)}`;
+      case'proposal_decide':return`${p.decision==='edit'?'✎ Save edits':p.decision==='approve'?'✔ Add':'✖ Drop'}${p.set?' ('+Object.keys(p.set).join(', ')+')':''}: ${p.target||('proposal '+p.id)}`;
       case'track_series':return`🔍 Track series: ${p.series}${p.author?' ('+p.author+')':''}`;
       case'sync_request':return`⟳ Sync from ${p.source||'all sources'}`;
       case'order_new':return p.list==='bookboxes'
@@ -4029,16 +4029,17 @@ const LOG=(()=>{
     const open=(G.proposals||[]);
     el.innerHTML=open.map(p=>{
       const d=dec.get(p.id);
+      const decided=d==='approve'||d==='reject'; // a pending EDIT keeps the row actionable
       return`<div class="cb" style="margin-bottom:10px">
         <div class="log-item-hd" style="align-items:flex-start">
           <div class="log-item-info">
-            <div class="log-item-title">${esc(p.target)}${d?` <span class="log-badge-pend">${d==='approve'?'Add':'Drop'} pending</span>`:''}</div>
+            <div class="log-item-title">${esc(p.target)}${d?` <span class="log-badge-pend">${d==='approve'?'Add':d==='reject'?'Drop':'Edit'} pending</span>`:''}</div>
             <div class="log-item-meta">${esc(p.kind)}${p.recommend&&p.recommend!=='review'?' · recommends '+esc(p.recommend):''}${propSummary(p)?' · '+esc(propSummary(p)):''}</div>
             ${p.note?`<div class="ms" style="margin-top:4px">${esc(p.note)}</div>`:''}
           </div>
-          <div class="log-acts">${d?'':`
+          <div class="log-acts">${decided?'':`
             <button class="log-act primary" onclick="LOG.doPropDecide(${p.id},'approve')">Add</button>
-            ${propEditCur(p)?`<button class="log-act" onclick="LOG.propEdit(${p.id})" title="adjust values, then add">✎</button>`:''}
+            ${propEditCur(p)?`<button class="log-act" onclick="LOG.propEdit(${p.id})" title="adjust values, then add or save">✎</button>`:''}
             <button class="log-act" onclick="LOG.doPropDecide(${p.id},'reject')">Drop</button>`}
           </div>
         </div>
@@ -4054,9 +4055,17 @@ const LOG=(()=>{
   function propEditCur(p){
     try{const j=JSON.parse(p.proposal);
       if(!j||!j.title)return null;
-      return{title:j.title||'',series:j.series||'',seq:j.seq||'',author:j.author||'',
+      const cur={title:j.title||'',series:j.series||'',seq:j.seq||'',author:j.author||'',
         genre:j.genre||'',sub_genre:j.sub_genre||'',media:j.media||'',universe:j.universe||'',
-        publisher:j.publisher||'',read_on:j.read_on||'',acquired_on:j.acquired_on||'',notes:j.notes||''};
+        publisher:j.publisher||'',pub_date:j.pub_date||'',need:j.need?'x':'',
+        read_on:j.read_on||'',acquired_on:j.acquired_on||'',notes:j.notes||''};
+      // Overlay this device's not-yet-applied saved edits, so reopening ✎
+      // shows what you saved rather than the stale bundle payload.
+      (pendCache||[]).concat(sent().filter(e=>!BUNDLE||e.at>BUNDLE.generated_at)).forEach(ev=>{
+        const q=ev.payload||{};
+        if(ev.type==='proposal_decide'&&q.id===p.id&&q.set)Object.assign(cur,q.set);
+      });
+      return cur;
     }catch(e){return null;}
   }
   let propExpanded=null;
@@ -4071,11 +4080,13 @@ const LOG=(()=>{
       :DATE_FIELDS.includes(f)?`<input type="date" id="log-pke-${f}-${id}" value="${esc(cur[f]||'')}">`
       :`<input id="log-pke-${f}-${id}" value="${esc(cur[f]||'')}" ${f==='series'?'list="log-dl-series" placeholder="blank = standalone"':f==='universe'?'list="log-dl-universe"':''}>`}</div>`).join('')
       +entityDatalists()
-      +`<button class="log-act primary" onclick="LOG.doPropDecideSet(${id})">Add with these values</button>
-      <div class="ms" style="margin-top:6px">Only changed fields ride along as <code>set</code> — the add lands with your values. Needs jerry's consumer to know the set contract; older consumers apply the add unchanged.</div>`;
+      +`<button class="log-act primary" onclick="LOG.doPropDecideSet(${id},'approve')">Add with these values</button>
+      <button class="log-act" onclick="LOG.doPropDecideSet(${id},'edit')" title="save the changes onto the proposal but leave it open">Save without adding</button>
+      <div class="ms" style="margin-top:6px">Only changed fields ride along — Add applies them and accepts; Save keeps the proposal open with your values for a later decision.</div>`;
     el.classList.add('open');
   }
-  async function doPropDecideSet(id){
+  async function doPropDecideSet(id,mode){
+    mode=mode||'approve';
     const p=(G.proposals||[]).find(x=>x.id===id);const cur=p&&propEditCur(p);if(!cur)return;
     const set={};
     for(const f of BOOK_EDIT){
@@ -4083,11 +4094,16 @@ const LOG=(()=>{
       const v=el.value.trim();
       if(v!==(cur[f]||'').trim())set[f]=v;
     }
+    if(mode==='edit'&&!Object.keys(set).length)return toast('Nothing changed to save',true);
     const bad=vetVocab(set);if(bad)return toast(bad,true);
-    const payload={id:p.id,target:p.target,kind:p.kind,decision:'approve'};
+    const payload={id:p.id,target:p.target,kind:p.kind,decision:mode};
     if(Object.keys(set).length)payload.set=set;
     const ok=await submit('proposal_decide',payload,null,'butthead');
-    if(ok){propExpanded=null;toast('Adding “'+p.target+'”'+(payload.set?' with '+Object.keys(set).length+' adjusted field'+(Object.keys(set).length>1?'s':''):''));renderProposed();}
+    if(ok){propExpanded=null;
+      toast(mode==='edit'
+        ?'Saved onto “'+p.target+'” — still open ('+Object.keys(set).join(', ')+')'
+        :'Adding “'+p.target+'”'+(payload.set?' with '+Object.keys(set).length+' adjusted field'+(Object.keys(set).length>1?'s':''):''));
+      renderProposed();}
   }
   async function doPropDecide(id,decision){
     const p=(G.proposals||[]).find(x=>x.id===id);if(!p)return;
