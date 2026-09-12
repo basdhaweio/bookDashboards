@@ -3889,7 +3889,8 @@ const LOG=(()=>{
     document.getElementById('log-orders-done').innerHTML=done.map(o=>row(o,-1,false)).join('')||'<div class="ms">—</div>';
     refreshBadge();
   }
-  const MAIL_EDIT=['date','order','books','series','author','count','type','sub','contains'];
+  const MAIL_EDIT=['date','order','books','series','author','count','type','sub','paid','delivered','contains'];
+  const MAIL_EDIT_SEL={paid:['Paid','Unpaid'],delivered:['Unfulfilled','Fulfilled','Cancelled']};
   function expandOrder(i){
     const o=(document.getElementById('log-orders-open')._open||[])[i];if(!o)return;
     const el=document.getElementById('log-oexp-'+i);
@@ -3906,19 +3907,24 @@ const LOG=(()=>{
       <div class="log-frow" id="log-o-arr-${i}" style="display:none"><label>On</label>
         <input type="date" id="log-o-arrd-${i}" value="${today()}">
         <button class="log-act primary" onclick="LOG.doOrderUpdate(${i},{delivered:'Fulfilled',fulfil:document.getElementById('log-o-arrd-${i}').value})">Confirm arrival</button></div>
-      <div class="log-frow"><label>Tracking</label><input id="log-o-trk-${i}" value="${esc(o.tracking||'')}" placeholder="tracking #"><button class="log-act" onclick="LOG.doOrderUpdate(${i},{tracking:document.getElementById('log-o-trk-${i}').value.trim()})">Save</button></div>
+      <div class="log-frow"><label>Tracking</label><input id="log-o-trk-${i}" value="${esc(o.tracking||'')}" placeholder="tracking #"><button class="log-act" onclick="LOG.doOrderUpdate(${i},{tracking:document.getElementById('log-o-trk-${i}').value.trim()})">Save</button>${o.tracking?`<button class="log-act" onclick="LOG.doOrderUpdate(${i},{tracking:''},true)" title="marked shipped by mistake — back to plain unfulfilled">Un-ship</button>`:''}</div>
       <div id="log-o-edit-${i}" style="display:none">
         ${MAIL_EDIT.map(f=>f==='contains'
           ?`<div class="log-frow"><label>Contains</label><textarea id="log-oe-${f}-${i}" rows="3" placeholder="omnibus? list the works inside, one per line (optional #seq) — arrival then marks each one owned" style="flex:1;font:inherit">${esc(String(o[f]??''))}</textarea></div>`
+          :MAIL_EDIT_SEL[f]
+          ?`<div class="log-frow"><label>${f[0].toUpperCase()+f.slice(1)}</label><select id="log-oe-${f}-${i}">${MAIL_EDIT_SEL[f].map(v=>`<option${v===o[f]?' selected':''}>${v}</option>`).join('')}</select></div>`
           :`<div class="log-frow"><label>${f==='date'?'Ordered':f[0].toUpperCase()+f.slice(1)}</label><input id="log-oe-${f}-${i}" value="${esc(String(o[f]??''))}"></div>`).join('')}
+        <div class="ms" style="margin:2px 0 6px">Reverting Delivered from Fulfilled does NOT un-own books an arrival already marked — fix those on the Books tab.</div>
         <button class="log-act primary" onclick="LOG.saveOrderEdit(${i})">Save changed fields</button>
       </div>`;
     el.classList.add('open');
   }
   function toggleRow(id){const e=document.getElementById(id);if(e)e.style.display=e.style.display==='none'?'':'none';}
-  async function doOrderUpdate(i,set){
+  async function doOrderUpdate(i,set,allowEmptyTracking){
     const o=(document.getElementById('log-orders-open')._open||[])[i];if(!o)return;
-    if(set.tracking==='')return toast('Tracking number is empty',true);
+    // the Save button must not wipe tracking via an empty input; the
+    // explicit Un-ship button passes allowEmptyTracking to do exactly that
+    if(set.tracking===''&&!allowEmptyTracking)return toast('Tracking number is empty',true);
     const ok=await submit('order_update',{list:'bookmail',ref:orderRef(o),set},null,'butthead');
     if(ok){toast('Order update logged');renderOrders();}
   }
