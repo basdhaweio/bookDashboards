@@ -3478,6 +3478,7 @@ const LOG=(()=>{
           <button class="log-act primary" onclick="LOG.expand(${key},'finished')">✓ Read it</button>
           <button class="log-act gold" onclick="LOG.expand(${key},'acquired')" ${b.owned?'title="already owned"':''}>📦 Got it</button>
           <button class="log-act" onclick="LOG.expand(${key},'edit')" title="edit register details">✎</button>
+          ${realSeries(b)?`<button class="log-act" onclick="LOG.trackFromRow(${key})" title="find the rest of this series — books land on the Proposed tab">🔍</button>`:''}
         </div>
       </div>
       <div class="log-exp" id="log-exp-${key}"></div>
@@ -3543,7 +3544,7 @@ const LOG=(()=>{
         if(b.series!==lastS){
           lastS=b.series;
           const t=tot[b.series+'|'+b.owner]||{n:0,o:0,r:0};
-          html+=`<div class="ms" style="margin:8px 0 4px;font-weight:600">${esc(b.series)}${b.series!=='Standalones'?` — owned ${t.o}/${t.n} · read ${t.r}`:''}</div>`;
+          html+=`<div class="ms" style="margin:8px 0 4px;font-weight:600">${esc(b.series)}${b.series!=='Standalones'?` — owned ${t.o}/${t.n} · read ${t.r} <button class="log-ghost" style="margin-left:6px;padding:1px 8px;font-size:0.72rem" onclick="LOG.trackFromRow(${i})">🔍 find the rest</button>`:''}</div>`;
         }
         html+=rowHTML(b,i,pend);
       });
@@ -3779,6 +3780,18 @@ const LOG=(()=>{
     if(!s)return toast('Series name required',true);
     const ok=await submit('track_series',{series:s,author:a},null,'butthead');
     if(ok){toast('Tracking request sent — proposals appear on the Proposed tab within ~15 min');toggleTrack();}
+  }
+  // Row-indexed on purpose: series/author reach the handler via _hits[i],
+  // never inlined into the onclick attribute (titles carry quotes).
+  async function trackFromRow(i){
+    const b=((document.getElementById('log-results')._hits)||[])[i];
+    const s=b&&realSeries(b);
+    if(!s)return toast('No series on this row',true);
+    if((pendCache||[]).some(ev=>ev.type==='track_series'&&(ev.payload||{}).series===s))
+      return toast('Already queued — proposals appear on the Proposed tab within ~15 min');
+    if(!confirm(`Find the rest of “${s}”${b.author?' by '+b.author:''}? Every book found lands on the Proposed tab to Add or Drop — nothing enters the register without you.`))return;
+    const ok=await submit('track_series',{series:s,author:b.author||''},b);
+    if(ok)toast('Tracking request sent — proposals appear on the Proposed tab within ~15 min');
   }
   function addDates(){
     // date rows follow the status: acquired-date (and its shop) when owned,
@@ -4227,7 +4240,7 @@ const LOG=(()=>{
   }
 
   return{renderBook,renderOrders,renderPending,renderProposed,doPropDecide,propEdit,doPropDecideSet,doSyncRequest,importLibib,renderMeta,doMetaAdd,dupeCheck,showNeedsData,search,browse,brMode,expand,doFinished,doAcquired,
-    toggleAdd,doAdd,addDates,toggleTrack,doTrackSeries,saveBookEdit,doNewOrder,doNewBoxOrder,setOrderStyle,expandOrder,doOrderUpdate,
+    toggleAdd,doAdd,addDates,toggleTrack,doTrackSeries,trackFromRow,saveBookEdit,doNewOrder,doNewBoxOrder,setOrderStyle,expandOrder,doOrderUpdate,
     toggleRow,saveOrderEdit,expandBox,doBoxUpdate,saveBoxEdit,saveSetup,forgetSetup,refreshBadge};
 })();
 
