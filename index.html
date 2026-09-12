@@ -4039,7 +4039,7 @@ const LOG=(()=>{
       return`<div class="cb" style="margin-bottom:10px">
         <div class="log-item-hd" style="align-items:flex-start">
           <div class="log-item-info">
-            <div class="log-item-title">${esc(p.target)}${d?` <span class="log-badge-pend">${d==='approve'?'Add':d==='reject'?'Drop':'Edit'} pending</span>`:''}</div>
+            <div class="log-item-title">${esc((propEditCur(p)||{}).title||p.target)}${d?` <span class="log-badge-pend">${d==='approve'?'Add':d==='reject'?'Drop':'Edit'} pending</span>`:''}</div>
             <div class="log-item-meta">${esc(p.kind)}${p.recommend&&p.recommend!=='review'?' · recommends '+esc(p.recommend):''}${propSummary(p)?' · '+esc(propSummary(p)):''}</div>
             ${p.note?`<div class="ms" style="margin-top:4px">${esc(p.note)}</div>`:''}
           </div>
