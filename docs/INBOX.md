@@ -198,7 +198,9 @@ the reviewer can adjust values in the same tap that accepts them:
 ```
 Allowed keys are `book_update`'s: `title, series, seq, author, genre,
 sub_genre, media, universe, publisher, notes, read_on, acquired_on,
-pub_date, need`. The
+pub_date, need, room`. (`room` is the shelf location — one of the eight
+Rooms-tab names; rule-filled on 2026-09-13, and ✎ is how a book that
+moved house gets its new room.) The
 `target` guard is evaluated against the **unedited** proposal row first; the
 consumer then merges `set` into the proposal's payload before marking it
 `approved`, so `apply_fixes.py` runs unchanged and the add lands with the

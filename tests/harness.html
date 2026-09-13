@@ -165,6 +165,15 @@ async function main(){
         `ISBNs tab ${isbns?isbns.length-1:0} rows; ${items} hits, ${gutters} gutters, ${covers} covers`);
   });
 
+  await check('Rooms bookcases hold every owned book',async()=>{
+    await go('rooms','tracking');
+    const spines=doc().querySelectorAll('#room-cases .spine').length;
+    const per={all:0};
+    for(const r of ind.slice(1)){if((r[6]||'').trim().toLowerCase()==='x'){per.all++;per[r[10]]=(per[r[10]]||0)+1;}}
+    res('Rooms bookcases hold every owned book',spines>0&&[per.all,per.butthead||0,per.goblin||0].includes(spines),
+        `${spines} spines vs owned all ${per.all}, Com ${per.butthead||0}, Shereen ${per.goblin||0}`);
+  });
+
   res('no runtime errors in the app',errors.length===0,errors.slice(0,3).join(' | '));
   draw();
 }

@@ -215,6 +215,26 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
 .log-dots{display:flex;gap:4px;flex-shrink:0;}
 .log-thumb{width:28px;min-width:28px;flex-shrink:0;align-self:center;}
 .log-thumb img{width:28px;border-radius:3px;display:block;}
+/* cover tiles, strips, month rows */
+.ct{width:60px;height:90px;flex:0 0 auto;border-radius:4px;overflow:hidden;background:var(--bg3);box-shadow:var(--shadow);position:relative}
+.ct img{width:100%;height:100%;object-fit:cover;display:block}
+.ct-ph{display:flex;align-items:center;justify-content:center;padding:4px;text-align:center;background:#e9e6dc;border:1px solid var(--border)}
+.ct-ph span{font-family:var(--font-m);font-size:9px;line-height:1.2;color:var(--text2);overflow:hidden;max-height:100%;word-break:break-word}
+.ct-more{background:var(--bg3)}
+.cstrip{display:flex;flex-wrap:wrap;gap:6px}
+.cstrip-h{flex-wrap:nowrap;overflow-x:auto;padding-bottom:6px;scroll-snap-type:x proximity}
+.cstrip-h .ct{scroll-snap-align:start}
+.ycrow{display:flex;gap:12px;align-items:flex-start;margin:8px 0;padding:8px 0;border-bottom:1px solid var(--border)}
+.ycmo{width:110px;min-width:110px;font-family:var(--font-d);font-weight:600;color:var(--gold);padding-top:4px}
+@media(max-width:780px){.ycrow{flex-direction:column;gap:6px}.ycmo{width:auto;min-width:0}}
+/* bookcases */
+.bookcase{display:flex;flex-wrap:wrap;align-items:flex-end;gap:1px;padding:10px 10px 0;background:linear-gradient(#f5f3ec,#ece8dc);border:1px solid var(--border);border-bottom:6px solid;border-radius:6px}
+.spine{height:96px;border-radius:2px 2px 0 0;position:relative;cursor:pointer;overflow:hidden;margin-bottom:8px;box-shadow:inset -1px 0 0 rgba(0,0,0,.18)}
+.spine:hover{filter:brightness(1.12)}
+.spine-first{margin-left:5px}
+.spine-unread::before{content:'';position:absolute;left:0;right:0;top:0;height:5px;background:rgba(255,255,255,.75)}
+.spine span{position:absolute;left:50%;top:6px;transform:translateX(-50%) rotate(180deg);writing-mode:vertical-rl;font-family:var(--font-m);font-size:8px;line-height:1;color:#fff;white-space:nowrap;text-shadow:0 0 2px rgba(0,0,0,.6);max-height:84px;overflow:hidden}
+.room-peek{display:flex;gap:12px;align-items:flex-start;margin:8px 0 0;padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow)}
 .log-dot{width:9px;height:9px;border-radius:50%;}
 .log-acts{display:flex;gap:8px;flex-shrink:0;}
 .log-act{font-family:var(--font-m);font-size:11px;padding:8px 12px;border-radius:8px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);cursor:pointer;white-space:nowrap;transition:all 0.12s;}
@@ -440,6 +460,8 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div id="room-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;margin-bottom:1.5rem;"></div>
       <div class="sl">Owned per room</div>
       <div class="cb"><div style="height:280px"><canvas id="roomChart" role="img" aria-label="Owned per room"></canvas></div></div>
+      <div class="sl" style="margin-top:2rem">Bookcases <span class="ms">— spine width follows page count, colour follows genre, a pale top band means unread; tap a spine for its cover</span></div>
+      <div id="room-cases"></div>
     </div>
   </div>
 
@@ -483,6 +505,8 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div class="sl">Focus series</div><div id="focus-series"></div>
       <div class="sl">All books this year</div>
       <div class="tw"><table><thead><tr><th>#</th><th class="nr">Date</th><th>Title</th><th>Genre</th><th>Media</th><th class="nr">Pages</th></tr></thead><tbody id="ty-books"></tbody></table></div>
+      <div class="sl" style="margin-top:2rem">Year in covers <span class="ms">— finished, month by month</span></div>
+      <div id="ty-covers"></div>
     </div>
     <div class="panel" id="tab-completion">
       <div class="sl">Author completion — bubble chart</div>
@@ -537,6 +561,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
     <div class="panel" id="tab-toread">
       <div class="sl">On shelf to read — by genre &amp; type</div>
       <div class="mg" id="tr-m"></div>
+      <div id="tr-covers"></div>
       <div class="cb">
         <div class="leg" id="tr-leg"></div>
         <div id="trChartWrap" style="height:500px"><canvas id="trChart" role="img" aria-label="To read by genre stacked bar"></canvas></div>
@@ -562,7 +587,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div id="sd-list"></div>
     </div>
     <div class="panel" id="tab-comingup">
-      <div class="sl">Upcoming releases</div><div id="upcoming-list"></div>
+      <div class="sl">Upcoming releases</div><div id="cu-covers"></div><div id="upcoming-list"></div>
     </div>
     <div class="panel" id="tab-bookmail">
       <div class="sl">Order overview</div><div class="mg" id="tbb-m"></div>
@@ -901,6 +926,10 @@ const BA=['jrr tolkien','christopher tolkien','brandon sanderson','terry brooks'
 const BT=['wheel of time','dune','black company','malazan','expanse','earthsea','hainish','kushiel','kingkiller','first law','age of madness','the devils','stormlight','mistborn','wax and wayne','shannara','farseer','liveship','tawny man','rain wild','fitz and the fool','dungeon crawler carl',"old man's war",'foundation','robot','galactic empire','night angel','lightbringer','imperial radach','murderbot','hitchhiker','witcher','sun eater','red rising','ender','shadow saga','formic wars','agent cormac','spatterjay','gap cycle','great god','corona first','corona second','corona saga','corona coven','crimson shadow','chronicles of ynis','broken earth','dreamblood','riftwar','dark tower','dirk pitt','chronicles of amber','song of ice','hyperion cantos','locked tomb','licanius','hierarchy','daevabad','amina al-sirafi','crescent city','empyrean','grand tour','powder mage','gods of blood',"raven's shadow","raven's blade",'draconis memoria','faithful and the fallen','of blood and bone','bloodsworn','books of the raksura','ile-rien','rise of the jain','transformation','polity universe','saga of first king','buccaneers','hyperion short','lore olympus','vinland saga','saxon tales','aubrey-maturin','hunger games','inheritance','dreseden files','dresden files','diamond age','seven eves','anathem','snow crash','asia saga'];
 const SK=['narnia','chronicles of narnia','space trilogy',"c.s. lewis",'sprawl','jackpot','difference engine','mind over ship','dragon prince','dragon star','exiles','zoey ashe','john and dave','fourth realm','certainty ','bobiverse','altered carbon','shadows of the leviathan','founders','runestone','avalon','age of darkness','tower of the tyrant','gentleman bastard','quantum gravity','justina robson','stuff ','the switch','silo','summerland','mars trilogy','2312','jean le flambeur','jean le flambuer','texicalaan','monk and robot','shades of magic','threads of power','six of crows','shiva trilogy','green bone saga','circe','song of achilles','steel crow saga','norse mythology','dark gods','roots of chaos','carmilla ','le fanu','piranesi',"witch's heart",'the band','the dwarves','drowning empire','bourne saga','sunshine','hollow kingdom','world war z','house of leaves','cryonic','firefall','the sparrow','after the war','windup girl','employees','wax child','project hail mary','empire without end','jurassic park','prey, eaters','robopocalypse','between earth and sky','invoker trilogy','book of fallen leaves','daughter of crows','gods of jade','bewitching','whisper that replaced god','world-maker parable','green and deadly things','in the shadows of their dying','age of uprising','starship troopers','sands of mars','space odyssey','androids dream','doomsday book','princess bride','how to defeat a demon king','of monsters and mainframes','there is no antimemetics','machinehood','harmattan season','automatic noodle','subtle art of folding','dwellers','voidverse','flux','womb city','annie bot','tusks of extinction','where the axe','slow gods','fallen gods','nine goblins','sister wake','downworld sequence','coldwire','these memories','toward eternity','tatami time',"hell's heart",'roots grow into the earth','lovecraft','complete works of hp','parasol against','night of baba','seventh floor','lies in bone','die comic','this kingdom will not kill me','consentiency','heirs of babylon',"bastard's honor",'wrath and weeping','daindreth','a matter of time','dragon never sleeps','batman ressurection','battman revolution','bedtime stories for cynics','stuart smalley','gary soto','amberglow candy',"assassin's creed gold",'grace ','spin ','robert charles wilson','chronolith','affinities','binti','space cat'];
 
+// The eight rooms: books.room holds one of these names (rule-filled from
+// assignRoom on 2026-09-13, ✎-editable since). Tile order = house order.
+const ROOMS=[{k:'Main Library',i:'📚',th:'Big Series + Classics'},{k:'Hidden — TTRPG',i:'🎲',th:'FR · DL · SR · Warhammer'},{k:'Hidden — Comics/GN/Manga',i:'🎌',th:'Comics · Manga · Nier · Evangelion'},{k:'Hidden — Franchise',i:'🚀',th:'Firefly · Star Wars · Critical Role'},{k:'Goblin Office',i:'🌿',th:'Wren — Asian Writers',display:'Wren Office'},{k:'Butthead Office',i:'🏛️',th:'Com — NF · History · Philosophy',display:'Com Office'},{k:'Sitting Room',i:'🪑',th:'Small Series + Pretty Books'},{k:'Bedroom',i:'🌙',th:'Spicy / Kink'}];
+const ROOM_COLS=['#c9a84c','#c4614a','#7a6bab','#4a9b8e','#5a8a4a','#9a9688','#8a6a1a','#a84030'];
 function assignRoom(title,author,type,genre,sg){
   const t=title.toLowerCase(),a=author.toLowerCase(),s=sg.toLowerCase(),g=genre.toLowerCase();
   if(TKW.some(k=>t.includes(k))||s==='ttrpg')return'Hidden — TTRPG';
@@ -1162,7 +1191,52 @@ function renderUniverse(bm){
   renderUniverseSection(all.filter(u=>u.type==='Manga'),'uv-manga-grid','uvMangaChart','uv-manga-wrap');
 }
 
-function renderRooms(bm){
+function renderRooms(){
+  // Rooms come from the register (books.room; the keyword rule is only the
+  // fallback for a bundle that predates the column). Tiles and bookcases
+  // are computed from the same per-book list so they can't disagree.
+  const byRoom={},shelves={};
+  for(const b of (G.indBooks||[])){
+    const rm=b.room||assignRoom(b.series+' '+b.title,b.author,b.media,b.type,b.subGenre);
+    const r=byRoom[rm]=byRoom[rm]||{tracked:0,read:0,owned:0};
+    r.tracked++;if(b.read)r.read++;if(b.owned)r.owned++;
+    if(b.owned)(shelves[rm]=shelves[rm]||[]).push(b);
+  }
+  renderRoomTiles({byRoom});
+  renderBookcases(shelves);
+}
+// Bookcases: every owned book in the room as a spine — width from page
+// count, colour from genre, title down the spine — grouped by series in
+// sequence order. Works with zero covers; tap a spine for the cover.
+function genreCol(g){let h=0;for(const c of (g||'')){h=(h*31+c.charCodeAt(0))>>>0;}return TKCOL[h%TKCOL.length];}
+function renderBookcases(shelves){
+  const el=document.getElementById('room-cases');if(!el)return;
+  const seqN=b=>{const n=parseFloat(b.seq);return isNaN(n)?9e9:n;};
+  const sKey=b=>b.series==='Standalones'?'￿':(b.series||'').toLowerCase();
+  let html='';
+  ROOMS.forEach((d,i)=>{
+    const books=(shelves[d.k]||[]).slice().sort((a,b)=>sKey(a).localeCompare(sKey(b))||seqN(a)-seqN(b)||a.title.localeCompare(b.title));
+    if(!books.length)return;
+    let last=null;
+    const spines=books.map((b,j)=>{
+      const w=Math.max(9,Math.min(34,Math.round((b.pages||300)/22)));
+      const gap=b.series!==last?' spine-first':'';last=b.series;
+      return`<div class="spine${gap}${b.read?'':' spine-unread'}" style="width:${w}px;background:${genreCol(b.type)}" data-room="${i}" data-j="${j}" title="${esc(b.title)} — ${esc(b.author)}${b.pages?' · '+b.pages+' pp':''}" onclick="peekSpine(${i},${j})"><span>${esc(b.title)}</span></div>`;
+    }).join('');
+    html+=`<div class="sl" style="margin-top:1.4rem">${d.i} ${esc(d.display||d.k)} <span class="ms">— ${books.length} owned · ${books.filter(b=>b.read).length} read</span></div>
+      <div class="bookcase" style="border-color:${ROOM_COLS[i]}">${spines}</div>
+      <div class="room-peek" id="room-peek-${i}" style="display:none"></div>`;
+    G._shelves=G._shelves||{};G._shelves[i]=books;
+  });
+  el.innerHTML=html||'<div class="ms">No owned books carry a room yet.</div>';
+}
+function peekSpine(i,j){
+  const b=((G._shelves||{})[i]||[])[j];const el=document.getElementById('room-peek-'+i);if(!b||!el)return;
+  if(el.dataset.j===String(j)&&el.style.display!=='none'){el.style.display='none';return;}
+  el.dataset.j=j;el.style.display='flex';
+  el.innerHTML=`${coverTile(b.title,b.owner,'',null,72)}<div><div style="font-weight:600">${esc(b.title)}</div><div class="ms">${esc(b.series!=='Standalones'?b.series+(b.seq?' #'+b.seq:''):'Standalone')} · ${esc(b.author)}${b.media?' · '+esc(b.media):''}${b.pages?' · '+b.pages+' pages':''}</div><div class="ms">${b.read?'read':'unread'}${b.readOn?' · '+esc(b.readOn):''}${b.acquiredOn?' · acquired '+esc(b.acquiredOn):''}</div></div>`;
+}
+function renderRoomTiles(bm){
   const defs=[{k:'Main Library',i:'📚',th:'Big Series + Classics'},{k:'Hidden — TTRPG',i:'🎲',th:'FR · DL · SR · Warhammer'},{k:'Hidden — Comics/GN/Manga',i:'🎌',th:'Comics · Manga · Nier · Evangelion'},{k:'Hidden — Franchise',i:'🚀',th:'Firefly · Star Wars · Critical Role'},{k:'Goblin Office',i:'🌿',th:'Wren — Asian Writers',display:'Wren Office'},{k:'Butthead Office',i:'🏛️',th:'Com — NF · History · Philosophy',display:'Com Office'},{k:'Sitting Room',i:'🪑',th:'Small Series + Pretty Books'},{k:'Bedroom',i:'🌙',th:'Spicy / Kink'}];
   const cols=['#c9a84c','#c4614a','#7a6bab','#4a9b8e','#5a8a4a','#9a9688','#8a6a1a','#a84030'];
   document.getElementById('room-grid').innerHTML=defs.map((d,i)=>{const r=bm.byRoom[d.k]||{tracked:0,read:0,owned:0};const sh=r.owned-r.read,rp=pctN(r.read,r.tracked),op=pctN(r.owned,r.tracked);const name=d.display||d.k;return`<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:1.1rem 1.3rem;box-shadow:var(--shadow)"><div style="font-family:var(--font-d);font-size:1rem;font-weight:600;color:var(--text);margin-bottom:2px">${d.i} ${name}</div><div style="font-family:var(--font-m);font-size:10px;color:var(--text3);margin-bottom:10px">${d.th}</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:8px">${[['tracked',r.tracked],['owned',r.owned],['shelf',sh]].map(([l,v])=>`<div style="background:var(--bg3);border-radius:6px;padding:5px;text-align:center"><div style="font-family:var(--font-d);font-size:1.1rem;font-weight:600;color:${cols[i]}">${fmt(v)}</div><div style="font-family:var(--font-m);font-size:9px;color:var(--text3)">${l}</div></div>`).join('')}</div><div class="pr"><div class="pl">% read</div><div class="pt"><div class="pf" style="width:${rp}%;background:${cols[i]}"></div></div><div class="pv">${rp}%</div></div><div class="pr"><div class="pl">% owned</div><div class="pt"><div class="pf" style="width:${op}%;background:${cols[i]};opacity:0.35"></div></div><div class="pv">${op}%</div></div></div>`;}).join('');
@@ -1307,6 +1381,7 @@ function renderThisYear(year){
   const isCurrentYear=year===currentYear;
   document.querySelectorAll('#year-tog button').forEach(b=>b.classList.toggle('active',parseInt(b.dataset.y)===year));
   const{books,targets,focus}=(OWNER==='goblin'?{books:[],targets:{},focus:[]}:(allYD[year]||{books:[],targets:{},focus:[]}));
+  renderYearCovers(books);
   const tot=targets['Total']||{total:0,bynow:0,actual:0};
   const actual=books.length;
   // Pages metrics from book metadata (coverage varies \u2014 label honestly)
@@ -1631,6 +1706,15 @@ function renderToRead(bm){
     mH(fmt(mangaShelf),'Manga')+
     mH(fmt(comicsShelf),'Comics / GN')+
     mH(fmt(ttrpgShelf),'TTRPG');
+  // Covers after the metrics (John, 2026-09-13 — a mock-up to revisit):
+  // the newest arrivals on the shelf first, since those are the likeliest
+  // next reads.
+  const trc=document.getElementById('tr-covers');
+  if(trc){
+    const shelf=(G.indBooks||[]).filter(b=>b.owned&&!b.read).sort((a,b)=>(b.acquiredOn||'').localeCompare(a.acquiredOn||'')||a.title.localeCompare(b.title))
+      .map(b=>({title:b.title,owner:b.owner,sub:[b.series!=='Standalones'?b.series:'',b.author].filter(Boolean).join(' · ')}));
+    trc.innerHTML=shelf.length?`<div class="cbt" style="margin:8px 0 4px">Newest on the shelf</div>${coverStrip(shelf,60)}`:'';
+  }
 
   // Chart — all non-TTRPG genres by type
   const allGenres=Object.entries(
@@ -1723,6 +1807,10 @@ function renderComingUp(up){
     </div>`;
   }
   document.getElementById('upcoming-list').innerHTML=html;
+  // Covers strip above the month groups, in release order; tracked books
+  // resolve through the register's identifiers, the rest get title tiles.
+  const cuc=document.getElementById('cu-covers');
+  if(cuc)cuc.innerHTML=coverStrip(sorted.map(u=>({title:u.title||u.series||'TBD',owner:'butthead',sub:[u.series&&u.title?u.series:'',u.author,u.release].filter(Boolean).join(' · ')})),60);
 }
 
 // ── Order pending-change flags (shared by the Log panel and Book Mail tab) ──
@@ -1731,6 +1819,44 @@ function renderComingUp(up){
 // module after each inbox poll); decorate runs post-render because the poll
 // is async and may finish after the tab has drawn.
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+// ── Covers (shared by the Log rows, year-in-covers, cover strips, bookcases) ──
+// Stored URL first: jerry resolves works to OL cover IDs (unlimited); the
+// by-ISBN endpoint is rate-limited (100/IP/5 min) so it is only the fallback
+// for works the resolver hasn't reached yet.
+function coverSrcs(title,owner,isbnOverride){
+  const bi=(G.bookIsbn||{})[(title||'').toLowerCase().replace(/[^a-z0-9]/g,'')+'|'+(owner||'butthead')]||{};
+  const isbn=isbnOverride||((bi.isbns||[])[0]);
+  const s=[];
+  if(bi.cover)s.push(bi.cover);
+  if(isbn)s.push('https://covers.openlibrary.org/b/isbn/'+isbn+'-M.jpg?default=false');
+  return s;
+}
+// A cover tile (2:3) that degrades to a titled placeholder when no source
+// has an image — grids stay complete either way. `w` in px (default 60).
+function coverTile(title,owner,sub,isbn,w){
+  const srcs=coverSrcs(title,owner,isbn),tip=esc(title)+(sub?' — '+esc(sub):'');
+  const sz=w?` style="width:${w}px;height:${Math.round(w*1.5)}px"`:'';
+  if(!srcs.length)return`<div class="ct ct-ph"${sz} title="${tip}"><span>${esc(title)}</span></div>`;
+  return`<div class="ct"${sz} title="${tip}"><img loading="lazy" alt="" src="${esc(srcs[0])}" data-alt="${srcs.slice(1).map(esc).join('|')}" onerror="var a=(this.dataset.alt||'').split('|').filter(Boolean);if(a.length){this.dataset.alt=a.slice(1).join('|');this.src=a[0];}else{var p=this.parentNode,s=document.createElement('span');s.textContent=(p.getAttribute('title')||'').split(' — ')[0];p.classList.add('ct-ph');p.replaceChild(s,this);}"></div>`;
+}
+// Year in covers: one row per month in reading order (This Year tab).
+// Year-tab dates are 'M/D' or ISO; anything else lands in an undated row.
+const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+function renderYearCovers(books){
+  const el=document.getElementById('ty-covers');if(!el)return;
+  const mo=d=>{let m=(d||'').match(/^\d{4}-(\d{2})/);if(m)return+m[1];m=(d||'').match(/^(\d{1,2})\//);return m?+m[1]:0;};
+  const rows={};
+  for(const b of books){const k=mo(b.date);(rows[k]=rows[k]||[]).push(b);}
+  const keys=Object.keys(rows).map(Number).sort((a,b)=>a-b);
+  el.innerHTML=keys.length?keys.map(k=>`<div class="ycrow"><div class="ycmo">${k?MONTHS[k-1]:'Undated'} <span class="ms">· ${rows[k].length}</span></div><div class="cstrip">${rows[k].sort((a,b)=>a.num-b.num).map(b=>coverTile(b.title,'butthead',[b.genre,b.media].filter(Boolean).join(' · '))).join('')}</div></div>`).join('')
+    :'<div class="ms">Nothing finished yet this year.</div>';
+}
+// A capped horizontal strip of covers (To Read, Coming Up).
+function coverStrip(items,cap){
+  const shown=items.slice(0,cap||60);
+  if(!shown.length)return'';
+  return`<div class="cstrip cstrip-h">${shown.map(b=>coverTile(b.title,b.owner||'butthead',b.sub||'',null)).join('')}${items.length>shown.length?`<div class="ct ct-ph ct-more"><span>+${items.length-shown.length} more</span></div>`:''}</div>`;
+}
 function ordKeyMail(o){return[(o.order||'').trim(),(o.books||'').trim(),(o.date||'').trim()].join('|');}
 function ordKeyBox(b){return[(b.vendor||'').trim(),(b.box||'').trim(),(b.title||'').trim(),(b.order||'').trim(),(b.date||'').trim()].join('|');}
 function ordPendChip(sets){
@@ -2792,6 +2918,8 @@ function parseIndividual(vals){
       acquiredOn:(r[14]||'').trim(),
       pubDate:(r[15]||'').trim(),
       need:(r[16]||'').trim().toLowerCase()==='x',
+      room:(r[17]||'').trim(),
+      pages:n(r[18]),
     });
   }
   return books;
@@ -3602,7 +3730,8 @@ const LOG=(()=>{
     }else if(type==='edit'){
       const cur=bookEditCur(b);
       el.innerHTML=BOOK_EDIT.map(f=>`<div class="log-frow"><label>${BOOK_EDIT_LBL[f]||f}</label>${
-        VOCAB_FIELDS.includes(f)?vocabInput(`log-bke-${f}-${i}`,f,cur[f]||'')
+        f==='room'?roomSelect(`log-bke-${f}-${i}`,cur[f]||'')
+        :VOCAB_FIELDS.includes(f)?vocabInput(`log-bke-${f}-${i}`,f,cur[f]||'')
         :DATE_FIELDS.includes(f)?`<input type="date" id="log-bke-${f}-${i}" value="${esc(cur[f]||'')}">`
         :`<input id="log-bke-${f}-${i}" value="${esc(cur[f]||'')}" ${f==='series'?'list="log-dl-series" placeholder="blank = standalone"':f==='universe'?'list="log-dl-universe"':f==='pub_date'?'placeholder="1990 · July 1990 · 1990-07-14"':f==='need'?'placeholder="x = hunting for it, blank = not"':''}>`}</div>`).join('')
         +entityDatalists()
@@ -3629,8 +3758,11 @@ const LOG=(()=>{
   }
   // Register fields editable per book; UI key = inbox set key (genre lives in
   // indBooks as .type, sub_genre as .subGenre — mapped in bookEditCur).
-  const BOOK_EDIT=['title','series','seq','author','genre','sub_genre','media','universe','publisher','pub_date','need','read_on','acquired_on','notes'];
-  const BOOK_EDIT_LBL={title:'Title',series:'Series',seq:'Seq #',author:'Author',genre:'Genre',sub_genre:'Sub-genre',media:'Media',universe:'Universe',publisher:'Publisher',pub_date:'Published',need:'Need',read_on:'Date read',acquired_on:'Date acquired',notes:'Notes'};
+  const BOOK_EDIT=['title','series','seq','author','genre','sub_genre','media','universe','room','publisher','pub_date','need','read_on','acquired_on','notes'];
+  const BOOK_EDIT_LBL={title:'Title',series:'Series',seq:'Seq #',author:'Author',genre:'Genre',sub_genre:'Sub-genre',media:'Media',universe:'Universe',room:'Room',publisher:'Publisher',pub_date:'Published',need:'Need',read_on:'Date read',acquired_on:'Date acquired',notes:'Notes'};
+  // Room is a fixed pick (the eight Rooms-tab names, register values not
+  // display names) — this is how a book that moved house gets re-shelved.
+  function roomSelect(id,cur){return`<select id="${id}"><option value="">(unassigned)</option>${ROOMS.map(r=>`<option value="${esc(r.k)}"${r.k===cur?' selected':''}>${esc(r.display||r.k)}</option>`).join('')}</select>`;}
   const DATE_FIELDS=['read_on','acquired_on'];
   // Enum-ish fields are type-ahead inputs backed by the vocabulary; values not
   // in the list are rejected on save (add them under Metadata first), and a
@@ -3671,7 +3803,7 @@ const LOG=(()=>{
     }
     return null;
   }
-  function bookEditCur(b){return{title:b.title,series:realSeries(b),seq:b.seq||'',author:b.author,genre:b.type||'',sub_genre:b.subGenre||'',media:b.media||'',universe:b.universe||'',publisher:b.publisher||'',pub_date:b.pubDate||'',need:b.need?'x':'',read_on:b.readOn||'',acquired_on:b.acquiredOn||'',notes:b.notes||''};}
+  function bookEditCur(b){return{title:b.title,series:realSeries(b),seq:b.seq||'',author:b.author,genre:b.type||'',sub_genre:b.subGenre||'',media:b.media||'',universe:b.universe||'',room:b.room||'',publisher:b.publisher||'',pub_date:b.pubDate||'',need:b.need?'x':'',read_on:b.readOn||'',acquired_on:b.acquiredOn||'',notes:b.notes||''};}
   async function saveBookEdit(i){
     const b=(document.getElementById('log-results')._hits||[])[i];if(!b)return;
     const cur=bookEditCur(b),set={};
@@ -3809,14 +3941,8 @@ const LOG=(()=>{
   // Covers try Open Library's by-ISBN endpoint first (?default=false 404s on
   // a miss so onerror can fall back to the stored cover_url), then hide —
   // the .log-thumb gutter stays so rows keep their alignment either way.
-  function coverSrcs(title,owner,isbnOverride){
-    const bi=(G.bookIsbn||{})[(title||'').toLowerCase().replace(/[^a-z0-9]/g,'')+'|'+owner]||{};
-    const isbn=isbnOverride||((bi.isbns||[])[0]);
-    const s=[];
-    if(isbn)s.push('https://covers.openlibrary.org/b/isbn/'+isbn+'-M.jpg?default=false');
-    if(bi.cover)s.push(bi.cover);
-    return s;
-  }
+  // coverSrcs is shared page-wide (defined next to esc); thumbHTML is the
+  // Log-row flavour that keeps its gutter on a miss.
   function thumbHTML(title,owner,isbnOverride,w){
     const srcs=coverSrcs(title,owner,isbnOverride);
     if(!srcs.length)return'<div class="log-thumb"></div>';
@@ -4193,7 +4319,7 @@ const LOG=(()=>{
       if(!j||!j.title)return null;
       const cur={title:j.title||'',series:j.series||'',seq:j.seq||'',author:j.author||'',
         genre:j.genre||'',sub_genre:j.sub_genre||'',media:j.media||'',universe:j.universe||'',
-        publisher:j.publisher||'',pub_date:j.pub_date||'',need:j.need?'x':'',
+        room:j.room||'',publisher:j.publisher||'',pub_date:j.pub_date||'',need:j.need?'x':'',
         read_on:j.read_on||'',acquired_on:j.acquired_on||'',notes:j.notes||''};
       // Overlay this device's not-yet-applied saved edits, so reopening ✎
       // shows what you saved rather than the stale bundle payload.
@@ -4212,7 +4338,8 @@ const LOG=(()=>{
     propExpanded=id;
     const el=document.getElementById('log-pexp-'+id);
     el.innerHTML=BOOK_EDIT.map(f=>`<div class="log-frow"><label>${BOOK_EDIT_LBL[f]||f}</label>${
-      VOCAB_FIELDS.includes(f)?vocabInput(`log-pke-${f}-${id}`,f,cur[f]||'')
+      f==='room'?roomSelect(`log-pke-${f}-${id}`,cur[f]||'')
+      :VOCAB_FIELDS.includes(f)?vocabInput(`log-pke-${f}-${id}`,f,cur[f]||'')
       :DATE_FIELDS.includes(f)?`<input type="date" id="log-pke-${f}-${id}" value="${esc(cur[f]||'')}">`
       :`<input id="log-pke-${f}-${id}" value="${esc(cur[f]||'')}" ${f==='series'?'list="log-dl-series" placeholder="blank = standalone"':f==='universe'?'list="log-dl-universe"':''}>`}</div>`).join('')
       +entityDatalists()
