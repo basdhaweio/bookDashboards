@@ -87,6 +87,21 @@ other listed work through the same owned+dated-acquisition logic (exact
 title match per owner; misses park as `add_book_from_inbox` proposals
 carrying the copy id, so approving them completes the copy's contents).
 
+### `email_forward`
+A newsletter forwarded raw by the Gmail Apps Script in `tools/bn_forwarder.gs`
+(Book Notification's weekly digest). Stored verbatim in `email_forwards`
+(unique on `message_id`); a separate parser job turns rows into the Book
+Club feed and proposals — nothing is interpreted at intake.
+```json
+{"from": "Book Notification <…@booknotification.com>", "subject": "…",
+ "date": "2026-09-08T12:00:00.000Z", "message_id": "18f…",
+ "html": "<html>…</html>", "text": "…"}
+```
+
+`meta_add` also accepts kind `bn_author`: an author John follows on Book
+Notification, recorded from the Book Club tab's "Authors to follow" list so
+the dashboard can keep that list reconciled against the register.
+
 ### `add_book`
 A book not in the catalog. Create as a **proposal** (existing bookdb review
 flow), not a direct catalog insert.

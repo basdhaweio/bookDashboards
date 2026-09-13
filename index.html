@@ -282,11 +282,20 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
   .status{font-size:10px;}
   #owner-note{flex-basis:100%;order:3;}
 
-  /* Both nav bars scroll horizontally instead of forcing the page wide */
-  .sec-nav,.tab-nav{padding:0 0.75rem;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-wrap:nowrap;}
-  .sec-nav::-webkit-scrollbar,.tab-nav::-webkit-scrollbar{display:none;}
-  .sec-nav button{font-size:0.95rem;padding:0.85rem 0.7rem;white-space:nowrap;flex:none;}
-  .sec-nav button.bc-btn{margin-left:0;padding-right:1rem;}
+  /* Sections become a fixed bottom tab bar (all six always visible — the
+     old scrolling row hid Log and Book Club off the right edge); sub-tabs
+     still scroll sideways, with a fade at the edge so cut-off tabs read as
+     "more". The body reserves room so nothing hides under the bar. */
+  body{padding-bottom:calc(58px + env(safe-area-inset-bottom));}
+  .h-title{font-size:1.5rem;}
+  .sec-nav{position:fixed;left:0;right:0;bottom:0;z-index:60;padding:0 0 env(safe-area-inset-bottom);border-bottom:none;border-top:1px solid var(--border);box-shadow:0 -2px 12px rgba(0,0,0,.08);}
+  .sec-nav button{flex:1 1 0;min-width:0;font-size:0.68rem;letter-spacing:0;padding:0.6rem 0.15rem 0.55rem;margin:0;border-bottom:none;border-top:3px solid transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .sec-nav button.active{border-top-color:var(--gold2);}
+  .sec-nav button.bc-btn{margin-left:0;}
+  .sec-nav .bc-x{display:none;}
+  .tab-nav{padding:0 0.75rem;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-wrap:nowrap;position:relative;}
+  .tab-nav::-webkit-scrollbar{display:none;}
+  .tab-nav::after{content:'';position:sticky;right:0;flex:none;width:34px;margin-left:-34px;background:linear-gradient(90deg,rgba(0,0,0,0),var(--bg3) 70%);pointer-events:none;}
   .tab-nav button{padding:0.7rem 0.75rem;flex:none;}
 
   .panel{padding:1.4rem 0.9rem 2.5rem;}
@@ -404,7 +413,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
     <button onclick="switchSection('buying')">Buying</button>
     <button onclick="switchSection('collecting')">Collecting</button>
     <button onclick="switchSection('log')">Log <span id="log-nav-dot" style="display:none;color:var(--coral)">●</span></button>
-    <button class="bc-btn" onclick="switchSection('bookclub')">Book Club ✂</button>
+    <button class="bc-btn" onclick="switchSection('bookclub')">Book Club<span class="bc-x"> ✂</span></button>
   </div>
 
   <!-- TRACKING -->
@@ -868,6 +877,16 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
 
   <!-- BOOK CLUB FLYER -->
   <div id="sec-bookclub">
+    <div class="tab-nav">
+      <button class="active" onclick="switchTab('flyer','bookclub')">Flyer</button>
+      <button onclick="switchTab('bnauthors','bookclub')">Authors to follow</button>
+    </div>
+    <div class="panel" id="tab-bnauthors">
+      <div class="sl">Book Notification — keep the followed list current</div>
+      <div class="ms" style="margin-bottom:10px">Book Notification only emails releases from authors you follow there, and it has no API — so the register does the remembering. Below: authors you've bought series books from in the last twelve months who aren't marked as followed yet. Follow them on Book Notification, then tick <b>Followed</b> here; the tick is a metadata event (kind <code>bn_author</code>) and the next bundle moves them to the followed list. The idle list flags follows you may want to drop.</div>
+      <div class="mg" id="bn-m"></div>
+      <div id="bn-list"></div>
+    </div>
     <div class="panel active" id="tab-flyer" style="padding:1.5rem 1rem 3rem">
       <div class="bc-page">
         <div class="bc-mast">
@@ -2178,8 +2197,10 @@ function switchSection(sec,tab){
   curSec=sec;
   document.querySelectorAll('.sec-nav button').forEach(b=>{const oc=b.getAttribute('onclick');if(oc)b.classList.toggle('active',oc.includes("'"+sec+"'"));});
   ['tracking','reading','buying','collecting','bookclub','log'].forEach(s=>{const el=document.getElementById('sec-'+s);if(el)el.style.display=s===sec?'block':'none';});
-  document.body.classList.toggle('flyer-mode',sec==='bookclub');
   const targetTab=tab||SEC_DEFAULT[sec];
+  // Only the flyer itself hides the chrome; the section's other tabs keep
+  // the header and nav so there is always a way back.
+  document.body.classList.toggle('flyer-mode',sec==='bookclub'&&targetTab==='flyer');
   switchTab(targetTab,sec,true); // true = called from switchSection, skip hash update loop
   updateHash(sec,targetTab);
 }
@@ -2189,6 +2210,7 @@ function switchTab(id,sec,fromSection){
   const secEl=document.getElementById('sec-'+sec);if(!secEl)return;
   secEl.querySelectorAll('.tab-nav button').forEach(b=>{const oc=b.getAttribute('onclick');if(oc)b.classList.toggle('active',oc.includes("'"+id+"'"));});
   secEl.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='tab-'+id));
+  if(sec==='bookclub')document.body.classList.toggle('flyer-mode',id==='flyer');
   curTab=id;
   // Log tabs reflect live inbox state — always re-render on visit (no charts, cheap)
   if(!rendered.has(id)){renderTab(id);rendered.add(id);}
@@ -2206,7 +2228,7 @@ function restoreFromHash(){
   const hash=(location.hash||'').replace('#','');
   const[sec,tab]=hash.split('/');
   const validSecs=new Set(['tracking','reading','buying','collecting','bookclub','log']);
-  const validTabs=new Set(['overview','bytype','genre','universe','rooms','history','thisyear','completion','byseries','toread','comingup','bookmail','toacquire','someday','libgrowth','buythisyear','col-fr','col-dl','col-sr','flyer','logbook','logorders','logpending','logproposed','logmeta']);
+  const validTabs=new Set(['overview','bytype','genre','universe','rooms','history','thisyear','completion','byseries','toread','comingup','bookmail','toacquire','someday','libgrowth','buythisyear','col-fr','col-dl','col-sr','flyer','bnauthors','logbook','logorders','logpending','logproposed','logmeta']);
   const validFRTabs=new Set(['fr-overview','fr-series','fr-completion']);
   const validDLTabs=new Set(['dl-overview','dl-series','dl-completion']);
   const validSRTabs=new Set(['sr-overview','sr-publisher','sr-completion']);
@@ -2259,6 +2281,7 @@ function renderTabInner(id){
   else if(id==='libgrowth')renderLibGrowth(H?G.growthMetrics:[],G.books);
   else if(id==='buythisyear')renderBuyThisYear(H?G.growthYear:[]);
   else if(id==='flyer')renderBookClub();
+  else if(id==='bnauthors')renderBnAuthors();
   else if(id==='logbook')LOG.renderBook();
   else if(id==='logorders')LOG.renderOrders();
   else if(id==='logpending')LOG.renderPending();
@@ -3378,6 +3401,39 @@ function bcBurst(it){
   if(it.ordered==='Preordered')return['bc-b-gold','ORDERED ✓'];
   if(it.ordered==='Scheduled')return['bc-b-blue','ON THE WAY'];
   return['','GET IT!'];
+}
+// Book Club › Authors to follow. The register knows whom John buys; Book
+// Notification (no API) only knows whom he follows. Candidates = authors
+// with a series book acquired in the last twelve months (Com's shelf) not
+// yet marked followed (vocab kind bn_author, pending ticks included). Idle
+// = followed authors with nothing bought in three years and no NEED flag.
+function renderBnAuthors(){
+  const mEl=document.getElementById('bn-m'),lEl=document.getElementById('bn-list');if(!mEl||!lEl)return;
+  const followed=new Set(((LOG.vocabFor&&LOG.vocabFor('bn_author'))||[]).map(a=>a.toLowerCase()));
+  const pending=new Set(((LOG.pendingVocab&&LOG.pendingVocab('bn_author'))||[]).map(a=>a.toLowerCase()));
+  pending.forEach(p=>followed.add(p));
+  const now=new Date(),yr=new Date(now),three=new Date(now);
+  yr.setFullYear(now.getFullYear()-1);three.setFullYear(now.getFullYear()-3);
+  const iso=d=>d.toISOString().slice(0,10);
+  const byA={};
+  for(const b of (G.allIndBooks||[])){
+    if((b.owner||'butthead')!=='butthead')continue;
+    const a=(b.author||'').trim();if(!a||a==='Various')continue;
+    const r=byA[a]=byA[a]||{author:a,recent:0,series:new Set(),last:'',need:0,total:0};
+    r.total++;if(b.need)r.need++;
+    if(b.acquiredOn&&b.acquiredOn>r.last)r.last=b.acquiredOn;
+    if(b.owned&&b.acquiredOn&&b.acquiredOn>=iso(yr)){r.recent++;if(b.series&&b.series!=='Standalones')r.series.add(b.series);}
+  }
+  const rows=Object.values(byA);
+  const isF=r=>followed.has(r.author.toLowerCase());
+  const cands=rows.filter(r=>r.recent>0&&(r.series.size>0||r.recent>1)&&(!isF(r)||pending.has(r.author.toLowerCase()))).sort((a,b)=>b.recent-a.recent||a.author.localeCompare(b.author));
+  const idle=rows.filter(r=>isF(r)&&!r.need&&(!r.last||r.last<iso(three))).sort((a,b)=>a.author.localeCompare(b.author));
+  const missing=[...followed].filter(f=>!rows.some(r=>r.author.toLowerCase()===f));
+  mEl.innerHTML=mH(cands.filter(r=>!pending.has(r.author.toLowerCase())).length,'Authors to follow','bought this year, not marked followed','c')+mH(followed.size,'Marked followed','vocab kind bn_author')+mH(idle.length,'Idle follows','nothing bought in three years');
+  const cand=r=>{const p=pending.has(r.author.toLowerCase());return`<div class="log-item"><div class="log-item-hd"><div class="log-item-info"><div class="log-item-title">${esc(r.author)}${p?' <span class="log-badge-pend">pending</span>':''}</div><div class="log-item-meta">${r.recent} bought this year · ${[...r.series].slice(0,4).map(esc).join(' · ')||'standalones'}${r.need?' · <span style="color:var(--coral)">'+r.need+' NEED</span>':''}</div></div><div class="log-acts">${p?'':`<button class="log-act primary" data-a="${esc(r.author)}" onclick="LOG.followAuthor(this.dataset.a)">✓ Followed on BN</button>`}</div></div></div>`;};
+  lEl.innerHTML=`<div class="sl" style="margin-top:1rem">Follow these on Book Notification</div>${cands.map(cand).join('')||'<div class="ms">Everyone you bought series books from this year is marked followed.</div>'}
+    <div class="sl" style="margin-top:2rem">Idle follows — candidates to unfollow</div>${idle.map(r=>`<div class="log-item"><div class="log-item-hd"><div class="log-item-info"><div class="log-item-title">${esc(r.author)}</div><div class="log-item-meta">last acquisition ${esc(r.last||'unknown')} · ${r.total} in the register</div></div></div></div>`).join('')||'<div class="ms">No idle follows.</div>'}
+    ${missing.length?`<div class="sl" style="margin-top:2rem">Followed, but no books in the register</div><div class="ms">${missing.map(esc).join(' · ')}</div>`:''}`;
 }
 function renderBookClub(){
   const items=bcBuildItems();
@@ -4512,6 +4568,17 @@ const LOG=(()=>{
       </div>`;}).join('');
     refreshBadge();
   }
+  // Book Club › Authors to follow: a tick is a vocab event (kind bn_author)
+  // so the followed list lives in the register, not in one browser.
+  async function followAuthor(name){
+    if(!name)return;
+    const ok=await submit('meta_add',{kind:'bn_author',value:name},null,'butthead');
+    if(ok){toast('Marked “'+name+'” as followed — permanent after jerry syncs');renderBnAuthors();}
+  }
+  function pendingVocab(kind){
+    return (pendCache||[]).concat(sent().filter(e=>!BUNDLE||e.at>BUNDLE.generated_at))
+      .filter(e=>e.type==='meta_add'&&(e.payload||{}).kind===kind).map(e=>e.payload.value);
+  }
   async function doMetaAdd(kind){
     const el=document.getElementById('log-mv-'+kind);
     const value=el.value.trim();
@@ -4535,7 +4602,7 @@ const LOG=(()=>{
   }
 
   return{renderBook,renderOrders,renderPending,renderProposed,doPropDecide,propEdit,doPropDecideSet,doSyncRequest,importLibib,renderMeta,doMetaAdd,dupeCheck,showNeedsData,search,browse,brMode,expand,doFinished,doAcquired,
-    toggleAdd,doAdd,addDates,toggleTrack,doTrackSeries,trackFromRow,isbnLookup,addFromIsbn,scanIsbn,stopScan,saveBookEdit,doNewOrder,doNewBoxOrder,setOrderStyle,expandOrder,doOrderUpdate,
+    toggleAdd,doAdd,addDates,toggleTrack,doTrackSeries,trackFromRow,isbnLookup,addFromIsbn,scanIsbn,stopScan,saveBookEdit,vocabFor,pendingVocab,followAuthor,doNewOrder,doNewBoxOrder,setOrderStyle,expandOrder,doOrderUpdate,
     toggleRow,saveOrderEdit,expandBox,doBoxUpdate,saveBoxEdit,saveSetup,forgetSetup,refreshBadge};
 })();
 
