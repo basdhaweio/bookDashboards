@@ -147,6 +147,20 @@ async function main(){
     res('bundle carries no stray ebook casings',!raw.includes('"Ebook"')&&!raw.includes('"EBook"'));
   });
 
+  await check('ISBN map loads and search rows carry cover gutters',async()=>{
+    const isbns=tget('ISBNs');
+    await go('logbook','log');
+    doc().getElementById('log-q').value='the';
+    w().LOG.search();
+    await new Promise(r=>setTimeout(r,250));
+    const items=doc().querySelectorAll('#log-results .log-item').length;
+    const gutters=doc().querySelectorAll('#log-results .log-thumb').length;
+    const covers=doc().querySelectorAll('#log-results .log-thumb img').length;
+    res('ISBN map loads and search rows carry cover gutters',
+        !!isbns&&isbns.length>500&&items>0&&gutters===items&&covers>0,
+        `ISBNs tab ${isbns?isbns.length-1:0} rows; ${items} hits, ${gutters} gutters, ${covers} covers`);
+  });
+
   res('no runtime errors in the app',errors.length===0,errors.slice(0,3).join(' | '));
   draw();
 }

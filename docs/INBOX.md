@@ -112,6 +112,13 @@ proposal was applied; since the collecting migration it decides whether a book
 reaches the Collecting section, so it is now resolved (and created if new)
 just like `series`.
 
+Optional `isbn` (10 or 13 digits, hyphens tolerated): set by the Log view's
+ISBN lookup/barcode scan — the edition actually in hand. On approval it is
+written to `book_meta` (source `inbox`, confidence high), which makes the
+new book cover-capable and directly scannable from the next publish on.
+The nightly hydrator also stashes a Google Books ISBN into payloads it
+touches, so Proposed cards can show covers.
+
 `author` is free text as typed — the entry forms hint natural order
 ("Sophie Jordan"), not the catalog's "Last, First". Normalize to catalog
 convention during proposal review; the form does not auto-invert because

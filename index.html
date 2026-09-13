@@ -213,6 +213,8 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
 .log-item-title{font-size:13px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .log-item-meta{font-family:var(--font-m);font-size:10px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px;}
 .log-dots{display:flex;gap:4px;flex-shrink:0;}
+.log-thumb{width:28px;min-width:28px;flex-shrink:0;align-self:center;}
+.log-thumb img{width:28px;border-radius:3px;display:block;}
 .log-dot{width:9px;height:9px;border-radius:50%;}
 .log-acts{display:flex;gap:8px;flex-shrink:0;}
 .log-act{font-family:var(--font-m);font-size:11px;padding:8px 12px;border-radius:8px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);cursor:pointer;white-space:nowrap;transition:all 0.12s;}
@@ -774,6 +776,12 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div id="log-setup-book"></div>
       <div class="sl">Finished, acquired, or fixing up a book</div>
       <input id="log-q" class="log-search" type="search" placeholder="Search title, series, or author…" autocomplete="off" oninput="LOG.search()">
+      <div class="log-frow" style="margin:6px 0 2px;gap:6px;align-items:center">
+        <input id="log-isbn" inputmode="numeric" placeholder="ISBN — do I have this?" autocomplete="off" style="max-width:220px" onkeydown="if(event.key==='Enter')LOG.isbnLookup()">
+        <button class="log-ghost" onclick="LOG.isbnLookup()">🔎 ISBN</button>
+        <button class="log-ghost" id="log-scanbtn" style="display:none" onclick="LOG.scanIsbn()">📷 Scan</button>
+      </div>
+      <div id="log-scanwrap" style="display:none;margin:6px 0"></div>
       <div class="log-frow" style="margin:6px 0 2px;gap:6px;align-items:center">
         <select id="log-br-mode" onchange="LOG.brMode()" style="max-width:110px">
           <option value="author">Author</option>
@@ -3452,6 +3460,8 @@ const LOG=(()=>{
   }
   function renderBook(){
     document.getElementById('log-setup-book').innerHTML=hintCard();
+    const sb=document.getElementById('log-scanbtn');
+    if(sb&&'BarcodeDetector' in window)sb.style.display='';
     const n=(G.indBooks||[]).filter(b=>needsData(b).length).length;
     document.getElementById('log-needs-bar').innerHTML=n
       ?`<button class="log-ghost" style="margin-bottom:0.8rem;border-color:var(--coral);color:var(--coral)" onclick="LOG.showNeedsData()">⚠ ${n} book${n===1?'':'s'} missing genre, media, author, or a real title — review</button>`
@@ -3470,6 +3480,7 @@ const LOG=(()=>{
     return`<div class="log-item">
       <div class="log-item-hd">
         ${dots}
+        ${thumbHTML(b.title,b.owner)}
         <div class="log-item-info">
           <div class="log-item-title">${esc(b.title)}${pendMark}${needMark}${missMark}</div>
           <div class="log-item-meta">${esc(b.series)}${b.seq?' #'+esc(b.seq):''} · ${esc(b.author)}${b.media?' · '+esc(b.media):''}${b.pubDate?' · '+esc(b.pubDate):''}${OWNER==='all'?' · '+(OWNER_LABEL[b.owner]||''):''}${(G.inCopy&&G.inCopy[b.title.toLowerCase().replace(/[^a-z0-9]/g,'')+'|'+b.owner]||[]).map(t=>` · <span style="color:var(--purple)">in: ${esc(t)}</span>`).join('')}</div>
@@ -3731,6 +3742,7 @@ const LOG=(()=>{
   function toggleAdd(){
     const f=document.getElementById('log-addform');
     if(f.style.display==='none'){
+      isbnPrefill=''; // fresh form — only addFromIsbn (called after) sets it
       f.innerHTML=`
         <div class="cb" style="margin-top:10px">
         <div class="log-frow"><label>Title *</label><input id="log-n-title" oninput="LOG.dupeCheck('log-n-title','log-n-dupes')"></div>
@@ -3793,6 +3805,108 @@ const LOG=(()=>{
     const ok=await submit('track_series',{series:s,author:b.author||''},b);
     if(ok)toast('Tracking request sent — proposals appear on the Proposed tab within ~15 min');
   }
+  // ── ISBN lookup, covers, barcode scan ──
+  // Covers try Open Library's by-ISBN endpoint first (?default=false 404s on
+  // a miss so onerror can fall back to the stored cover_url), then hide —
+  // the .log-thumb gutter stays so rows keep their alignment either way.
+  function coverSrcs(title,owner,isbnOverride){
+    const bi=(G.bookIsbn||{})[(title||'').toLowerCase().replace(/[^a-z0-9]/g,'')+'|'+owner]||{};
+    const isbn=isbnOverride||((bi.isbns||[])[0]);
+    const s=[];
+    if(isbn)s.push('https://covers.openlibrary.org/b/isbn/'+isbn+'-M.jpg?default=false');
+    if(bi.cover)s.push(bi.cover);
+    return s;
+  }
+  function thumbHTML(title,owner,isbnOverride,w){
+    const srcs=coverSrcs(title,owner,isbnOverride);
+    if(!srcs.length)return'<div class="log-thumb"></div>';
+    return`<div class="log-thumb"${w?` style="width:${w}px;min-width:${w}px"`:''}><img loading="lazy" alt="" src="${esc(srcs[0])}" data-alt="${srcs.slice(1).map(esc).join('|')}"${w?` style="width:${w}px"`:''} onerror="var a=(this.dataset.alt||'').split('|').filter(Boolean);if(a.length){this.dataset.alt=a.slice(1).join('|');this.src=a[0];}else this.style.visibility='hidden'"></div>`;
+  }
+  function isbnNorm(s){return String(s||'').toUpperCase().replace(/[^0-9X]/g,'');}
+  let isbnPrefill='';
+  async function isbnLookup(){
+    const isbn=isbnNorm(document.getElementById('log-isbn').value);
+    if(isbn.length!==10&&isbn.length!==13)return toast('Enter a 10- or 13-digit ISBN',true);
+    const out=document.getElementById('log-results');
+    document.getElementById('log-q').value='';
+    const nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    // 1 — exact edition already on file
+    const hit=(G.isbnMap||{})[isbn];
+    if(hit){
+      const b=(G.indBooks||[]).find(x=>nk(x.title)===nk(hit.title));
+      if(b){renderHits([b],'');toast('In the register — this exact edition');return;}
+    }
+    // 2 — external lookup: Open Library, then anonymous Google Books.
+    // (Libib's weakness — a thin ISBN database — is why there are three
+    // swings here before giving up.) John's GB key stays on jerry.
+    out.innerHTML=`<div class="ms" style="padding:8px 2px">Looking up ${esc(isbn)}…</div>`;
+    let title='',author='',year='';
+    try{
+      const r=await fetch('https://openlibrary.org/search.json?q=isbn:'+isbn+'&fields=title,author_name,first_publish_year&limit=1');
+      const d=r.ok?((await r.json()).docs||[])[0]:null;
+      if(d){title=d.title||'';author=(d.author_name||[])[0]||'';year=d.first_publish_year||'';}
+    }catch(e){}
+    if(!title)try{
+      const r=await fetch('https://www.googleapis.com/books/v1/volumes?country=US&q=isbn:'+isbn);
+      const v=r.ok?((await r.json()).items||[])[0]:null;
+      if(v){const vi=v.volumeInfo||{};title=vi.title||'';author=(vi.authors||[])[0]||'';year=(vi.publishedDate||'').slice(0,4);}
+    }catch(e){}
+    if(!title){
+      out.innerHTML='<div class="ms" style="padding:8px 2px">Neither Open Library nor Google Books knows this ISBN. The register may still have the work under another edition — try a title search — or add it manually below.</div>';
+      return;
+    }
+    // 3 — same work, different edition?
+    const strip=t=>t.split(':')[0];
+    const cand=(G.indBooks||[]).filter(b=>nk(b.title)===nk(title)||nk(strip(b.title))===nk(strip(title)));
+    if(cand.length){renderHits(cand,'');toast('You have this work — the copy in hand is a different edition');return;}
+    // 4 — honest miss: offer the prefilled add
+    G._isbnFound={isbn,title:String(title),author:String(author),year:String(year)};
+    out.innerHTML=`<div class="log-item"><div class="log-item-hd">
+      ${thumbHTML('','',isbn,44)}
+      <div class="log-item-info">
+        <div class="log-item-title">${esc(title)}</div>
+        <div class="log-item-meta">${esc(author)}${year?' · '+esc(year):''} · ISBN ${esc(isbn)} — not in the register</div>
+      </div>
+      <div class="log-acts"><button class="log-act primary" onclick="LOG.addFromIsbn()">＋ Add this book</button></div>
+    </div></div>`;
+  }
+  function addFromIsbn(){
+    const f=G._isbnFound;if(!f)return;
+    const form=document.getElementById('log-addform');
+    if(form.style.display==='none')toggleAdd();
+    document.getElementById('log-n-title').value=f.title;
+    document.getElementById('log-n-author').value=f.author;
+    isbnPrefill=f.isbn;
+    toast('Prefilled from the ISBN lookup — pick series, genre, and status, then Add');
+    form.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+  // Camera scan: BarcodeDetector is Chrome/Android territory — the 📷 button
+  // only appears where the API exists (renderBook toggles it), so iPhones
+  // simply never see it.
+  let scanStream=null,scanTimer=null;
+  async function scanIsbn(){
+    let det;
+    try{det=new BarcodeDetector({formats:['ean_13']});}catch(e){return toast('No barcode support in this browser',true);}
+    const wrap=document.getElementById('log-scanwrap');
+    wrap.style.display='block';
+    wrap.innerHTML='<video id="log-scanvid" playsinline muted style="width:100%;max-width:340px;border-radius:8px;display:block;margin-bottom:6px"></video><button class="log-act" onclick="LOG.stopScan()">✕ Stop scanning</button>';
+    try{scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});}
+    catch(e){wrap.style.display='none';wrap.innerHTML='';return toast('Camera unavailable: '+e.message,true);}
+    const v=document.getElementById('log-scanvid');
+    v.srcObject=scanStream;await v.play();
+    scanTimer=setInterval(async()=>{
+      try{
+        const c=(await det.detect(v)).find(x=>/^97[89]\d{10}$/.test(x.rawValue));
+        if(c){document.getElementById('log-isbn').value=c.rawValue;stopScan();isbnLookup();}
+      }catch(e){}
+    },300);
+  }
+  function stopScan(){
+    clearInterval(scanTimer);scanTimer=null;
+    if(scanStream){scanStream.getTracks().forEach(t=>t.stop());scanStream=null;}
+    const w=document.getElementById('log-scanwrap');
+    if(w){w.style.display='none';w.innerHTML='';}
+  }
   function addDates(){
     // date rows follow the status: acquired-date (and its shop) when owned,
     // read-date when read
@@ -3818,9 +3932,10 @@ const LOG=(()=>{
       if(lines.length<2)return toast('An omnibus needs at least two contained works, one per line',true);
       p.omnibus=true;p.contains=lines;
     }
+    if(isbnPrefill)p.isbn=isbnPrefill; // edition in hand, from lookup/scan
     const bad=vetVocab(p);if(bad)return toast(bad,true);
     const ok=await submit('add_book',p,{owner:p.owner});
-    if(ok){toast('Added “'+title+'” to inbox');toggleAdd();}
+    if(ok){toast('Added “'+title+'” to inbox');isbnPrefill='';toggleAdd();}
   }
 
   // ── Orders ──
@@ -4049,8 +4164,10 @@ const LOG=(()=>{
     el.innerHTML=open.map(p=>{
       const d=dec.get(p.id);
       const decided=d==='approve'||d==='reject'; // a pending EDIT keeps the row actionable
+      let pisbn='';try{pisbn=isbnNorm((JSON.parse(p.proposal)||{}).isbn);}catch(e){}
       return`<div class="cb" style="margin-bottom:10px">
         <div class="log-item-hd" style="align-items:flex-start">
+          ${pisbn?thumbHTML('','',pisbn,40):''}
           <div class="log-item-info">
             <div class="log-item-title">${esc((propEditCur(p)||{}).title||p.target)}${d?` <span class="log-badge-pend">${d==='approve'?'Add':d==='reject'?'Drop':'Edit'} pending</span>`:''}</div>
             <div class="log-item-meta">${esc(p.kind)}${p.recommend&&p.recommend!=='review'?' · recommends '+esc(p.recommend):''}${propSummary(p)?' · '+esc(propSummary(p)):''}</div>
@@ -4240,7 +4357,7 @@ const LOG=(()=>{
   }
 
   return{renderBook,renderOrders,renderPending,renderProposed,doPropDecide,propEdit,doPropDecideSet,doSyncRequest,importLibib,renderMeta,doMetaAdd,dupeCheck,showNeedsData,search,browse,brMode,expand,doFinished,doAcquired,
-    toggleAdd,doAdd,addDates,toggleTrack,doTrackSeries,trackFromRow,saveBookEdit,doNewOrder,doNewBoxOrder,setOrderStyle,expandOrder,doOrderUpdate,
+    toggleAdd,doAdd,addDates,toggleTrack,doTrackSeries,trackFromRow,isbnLookup,addFromIsbn,scanIsbn,stopScan,saveBookEdit,doNewOrder,doNewBoxOrder,setOrderStyle,expandOrder,doOrderUpdate,
     toggleRow,saveOrderEdit,expandBox,doBoxUpdate,saveBoxEdit,saveSetup,forgetSetup,refreshBadge};
 })();
 
@@ -4281,6 +4398,16 @@ async function init(){
     G.copies=(BUNDLE.tabs['bookdb|Copies']||[]).slice(1).map(r=>({id:r[0],title:r[1],owner:r[2],publisher:r[3],format:r[4],store:r[5],acquired:r[6],notes:r[7],contains:(r[8]||'').split('|').filter(Boolean)}));
     G.inCopy={};
     for(const c of G.copies)for(const t of c.contains){const k=t.toLowerCase().replace(/[^a-z0-9]/g,'')+'|'+c.owner;(G.inCopy[k]=G.inCopy[k]||[]).push(c.title);}
+    // ISBNs tab: identifiers (owned-edition first) + best stored cover URL.
+    // isbnMap answers "do I have this exact edition?"; bookIsbn drives the
+    // cover thumbnails (OL by-ISBN first, stored cover_url as fallback).
+    G.bookIsbn={};G.isbnMap={};
+    for(const r of (BUNDLE.tabs['bookdb|ISBNs']||[]).slice(1)){
+      const k=(r[0]||'').toLowerCase().replace(/[^a-z0-9]/g,'')+'|'+r[1];
+      const isbns=(r[2]||'').split('|').filter(Boolean);
+      G.bookIsbn[k]={isbns,cover:(r[3]||'').replace(/^http:/,'https:')};
+      for(const i of isbns)if(!(i in G.isbnMap))G.isbnMap[i]={title:r[0],owner:r[1]};
+    }
     if(!Object.keys(G.vocab).length){
       const add=(k,v)=>{if(!v)return;const a=G.vocab[k]=G.vocab[k]||[];if(!a.includes(v))a.push(v);};
       G.allIndBooks.forEach(b=>{add('genre',b.type);add('sub_genre',b.subGenre);add('media',b.media);add('publisher',b.publisher);});
