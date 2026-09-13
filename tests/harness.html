@@ -150,8 +150,12 @@ async function main(){
   await check('ISBN map loads and search rows carry cover gutters',async()=>{
     const isbns=tget('ISBNs');
     await go('logbook','log');
-    doc().getElementById('log-q').value='the';
-    w().LOG.search();
+    // LOG is a top-level const in the app (inline handlers see it; the
+    // contentWindow object does not), so type like a user: set the value
+    // and fire the input event the search box listens on.
+    const q=doc().getElementById('log-q');
+    q.value='the';
+    q.dispatchEvent(new (w().Event)('input',{bubbles:true}));
     await new Promise(r=>setTimeout(r,250));
     const items=doc().querySelectorAll('#log-results .log-item').length;
     const gutters=doc().querySelectorAll('#log-results .log-thumb').length;
