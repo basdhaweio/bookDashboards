@@ -2898,7 +2898,9 @@ function parseIndividual(vals){
   for(let i=1;i<vals.length;i++){
     const r=vals[i];
     const title=(r[0]||'').trim();
-    if(!title||/^\d+$/.test(title))continue;
+    // No numeric-title guard: that was a sheet-era junk-row filter, and it
+    // hid real books (1984, 2312). The export is gated to active books now.
+    if(!title)continue;
     const series=(r[1]||'').trim();
     if(!series||series==='-')continue;
     books.push({
