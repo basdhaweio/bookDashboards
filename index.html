@@ -235,6 +235,12 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
 .spine-unread::before{content:'';position:absolute;left:0;right:0;top:0;height:5px;background:rgba(255,255,255,.75)}
 .spine span{position:absolute;left:50%;top:6px;transform:translateX(-50%) rotate(180deg);writing-mode:vertical-rl;font-family:var(--font-m);font-size:8px;line-height:1;color:#fff;white-space:nowrap;text-shadow:0 0 2px rgba(0,0,0,.6);max-height:84px;overflow:hidden}
 .room-peek{display:flex;gap:12px;align-items:flex-start;margin:8px 0 0;padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow)}
+/* cover zoom: hover (desktop) / tap (touch) on any cover */
+.ct,.log-thumb img{cursor:zoom-in}
+#cover-zoom{position:fixed;z-index:9999;display:none;background:#fff;padding:6px;border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,.35);pointer-events:none;max-width:260px}
+#cover-zoom img{display:block;width:240px;max-height:70vh;object-fit:contain;border-radius:4px;background:var(--bg3)}
+#cover-zoom .cz-cap{font-family:var(--font-m);font-size:10px;color:var(--text2);margin-top:5px;max-width:240px;white-space:normal}
+#cover-zoom.cz-center{left:50%!important;top:50%!important;transform:translate(-50%,-50%);pointer-events:auto}
 .log-dot{width:9px;height:9px;border-radius:50%;}
 .log-acts{display:flex;gap:8px;flex-shrink:0;}
 .log-act{font-family:var(--font-m);font-size:11px;padding:8px 12px;border-radius:8px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);cursor:pointer;white-space:nowrap;transition:all 0.12s;}
@@ -1857,6 +1863,49 @@ function coverStrip(items,cap){
   if(!shown.length)return'';
   return`<div class="cstrip cstrip-h">${shown.map(b=>coverTile(b.title,b.owner||'butthead',b.sub||'',null)).join('')}${items.length>shown.length?`<div class="ct ct-ph ct-more"><span>+${items.length-shown.length} more</span></div>`:''}</div>`;
 }
+// Cover zoom — hover on desktop, tap on touch — for every .ct / .log-thumb
+// image: the large edition of whatever URL the tile actually loaded, with a
+// caption from the tile's title. One shared floating box, created on demand.
+function coverBig(src){
+  return src.replace(/\/b\/(id|isbn)\/([^/]+)-M\.jpg/,'/b/$1/$2-L.jpg').replace(/([?&])zoom=1\b/,'$1zoom=2');
+}
+(function(){
+  const sel='.ct img,.log-thumb img';
+  let box=null,pinned=false;
+  function ensure(){if(box)return box;box=document.createElement('div');box.id='cover-zoom';box.innerHTML='<img alt=""><div class="cz-cap"></div>';document.body.appendChild(box);return box;}
+  function caption(img){
+    const tile=img.closest('.ct,.log-thumb');
+    if(tile&&tile.getAttribute('title'))return tile.getAttribute('title');
+    const row=img.closest('.log-item');
+    return row?(row.querySelector('.log-item-title')||{}).textContent||'':'';
+  }
+  function place(b,x,y){
+    const w=b.offsetWidth||252,h=b.offsetHeight||380,vw=window.innerWidth,vh=window.innerHeight;
+    let left=x+18,top=y-h/2;
+    if(left+w>vw-8)left=x-w-18;
+    if(left<8)left=8;
+    top=Math.max(8,Math.min(top,vh-h-8));
+    b.style.left=left+'px';b.style.top=top+'px';
+  }
+  function show(img,x,y){
+    const b=ensure(),big=b.querySelector('img'),src=img.currentSrc||img.src;
+    big.onerror=()=>{if(big.src!==src)big.src=src;}; // no large edition → keep the tile's
+    big.src=coverBig(src);
+    b.querySelector('.cz-cap').textContent=caption(img);
+    b.dataset.src=src;
+    b.style.display='block';
+    if(!pinned)place(b,x,y);
+  }
+  function hide(){if(box){box.style.display='none';box.classList.remove('cz-center');}}
+  document.addEventListener('mouseover',e=>{const img=e.target.closest&&e.target.closest(sel);if(img&&!pinned)show(img,e.clientX,e.clientY);});
+  document.addEventListener('mousemove',e=>{if(box&&!pinned&&box.style.display==='block')place(box,e.clientX,e.clientY);});
+  document.addEventListener('mouseout',e=>{const img=e.target.closest&&e.target.closest(sel);if(img&&!pinned)hide();});
+  document.addEventListener('click',e=>{
+    const img=e.target.closest&&e.target.closest(sel);
+    if(pinned){pinned=false;hide();if(!img)return;}
+    if(img){pinned=true;show(img,e.clientX,e.clientY);box.classList.add('cz-center');}
+  });
+})();
 function ordKeyMail(o){return[(o.order||'').trim(),(o.books||'').trim(),(o.date||'').trim()].join('|');}
 function ordKeyBox(b){return[(b.vendor||'').trim(),(b.box||'').trim(),(b.title||'').trim(),(b.order||'').trim(),(b.date||'').trim()].join('|');}
 function ordPendChip(sets){
