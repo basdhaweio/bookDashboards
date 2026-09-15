@@ -18,11 +18,11 @@
  *        BN_QUERY      from:booknotification.com  (optional — the default;
  *                      change only if their sender domain differs)
  *   3. Pick `forwardNow` in the function dropdown → Run. Google asks you to
- *      authorize Gmail (read/modify labels) and external requests; allow.
- *      It back-fills up to 90 days of digests; each forwarded thread gets
- *      the Gmail label `bn-forwarded`, so nothing is ever sent twice.
- *   4. Pick `installTrigger` → Run once. From then on it runs every
- *      Wednesday at 06:00 (the digest lands Tuesday).
+ *      authorize Gmail (read/modify labels), external requests, and
+ *      triggers; allow. It back-fills up to 90 days of digests (each
+ *      forwarded thread gets the Gmail label `bn-forwarded`, so nothing is
+ *      ever sent twice) and installs the weekly trigger itself: every
+ *      Wednesday at 06:00, after the Tuesday digest. That's the whole setup.
  *
  * The event shape mirrors the dashboard's: {v, id, at, by, type, payload}.
  */
@@ -83,6 +83,12 @@ function forwardNow() {
     thread.addLabel(label);
   });
   Logger.log('forwarded ' + sent + ' message(s)');
+  // The first successful run also installs the weekly trigger, so a single
+  // Run of forwardNow is the whole setup.
+  var installed = ScriptApp.getProjectTriggers().some(function (t) {
+    return t.getHandlerFunction() === 'forwardNow';
+  });
+  if (!installed) installTrigger();
   return sent;
 }
 
