@@ -3380,7 +3380,7 @@ function bcRelParts(rel){
     return{mo:v,moName:m.charAt(0).toUpperCase()+m.slice(1),day:day||''};
   }
   const iso=(rel||'').match(/^(\d{4})-(\d{2})-(\d{2})/); // parse ISO by parts — Date() would shift it a day via UTC
-  if(iso)return{mo:+iso[2],moName:names[+iso[2]-1],day:String(+iso[3])};
+  if(iso)return{yr:+iso[1],mo:+iso[2],moName:names[+iso[2]-1],day:String(+iso[3])};
   const d=new Date(rel);
   if(!isNaN(d)&&/\d/.test(rel))return{mo:d.getMonth()+1,moName:names[d.getMonth()],day:String(d.getDate())};
   return{mo:99,moName:'Date TBA',day:''};
@@ -3396,8 +3396,12 @@ function bcBuildItems(){
     if(seen.has(bcKey(b.title)))continue;
     items.push({title:b.title,author:b.author,series:b.series,genre:b.genre,release:b.release,ordered:'',publisher:'',isbn:b.isbn,notes:b.notes,isNew:true});
   }
-  items.forEach(it=>{const p=bcRelParts(it.release);it.mo=p.mo;it.moName=p.moName;it.day=p.day;});
-  items.sort((a,b)=>a.mo-b.mo||(a.day||99)-(b.day||99));
+  // Release calendars read forward: a month-only date (the Interested
+  // sheet) means this year if it hasn't passed, else next year; ISO dates
+  // (the Book Notification feed) carry their own year. Sort by all three.
+  const now=new Date(),cy=now.getFullYear(),cm=now.getMonth()+1;
+  items.forEach(it=>{const p=bcRelParts(it.release);it.mo=p.mo;it.moName=p.moName;it.day=p.day;it.yr=p.yr||(p.mo&&p.mo<cm?cy+1:cy);});
+  items.sort((a,b)=>a.yr-b.yr||a.mo-b.mo||(a.day||99)-(b.day||99));
   items.forEach((it,i)=>{it.num=101+i;it.key=bcKey(it.title)+'|'+bcKey(it.author);});
   return items;
 }
