@@ -1056,7 +1056,7 @@ function parseBookClub(vals){
   const rows=[];
   for(let i=1;i<vals.length;i++){
     const r=vals[i],title=(r[0]||'').trim();if(!title)continue;
-    rows.push({title,author:(r[1]||'').trim(),series:(r[2]||'').trim(),release:(r[3]||'').trim(),genre:(r[4]||'').trim(),notes:(r[5]||'').trim(),isbn:(r[6]||'').trim()});
+    rows.push({title,author:(r[1]||'').trim(),series:(r[2]||'').trim(),release:(r[3]||'').trim(),genre:(r[4]||'').trim(),notes:(r[5]||'').trim(),isbn:(r[6]||'').trim(),cover:(r[7]||'').trim()});
   }
   return rows;
 }
@@ -3389,17 +3389,28 @@ function bcBuildItems(){
   const items=[],seen=new Map();
   for(const u of G.interested.up){
     const displayTitle=u.title||u.series||'TBD';
-    const it={title:displayTitle,author:u.author,series:u.series&&u.title?u.series:'',genre:u.genre,release:u.release,ordered:u.ordered,publisher:u.publisher,isbn:'',notes:'',isNew:false};
+    const it={title:displayTitle,author:u.author,series:u.series&&u.title?u.series:'',genre:u.genre,release:u.release,ordered:u.ordered,publisher:u.publisher,isbn:'',notes:'',cover:'',isNew:false};
     seen.set(bcKey(displayTitle),it);items.push(it);
   }
   for(const b of (G.bookClub||[])){
     const dup=seen.get(bcKey(b.title));
     // A sheet pick that Book Notification also lists borrows BN's exact
-    // date (the sheet only ever says "August 25"); the pick keeps its
-    // ordered status and doesn't get a second card.
-    if(dup){if(/^\d{4}-\d{2}-\d{2}/.test(b.release||''))dup.release=b.release;continue;}
-    items.push({title:b.title,author:b.author,series:b.series,genre:b.genre,release:b.release,ordered:'',publisher:'',isbn:b.isbn,notes:b.notes,isNew:true});
+    // date (the sheet only ever says "August 25") and its resolved cover;
+    // the pick keeps its ordered status and doesn't get a second card.
+    if(dup){if(/^\d{4}-\d{2}-\d{2}/.test(b.release||''))dup.release=b.release;if(b.cover&&!dup.cover)dup.cover=b.cover;continue;}
+    items.push({title:b.title,author:b.author,series:b.series,genre:b.genre,release:b.release,ordered:'',publisher:'',isbn:b.isbn,notes:b.notes,cover:b.cover||'',isNew:true});
   }
+  // HAVE IT / ORDERED come from the register and the open orders, not only
+  // the sheet's Ordered column: a book either owner owns is had, and a title
+  // sitting in an unfulfilled Book Mail order is on the way.
+  const nl=t=>(t||'').toLowerCase().replace(/\b(vol|volume)\b\.?/g,' ').replace(/[^a-z0-9]/g,'');
+  const owned=new Set((G.allIndBooks||[]).filter(b=>b.owned).map(b=>nl(b.title)));
+  const openOrders=(G.orders||[]).filter(o=>o.delivered!=='Fulfilled'&&o.delivered!=='Cancelled').map(o=>nl(o.books));
+  items.forEach(it=>{
+    const k=nl(it.title);
+    if(k&&owned.has(k)){it.ordered='Have';it.isNew=false;}
+    else if(k&&it.ordered!=='Have'&&it.ordered!=='Preordered'&&openOrders.some(t=>t.includes(k))){it.ordered='Preordered';}
+  });
   // Release calendars read forward. ISO dates carry their year; a month-only
   // date (the Interested sheet) is this year when the month is upcoming or
   // within the last four months (a book out in August is still "this year"
@@ -3457,13 +3468,20 @@ function renderBookClub(){
   document.getElementById('bc-edition-no').textContent='Flyer No. '+(now.getMonth()+1);
   const mq='★ '+items.length+' books inside ★ New releases ★ Hot off the press ★ Order today ★ Books! Books! Books! ';
   document.getElementById('bc-marquee').textContent=mq+mq;
-  // Month sections
-  const byMo={};
-  items.forEach(it=>{(byMo[it.moName]=byMo[it.moName]||[]).push(it);});
-  const moOrder=Object.keys(byMo).sort((a,b)=>(byMo[a][0].mo)-(byMo[b][0].mo));
+  // Month sections, keyed by year+month so January 2027 sits after
+  // December 2026 (sorting by month number alone put it first). Months
+  // already gone are "Out now", and a month in another year says so.
+  const cy=now.getFullYear(),cm=now.getMonth()+1;
+  const byMo={},label={};
+  items.forEach(it=>{
+    const k=it.moName==='Date TBA'?'Date TBA':`${it.yr}-${String(it.mo).padStart(2,'0')}`;
+    (byMo[k]=byMo[k]||[]).push(it);
+    if(!label[k])label[k]=k==='Date TBA'?'Date TBA':((it.yr<cy||(it.yr===cy&&it.mo<cm))?'Out now · ':'Coming in ')+it.moName+(it.yr!==cy?' '+it.yr:'');
+  });
+  const moOrder=Object.keys(byMo).sort((a,b)=>a==='Date TBA'?1:b==='Date TBA'?-1:a.localeCompare(b));
   document.getElementById('bc-months').innerHTML=moOrder.map(mo=>`
     <div class="bc-mo">
-      <div class="bc-mo-hd bc-slab">${mo==='Date TBA'?'Date TBA':'Coming in '+mo}</div>
+      <div class="bc-mo-hd bc-slab">${label[mo]}</div>
       <div class="bc-grid">
         ${byMo[mo].map(it=>{
           const[bcls,btxt]=bcBurst(it);
@@ -3471,7 +3489,7 @@ function renderBookClub(){
           const rel=it.moName==='Date TBA'?'TBA':(it.moName.slice(0,3)+(it.day?' '+it.day:'')).toUpperCase();
           return`<div class="bc-card${it.ordered==='Have'?' bc-have':''}">
             <div class="bc-burst ${bcls}">${btxt}</div>
-            <div class="bc-cov" data-cov="${bcEsc(it.key)}" data-t="${bcEsc(it.title)}" data-a="${bcEsc(it.author)}" data-i="${bcEsc(it.isbn)}"><div class="bc-cov-none">Cover<br>art<br>coming<br>soon!</div></div>
+            <div class="bc-cov" data-cov="${bcEsc(it.key)}" data-t="${bcEsc(it.title)}" data-a="${bcEsc(it.author)}" data-i="${bcEsc(it.isbn)}" data-u="${bcEsc(it.cover||'')}"><div class="bc-cov-none">Cover<br>art<br>coming<br>soon!</div></div>
             <div class="bc-info">
               <div class="bc-item">ITEM #${it.num}</div>
               <div class="bc-title bc-slab">${bcEsc(it.title)}</div>
@@ -3514,6 +3532,11 @@ function bcTally(){
 async function bcFetchCovers(){
   const els=[...document.querySelectorAll('.bc-cov[data-cov]')];
   const jobs=els.map(el=>async()=>{
+    // 1. jerry-resolved art (Book Club feed rows); 2. the register's own
+    // cover when the pick is a tracked book; 3. the old per-card OL guess.
+    if(el.dataset.u){bcSetCover(el,el.dataset.u);return;}
+    const reg=coverSrcs(el.dataset.t,'butthead');
+    if(reg.length){bcSetCover(el,reg[0]);return;}
     const key='bcCov2:'+el.dataset.cov;
     let cached=null;
     try{cached=JSON.parse(localStorage.getItem(key));}catch(e){}
