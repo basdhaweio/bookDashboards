@@ -87,6 +87,30 @@ other listed work through the same owned+dated-acquisition logic (exact
 title match per owner; misses park as `add_book_from_inbox` proposals
 carrying the copy id, so approving them completes the copy's contents).
 
+**Edition** (docs/OMNIBUS.md, Editions): a single-work object — a hardback
+of a book already owned in paperback, a special edition — rides the same
+event as an `edition` object. `format` or `edition` (the edition's name)
+is required; `replaces: true` retires the book's newest still-active
+single-work copy (sold, donated, swapped out) and points it at the new one:
+```json
+{"book": {…}, "date": "2026-09-16", "source": "The Broken Binding",
+ "edition": {"format": "Special Edition", "edition": "Broken Binding",
+             "publisher": "Orbit", "replaces": true, "notes": "signed"}}
+```
+Counts stay work-denominated — the book is still one book; the copies
+layer just knows one more object. `add_book` accepts the same `edition`
+object (without `replaces`) for a new work that arrives as a specific
+edition; the copy is recorded alongside the work on approval.
+
+### `copy_let_go`
+Retire a physical copy — sold, donated, swapped out — without touching the
+work's owned status (that stays John-asserted through `acquired`).
+```json
+{"copy_id": 41, "date": "2026-09-16", "reason": "donated"}
+```
+`copy_id` is the Copies tab's Id; the copy must belong to `by`. Already-
+retired copies are a no-op.
+
 ### `email_forward`
 A newsletter forwarded raw by the Gmail Apps Script in `tools/bn_forwarder.gs`
 (Book Notification's weekly digest). Stored verbatim in `email_forwards`

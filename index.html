@@ -3615,7 +3615,8 @@ const LOG=(()=>{
     const who=OWNER_LABEL[ev.by]||ev.by;
     switch(ev.type){
       case'finished':return`✓ ${who} finished “${b.title}”${p.date?' · '+p.date:''}`;
-      case'acquired':return`📦 Got “${b.title}”${b.media?' ('+b.media+')':''}`;
+      case'acquired':return`📦 Got “${b.title}”${b.media?' ('+b.media+')':''}${p.edition?' · '+(p.edition.format||'edition')+(p.edition.edition?' '+p.edition.edition:'')+(p.edition.replaces?' (swap)':''):''}`;
+      case'copy_let_go':return`🗑 Let go copy #${p.copy_id}${p.date?' · '+p.date:''}`;
       case'add_book':return`＋ New book “${p.title}”${p.read?' · read':''}${p.owned?' · owned':''}`;
       case'book_update':return`✎ “${b.title}” → ${Object.keys(p.set||{}).join(', ')}`;
       case'meta_add':return`🏷 New ${p.kind}: ${p.value}`;
@@ -3733,7 +3734,7 @@ const LOG=(()=>{
         ${thumbHTML(b.title,b.owner)}
         <div class="log-item-info">
           <div class="log-item-title">${esc(b.title)}${pendMark}${needMark}${missMark}</div>
-          <div class="log-item-meta">${esc(b.series)}${b.seq?' #'+esc(b.seq):''} · ${esc(b.author)}${b.media?' · '+esc(b.media):''}${b.pubDate?' · '+esc(b.pubDate):''}${OWNER==='all'?' · '+(OWNER_LABEL[b.owner]||''):''}${(G.inCopy&&G.inCopy[b.title.toLowerCase().replace(/[^a-z0-9]/g,'')+'|'+b.owner]||[]).map(t=>` · <span style="color:var(--purple)">in: ${esc(t)}</span>`).join('')}</div>
+          <div class="log-item-meta">${esc(b.series)}${b.seq?' #'+esc(b.seq):''} · ${esc(b.author)}${b.media?' · '+esc(b.media):''}${b.pubDate?' · '+esc(b.pubDate):''}${OWNER==='all'?' · '+(OWNER_LABEL[b.owner]||''):''}${(G.inCopy&&G.inCopy[b.title.toLowerCase().replace(/[^a-z0-9]/g,'')+'|'+b.owner]||[]).map(t=>` · <span style="color:var(--purple)">in: ${esc(t)}</span>`).join('')}${(G.editionOf&&G.editionOf[b.title.toLowerCase().replace(/[^a-z0-9]/g,'')+'|'+b.owner]||[]).map(t=>` · <span style="color:var(--gold)">${esc(t)}</span>`).join('')}</div>
         </div>
         <div class="log-acts">
           <button class="log-act primary" onclick="LOG.expand(${key},'finished')">✓ Read it</button>
@@ -3858,7 +3859,8 @@ const LOG=(()=>{
         :`<input id="log-bke-${f}-${i}" value="${esc(cur[f]||'')}" ${f==='series'?'list="log-dl-series" placeholder="blank = standalone"':f==='universe'?'list="log-dl-universe"':f==='pub_date'?'placeholder="1990 · July 1990 · 1990-07-14"':f==='need'?'placeholder="x = hunting for it, blank = not"':''}>`}</div>`).join('')
         +entityDatalists()
         +`<button class="log-act primary" onclick="LOG.saveBookEdit(${i})">Save changed fields</button>
-        <div class="ms" style="margin-top:6px">Only changed fields are sent. Status stays with ✓/📦. Missing a genre or publisher? Add it under Metadata first.</div>`;
+        <div class="ms" style="margin-top:6px">Only changed fields are sent. Status stays with ✓/📦. Missing a genre or publisher? Add it under Metadata first.</div>`
+        +copiesHTML(b);
     }else{
       el.innerHTML=`<div class="log-frow"><label>Date</label><input type="date" id="log-a-date" value="${today()}"></div>
         <div class="log-frow"><label>Source</label>${vocabInput('log-a-source','source','')}</div>
@@ -3868,7 +3870,17 @@ const LOG=(()=>{
           <div class="log-frow"><label>Contains</label><textarea id="log-a-contains-${i}" rows="3" placeholder="every work in the volume, one per line — including this one is fine" style="flex:1;font:inherit"></textarea></div>
           <div class="ms" style="margin-bottom:6px">All listed works get marked owned with this date and source; titles not in the register park as add proposals tied to the copy.</div>
         </div>
-        ${b.owned?'<div class="ms" style="margin-bottom:8px;color:var(--coral)">Heads up: already marked owned — log anyway if this is a new copy/format.</div>':''}
+        <div class="log-frow"><label>Edition?</label><label class="ms"><input type="checkbox" id="log-a-ed-${i}" onchange="LOG.toggleRow('log-a-edrow-${i}')"> record this copy's edition — hardback, special edition, a swap</label></div>
+        <div id="log-a-edrow-${i}" style="display:none">
+          <div class="log-frow"><label>Format</label><select id="log-a-edfmt-${i}"><option value=""></option>${COPY_FORMATS.map(f=>`<option>${f}</option>`).join('')}</select></div>
+          <div class="log-frow"><label>Edition</label><input id="log-a-edname-${i}" list="log-dl-editions" placeholder="e.g. Illumicrate, Broken Binding exclusive"></div>
+          <div class="log-frow"><label>Publisher</label><input id="log-a-edpub-${i}" placeholder="optional — the edition's publisher"></div>
+          <div class="log-frow"><label>Notes</label><input id="log-a-ednotes-${i}" placeholder="signed, sprayed edges, numbered…"></div>
+          <div class="log-frow"><label>Swap?</label><label class="ms"><input type="checkbox" id="log-a-edrep-${i}"> replaces a copy I'm letting go — the old one gets retired</label></div>
+          <div class="ms" style="margin-bottom:6px">Recorded on the copies layer; the book stays one book. Existing copies are listed under ✎.</div>
+        </div>
+        <datalist id="log-dl-editions">${[...new Set((G.copies||[]).map(c=>c.edition).filter(Boolean))].map(e=>`<option>${esc(e)}</option>`).join('')}</datalist>
+        ${b.owned?'<div class="ms" style="margin-bottom:8px;color:var(--coral)">Heads up: already marked owned — log anyway if this is a new copy/format (tick Edition to say which).</div>':''}
         <button class="log-act gold" onclick="LOG.doAcquired(${i})">Log it — now owned</button>`;
     }
     el.classList.add('open');
@@ -3880,6 +3892,10 @@ const LOG=(()=>{
   }
   // Register fields editable per book; UI key = inbox set key (genre lives in
   // indBooks as .type, sub_genre as .subGenre — mapped in bookEditCur).
+  // Physical formats for the copies layer (an object's binding, not the
+  // work's media): the register's media stays Print/eBook/…; this says
+  // which Print.
+  const COPY_FORMATS=['Hardcover','Paperback','Trade Paperback','Mass Market','Special Edition','Signed / Limited','Box Set','eBook','Audio'];
   const BOOK_EDIT=['title','series','seq','author','genre','sub_genre','media','universe','room','publisher','pub_date','need','read_on','acquired_on','notes'];
   const BOOK_EDIT_LBL={title:'Title',series:'Series',seq:'Seq #',author:'Author',genre:'Genre',sub_genre:'Sub-genre',media:'Media',universe:'Universe',room:'Room',publisher:'Publisher',pub_date:'Published',need:'Need',read_on:'Date read',acquired_on:'Date acquired',notes:'Notes'};
   // Room is a fixed pick (the eight Rooms-tab names, register values not
@@ -3959,9 +3975,30 @@ const LOG=(()=>{
       if(!lines.length)return toast('List the works the volume contains',true);
       p.omnibus_title=t;p.contains=lines;
     }
+    if(document.getElementById(`log-a-ed-${i}`)?.checked){
+      const g=id=>(document.getElementById(`log-a-${id}-${i}`)?.value||'').trim();
+      const fmt=g('edfmt'),name=g('edname');
+      if(!fmt&&!name)return toast('Pick a format or name the edition',true);
+      p.edition={format:fmt,edition:name,publisher:g('edpub'),notes:g('ednotes'),replaces:!!document.getElementById(`log-a-edrep-${i}`)?.checked};
+    }
     const bad=vetVocab(p);if(bad)return toast(bad,true);
     const ok=await submit('acquired',p,b);
-    if(ok){toast('Logged: got “'+b.title+'”'+(p.omnibus_title?' via “'+p.omnibus_title+'”':''));search();}
+    if(ok){toast('Logged: got “'+b.title+'”'+(p.omnibus_title?' via “'+p.omnibus_title+'”':'')+(p.edition?' — '+(p.edition.format||'edition')+(p.edition.edition?' · '+p.edition.edition:'')+(p.edition.replaces?', old copy retired':''):''));search();}
+  }
+  // Copies on the shelf for one work (single-work editions and the omnibus
+  // volumes it sits in), with Let go — sold, donated, swapped out.
+  function copiesHTML(b){
+    const k=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    const mine=(G.copies||[]).filter(c=>c.owner===(b.owner||'butthead')&&c.contains.some(t=>k(t)===k(b.title)));
+    if(!mine.length)return`<div class="ms" style="margin-top:10px">No itemized copies yet — record one with 📦 Got it › Edition.</div>`;
+    return`<div class="sl" style="margin-top:12px">Copies on the shelf</div>`+mine.map(c=>`<div class="log-frow" style="align-items:center"><span style="flex:1">${c.contains.length>1?'in: <b>'+esc(c.title)+'</b>':'<b>'+esc(c.format||'copy')+'</b>'}${c.edition?' · '+esc(c.edition):''}${c.publisher?' · '+esc(c.publisher):''}${c.acquired?' · '+esc(c.acquired):''}${c.store?' · '+esc(c.store):''}</span><button class="log-act" onclick="LOG.doCopyLetGo(${c.id})" title="sold, donated, or swapped out — the book stays owned">Let go</button></div>`).join('');
+  }
+  async function doCopyLetGo(id){
+    const c=(G.copies||[]).find(x=>x.id===id);if(!c)return;
+    const what=(c.contains.length>1?c.title:(c.format||'copy')+(c.edition?' · '+c.edition:''));
+    if(!confirm(`Let go of this copy — ${what}? It leaves the copies list; the book itself stays owned.`))return;
+    const ok=await submit('copy_let_go',{copy_id:id,date:today()},null,c.owner);
+    if(ok){toast('Copy let go — gone from the list after jerry syncs');}
   }
 
   // ── Add-new book ──
@@ -4014,6 +4051,16 @@ const LOG=(()=>{
         <div id="log-n-omnirow" style="display:none">
           <div class="ms" style="margin:2px 0 6px">Title above = the edition on the spine (never a register row). List the works it contains, one per line, optional trailing #seq — they get the series/author/genre entered here.</div>
           <div class="log-frow"><label>Contains</label><textarea id="log-n-contains" rows="4" placeholder="The Crown Conspiracy #1&#10;Avempartha #2" style="flex:1;font:inherit"></textarea></div>
+        </div>
+        <div id="log-n-edwrap">
+          <div class="log-frow"><label>Edition?</label><label class="ms"><input type="checkbox" id="log-n-ed" onchange="document.getElementById('log-n-edrow').style.display=this.checked?'':'none'"> record the edition this copy is (hardback, special edition…)</label></div>
+          <div id="log-n-edrow" style="display:none">
+            <div class="log-frow"><label>Format</label><select id="log-n-edfmt"><option value=""></option>${COPY_FORMATS.map(f=>`<option>${f}</option>`).join('')}</select></div>
+            <div class="log-frow"><label>Edition</label><input id="log-n-edname" list="log-dl-editions-n" placeholder="e.g. Illumicrate"></div>
+            <div class="log-frow"><label>Ed. publisher</label><input id="log-n-edpub" placeholder="optional"></div>
+            <div class="log-frow"><label>Ed. notes</label><input id="log-n-ednotes" placeholder="signed, sprayed edges…"></div>
+            <datalist id="log-dl-editions-n">${[...new Set((G.copies||[]).map(c=>c.edition).filter(Boolean))].map(e=>`<option>${esc(e)}</option>`).join('')}</datalist>
+          </div>
         </div>
         <div class="log-frow"><label>Status</label>
           <select id="log-n-status" onchange="LOG.addDates()"><option value="owned">Owned, not read</option><option value="read">Read & owned</option><option value="readonly">Read, not owned</option><option value="wish">Neither (wishlist)</option></select></div>
@@ -4162,6 +4209,7 @@ const LOG=(()=>{
     const owned=(st==='owned'||st==='read')?'':'none';
     document.getElementById('log-n-acqrow').style.display=owned;
     document.getElementById('log-n-srcrow').style.display=owned;
+    const ew=document.getElementById('log-n-edwrap');if(ew)ew.style.display=owned;
     document.getElementById('log-n-readrow').style.display=(st==='read'||st==='readonly')?'':'none';
   }
   async function doAdd(){
@@ -4181,6 +4229,11 @@ const LOG=(()=>{
       p.omnibus=true;p.contains=lines;
     }
     if(isbnPrefill)p.isbn=isbnPrefill; // edition in hand, from lookup/scan
+    if(owned&&document.getElementById('log-n-ed')?.checked){
+      const fmt=v('log-n-edfmt'),name=v('log-n-edname');
+      if(!fmt&&!name)return toast('Pick a format or name the edition',true);
+      p.edition={format:fmt,edition:name,publisher:v('log-n-edpub'),notes:v('log-n-ednotes')};
+    }
     const bad=vetVocab(p);if(bad)return toast(bad,true);
     const ok=await submit('add_book',p,{owner:p.owner});
     if(ok){toast('Added “'+title+'” to inbox');isbnPrefill='';toggleAdd();}
@@ -4617,7 +4670,7 @@ const LOG=(()=>{
   }
 
   return{renderBook,renderOrders,renderPending,renderProposed,doPropDecide,propEdit,doPropDecideSet,doSyncRequest,importLibib,renderMeta,doMetaAdd,dupeCheck,showNeedsData,search,browse,brMode,expand,doFinished,doAcquired,
-    toggleAdd,doAdd,addDates,toggleTrack,doTrackSeries,trackFromRow,isbnLookup,addFromIsbn,scanIsbn,stopScan,saveBookEdit,vocabFor,pendingVocab,followAuthor,doNewOrder,doNewBoxOrder,setOrderStyle,expandOrder,doOrderUpdate,
+    toggleAdd,doAdd,addDates,toggleTrack,doTrackSeries,trackFromRow,isbnLookup,addFromIsbn,scanIsbn,stopScan,saveBookEdit,doCopyLetGo,vocabFor,pendingVocab,followAuthor,doNewOrder,doNewBoxOrder,setOrderStyle,expandOrder,doOrderUpdate,
     toggleRow,saveOrderEdit,expandBox,doBoxUpdate,saveBoxEdit,saveSetup,forgetSetup,refreshBadge};
 })();
 
@@ -4655,9 +4708,15 @@ async function init(){
     (BUNDLE.tabs['bookdb|Meta Vocab']||[]).slice(1).forEach(r=>{if(r[1])(G.vocab[r[0]]=G.vocab[r[0]]||[]).push(r[1]);});
     // Copies (omnibus/collection objects): map each contained work title to
     // its edition title(s) so rows can chip "in: Theft of Swords".
-    G.copies=(BUNDLE.tabs['bookdb|Copies']||[]).slice(1).map(r=>({id:r[0],title:r[1],owner:r[2],publisher:r[3],format:r[4],store:r[5],acquired:r[6],notes:r[7],contains:(r[8]||'').split('|').filter(Boolean)}));
-    G.inCopy={};
-    for(const c of G.copies)for(const t of c.contains){const k=t.toLowerCase().replace(/[^a-z0-9]/g,'')+'|'+c.owner;(G.inCopy[k]=G.inCopy[k]||[]).push(c.title);}
+    G.copies=(BUNDLE.tabs['bookdb|Copies']||[]).slice(1).map(r=>({id:+r[0],title:r[1],owner:r[2],publisher:r[3],format:r[4],store:r[5],acquired:r[6],notes:r[7],contains:(r[8]||'').split('|').filter(Boolean),edition:r[9]||''}));
+    // inCopy: omnibus/collection volumes a work sits in ("in: Theft of
+    // Swords"); editionOf: single-work editions of it ("Hardcover · Illumicrate").
+    G.inCopy={};G.editionOf={};
+    for(const c of G.copies)for(const t of c.contains){
+      const k=t.toLowerCase().replace(/[^a-z0-9]/g,'')+'|'+c.owner;
+      if(c.contains.length>1)(G.inCopy[k]=G.inCopy[k]||[]).push(c.title);
+      else(G.editionOf[k]=G.editionOf[k]||[]).push([c.format||'copy',c.edition].filter(Boolean).join(' · '));
+    }
     // ISBNs tab: identifiers (owned-edition first) + best stored cover URL.
     // isbnMap answers "do I have this exact edition?"; bookIsbn drives the
     // cover thumbnails (OL by-ISBN first, stored cover_url as fallback).

@@ -51,6 +51,33 @@ declare its contents at entry time.
    (Multi-book orders WITHOUT declared contents keep the old behavior: an
    itemize proposal, never a guess.)
 
+## Editions (migration 018, 2026-09-16)
+
+The same copies layer holds **single-work objects**: a hardback of a book
+already owned in paperback, a special edition, a signed copy. A copies row
+with one `copy_contents` link is an *edition* of that work; a row with
+several is an omnibus/collection. New columns: `edition` (the edition's
+name — Illumicrate, Broken Binding exclusive), `let_go_on`, `replaced_by`.
+
+- **Recording one**: 📦 Got it › *Edition?* (format, edition name, the
+  edition's publisher, notes, and *Swap?*), or ＋ Add a book › *Edition?*
+  for a new work that arrives as a specific edition. The `acquired` /
+  `add_book` payloads carry an `edition` object (INBOX.md).
+- **Swapping**: *Swap?* (`replaces: true`) retires the book's newest
+  still-active single-work copy — `active=false`, `let_go_on` = the
+  acquisition date, `replaced_by` = the new copy. When the outgoing copy was
+  never itemized (most books predate the copies layer) the new copy's note
+  says so and nothing else changes.
+- **Letting go**: ✎ › *Copies on the shelf* › **Let go** sends
+  `copy_let_go` — the object leaves the list; the work's owned status is
+  untouched (it is John-asserted and only `acquired`/`finished` move it).
+- **Counts stay work-denominated.** A book with a paperback and a hardback
+  is one book. The copies layer is where "how many special editions do I
+  own?" gets answered.
+- **Surfacing**: Log rows chip single-work editions in gold ("Hardcover ·
+  Illumicrate") next to the purple "in: <omnibus>" chips; the Copies bundle
+  tab carries `Edition` as its last column.
+
 ## Dashboard surfacing (phase 1)
 
 Bundle gains synthetic tab `bookdb|Copies` (one row per copy, Contains =
