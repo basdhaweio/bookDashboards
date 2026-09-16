@@ -3386,21 +3386,26 @@ function bcRelParts(rel){
   return{mo:99,moName:'Date TBA',day:''};
 }
 function bcBuildItems(){
-  const items=[],seen=new Set();
+  const items=[],seen=new Map();
   for(const u of G.interested.up){
     const displayTitle=u.title||u.series||'TBD';
-    seen.add(bcKey(displayTitle));
-    items.push({title:displayTitle,author:u.author,series:u.series&&u.title?u.series:'',genre:u.genre,release:u.release,ordered:u.ordered,publisher:u.publisher,isbn:'',notes:'',isNew:false});
+    const it={title:displayTitle,author:u.author,series:u.series&&u.title?u.series:'',genre:u.genre,release:u.release,ordered:u.ordered,publisher:u.publisher,isbn:'',notes:'',isNew:false};
+    seen.set(bcKey(displayTitle),it);items.push(it);
   }
   for(const b of (G.bookClub||[])){
-    if(seen.has(bcKey(b.title)))continue;
+    const dup=seen.get(bcKey(b.title));
+    // A sheet pick that Book Notification also lists borrows BN's exact
+    // date (the sheet only ever says "August 25"); the pick keeps its
+    // ordered status and doesn't get a second card.
+    if(dup){if(/^\d{4}-\d{2}-\d{2}/.test(b.release||''))dup.release=b.release;continue;}
     items.push({title:b.title,author:b.author,series:b.series,genre:b.genre,release:b.release,ordered:'',publisher:'',isbn:b.isbn,notes:b.notes,isNew:true});
   }
-  // Release calendars read forward: a month-only date (the Interested
-  // sheet) means this year if it hasn't passed, else next year; ISO dates
-  // (the Book Notification feed) carry their own year. Sort by all three.
+  // Release calendars read forward. ISO dates carry their year; a month-only
+  // date (the Interested sheet) is this year when the month is upcoming or
+  // within the last four months (a book out in August is still "this year"
+  // in September), otherwise next year. Sort by year, month, day.
   const now=new Date(),cy=now.getFullYear(),cm=now.getMonth()+1;
-  items.forEach(it=>{const p=bcRelParts(it.release);it.mo=p.mo;it.moName=p.moName;it.day=p.day;it.yr=p.yr||(p.mo&&p.mo<cm?cy+1:cy);});
+  items.forEach(it=>{const p=bcRelParts(it.release);it.mo=p.mo;it.moName=p.moName;it.day=p.day;it.yr=p.yr||(p.mo&&p.mo<cm-4?cy+1:cy);});
   items.sort((a,b)=>a.yr-b.yr||a.mo-b.mo||(a.day||99)-(b.day||99));
   items.forEach((it,i)=>{it.num=101+i;it.key=bcKey(it.title)+'|'+bcKey(it.author);});
   return items;
