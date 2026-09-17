@@ -3407,13 +3407,15 @@ function bcBuildItems(){
   // Star", the register "Demon Star"); when both sides name an author, the
   // surname has to agree so a shared generic title can't fake a HAVE.
   const nl=t=>(t||'').toLowerCase().replace(/^\s*(the|a|an)\s+/,'').replace(/\b(vol|volume)\b\.?/g,' ').replace(/[^a-z0-9]/g,'');
-  const sn=a=>{const p=(a||'').replace(/,.*$/,m=>' '+m.slice(1)).trim().split(/\s+/).filter(x=>x.length>1&&!/\.$/.test(x));return(a||'').includes(',')?(p[0]||'').toLowerCase():(p[p.length-1]||'').toLowerCase();};
+  // Surnames of every person in an author string ("Terry Brooks and Delilah
+  // S. Dawson" → brooks, dawson; "Sanderson, Brandon" → sanderson).
+  const sn=a=>{const out=new Set();(a||'').split(/\s+(?:and|with|&)\s+|\s*;\s*/i).forEach(person=>{const s=person.trim();if(!s)return;let last;if(s.includes(',')){last=s.split(',')[0].trim().split(/\s+/).pop();}else{const p=s.split(/\s+/).filter(x=>x.length>1&&!/\.$/.test(x));last=p[p.length-1];}if(last)out.add(last.toLowerCase());});return out;};
   const owned=new Map();
   (G.allIndBooks||[]).filter(b=>b.owned).forEach(b=>{const k=nl(b.title);if(k)(owned.get(k)||owned.set(k,[]).get(k)).push(sn(b.author));});
   const openOrders=(G.orders||[]).filter(o=>o.delivered!=='Fulfilled'&&o.delivered!=='Cancelled').map(o=>nl(o.books));
   items.forEach(it=>{
     const k=nl(it.title),who=sn(it.author),owners=owned.get(k);
-    const had=!!owners&&(!who||owners.some(o=>!o||o===who||o.includes(who)||who.includes(o)));
+    const had=!!owners&&(!who.size||owners.some(o=>!o.size||[...who].some(w=>o.has(w))));
     if(had){it.ordered='Have';it.isNew=false;}
     else if(k&&it.ordered!=='Have'&&it.ordered!=='Preordered'&&openOrders.some(t=>t.includes(k))){it.ordered='Preordered';}
   });
