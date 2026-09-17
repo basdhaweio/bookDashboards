@@ -3402,13 +3402,19 @@ function bcBuildItems(){
   }
   // HAVE IT / ORDERED come from the register and the open orders, not only
   // the sheet's Ordered column: a book either owner owns is had, and a title
-  // sitting in an unfulfilled Book Mail order is on the way.
-  const nl=t=>(t||'').toLowerCase().replace(/\b(vol|volume)\b\.?/g,' ').replace(/[^a-z0-9]/g,'');
-  const owned=new Set((G.allIndBooks||[]).filter(b=>b.owned).map(b=>nl(b.title)));
+  // sitting in an unfulfilled Book Mail order is on the way. Titles compare
+  // without a leading article or a volume word (the sheet says "The Demon
+  // Star", the register "Demon Star"); when both sides name an author, the
+  // surname has to agree so a shared generic title can't fake a HAVE.
+  const nl=t=>(t||'').toLowerCase().replace(/^\s*(the|a|an)\s+/,'').replace(/\b(vol|volume)\b\.?/g,' ').replace(/[^a-z0-9]/g,'');
+  const sn=a=>{const p=(a||'').replace(/,.*$/,m=>' '+m.slice(1)).trim().split(/\s+/).filter(x=>x.length>1&&!/\.$/.test(x));return(a||'').includes(',')?(p[0]||'').toLowerCase():(p[p.length-1]||'').toLowerCase();};
+  const owned=new Map();
+  (G.allIndBooks||[]).filter(b=>b.owned).forEach(b=>{const k=nl(b.title);if(k)(owned.get(k)||owned.set(k,[]).get(k)).push(sn(b.author));});
   const openOrders=(G.orders||[]).filter(o=>o.delivered!=='Fulfilled'&&o.delivered!=='Cancelled').map(o=>nl(o.books));
   items.forEach(it=>{
-    const k=nl(it.title);
-    if(k&&owned.has(k)){it.ordered='Have';it.isNew=false;}
+    const k=nl(it.title),who=sn(it.author),owners=owned.get(k);
+    const had=!!owners&&(!who||owners.some(o=>!o||o===who||o.includes(who)||who.includes(o)));
+    if(had){it.ordered='Have';it.isNew=false;}
     else if(k&&it.ordered!=='Have'&&it.ordered!=='Preordered'&&openOrders.some(t=>t.includes(k))){it.ordered='Preordered';}
   });
   // Release calendars read forward. ISO dates carry their year; a month-only
