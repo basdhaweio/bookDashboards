@@ -91,6 +91,27 @@ body.flyer-mode{background:#8a7a5e;}
 .bc-burst.bc-b-new{background:#2e8f83;}
 .bc-burst.bc-b-gold{background:#c98a1a;}
 .bc-burst.bc-b-gray{background:#7a746a;}
+a.bc-burst{text-decoration:none;color:#f6edd8;cursor:pointer;}
+a.bc-burst:hover{transform:rotate(12deg) scale(1.08);}
+.bc-filt{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:10px 0 2px;}
+.bc-filt button{font:inherit;font-weight:800;font-size:10px;letter-spacing:.06em;text-transform:uppercase;border:2px solid #2b2620;background:#fdf6e4;color:#2b2620;padding:4px 10px;cursor:pointer;box-shadow:2px 2px 0 rgba(43,38,32,.45);}
+.bc-filt button.active{background:#d94f30;color:#f6edd8;}
+.bc-form-go{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0 4px;}
+.bc-form-go select,.bc-form-go button{font:inherit;font-size:12px;border:2px solid #2b2620;background:#fdf6e4;color:#2b2620;padding:4px 8px;}
+.bc-form-go button{cursor:pointer;background:#d94f30;color:#f6edd8;box-shadow:2px 2px 0 rgba(43,38,32,.45);}
+.bc-form-go button:disabled{opacity:.45;cursor:default;box-shadow:none;}
+/* Reading › Up Next rows */
+.tbr-row{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);align-items:flex-start;}
+.tbr-row:last-child{border-bottom:none;}
+.tbr-cov{flex:none;width:44px;min-height:4px;}
+.tbr-info{min-width:0;flex:1;}
+.tbr-ser{font-weight:600;}
+.tbr-prog{font-size:12px;color:var(--text3);display:flex;align-items:center;gap:8px;margin:3px 0;flex-wrap:wrap;}
+.tbr-bar{display:inline-block;width:90px;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;flex:none;}
+.tbr-bar span{display:block;height:100%;background:var(--teal2);}
+.tbr-next{font-size:13px;line-height:1.7;}
+button.tbr-link{background:none;border:none;padding:0;font:inherit;font-weight:inherit;color:inherit;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;}
+.tbr-a{color:var(--gold);text-decoration:none;}
 .bc-burst.bc-b-blue{background:#3a6ea8;}
 .bc-rel{margin-top:auto;font-family:'DM Mono',monospace !important;font-size:10px;font-weight:500;background:#2b2620;color:#e8a33d;display:inline-block;align-self:flex-start;padding:2px 8px;letter-spacing:0.1em;text-transform:uppercase;}
 .bc-form{margin:2.2rem 2rem 0;border-top:3px dashed #2b2620;padding-top:0.4rem;position:relative;}
@@ -489,13 +510,24 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
   <!-- READING -->
   <div id="sec-reading" style="display:none">
     <div class="tab-nav">
-      <button class="active" onclick="switchTab('history','reading')">Reading History</button>
+      <button class="active" onclick="switchTab('tbr','reading')">Up Next</button>
+      <button onclick="switchTab('history','reading')">Reading History</button>
       <button onclick="switchTab('thisyear','reading')">This Year</button>
       <button onclick="switchTab('completion','reading')">Completion</button>
       <button onclick="switchTab('byseries','reading')">By Series</button>
       <button onclick="switchTab('toread','reading')">To Read</button>
     </div>
-    <div class="panel active" id="tab-history">
+    <div class="panel active" id="tab-tbr">
+      <div class="sl">Up next — series in progress, and what comes next in each</div>
+      <div class="mg" id="tbr-m"></div>
+      <div class="sl">Reading now — a book finished this year</div>
+      <div class="cb" id="tbr-now"></div>
+      <div class="sl" style="margin-top:2rem">Picked up earlier — unfinished, last read before this year</div>
+      <div class="cb" id="tbr-earlier"></div>
+      <div class="sl" style="margin-top:2rem">New in a series you've read — announced on Book Notification, not in the register</div>
+      <div class="cb" id="tbr-news"></div>
+    </div>
+    <div class="panel" id="tab-history">
       <div class="sl">Year-over-year — stacked area by media type</div>
       <div class="leg" id="hist-leg"></div>
       <div class="cb"><div style="height:340px"><canvas id="histLine" role="img" aria-label="Stacked area chart reading history"></canvas></div></div>
@@ -620,7 +652,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
         <div id="tbb-orders"></div>
       </div>
       <div class="sl">Full order history</div>
-      <div class="tw"><table><thead><tr><th>Date</th><th>Books</th><th>Series</th><th>Author</th><th>Type</th><th class="nr">Count</th><th>Status</th></tr></thead><tbody id="tbb-all"></tbody></table></div>
+      <div class="tw"><table><thead><tr><th>Date</th><th>Books</th><th>Series</th><th>Author</th><th>Store</th><th>Type</th><th class="nr">Count</th><th>Status</th></tr></thead><tbody id="tbb-all"></tbody></table></div>
     </div>
     <div class="panel" id="tab-toacquire">
       <div class="sl">To acquire — reconciling the "need to buy" gap</div>
@@ -853,7 +885,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div id="log-orderform"></div>
       <div class="sl" style="margin-top:1.5rem">Open orders — tap to update</div>
       <div id="log-orders-open"></div>
-      <div class="sl" style="margin-top:1.5rem">Recent fulfilled</div>
+      <div class="sl" style="margin-top:1.5rem">Order history — tap an order for its books; Got it › Edition logs a hardback or special edition</div>
       <div id="log-orders-done"></div>
     </div>
     <div class="panel" id="tab-logpending">
@@ -904,6 +936,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
           <div class="bc-edition"><div class="bc-slab" id="bc-edition-mo">—</div><div id="bc-edition-no">Flyer No. 1</div></div>
         </div>
         <div class="bc-marquee" id="bc-marquee">★ See inside for new releases ★ Books! Books! Books! ★</div>
+        <div class="bc-filt" id="bc-filt"></div>
         <div class="bc-body" id="bc-months"></div>
         <div class="bc-form" id="bc-form-wrap">
           <div class="bc-scis">✂</div>
@@ -911,6 +944,12 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
             <div class="bc-form-hd bc-slab">Order Form</div>
             <div class="bc-form-sub">Check the books you want — return this flyer to the library</div>
             <div class="bc-form-rows" id="bc-form-rows"></div>
+            <div class="bc-form-go">
+              <span class="bc-lbl">Order at</span>
+              <select id="bc-go-store"><option>Tombolo</option><option>The Broken Binding</option><option>Amazon</option><option>B&amp;N</option></select>
+              <select id="bc-go-paid"><option>Unpaid</option><option>Paid</option></select>
+              <button id="bc-go" class="bc-slab" onclick="bcPlaceOrder()" disabled>🛒 Log the checked books as orders</button>
+            </div>
             <div class="bc-form-foot">
               <div><span class="bc-lbl">Name:</span> <span class="bc-blank bc-hand">John</span></div>
               <div><span class="bc-lbl">Teacher:</span> <span class="bc-blank bc-hand">Ms. Claude</span></div>
@@ -1065,7 +1104,7 @@ function parseOrders(vals){
   const orders=[];
   for(let i=1;i<vals.length;i++){
     const r=vals[i];if(!r[0]&&!r[2])continue;
-    orders.push({date:(r[0]||'').trim(),order:(r[1]||'').trim(),books:(r[2]||'').trim(),series:(r[3]||'').trim(),author:(r[4]||'').trim(),paid:(r[5]||'').trim(),delivered:(r[6]||'').trim(),tracking:(r[7]||'').trim(),fulfil:(r[8]||'').trim(),type:(r[9]||'').trim(),sub:(r[10]||'').trim(),count:n(r[12]),contains:(r[13]||'').trim()});
+    orders.push({date:(r[0]||'').trim(),order:(r[1]||'').trim(),books:(r[2]||'').trim(),series:(r[3]||'').trim(),author:(r[4]||'').trim(),paid:(r[5]||'').trim(),delivered:(r[6]||'').trim(),tracking:(r[7]||'').trim(),fulfil:(r[8]||'').trim(),type:(r[9]||'').trim(),sub:(r[10]||'').trim(),count:n(r[12]),contains:(r[13]||'').trim(),store:(r[14]||'').trim()});
   }
   return orders;
 }
@@ -1406,6 +1445,81 @@ function renderHistory(metrics){
   });
 }
 let tyYear=2026,allYD={};
+// Reading › Up Next (John, 2026-09-22): the series in progress and what
+// comes next in each, plus announced books in series already read. Built
+// from the register alone — there is no "currently reading" state, only
+// finished events — so in progress = at least one book read and one not.
+// Next = the first unread volume past the highest read seq, else the
+// earliest unread one (a skipped volume). Shelf state comes from the
+// register, open orders (Book Mail and the flyer) and the release date.
+function tbrBrowse(name){
+  switchTab('logbook','log');
+  const m=document.getElementById('log-br-mode');if(!m)return;
+  m.value='series';LOG.brMode();
+  document.getElementById('log-br-q').value=name;LOG.browse();
+}
+function renderTBR(){
+  const books=G.indBooks||[],now=new Date(),cy=String(now.getFullYear()),todayIso=now.toISOString().slice(0,10);
+  const seqN=b=>{const v=parseFloat(String(b.seq||'').replace(/[^0-9.]/g,''));return isNaN(v)?Infinity:v;};
+  // BN writes Spy×Family, the register Spy x Family
+  const nl=t=>(t||'').toLowerCase().replace(/×/g,'x').replace(/^\s*(the|a|an)\s+/,'').replace(/[^a-z0-9]/g,'');
+  const by={};
+  for(const b of books){
+    if(!b.series||b.series==='Standalones')continue;
+    const s=by[b.series]=by[b.series]||{name:b.series,author:'',books:[],read:0,owned:0,last:''};
+    s.books.push(b);if(!s.author&&b.author)s.author=b.author;
+    if(b.read){s.read++;if((b.readOn||'')>s.last)s.last=b.readOn;}
+    if(b.owned)s.owned++;
+  }
+  const series=Object.values(by);
+  for(const s of series){
+    s.books.sort((a,b)=>seqN(a)-seqN(b)||a.title.localeCompare(b.title));
+    s.total=s.books.length;
+    const rs=s.books.filter(b=>b.read).map(seqN).filter(x=>x!==Infinity);
+    const maxRead=rs.length?Math.max(...rs):-Infinity;
+    const unread=s.books.filter(b=>!b.read);
+    s.unread=unread.length;
+    s.next=unread.find(b=>seqN(b)>maxRead)||unread[0]||null;
+  }
+  const open=(G.orders||[]).filter(o=>o.delivered!=='Fulfilled'&&o.delivered!=='Cancelled');
+  const onOrder=t=>{const k=nl(t);return k?open.find(o=>nl(o.books).includes(k)||(o.contains||'').split('\n').some(l=>nl(l.replace(/\s+#\S+$/,''))===k)):null;};
+  const inProg=series.filter(s=>s.read>0&&s.unread>0);
+  const byLast=(a,b)=>(b.last||'').localeCompare(a.last||'')||a.name.localeCompare(b.name);
+  const nowRows=inProg.filter(s=>s.last.startsWith(cy)).sort(byLast);
+  const earlier=inProg.filter(s=>!s.last.startsWith(cy)).sort(byLast);
+  // Book Notification releases in a series with at least one book read
+  const have=new Set(books.map(b=>nl(b.title)));
+  const readSeries=new Map(series.filter(s=>s.read>0).map(s=>[nl(s.name),s]));
+  const news=(G.bookClub||[]).filter(r=>r.series&&readSeries.has(nl(r.series))&&!have.has(nl(r.title)))
+    .map(r=>Object.assign({},r,{s:readSeries.get(nl(r.series))})).sort((a,b)=>(a.release||'').localeCompare(b.release||''));
+  const chip=nx=>{const o=onOrder(nx.title);
+    if(o)return`<span class="badge b-gold">on order${o.store?' · '+esc(o.store):''}</span>`;
+    if(nx.owned)return'<span class="badge b-green">on the shelf</span>';
+    if(nx.pubDate&&nx.pubDate>todayIso)return`<span class="badge b-teal">coming ${esc(nx.pubDate)}</span>`;
+    return`<span class="badge b-coral">not owned</span>${nx.need?' <span class="badge b-coral">NEED</span>':''}`;};
+  const row=s=>{const nx=s.next;return`<div class="tbr-row">
+    <div class="tbr-cov">${nx?coverTile(nx.title,nx.owner||'butthead','',null,44):''}</div>
+    <div class="tbr-info">
+      <div class="tbr-ser"><button class="tbr-link" data-s="${esc(s.name)}" onclick="tbrBrowse(this.dataset.s)" title="browse the series">${esc(s.name)}</button>${s.author?`<span class="ms"> · ${esc(s.author)}</span>`:''}</div>
+      <div class="tbr-prog"><span class="tbr-bar"><span style="width:${Math.round(100*s.read/s.total)}%"></span></span>${s.read}/${s.total} read${s.last?' · last '+esc(s.last):''}</div>
+      <div class="tbr-next">${nx?`Up next: <strong>${esc(nx.title)}</strong>${nx.seq?' <span class="ms">#'+esc(nx.seq)+'</span>':''} ${chip(nx)}`:'—'}</div>
+    </div></div>`;};
+  document.getElementById('tbr-m').innerHTML=
+    mH(inProg.length,'Series in progress','read some, not all')+
+    mH(nowRows.length,'Read this year','','t')+
+    mH(inProg.filter(s=>s.next&&s.next.owned).length,'Next book on the shelf','','t')+
+    mH(inProg.filter(s=>s.next&&!s.next.owned).length,'Next book to get','','c')+
+    mH(news.length,'New in read series','Book Notification');
+  document.getElementById('tbr-now').innerHTML=nowRows.map(row).join('')||'<div class="ms">No series with a book finished this year.</div>';
+  document.getElementById('tbr-earlier').innerHTML=earlier.map(row).join('')||'<div class="ms">Nothing unfinished from earlier years.</div>';
+  document.getElementById('tbr-news').innerHTML=news.map(r=>`<div class="tbr-row">
+    <div class="tbr-cov">${r.cover?`<div class="ct" style="width:44px;height:66px" title="${esc(r.title)}"><img loading="lazy" alt="" src="${esc(r.cover)}"></div>`:coverTile(r.title,'butthead','',r.isbn||null,44)}</div>
+    <div class="tbr-info">
+      <div class="tbr-ser"><strong>${esc(r.title)}</strong><span class="ms"> · ${esc(r.author)}</span></div>
+      <div class="tbr-prog">${esc(r.s.name)} · ${r.s.read}/${r.s.total} read${r.s.last?' · last '+esc(r.s.last):''}</div>
+      <div class="tbr-next">📅 ${esc(r.release||'TBA')} · <a class="tbr-a" href="${tomboloUrl(r.title)}" target="_blank" rel="noopener">Tombolo ↗</a> · <button class="tbr-link" onclick="switchSection('bookclub','flyer')">flyer</button></div>
+    </div></div>`).join('')||'<div class="ms">Book Notification lists nothing new in a series you\'ve read.</div>';
+}
 function renderThisYear(year){
   tyYear=year;
   const currentYear=new Date().getFullYear();
@@ -1955,8 +2069,8 @@ function renderBookMail(orders){
   const ful=orders.filter(o=>o.delivered==='Fulfilled'&&o.paid==='Paid');
   // Books ordered excludes cancelled orders — those books are never coming.
   document.getElementById('tbb-m').innerHTML=mH(orders.length,'Total orders')+mH(ful.length,'Fulfilled','','t')+mH(pending.length,'Pending','','c')+mH(orders.filter(o=>o.delivered!=='Cancelled').reduce((s,o)=>s+o.count,0),'Books ordered');
-  document.getElementById('tbb-orders').innerHTML=pending.map(o=>{const sb=o.paid==='Unpaid'?'b-coral':o.tracking?'b-teal':'b-gold',sl=o.paid==='Unpaid'?'Unpaid':o.tracking?'Shipped':'Unfulfilled';return`<div class="or"><div style="font-family:var(--font-m);font-size:11px;color:var(--text3)">${o.date}</div><div style="font-size:12px">${esc(o.books||(o.sub&&o.sub!=='N/A'?o.sub+' credit — TBD':'TBD'))}</div><div style="font-size:11px;color:var(--text3)">${esc(o.series||(o.type==='Sub'?(o.sub&&o.sub!=='N/A'?o.sub+' sub':'sub'):'—'))}</div><div style="font-family:var(--font-m);font-size:10px;color:var(--text3)">${o.order||'—'}</div><div data-okey="${esc(ordKeyMail(o))}"><span class="badge ${sb}">${sl}</span></div></div>`;}).join('');
-  document.getElementById('tbb-all').innerHTML=[...orders].reverse().map(o=>`<tr><td style="font-family:var(--font-m);font-size:11px;white-space:nowrap">${o.date}</td><td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.books||'—'}</td><td>${o.series||'—'}</td><td>${o.author||'—'}</td><td>${esc(o.type||'—')}${o.type==='Sub'&&o.sub&&o.sub!=='N/A'?' · '+esc(o.sub):''}</td><td class="nr">${o.count||1}</td><td style="white-space:nowrap" data-okey="${esc(ordKeyMail(o))}">${o.delivered==='Cancelled'?'<span class="badge b-gray">Cancelled</span>':`<span class="badge ${o.paid==='Paid'?'b-green':'b-coral'}">${o.paid}</span> <span class="badge ${o.delivered==='Fulfilled'?'b-teal':'b-gold'}">${o.delivered==='Fulfilled'?'Fulfilled':o.tracking?'Shipped':o.delivered}</span>`}</td></tr>`).join('');
+  document.getElementById('tbb-orders').innerHTML=pending.map(o=>{const sb=o.paid==='Unpaid'?'b-coral':o.tracking?'b-teal':'b-gold',sl=o.paid==='Unpaid'?'Unpaid':o.tracking?'Shipped':'Unfulfilled';return`<div class="or"><div style="font-family:var(--font-m);font-size:11px;color:var(--text3)">${o.date}</div><div style="font-size:12px">${esc(o.books||(o.sub&&o.sub!=='N/A'?o.sub+' credit — TBD':'TBD'))}</div><div style="font-size:11px;color:var(--text3)">${esc(o.series||(o.type==='Sub'?(o.sub&&o.sub!=='N/A'?o.sub+' sub':'sub'):'—'))}</div><div style="font-family:var(--font-m);font-size:10px;color:var(--text3)">${o.order||'—'}${o.store?`<br><span style="font-family:var(--font)">${esc(o.store)}</span>`:''}</div><div data-okey="${esc(ordKeyMail(o))}"><span class="badge ${sb}">${sl}</span></div></div>`;}).join('');
+  document.getElementById('tbb-all').innerHTML=[...orders].reverse().map(o=>`<tr><td style="font-family:var(--font-m);font-size:11px;white-space:nowrap">${o.date}</td><td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.books||'—'}</td><td>${o.series||'—'}</td><td>${o.author||'—'}</td><td>${esc(o.store||'—')}</td><td>${esc(o.type||'—')}${o.type==='Sub'&&o.sub&&o.sub!=='N/A'?' · '+esc(o.sub):''}</td><td class="nr">${o.count||1}</td><td style="white-space:nowrap" data-okey="${esc(ordKeyMail(o))}">${o.delivered==='Cancelled'?'<span class="badge b-gray">Cancelled</span>':`<span class="badge ${o.paid==='Paid'?'b-green':'b-coral'}">${o.paid}</span> <span class="badge ${o.delivered==='Fulfilled'?'b-teal':'b-gold'}">${o.delivered==='Fulfilled'?'Fulfilled':o.tracking?'Shipped':o.delivered}</span>`}</td></tr>`).join('');
   decorateOrderPending();
 }
 
@@ -1975,7 +2089,7 @@ function parseGrowthYear(vals){
   for(let i=1;i<vals.length;i++){
     const r=vals[i];
     if(!r[0]||!r[2])continue;
-    books.push({num:n(r[0]),date:(r[1]||'').trim(),title:(r[2]||'').trim(),author:(r[3]||'').trim(),genre:(r[4]||'').trim(),format:(r[5]||'').trim(),source:(r[6]||'').trim()});
+    books.push({num:n(r[0]),date:(r[1]||'').trim(),title:(r[2]||'').trim(),author:(r[3]||'').trim(),genre:(r[4]||'').trim(),format:(r[5]||'').trim(),source:(r[6]||'').trim(),owner:(r[7]||'').trim()});
   }
   return books;
 }
@@ -2056,6 +2170,10 @@ function renderLibGrowth(growthMetrics,bm){
 }
 
 function renderBuyThisYear(books){
+  // The ledger is one feed for both shelves; show the header's owner only
+  // (2026-09-22: Shereen's Libib import had been landing under Com). Rows
+  // from a bundle that predates the Owner column carry none and stay.
+  books=(books||[]).filter(b=>OWNER==='all'||!b.owner||b.owner===OWNER);
   const SOURCE_COLORS={'Tombolo':'#c9a84c','The Broken Binding':'#4a9b8e','Illumicrate':'#7a6bab','B&N':'#4a7ab5','Amazon':'#c4614a','Dark Carnival':'#5a8a4a','Brotherwise':'#8a6a9a','Wilson\'s Book World':'#9a6a4a'};
   const FORMAT_COLORS={'Print':'#c9a84c','Manga':'#7a6bab','Comics':'#5a8a4a','eBook':'#4a7ab5','Audio':'#4a9b8e','Graphic Novel':'#c4614a','Short Stories':'#9a6a4a'};
   const GENRE_COLORS=['#7a6bab','#c9a84c','#4a9b8e','#c4614a','#5a8a4a','#4a7ab5','#8a6a9a','#6a8a4a','#9a6a4a','#4a6a8a'];
@@ -2197,7 +2315,7 @@ function setOwner(o){
 }
 
 // Section → default tab mapping
-const SEC_DEFAULT={tracking:'overview',reading:'history',buying:'libgrowth',collecting:'col-fr',bookclub:'flyer',log:'logbook'};
+const SEC_DEFAULT={tracking:'overview',reading:'tbr',buying:'libgrowth',collecting:'col-fr',bookclub:'flyer',log:'logbook'};
 
 function switchSection(sec,tab){
   curSec=sec;
@@ -2234,7 +2352,7 @@ function restoreFromHash(){
   const hash=(location.hash||'').replace('#','');
   const[sec,tab]=hash.split('/');
   const validSecs=new Set(['tracking','reading','buying','collecting','bookclub','log']);
-  const validTabs=new Set(['overview','bytype','genre','universe','rooms','history','thisyear','completion','byseries','toread','comingup','bookmail','toacquire','someday','libgrowth','buythisyear','col-fr','col-dl','col-sr','flyer','bnauthors','logbook','logorders','logpending','logproposed','logmeta']);
+  const validTabs=new Set(['overview','bytype','genre','universe','rooms','tbr','history','thisyear','completion','byseries','toread','comingup','bookmail','toacquire','someday','libgrowth','buythisyear','col-fr','col-dl','col-sr','flyer','bnauthors','logbook','logorders','logpending','logproposed','logmeta']);
   const validFRTabs=new Set(['fr-overview','fr-series','fr-completion']);
   const validDLTabs=new Set(['dl-overview','dl-series','dl-completion']);
   const validSRTabs=new Set(['sr-overview','sr-publisher','sr-completion']);
@@ -2272,6 +2390,7 @@ function renderTabInner(id){
   else if(id==='genre')renderGenre(bm);
   else if(id==='universe')renderUniverse(bm);
   else if(id==='rooms')renderRooms(bm);
+  else if(id==='tbr')renderTBR();
   else if(id==='history')renderHistory(H?G.metrics:{});
   else if(id==='thisyear'){
     if(!document.querySelector('#year-tog button'))document.getElementById('year-tog').innerHTML=YEARS.map(y=>`<button data-y="${y}" onclick="switchYear(${y})">${y}</button>`).join('');
@@ -3412,12 +3531,16 @@ function bcBuildItems(){
   const sn=a=>{const out=new Set();(a||'').split(/\s+(?:and|with|&)\s+|\s*;\s*/i).forEach(person=>{const s=person.trim();if(!s)return;let last;if(s.includes(',')){last=s.split(',')[0].trim().split(/\s+/).pop();}else{const p=s.split(/\s+/).filter(x=>x.length>1&&!/\.$/.test(x));last=p[p.length-1];}if(last)out.add(last.toLowerCase());});return out;};
   const owned=new Map();
   (G.allIndBooks||[]).filter(b=>b.owned).forEach(b=>{const k=nl(b.title);if(k)(owned.get(k)||owned.set(k,[]).get(k)).push(sn(b.author));});
-  const openOrders=(G.orders||[]).filter(o=>o.delivered!=='Fulfilled'&&o.delivered!=='Cancelled').map(o=>nl(o.books));
+  // Open orders name the book: the register's (with the shop and date) and
+  // the ones still queued in the inbox (logged from this flyer minutes ago).
+  const openOrders=(G.orders||[]).filter(o=>o.delivered!=='Fulfilled'&&o.delivered!=='Cancelled').map(o=>({k:nl(o.books),store:o.store||'',date:o.date||'',pending:false}));
+  if(G.pendOrd&&G.pendOrd.mail)for(const[k,sets]of G.pendOrd.mail)if(sets.__new)openOrders.push({k:nl(k.split('|')[1]),store:'',date:'',pending:true});
   items.forEach(it=>{
     const k=nl(it.title),who=sn(it.author),owners=owned.get(k);
     const had=!!owners&&(!who.size||owners.some(o=>!o.size||[...who].some(w=>o.has(w))));
-    if(had){it.ordered='Have';it.isNew=false;}
-    else if(k&&it.ordered!=='Have'&&it.ordered!=='Preordered'&&openOrders.some(t=>t.includes(k))){it.ordered='Preordered';}
+    if(had){it.ordered='Have';it.isNew=false;return;}
+    const oo=k&&it.ordered!=='Have'&&openOrders.find(t=>t.k&&t.k.includes(k));
+    if(oo){it.ordered='Preordered';it.store=oo.store;it.orderDate=oo.date;it.pendingOrder=oo.pending;}
   });
   // Release calendars read forward. ISO dates carry their year; a month-only
   // date (the Interested sheet) is this year when the month is upcoming or
@@ -3469,8 +3592,18 @@ function renderBnAuthors(){
     <div class="sl" style="margin-top:2rem">Idle follows — candidates to unfollow</div>${idle.map(r=>`<div class="log-item"><div class="log-item-hd"><div class="log-item-info"><div class="log-item-title">${esc(r.author)}</div><div class="log-item-meta">last acquisition ${esc(r.last||'unknown')} · ${r.total} in the register</div></div></div></div>`).join('')||'<div class="ms">No idle follows.</div>'}
     ${missing.length?`<div class="sl" style="margin-top:2rem">Followed, but no books in the register</div><div class="ms">${missing.map(esc).join(' · ')}</div>`:''}`;
 }
+// Tombolo Books runs on Bookmanager: /browse/filter/t/<title> is a title
+// search of their catalogue (pre-order or in-store pickup from there).
+function tomboloUrl(title){return'https://tombolobooks.com/browse/filter/t/'+encodeURIComponent(title||'');}
+let bcFilter='all'; // all · get · ordered · have
+function bcSetFilter(f){bcFilter=f;renderBookClub();}
+function bcState(it){return it.ordered==='Have'?'have':it.ordered==='Preordered'?'ordered':'get';}
 function renderBookClub(){
-  const items=bcBuildItems();
+  const all=bcBuildItems();
+  const counts={all:all.length,get:0,ordered:0,have:0};
+  all.forEach(it=>counts[bcState(it)]++);
+  const items=bcFilter==='all'?all:all.filter(it=>bcState(it)===bcFilter);
+  document.getElementById('bc-filt').innerHTML=[['all','Everything'],['get','Get it'],['ordered','Ordered'],['have','Have it']].map(([k,l])=>`<button class="${bcFilter===k?'active':''}" onclick="bcSetFilter('${k}')">${l} · ${counts[k]}</button>`).join('');
   const now=new Date();
   document.getElementById('bc-edition-mo').textContent=now.toLocaleString('en-US',{month:'long'}).toUpperCase()+' '+now.getFullYear();
   document.getElementById('bc-edition-no').textContent='Flyer No. '+(now.getMonth()+1);
@@ -3495,8 +3628,10 @@ function renderBookClub(){
           const[bcls,btxt]=bcBurst(it);
           const tag=it.notes||BC_TAGS[it.genre]||'Don\'t miss this one!';
           const rel=it.moName==='Date TBA'?'TBA':(it.moName.slice(0,3)+(it.day?' '+it.day:'')).toUpperCase();
+          const gettable=it.ordered!=='Have'&&it.ordered!=='Preordered'&&it.ordered!=='Scheduled';
+          const onOrder=it.ordered==='Preordered'?` · on order${it.store?' at '+bcEsc(it.store):''}${it.pendingOrder?' (pending)':''}`:'';
           return`<div class="bc-card${it.ordered==='Have'?' bc-have':''}">
-            <div class="bc-burst ${bcls}">${btxt}</div>
+            ${gettable?`<a class="bc-burst ${bcls}" href="${tomboloUrl(it.title)}" target="_blank" rel="noopener" title="find it at Tombolo Books">${btxt}</a>`:`<div class="bc-burst ${bcls}">${btxt}</div>`}
             <div class="bc-cov" data-cov="${bcEsc(it.key)}" data-t="${bcEsc(it.title)}" data-a="${bcEsc(it.author)}" data-i="${bcEsc(it.isbn)}" data-u="${bcEsc(it.cover||'')}"><div class="bc-cov-none">Cover<br>art<br>coming<br>soon!</div></div>
             <div class="bc-info">
               <div class="bc-item">ITEM #${it.num}</div>
@@ -3504,14 +3639,16 @@ function renderBookClub(){
               ${it.author?`<div class="bc-auth">by ${bcEsc(it.author)}</div>`:''}
               ${it.series?`<div class="bc-ser">${bcEsc(it.series)}</div>`:''}
               <div class="bc-tag">${bcEsc(tag)}</div>
-              <div class="bc-rel">📅 ${rel}</div>
+              <div class="bc-rel">📅 ${rel}${onOrder}</div>
             </div>
           </div>`;
         }).join('')}
       </div>
-    </div>`).join('');
-  // Order form: everything not already secured
-  const orderable=items.filter(it=>it.ordered!=='Have'&&it.ordered!=='Preordered');
+    </div>`).join('')||'<div class="bc-mo"><div class="bc-mo-hd bc-slab">Nothing here</div></div>';
+  // Order form: everything not already secured (the whole flyer, whatever
+  // the filter shows). Checking is local scratch; "Log as orders" turns the
+  // checked rows into real orders at the chosen shop.
+  const orderable=all.filter(it=>it.ordered!=='Have'&&it.ordered!=='Preordered');
   const checked=bcGetChecked();
   document.getElementById('bc-form-rows').innerHTML=orderable.map(it=>`
     <div class="bc-form-row" onclick="bcToggle('${bcEsc(it.key)}')">
@@ -3519,6 +3656,7 @@ function renderBookClub(){
       <div class="bc-item">#${it.num}</div>
       <div class="bc-form-row-t">${bcEsc(it.title)}</div>
     </div>`).join('')||'<div style="font-size:12px;padding:8px 0">Nothing to order — you\'re all caught up!</div>';
+  document.getElementById('bc-form-rows')._orderable=orderable;
   bcTally();
   document.getElementById('bc-foot').textContent='The Library Book Club · sources: Interested sheet'+(G.bookClub&&G.bookClub.length?' + Book Notification ('+G.bookClub.length+' titles)':'')+' · covers via Open Library';
   bcFetchCovers();
@@ -3535,6 +3673,23 @@ function bcToggle(key){
 function bcTally(){
   const n=Object.keys(bcGetChecked()).length;
   document.getElementById('bc-total-n').textContent=n;
+  const go=document.getElementById('bc-go');if(go)go.disabled=!n;
+}
+// The checked rows become one order each at the chosen shop (Tombolo by
+// default), through the same inbox path as Log › Orders; the cards flip to
+// ORDERED once the pending event is seen, and for good after jerry's sync.
+async function bcPlaceOrder(){
+  const checked=bcGetChecked();
+  const picks=(document.getElementById('bc-form-rows')._orderable||[]).filter(it=>checked[it.key]);
+  if(!picks.length)return;
+  const store=document.getElementById('bc-go-store').value||'Tombolo',paid=document.getElementById('bc-go-paid').value;
+  if(!confirm(`Log ${picks.length} order${picks.length===1?'':'s'} at ${store} (${paid.toLowerCase()})?\n\n`+picks.map(p=>'· '+p.title).join('\n')))return;
+  const n=await LOG.logFlyerOrders(picks,store,paid);
+  if(!n)return;
+  picks.slice(0,n).forEach(p=>delete checked[p.key]);
+  try{localStorage.setItem('bcOrder',JSON.stringify(checked));}catch(e){}
+  await LOG.refreshBadge();
+  renderBookClub();
 }
 // Cover art via Open Library (cached in localStorage, 30-day TTL; failures are not cached)
 async function bcFetchCovers(){
@@ -3656,7 +3811,7 @@ const LOG=(()=>{
       case'sync_request':return`⟳ Sync from ${p.source||'all sources'}`;
       case'order_new':return p.list==='bookboxes'
         ?`🎁 Box: ${p.vendor}${p.box?' '+p.box:''} — ${p.title||'title TBA'}${p.want&&p.want!=='Yes'?' · want: '+p.want:''}`
-        :`🧾 New order ${p.order||''} — ${p.books||'?'}`;
+        :`🧾 New order ${p.order||''}${p.store?' at '+p.store:''} — ${p.books||'?'}`;
       case'order_update':{const s=Object.entries(p.set||{}).map(([k,v])=>v===true?k:`${k}: ${v}`).join(', ');
         return p.list==='bookboxes'
           ?`🎁 ${(p.ref&&p.ref.vendor)||''}${p.ref&&p.ref.box?' '+p.ref.box:''} — ${(p.ref&&p.ref.title)||'TBA'} → ${s}`
@@ -4150,61 +4305,99 @@ const LOG=(()=>{
   }
   function isbnNorm(s){return String(s||'').toUpperCase().replace(/[^0-9X]/g,'');}
   let isbnPrefill='';
+  // First non-empty answer from a set of lookups (each already resolves to
+  // null on failure), or null once every one has come back empty.
+  function firstOf(ps){return new Promise(res=>{let left=ps.length;ps.forEach(p=>p.then(v=>{if(v)res(v);else if(--left===0)res(null);}));});}
+  // "Title (Series, #3)" / "(Series Book 3)" / "Title: Series Book 3" → the
+  // series name, for the Track series shortcut. Blank when nothing looks
+  // like one — the field is editable either way.
+  function seriesFromTitle(t){
+    const m=String(t||'').match(/\(([^()]*?)[,:]?\s*(?:#|book|vol\.?|volume)\s*\d+[^()]*\)/i)||String(t||'').match(/:\s*(?:the\s+)?(.*?)\s*,?\s*(?:book|vol\.?|volume)\s*\d+\s*$/i);
+    return m?m[1].trim():'';
+  }
+  let isbnSeq=0;
   async function isbnLookup(){
     const isbn=isbnNorm(document.getElementById('log-isbn').value);
     if(isbn.length!==10&&isbn.length!==13)return toast('Enter a 10- or 13-digit ISBN',true);
     const out=document.getElementById('log-results');
     document.getElementById('log-q').value='';
     const nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
-    // 1 — exact edition already on file
+    // 1 — exact edition already on file: instant, no network
     const hit=(G.isbnMap||{})[isbn];
     if(hit){
       const b=(G.indBooks||[]).find(x=>nk(x.title)===nk(hit.title));
       if(b){renderHits([b],'');toast('In the register — this exact edition');return;}
     }
-    // 2 — external lookup: Open Library, then anonymous Google Books.
-    // (Libib's weakness — a thin ISBN database — is why there are three
-    // swings here before giving up.) John's GB key stays on jerry.
-    out.innerHTML=`<div class="ms" style="padding:8px 2px">Looking up ${esc(isbn)}…</div>`;
-    let title='',author='',year='';
-    try{
-      const r=await fetch('https://openlibrary.org/search.json?q=isbn:'+isbn+'&fields=title,author_name,first_publish_year&limit=1');
-      const d=r.ok?((await r.json()).docs||[])[0]:null;
-      if(d){title=d.title||'';author=(d.author_name||[])[0]||'';year=d.first_publish_year||'';}
-    }catch(e){}
-    if(!title)try{
-      const r=await fetch('https://www.googleapis.com/books/v1/volumes?country=US&q=isbn:'+isbn);
-      const v=r.ok?((await r.json()).items||[])[0]:null;
-      if(v){const vi=v.volumeInfo||{};title=vi.title||'';author=(vi.authors||[])[0]||'';year=(vi.publishedDate||'').slice(0,4);}
-    }catch(e){}
-    if(!title){
+    // 2 — external lookup: Open Library and anonymous Google Books in
+    // parallel, first answer wins (OL alone was ~4 s a scan; GB usually
+    // answers inside a second). The card shows at once with the cover the
+    // ISBN resolves to. John's GB key stays on jerry.
+    const my=++isbnSeq;
+    out.innerHTML=`<div class="log-item"><div class="log-item-hd">${thumbHTML('','',isbn,44)}<div class="log-item-info"><div class="log-item-title">Looking up ${esc(isbn)}…</div><div class="log-item-meta">Open Library · Google Books</div></div></div></div>`;
+    const ol=fetch('https://openlibrary.org/search.json?q=isbn:'+isbn+'&fields=title,author_name,first_publish_year&limit=1')
+      .then(async r=>{const d=r.ok?((await r.json()).docs||[])[0]:null;return d&&d.title?{title:d.title,author:(d.author_name||[])[0]||'',year:d.first_publish_year||''}:null;}).catch(()=>null);
+    const gb=fetch('https://www.googleapis.com/books/v1/volumes?country=US&q=isbn:'+isbn)
+      .then(async r=>{const v=r.ok?((await r.json()).items||[])[0]:null;const vi=(v&&v.volumeInfo)||{};return vi.title?{title:vi.title,author:(vi.authors||[])[0]||'',year:(vi.publishedDate||'').slice(0,4)}:null;}).catch(()=>null);
+    const found=await firstOf([ol,gb]);
+    if(my!==isbnSeq)return; // a newer scan superseded this one
+    if(!found){
       out.innerHTML='<div class="ms" style="padding:8px 2px">Neither Open Library nor Google Books knows this ISBN. The register may still have the work under another edition — try a title search — or add it manually below.</div>';
       return;
     }
-    // 3 — same work, different edition?
+    const title=String(found.title),author=String(found.author),year=String(found.year);
+    // 3 — same work, different edition? (Got it › Edition on the row logs it)
     const strip=t=>t.split(':')[0];
     const cand=(G.indBooks||[]).filter(b=>nk(b.title)===nk(title)||nk(strip(b.title))===nk(strip(title)));
     if(cand.length){renderHits(cand,'');toast('You have this work — the copy in hand is a different edition');return;}
-    // 4 — honest miss: offer the prefilled add
-    G._isbnFound={isbn,title:String(title),author:String(author),year:String(year)};
+    // 4 — honest miss: got it (owned), track it (neither), or track the
+    // whole series — nothing enters the register without the add form or
+    // the Proposed tab.
+    G._isbnFound={isbn,title,author,year,series:seriesFromTitle(title)};
     out.innerHTML=`<div class="log-item"><div class="log-item-hd">
       ${thumbHTML('','',isbn,44)}
       <div class="log-item-info">
         <div class="log-item-title">${esc(title)}</div>
         <div class="log-item-meta">${esc(author)}${year?' · '+esc(year):''} · ISBN ${esc(isbn)} — not in the register</div>
       </div>
-      <div class="log-acts"><button class="log-act primary" onclick="LOG.addFromIsbn()">＋ Add this book</button></div>
-    </div></div>`;
+      <div class="log-acts">
+        <button class="log-act gold" onclick="LOG.addFromIsbn('owned')" title="add it as owned — pick series and genre, then Add">📦 Got it</button>
+        <button class="log-act" onclick="LOG.addFromIsbn('wish')" title="add it as tracked only — not owned, not read">👁 Track book</button>
+        <button class="log-act" onclick="LOG.trackSeriesFromIsbn()" title="find the whole series — every book lands on the Proposed tab">🔍 Track series</button>
+      </div>
+    </div>
+    <div id="log-isbn-series" style="display:none;padding:6px 0 4px"></div></div>`;
   }
-  function addFromIsbn(){
+  function addFromIsbn(status){
     const f=G._isbnFound;if(!f)return;
     const form=document.getElementById('log-addform');
     if(form.style.display==='none')toggleAdd();
     document.getElementById('log-n-title').value=f.title;
     document.getElementById('log-n-author').value=f.author;
+    if(f.series)document.getElementById('log-n-series').value=f.series;
+    const st=document.getElementById('log-n-status');
+    if(st&&status){st.value=status;addDates();}
     isbnPrefill=f.isbn;
-    toast('Prefilled from the ISBN lookup — pick series, genre, and status, then Add');
+    toast(status==='wish'?'Prefilled as tracked only — pick series and genre, then Add':'Prefilled from the ISBN lookup — pick series, genre, and status, then Add');
     form.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+  // Track series straight from a scan: the series name is the one thing the
+  // ISBN sources never give reliably, so it is a field (prefilled when the
+  // title carries it) rather than a guess.
+  function trackSeriesFromIsbn(){
+    const f=G._isbnFound,el=document.getElementById('log-isbn-series');if(!f||!el)return;
+    el.style.display='';
+    el.innerHTML=`<div class="log-frow"><label>Series</label><input id="log-isbn-sname" value="${esc(f.series||'')}" placeholder="series name as you shelve it"><button class="log-act primary" onclick="LOG.submitTrackSeries()">🔍 Track</button></div>
+      <div class="ms">Every book found lands on the Proposed tab to Add or Drop${f.author?' · author '+esc(f.author):''}</div>`;
+    document.getElementById('log-isbn-sname').focus();
+  }
+  async function submitTrackSeries(){
+    const f=G._isbnFound;if(!f)return;
+    const s=(document.getElementById('log-isbn-sname')||{}).value?.trim();
+    if(!s)return toast('Name the series first',true);
+    if((pendCache||[]).some(ev=>ev.type==='track_series'&&(ev.payload||{}).series===s))
+      return toast('Already queued — proposals appear on the Proposed tab within ~15 min');
+    const ok=await submit('track_series',{series:s,author:f.author||''},null,by(null));
+    if(ok)toast('Tracking request sent — proposals appear on the Proposed tab within ~15 min');
   }
   // Camera scan: BarcodeDetector is Chrome/Android territory — the 📷 button
   // only appears where the API exists (renderBook toggles it), so iPhones
@@ -4317,7 +4510,8 @@ const LOG=(()=>{
     document.getElementById('log-orderform').innerHTML=tog+`
       <div class="cb">
       <div class="log-frow"><label>Date</label><input type="date" id="log-o-date" value="${today()}"></div>
-      <div class="log-frow"><label>Order #</label><input id="log-o-num" placeholder="#TBBSUB…"></div>
+      <div class="log-frow"><label>Order #</label><input id="log-o-num" placeholder="#TBBSUB…" oninput="LOG.storeFromOrderNo(this.value)"></div>
+      <div class="log-frow"><label>Store</label>${storeSelect('log-o-store','')}</div>
       <div class="log-frow"><label>Books</label><input id="log-o-books" placeholder="e.g. The Sun Eater 1-3"></div>
       <div class="log-frow"><label>Series</label><input id="log-o-series"></div>
       <div class="log-frow"><label>Author</label><input id="log-o-author"></div>
@@ -4333,66 +4527,112 @@ const LOG=(()=>{
       </div>`;
     // Same classification as the Book Mail tab. Cancelled is terminal: never
     // an open order, whatever the paid state says.
-    const open=(G.orders||[]).filter(o=>o.delivered!=='Cancelled'&&(o.delivered==='Unfulfilled'||o.paid==='Unpaid')).slice().reverse();
-    const done=(G.orders||[]).filter(o=>o.delivered==='Fulfilled'&&o.paid==='Paid').slice(-5).reverse();
-    const row=(o,i,canEdit)=>`<div class="log-item">
-      <div class="log-item-hd" ${canEdit?`style="cursor:pointer" onclick="LOG.expandOrder(${i})"`:''}>
+    const isOpen=o=>o.delivered!=='Cancelled'&&(o.delivered==='Unfulfilled'||o.paid==='Unpaid');
+    const open=(G.orders||[]).filter(isOpen).slice().reverse();
+    // History = everything else (fulfilled, cancelled), newest first: five
+    // by default, all on request. Every row expands, so the special
+    // edition that arrived weeks ago can still be logged from its order
+    // (John, 2026-09-22).
+    const hist=(G.orders||[]).filter(o=>!isOpen(o)).slice().reverse();
+    const done=histAll?hist:hist.slice(0,5);
+    const row=(o,i,list)=>`<div class="log-item">
+      <div class="log-item-hd" style="cursor:pointer" onclick="LOG.expandOrder(${i},'${list}')">
         <div class="log-item-info">
           <div class="log-item-title" data-okey="${esc(ordKeyMail(o))}">${esc(o.books||(o.sub&&o.sub!=='N/A'?o.sub+' credit — title TBD':'TBD'))}</div>
-          <div class="log-item-meta">${esc(o.date)}${o.type==='Sub'?' · '+esc(o.sub&&o.sub!=='N/A'?o.sub+' subscription':'subscription'):''} · ${esc(o.order||'no #')}${o.series?' · '+esc(o.series):''}${o.contains?` · <span style="color:var(--purple)">omnibus of ${o.contains.split('\n').filter(Boolean).length}</span>`:''}</div>
+          <div class="log-item-meta">${esc(o.date)}${o.type==='Sub'?' · '+esc(o.sub&&o.sub!=='N/A'?o.sub+' subscription':'subscription'):''} · ${esc(o.order||'no #')}${o.store?' · '+esc(o.store):''}${o.series?' · '+esc(o.series):''}${o.contains?` · <span style="color:var(--purple)">omnibus of ${o.contains.split('\n').filter(Boolean).length}</span>`:''}</div>
         </div>
-        <span class="badge ${o.paid==='Unpaid'?'b-coral':o.delivered==='Fulfilled'?'b-green':o.tracking?'b-teal':'b-gold'}">${o.delivered==='Fulfilled'?'Fulfilled':o.paid==='Unpaid'?'Unpaid':o.tracking?'Shipped':'Unfulfilled'}</span>
+        <span class="badge ${o.delivered==='Cancelled'?'b-gray':o.paid==='Unpaid'?'b-coral':o.delivered==='Fulfilled'?'b-green':o.tracking?'b-teal':'b-gold'}">${o.delivered==='Cancelled'?'Cancelled':o.delivered==='Fulfilled'?'Fulfilled':o.paid==='Unpaid'?'Unpaid':o.tracking?'Shipped':'Unfulfilled'}</span>
       </div>
-      ${canEdit?`<div class="log-exp" id="log-oexp-${i}"></div>`:''}</div>`;
-    document.getElementById('log-orders-open').innerHTML=open.map((o,i)=>row(o,i,true)).join('')||'<div class="ms">No open orders.</div>';
+      <div class="log-exp" id="log-oexp-${list}${i}"></div></div>`;
+    document.getElementById('log-orders-open').innerHTML=open.map((o,i)=>row(o,i,'open')).join('')||'<div class="ms">No open orders.</div>';
     document.getElementById('log-orders-open')._open=open;
-    document.getElementById('log-orders-done').innerHTML=done.map(o=>row(o,-1,false)).join('')||'<div class="ms">—</div>';
+    document.getElementById('log-orders-done').innerHTML=(done.map((o,i)=>row(o,i,'done')).join('')+(hist.length>5?`<button class="log-act" style="margin-top:8px" onclick="LOG.toggleOrderHistory()">${histAll?'Show recent only':`Show all ${hist.length} orders`}</button>`:''))||'<div class="ms">—</div>';
+    document.getElementById('log-orders-done')._done=done;
     refreshBadge();
   }
-  const MAIL_EDIT=['date','order','books','series','author','count','type','sub','paid','delivered','contains'];
+  let histAll=false;
+  function toggleOrderHistory(){histAll=!histAll;renderOrders();}
+  function orderAt(i,list){const el=document.getElementById(list==='done'?'log-orders-done':'log-orders-open');return((el&&(list==='done'?el._done:el._open))||[])[i];}
+  // Shops an order can name: the two John actually uses first, then every
+  // acquisition source the register knows.
+  function storeOptions(){const s=['The Broken Binding','Tombolo'];vocabFor('source').forEach(v=>{if(!s.includes(v))s.push(v);});return s;}
+  function storeSelect(id,cur){return`<select id="${id}"><option value="">—</option>${storeOptions().map(v=>`<option${v===cur?' selected':''}>${esc(v)}</option>`).join('')}</select>`;}
+  // A #TBB… order number means The Broken Binding — fill the store when it
+  // is still blank, never overwrite a choice.
+  function storeFromOrderNo(v){const s=document.getElementById('log-o-store');if(s&&!s.value&&/^#TBB/i.test((v||'').trim()))s.value='The Broken Binding';}
+  // Jump to the Book tab with this title in the search box: the row's Got
+  // it › Edition is where a hardback or special edition gets recorded.
+  function findInRegister(t){
+    switchTab('logbook','log');
+    const q=document.getElementById('log-q');if(!q)return;
+    q.value=t;search();
+    const r=document.getElementById('log-results');if(r)r.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+  const MAIL_EDIT=['date','order','store','books','series','author','count','type','sub','paid','delivered','contains'];
   const MAIL_EDIT_SEL={paid:['Paid','Unpaid'],delivered:['Unfulfilled','Fulfilled','Cancelled']};
-  function expandOrder(i){
-    const o=(document.getElementById('log-orders-open')._open||[])[i];if(!o)return;
-    const el=document.getElementById('log-oexp-'+i);
+  // The order's books, one per line: declared omnibus contents when there
+  // are any (seq markers dropped), else the Books text as typed.
+  function orderTitles(o){
+    const t=(o.contains||'').split('\n').map(s=>s.replace(/\s+#\S+$/,'').trim()).filter(Boolean);
+    return t.length?t:(o.books?[o.books]:[]);
+  }
+  function expandOrder(i,list){
+    list=list||'open';
+    const o=orderAt(i,list);if(!o)return;
+    const tag=list+i;
+    const el=document.getElementById('log-oexp-'+tag);
     if(el.classList.contains('open')){el.classList.remove('open');return;}
-    document.querySelectorAll('#log-orders-open .log-exp.open').forEach(e=>e.classList.remove('open'));
+    document.querySelectorAll('#log-orders-open .log-exp.open,#log-orders-done .log-exp.open').forEach(e=>e.classList.remove('open'));
+    const books=`<div class="log-frow"><label>Books</label><div style="flex:1">${orderTitles(o).map(t=>`<div style="display:flex;gap:8px;align-items:center;margin:2px 0;flex-wrap:wrap"><span>${esc(t)}</span><button class="log-act" data-t="${esc(t)}" onclick="LOG.findInRegister(this.dataset.t)" title="find it on the Book tab — Got it › Edition records a hardback or special edition">🔎 Find</button></div>`).join('')||'<span class="ms">no titles named</span>'}</div></div>`;
+    const edit=`<div id="log-o-edit-${tag}" style="display:none">
+        ${MAIL_EDIT.map(f=>f==='contains'
+          ?`<div class="log-frow"><label>Contains</label><textarea id="log-oe-${f}-${tag}" rows="3" placeholder="omnibus? list the works inside, one per line (optional #seq) — arrival then marks each one owned" style="flex:1;font:inherit">${esc(String(o[f]??''))}</textarea></div>`
+          :f==='store'
+          ?`<div class="log-frow"><label>Store</label>${storeSelect(`log-oe-${f}-${tag}`,o.store||'')}</div>`
+          :MAIL_EDIT_SEL[f]
+          ?`<div class="log-frow"><label>${f[0].toUpperCase()+f.slice(1)}</label><select id="log-oe-${f}-${tag}">${MAIL_EDIT_SEL[f].map(v=>`<option${v===o[f]?' selected':''}>${v}</option>`).join('')}</select></div>`
+          :`<div class="log-frow"><label>${f==='date'?'Ordered':f[0].toUpperCase()+f.slice(1)}</label><input id="log-oe-${f}-${tag}" value="${esc(String(o[f]??''))}"></div>`).join('')}
+        <div class="ms" style="margin:2px 0 6px">Reverting Delivered from Fulfilled does NOT un-own books an arrival already marked — fix those on the Books tab.</div>
+        <button class="log-act primary" onclick="LOG.saveOrderEdit(${i},'${list}')">Save changed fields</button>
+      </div>`;
+    if(list==='done'){
+      // History rows: status, the books (to log editions), edit details.
+      el.innerHTML=`
+      <div class="log-frow"><label>Status</label><span class="ms" style="flex:1">${o.delivered==='Cancelled'?'Cancelled':'Fulfilled'+(o.fulfil?' · arrived '+esc(o.fulfil):'')}${o.tracking?' · '+esc(o.tracking):''}${o.store?' · '+esc(o.store):''}</span>
+        <button class="log-act" onclick="LOG.toggleRow('log-o-edit-${tag}')">Edit details</button></div>
+      ${books}${edit}`;
+      el.classList.add('open');return;
+    }
     el.innerHTML=`
       <div class="log-frow"><label>Update</label>
         ${o.paid==='Unpaid'?`<button class="log-act" onclick="LOG.doOrderUpdate(${i},{paid:'Paid'})">Mark paid</button>`:''}
-        <button class="log-act" onclick="LOG.toggleRow('log-o-arr-${i}')">Arrived</button>
+        <button class="log-act" onclick="LOG.toggleRow('log-o-arr-${tag}')">Arrived</button>
         ${!o.tracking?`<button class="log-act" onclick="LOG.doOrderUpdate(${i},{tracking:'Shipped'})" title="shipped, no tracking number — paste a number below if one turns up later">Shipped</button>`:''}
-        <button class="log-act" onclick="LOG.toggleRow('log-o-edit-${i}')">Edit details</button>
+        <button class="log-act" onclick="LOG.toggleRow('log-o-edit-${tag}')">Edit details</button>
         <button class="log-act" style="border-color:var(--coral);color:var(--coral)" onclick="if(confirm('Cancel this order? It leaves the open list and shows as Cancelled in history.'))LOG.doOrderUpdate(${i},{delivered:'Cancelled'})">Cancel order</button>
       </div>
-      <div class="log-frow" id="log-o-arr-${i}" style="display:none"><label>On</label>
-        <input type="date" id="log-o-arrd-${i}" value="${today()}">
-        <button class="log-act primary" onclick="LOG.doOrderUpdate(${i},{delivered:'Fulfilled',fulfil:document.getElementById('log-o-arrd-${i}').value})">Confirm arrival</button></div>
-      <div class="log-frow"><label>Tracking</label><input id="log-o-trk-${i}" value="${esc(o.tracking||'')}" placeholder="tracking #"><button class="log-act" onclick="LOG.doOrderUpdate(${i},{tracking:document.getElementById('log-o-trk-${i}').value.trim()})">Save</button>${o.tracking?`<button class="log-act" onclick="LOG.doOrderUpdate(${i},{tracking:''},true)" title="marked shipped by mistake — back to plain unfulfilled">Un-ship</button>`:''}</div>
-      <div id="log-o-edit-${i}" style="display:none">
-        ${MAIL_EDIT.map(f=>f==='contains'
-          ?`<div class="log-frow"><label>Contains</label><textarea id="log-oe-${f}-${i}" rows="3" placeholder="omnibus? list the works inside, one per line (optional #seq) — arrival then marks each one owned" style="flex:1;font:inherit">${esc(String(o[f]??''))}</textarea></div>`
-          :MAIL_EDIT_SEL[f]
-          ?`<div class="log-frow"><label>${f[0].toUpperCase()+f.slice(1)}</label><select id="log-oe-${f}-${i}">${MAIL_EDIT_SEL[f].map(v=>`<option${v===o[f]?' selected':''}>${v}</option>`).join('')}</select></div>`
-          :`<div class="log-frow"><label>${f==='date'?'Ordered':f[0].toUpperCase()+f.slice(1)}</label><input id="log-oe-${f}-${i}" value="${esc(String(o[f]??''))}"></div>`).join('')}
-        <div class="ms" style="margin:2px 0 6px">Reverting Delivered from Fulfilled does NOT un-own books an arrival already marked — fix those on the Books tab.</div>
-        <button class="log-act primary" onclick="LOG.saveOrderEdit(${i})">Save changed fields</button>
-      </div>`;
+      <div class="log-frow" id="log-o-arr-${tag}" style="display:none"><label>On</label>
+        <input type="date" id="log-o-arrd-${tag}" value="${today()}">
+        <button class="log-act primary" onclick="LOG.doOrderUpdate(${i},{delivered:'Fulfilled',fulfil:document.getElementById('log-o-arrd-${tag}').value})">Confirm arrival</button></div>
+      <div class="log-frow"><label>Tracking</label><input id="log-o-trk-${tag}" value="${esc(o.tracking||'')}" placeholder="tracking #"><button class="log-act" onclick="LOG.doOrderUpdate(${i},{tracking:document.getElementById('log-o-trk-${tag}').value.trim()})">Save</button>${o.tracking?`<button class="log-act" onclick="LOG.doOrderUpdate(${i},{tracking:''},true)" title="marked shipped by mistake — back to plain unfulfilled">Un-ship</button>`:''}</div>
+      ${books}${edit}`;
     el.classList.add('open');
   }
   function toggleRow(id){const e=document.getElementById(id);if(e)e.style.display=e.style.display==='none'?'':'none';}
-  async function doOrderUpdate(i,set,allowEmptyTracking){
-    const o=(document.getElementById('log-orders-open')._open||[])[i];if(!o)return;
+  async function doOrderUpdate(i,set,allowEmptyTracking,list){
+    const o=orderAt(i,list||'open');if(!o)return;
     // the Save button must not wipe tracking via an empty input; the
     // explicit Un-ship button passes allowEmptyTracking to do exactly that
     if(set.tracking===''&&!allowEmptyTracking)return toast('Tracking number is empty',true);
     const ok=await submit('order_update',{list:'bookmail',ref:orderRef(o),set},null,'butthead');
     if(ok){toast('Order update logged');renderOrders();}
   }
-  async function saveOrderEdit(i){
-    const o=(document.getElementById('log-orders-open')._open||[])[i];if(!o)return;
-    const set={};
+  async function saveOrderEdit(i,list){
+    list=list||'open';
+    const o=orderAt(i,list);if(!o)return;
+    const tag=list+i,set={};
     for(const f of MAIL_EDIT){
-      const v=document.getElementById(`log-oe-${f}-${i}`).value.trim();
+      const v=document.getElementById(`log-oe-${f}-${tag}`).value.trim();
       if(v!==String(o[f]??'').trim())set[f]=v;
     }
     if(!Object.keys(set).length)return toast('Nothing changed',true);
@@ -4447,7 +4687,7 @@ const LOG=(()=>{
     if(!v('log-o-books')&&!(v('log-o-type')==='Sub'&&v('log-o-sub')))return toast('Books required (or mark it a Sub and name which)',true);
     const p={list:'bookmail',date:v('log-o-date'),order:v('log-o-num'),books:v('log-o-books'),
       series:v('log-o-series'),author:v('log-o-author'),count:+v('log-o-count')||1,
-      type:v('log-o-type'),sub:v('log-o-sub'),paid:v('log-o-paid')};
+      type:v('log-o-type'),sub:v('log-o-sub'),paid:v('log-o-paid'),store:v('log-o-store')};
     if(document.getElementById('log-o-omni').checked){
       const lines=v('log-o-contains').split('\n').map(s=>s.trim()).filter(Boolean);
       if(lines.length<2)return toast('An omnibus order needs its contained works, one per line',true);
@@ -4455,6 +4695,19 @@ const LOG=(()=>{
     }
     const ok=await submit('order_new',p,null,'butthead');
     if(ok){toast('Order logged'+(p.contains?' (omnibus of '+p.contains.length+')':''));renderOrders();}
+  }
+  // Book Club flyer → real orders: one bookmail order per checked title,
+  // no order number, store as picked (Tombolo by default). Arrival then
+  // follows the normal path — the exact title marks the book owned with
+  // the shop on the acquisition (John, 2026-09-22).
+  async function logFlyerOrders(items,store,paid){
+    let n=0;
+    for(const it of items){
+      const p={list:'bookmail',date:today(),order:'',books:it.title,series:it.series||'',author:it.author||'',count:1,type:'One-Time',sub:'',paid:paid||'Unpaid',store:store||'Tombolo'};
+      if(await submit('order_new',p,null,'butthead'))n++;else break;
+    }
+    if(n)toast(`${n} order${n===1?'':'s'} logged at ${store||'Tombolo'}`);
+    return n;
   }
   async function doNewBoxOrder(){
     const v=id=>document.getElementById(id).value.trim();
@@ -4702,7 +4955,8 @@ const LOG=(()=>{
 
   return{renderBook,renderOrders,renderPending,renderProposed,doPropDecide,propEdit,doPropDecideSet,doSyncRequest,importLibib,renderMeta,doMetaAdd,dupeCheck,showNeedsData,search,browse,brMode,expand,doFinished,doAcquired,
     toggleAdd,doAdd,addDates,toggleTrack,doTrackSeries,trackFromRow,isbnLookup,addFromIsbn,scanIsbn,stopScan,saveBookEdit,doCopyLetGo,vocabFor,pendingVocab,followAuthor,doNewOrder,doNewBoxOrder,setOrderStyle,expandOrder,doOrderUpdate,
-    toggleRow,saveOrderEdit,expandBox,doBoxUpdate,saveBoxEdit,saveSetup,forgetSetup,refreshBadge};
+    toggleRow,saveOrderEdit,expandBox,doBoxUpdate,saveBoxEdit,saveSetup,forgetSetup,refreshBadge,
+    toggleOrderHistory,findInRegister,storeFromOrderNo,logFlyerOrders,trackSeriesFromIsbn,submitTrackSeries};
 })();
 
 async function init(){

@@ -301,8 +301,14 @@ Orders (`by` is `butthead`):
 ```json
 {"list": "bookmail", "date": "2026-07-26", "order": "#TBBSUB123456",
  "books": "The Sun Eater 1-3", "series": "Sun Eater",
- "author": "Christopher Ruocchio", "count": 3, "type": "One-Time", "paid": "Paid"}
+ "author": "Christopher Ruocchio", "count": 3, "type": "One-Time", "paid": "Paid",
+ "store": "The Broken Binding"}
 ```
+`store` (optional, migration 020) names the shop. Blank + a `#TBB…` order
+number derives The Broken Binding; the Book Club flyer's order form logs one
+`bookmail` order per checked title with `store: "Tombolo"` and no order
+number. The store rides onto the acquisition when the order arrives and is
+updatable via `order_update` `set.store`.
 
 `list: "bookboxes"` — Shereen's model: one row per book in a subscription-box
 lifecycle, matching her Book Boxes sheet (`by` is `goblin`). `title` may be

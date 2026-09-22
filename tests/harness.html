@@ -102,9 +102,10 @@ async function main(){
     await go('buythisyear','buying');
     const y=new Date().getFullYear();
     const growth=Object.entries(tabs).find(([k,v])=>k.endsWith('|'+y)&&v&&v[0]&&v[0][0]==='Num'&&v[0][5]==='Format');
-    const want=growth?growth[1].slice(1).filter(r=>r[0]&&r[2]).length:0;
+    // the app opens on Com's shelf; the ledger's Owner column (col H) filters
+    const want=growth?growth[1].slice(1).filter(r=>r[0]&&r[2]&&(!r[7]||r[7]==='butthead')).length:0;
     const got=doc().querySelectorAll('#bty-list tr').length;
-    res('Buy This Year table matches the ledger tab',got===want,`table ${got} rows vs tab ${want}`);
+    res('Buy This Year table matches the ledger tab',got===want,`table ${got} rows vs tab ${want} (Com's)`);
   });
 
   await check('Book Mail history is complete and newest-first',async()=>{
@@ -172,6 +173,33 @@ async function main(){
     for(const r of ind.slice(1)){if((r[6]||'').trim().toLowerCase()==='x'){per.all++;per[r[10]]=(per[r[10]]||0)+1;}}
     res('Rooms bookcases hold every owned book',spines>0&&[per.all,per.butthead||0,per.goblin||0].includes(spines),
         `${spines} spines vs owned all ${per.all}, Com ${per.butthead||0}, Shereen ${per.goblin||0}`);
+  });
+
+  await check('Up Next lists every series in progress',async()=>{
+    await go('tbr','reading');
+    // Com's shelf: a real series (not Standalones) with ≥1 read and ≥1 unread
+    const per={};
+    for(const r of ind.slice(1)){
+      if((r[10]||'butthead')!=='butthead'||!r[1]||r[1]==='-'||r[1]==='Standalones')continue;
+      const s=per[r[1]]=per[r[1]]||{r:0,u:0};
+      if((r[7]||'').trim().toLowerCase()==='x')s.r++;else s.u++;
+    }
+    const want=Object.values(per).filter(s=>s.r>0&&s.u>0).length;
+    const rows=doc().querySelectorAll('#tbr-now .tbr-row,#tbr-earlier .tbr-row').length;
+    const shown=norm((ptxt('tbr').match(/([\d,]+)\s*Series in progress/i)||[])[1]);
+    res('Up Next lists every series in progress',rows===want&&shown===want,`rows ${rows}, metric ${shown} vs register ${want}`);
+  });
+
+  await check('Order history expands and names its books',async()=>{
+    await go('logorders','log');
+    const orders=tget('Book Mail Orders');
+    const hist=orders.slice(1).filter(r=>(r[0]||r[2])&&!(r[6]!=='Cancelled'&&(r[6]==='Unfulfilled'||r[5]==='Unpaid'))).length;
+    const rows=doc().querySelectorAll('#log-orders-done .log-item').length;
+    const firstHd=doc().querySelector('#log-orders-done .log-item-hd');
+    if(firstHd)firstHd.click();
+    await new Promise(r=>setTimeout(r,150));
+    const finds=doc().querySelectorAll('#log-orders-done .log-exp.open button[data-t]').length;
+    res('Order history expands and names its books',rows===Math.min(5,hist)&&(!hist||finds>0),`${rows} shown of ${hist} history rows; first expands with ${finds} book(s)`);
   });
 
   res('no runtime errors in the app',errors.length===0,errors.slice(0,3).join(' | '));
