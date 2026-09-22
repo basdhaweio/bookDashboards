@@ -297,6 +297,17 @@ Duplicate adds are no-ops.
 `TBA` (2026-09-22: announced, no date — Doors of Stone, The Queens); the TBR
 tab files TBA and far-off dates under Waiting for.
 
+### `queue_set` — the hand-picked TBR ("Next up")
+One register book in, out, or moved within the reader's own queue
+(`reading_queue`, migration 023). `position` is a float the dashboard
+computes between the neighbours it can see; an `add` without one appends.
+A `finished` event on the book removes it from the queue.
+```json
+{"book": {"title": "Persepolis Rising", "series": "Expanse", "owner": "butthead"},
+ "action": "move", "position": 2.5}
+```
+`action` is `add`, `move`, or `remove`.
+
 ### `order_new`
 Two shapes, discriminated by `list`.
 

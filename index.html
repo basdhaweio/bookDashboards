@@ -101,20 +101,28 @@ a.bc-burst:hover{transform:rotate(12deg) scale(1.08);}
 .bc-form-go button{cursor:pointer;background:#d94f30;color:#f6edd8;box-shadow:2px 2px 0 rgba(43,38,32,.45);}
 .bc-form-go button:disabled{opacity:.45;cursor:default;box-shadow:none;}
 /* Reading › Up Next rows */
-.tbr-row{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);align-items:flex-start;}
-.tbr-row:last-child{border-bottom:none;}
-.tbr-cov{flex:none;width:44px;min-height:4px;}
-.tbr-info{min-width:0;flex:1;}
-.tbr-ser{font-weight:600;}
-.tbr-prog{font-size:12px;color:var(--text3);display:flex;align-items:center;gap:8px;margin:3px 0;flex-wrap:wrap;}
-.tbr-bar{display:inline-block;width:90px;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;flex:none;}
+/* Reading › TBR: compact cards in a grid (John, 2026-09-22: "toasts or
+   cards, not entire rows with mostly white space") */
+.tbr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px;margin-bottom:.5rem;}
+.tbr-grid>.ms,.tbr-grid>.tbr-uni{grid-column:1/-1;}
+.tbr-card{display:flex;gap:10px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--bg2);align-items:flex-start;min-width:0;position:relative;}
+.tbr-card.dragging{opacity:.4;}
+.tbr-card.dropbefore{box-shadow:inset 3px 0 0 var(--gold2);}
+.tbr-cov{flex:none;width:40px;min-height:4px;}
+.tbr-info{min-width:0;flex:1;font-size:12px;line-height:1.45;}
+.tbr-ser{font-weight:600;font-size:13px;}
+.tbr-prog{font-size:11px;color:var(--text3);display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.tbr-bar{display:inline-block;width:56px;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;flex:none;}
 .tbr-bar span{display:block;height:100%;background:var(--teal2);}
-.tbr-next{font-size:13px;line-height:1.7;}
-button.tbr-link{background:none;border:none;padding:0;font:inherit;font-weight:inherit;color:inherit;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;}
-.tbr-a{color:var(--gold);text-decoration:none;}
-.tbr-uni{font-family:var(--font-m);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--gold);margin:12px 0 0;padding-top:8px;border-top:2px solid var(--gold2);}
-.tbr-acts{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:5px;}
-.tbr-mini .tbr-ser{font-weight:500;}
+.tbr-next{font-size:12px;line-height:1.5;}
+button.tbr-link{background:none;border:none;padding:0;font:inherit;font-weight:inherit;color:inherit;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;text-align:left;}
+.tbr-a{color:var(--gold);text-decoration:none;font-size:11px;}
+.tbr-uni{font-family:var(--font-m);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--gold);margin:8px 0 0;padding-top:6px;border-top:2px solid var(--gold2);}
+.tbr-acts{display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-top:4px;}
+.tbr-acts .log-act{padding:3px 7px;font-size:10px;border-radius:6px;}
+.tbr-acts .badge{font-size:9px;}
+.tbr-handle{position:absolute;top:6px;right:8px;color:var(--text3);cursor:grab;font-size:13px;user-select:none;line-height:1;}
+.tbr-num{font-family:var(--font-m);font-size:10px;color:var(--gold);margin-right:4px;}
 .bc-burst.bc-b-blue{background:#3a6ea8;}
 .bc-rel{margin-top:auto;font-family:'DM Mono',monospace !important;font-size:10px;font-weight:500;background:#2b2620;color:#e8a33d;display:inline-block;align-self:flex-start;padding:2px 8px;letter-spacing:0.1em;text-transform:uppercase;}
 .bc-form{margin:2.2rem 2rem 0;border-top:3px dashed #2b2620;padding-top:0.4rem;position:relative;}
@@ -521,20 +529,22 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <button onclick="switchTab('toread','reading')">To Read</button>
     </div>
     <div class="panel active" id="tab-tbr">
-      <div class="sl">TBR — what to read next, series by series</div>
+      <div class="sl">TBR — what to read next</div>
       <div class="mg" id="tbr-m"></div>
-      <div class="sl">Focus series — this year's list</div>
-      <div class="cb" id="tbr-focus"></div>
-      <div id="tbr-reading-wrap"><div class="sl" style="margin-top:2rem">Reading now — Goodreads currently-reading shelf</div>
-      <div class="cb" id="tbr-reading"></div></div>
-      <div class="sl" style="margin-top:2rem">In progress — most of the series read, not all</div>
-      <div class="cb" id="tbr-prog"></div>
-      <div class="sl" style="margin-top:2rem">New book in series — out within six months, or just announced</div>
-      <div class="cb" id="tbr-new"></div>
-      <div class="sl" style="margin-top:2rem">Waiting for — announced, no date or further out</div>
-      <div class="cb" id="tbr-wait"></div>
-      <div class="sl" style="margin-top:2rem">Get these next — out, tracked, not on the shelf</div>
-      <div class="cb" id="tbr-get"></div>
+      <div id="tbr-reading-wrap"><div class="sl">Reading now — Goodreads currently-reading shelf</div>
+      <div class="tbr-grid" id="tbr-reading"></div></div>
+      <div class="sl">Next up — your own order · drag a card, or ▲ ▼</div>
+      <div class="tbr-grid" id="tbr-queue" ondragover="event.preventDefault()" ondrop="tbrDrop(event,(G._tbrQueue||[]).length)"></div>
+      <div class="sl" style="margin-top:1.5rem">Focus series — this year's list, still unfinished</div>
+      <div class="tbr-grid" id="tbr-focus"></div>
+      <div class="sl" style="margin-top:1.5rem">In progress — most of the series read, not all</div>
+      <div class="tbr-grid" id="tbr-prog"></div>
+      <div class="sl" style="margin-top:1.5rem">New book in series — out within six months, or just announced</div>
+      <div class="tbr-grid" id="tbr-new"></div>
+      <div class="sl" style="margin-top:1.5rem">Waiting for — announced, no date or further out</div>
+      <div class="tbr-grid" id="tbr-wait"></div>
+      <div class="sl" style="margin-top:1.5rem">Get these next — out, tracked, not on the shelf</div>
+      <div class="tbr-grid" id="tbr-get"></div>
     </div>
     <div class="panel" id="tab-history">
       <div class="sl">Year-over-year — stacked area by media type</div>
@@ -1500,6 +1510,28 @@ function tbrRel(pd,todayIso,limIso){
   if(pd.length===7)return pd>todayIso.slice(0,7)?(pd<=limIso.slice(0,7)?'soon':'later'):'out';
   return pd>todayIso?(pd<=limIso?'soon':'later'):'out';
 }
+// Next up — the hand-picked queue. Drag a card onto another (or ▲ ▼) and
+// the new float position lands between its neighbours via a queue_set
+// event; the bundle's order plus pending events is what renders.
+let tbrDragFrom=null;
+function tbrDragStart(e,i){tbrDragFrom=i;try{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',String(i));}catch(_){}e.currentTarget.classList.add('dragging');}
+function tbrDragOver(e){e.preventDefault();e.currentTarget.classList.add('dropbefore');}
+function tbrDragLeave(e){e.currentTarget.classList.remove('dropbefore');}
+function tbrDragEnd(e){e.currentTarget.classList.remove('dragging');document.querySelectorAll('#tbr-queue .dropbefore').forEach(x=>x.classList.remove('dropbefore'));}
+function tbrDrop(e,before){e.preventDefault();e.stopPropagation();if(e.currentTarget.classList)e.currentTarget.classList.remove('dropbefore');const from=tbrDragFrom;tbrDragFrom=null;if(from==null||from===before)return;tbrMoveBefore(from,before);}
+function tbrMoveBy(i,d){const L=G._tbrQueue||[];const before=d<0?i-1:i+2;if(before<0||before>L.length)return;tbrMoveBefore(i,before);}
+async function tbrMoveBefore(from,before){
+  const L=G._tbrQueue||[],it=L[from];if(!it)return;
+  const rest=L.filter((_,j)=>j!==from),idx=before>from?before-1:before;
+  const pos=!rest.length?1:idx<=0?rest[0].pos-1:idx>=rest.length?rest[rest.length-1].pos+1:(rest[idx-1].pos+rest[idx].pos)/2;
+  if(await LOG.queueSet(it.b,'move',pos))tbrRerender();
+}
+async function tbrQueue(i,action){
+  const b=(G._tbrBooks||[])[i];if(!b)return;
+  const L=G._tbrQueue||[];
+  const pos=action==='add'?(L.length?L[L.length-1].pos+1:1):null;
+  if(await LOG.queueSet(b,action,pos))tbrRerender();
+}
 function renderTBR(){
   const books=G.indBooks||[],cy=String(new Date().getFullYear()),todayIso=LOG.today();
   const limIso=(()=>{const d=new Date(todayIso+'T12:00:00');d.setMonth(d.getMonth()+6);return d.toISOString().slice(0,10);})();
@@ -1509,7 +1541,8 @@ function renderTBR(){
   const nl=t=>(t||'').toLowerCase().replace(/×/g,'x').replace(/^\s*(the|a|an)\s+/,'').replace(/[^a-z0-9]/g,'');
   const nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
   const pendRead=LOG.pendingBooks('finished');
-  const pk=b=>b.title+'|'+(b.series||'');
+  // Keys match the inbox payload's book ref: title|series, standalone = ''.
+  const pk=b=>b.title+'|'+(!b.series||b.series==='Standalones'?'':b.series);
   const by={};
   for(const b of books){
     if(!b.series||b.series==='Standalones')continue;
@@ -1556,6 +1589,22 @@ function renderTBR(){
   // it and it's tracked then I need it" (John, 2026-09-22), so no flag.
   const toGet=inProg.filter(s=>s.next&&!s.next.owned&&!onOrder(s.next.title)&&rel(s.next)==='out').sort(byPct);
   const reading=tbrReadingNow(nk);
+  // Next up: the bundle's queue for this owner, matched to register books,
+  // with pending queue_set events folded in (adds append, moves reposition,
+  // removes drop). Series membership is looked up for the card's context.
+  const pq=LOG.pendingQueue(),qmap=new Map();
+  (G.queue||[]).filter(q=>OWNER==='all'||(q.owner||'butthead')===OWNER).forEach(q=>{
+    const b=books.find(x=>nk(x.title)===nk(q.title)&&(!q.series||nl(x.series)===nl(q.series)));
+    if(b)qmap.set(pk(b),{b,pos:q.pos,pending:false});});
+  let qmax=Math.max(0,...[...qmap.values()].map(v=>v.pos));
+  for(const[k,v]of pq){
+    if(v.action==='remove'){qmap.delete(k);continue;}
+    const cur=qmap.get(k),b=cur?cur.b:books.find(x=>pk(x)===k);if(!b)continue;
+    const pos=v.position!=null&&v.position!==''?+v.position:(cur?cur.pos:++qmax);
+    qmap.set(k,{b,pos,pending:true});
+  }
+  const queue=[...qmap.values()].sort((a,b)=>a.pos-b.pos||a.b.title.localeCompare(b.b.title));
+  G._tbrQueue=queue;
   G._tbrBooks=[];const bidx=b=>{G._tbrBooks.push(b);return G._tbrBooks.length-1;};
   const chip=nx=>{if(pendRead.has(pk(nx)))return'<span class="badge b-teal">read · pending</span>';
     const o=onOrder(nx.title);
@@ -1565,44 +1614,64 @@ function renderTBR(){
     if(r==='tba')return'<span class="badge b-gray">not out yet · TBA</span>';
     if(r!=='out')return`<span class="badge b-teal">coming ${esc(nx.pubDate)}</span>`;
     return'<span class="badge b-coral">not owned</span>';};
-  const acts=nx=>{const i=bidx(nx),pr=pendRead.has(pk(nx));
-    return`<div class="tbr-acts">${pr?'':`<button class="log-act" onclick="tbrReadRow(${i})">✓ Read</button>`}${nx.owned||rel(nx)!=='out'?'':`<a class="tbr-a" href="${tomboloUrl(nx.title)}" target="_blank" rel="noopener">Tombolo ↗</a>`}</div><div id="tbr-rr-${i}" style="display:none"></div>`;};
-  const cover=b=>coverTile(b.title,b.owner||'butthead','',null,44);
-  const row=s=>{const nx=s.next;return`<div class="tbr-row" data-ser="${esc(s.name)}"${s.inProg?' data-inprog="1"':''}>
+  // Actions: ✓ Read everywhere; ＋ Next up (or the queued badge) outside
+  // the queue; ▲ ▼ ✕ inside it; Tombolo when it is out and not owned.
+  const acts=(nx,qi)=>{const i=bidx(nx),k=pk(nx),pr=pendRead.has(k),q=qmap.get(k);
+    const queueBtns=qi==null
+      ?(q?`<span class="badge b-gold">next up${q.pending?' · pending':''}</span>`:`<button class="log-act" onclick="tbrQueue(${i},'add')" title="put it on your Next up list">＋ Next up</button>`)
+      :`<button class="log-act" onclick="tbrMoveBy(${qi},-1)" title="move up"${qi===0?' disabled':''}>▲</button><button class="log-act" onclick="tbrMoveBy(${qi},1)" title="move down"${qi>=queue.length-1?' disabled':''}>▼</button><button class="log-act" onclick="tbrQueue(${i},'remove')" title="take it off the list">✕</button>`;
+    return`<div class="tbr-acts">${pr?'':`<button class="log-act" onclick="tbrReadRow(${i})">✓ Read</button>`}${queueBtns}${nx.owned||rel(nx)!=='out'?'':`<a class="tbr-a" href="${tomboloUrl(nx.title)}" target="_blank" rel="noopener">Tombolo ↗</a>`}</div><div id="tbr-rr-${i}" style="display:none"></div>`;};
+  const cover=b=>coverTile(b.title,b.owner||'butthead','',null,40);
+  const seriesCard=s=>{const nx=s.next;return`<div class="tbr-card" data-ser="${esc(s.name)}"${s.inProg?' data-inprog="1"':''}>
     <div class="tbr-cov">${nx?cover(nx):''}</div>
     <div class="tbr-info">
-      <div class="tbr-ser"><button class="tbr-link" data-s="${esc(s.name)}" onclick="tbrBrowse(this.dataset.s)" title="browse the series">${esc(s.name)}</button>${s.author?`<span class="ms"> · ${esc(s.author)}</span>`:''}</div>
-      <div class="tbr-prog"><span class="tbr-bar"><span style="width:${Math.round(100*s.pct)}%"></span></span>${s.read}/${s.total} read${s.last?' · last '+esc(s.last):''}</div>
-      <div class="tbr-next">${nx?`Up next: <strong>${esc(nx.title)}</strong>${nx.seq?' <span class="ms">#'+esc(nx.seq)+'</span>':''} ${chip(nx)}`:(s.read===s.total?'<span class="badge b-green">all read</span>':'—')}</div>
+      <div class="tbr-ser"><button class="tbr-link" data-s="${esc(s.name)}" onclick="tbrBrowse(this.dataset.s)" title="browse the series">${esc(s.name)}</button></div>
+      <div class="tbr-prog"><span class="tbr-bar"><span style="width:${Math.round(100*s.pct)}%"></span></span>${s.read}/${s.total}${s.author?' · '+esc(s.author):''}${s.last?' · '+esc(s.last):''}</div>
+      <div class="tbr-next">${nx?`<strong>${esc(nx.title)}</strong>${nx.seq?' <span class="ms">#'+esc(nx.seq)+'</span>':''} ${chip(nx)}`:'<span class="badge b-green">all read</span>'}</div>
       ${nx?acts(nx):''}
     </div></div>`;};
   // Universe grouping: a universe's series sit together under its name
   // (Malazan's several series read as one shelf); groups take the position
   // of their first series in the order, everything else stays put.
   const grouped=rows=>{const m=new Map();rows.forEach(s=>{const k=s.universe?'u:'+s.universe:'s:'+s.name;if(!m.has(k))m.set(k,[]);m.get(k).push(s);});
-    return[...m.entries()].map(([k,list])=>(k.startsWith('u:')&&list.length>1?`<div class="tbr-uni">${esc(k.slice(2))} <span class="ms">· ${list.length} series</span></div>`:'')+list.map(row).join('')).join('');};
-  const mini=(b,s,extra)=>`<div class="tbr-row tbr-mini" data-ser="${esc(s.name)}"${s.inProg?' data-inprog="1"':''}><div class="tbr-cov">${cover(b)}</div><div class="tbr-info"><div class="tbr-ser"><strong>${esc(b.title)}</strong>${b.seq?' <span class="ms">#'+esc(b.seq)+'</span>':''}</div><div class="tbr-prog">${esc(s.name)}${s.author?' · '+esc(s.author):''} · ${s.read}/${s.total} read${s.last?' · last '+esc(s.last):''}</div><div class="tbr-next">${extra}</div>${acts(b)}</div></div>`;
-  const grTile=r=>r.cover?`<div class="ct" style="width:44px;height:66px" title="${esc(r.title)}"><img loading="lazy" alt="" src="${esc(r.cover)}"></div>`:coverTile(r.title,'butthead','',r.isbn||r.isbn13||null,44);
-  const bnRow=x=>`<div class="tbr-row tbr-mini" data-ser="${esc(x.s.name)}"><div class="tbr-cov">${grTile(x.r)}</div><div class="tbr-info"><div class="tbr-ser"><strong>${esc(x.r.title)}</strong><span class="ms"> · ${esc(x.r.author)}</span></div><div class="tbr-prog">${esc(x.s.name)} · ${x.s.read}/${x.s.total} read · Book Notification, not in the register</div><div class="tbr-next"><span class="badge b-teal">📅 ${esc(x.date||'TBA')}</span> <a class="tbr-a" href="${tomboloUrl(x.r.title)}" target="_blank" rel="noopener">Tombolo ↗</a> · <button class="tbr-link" onclick="switchSection('bookclub','flyer')">flyer</button></div></div></div>`;
+    return[...m.entries()].map(([k,list])=>(k.startsWith('u:')&&list.length>1?`<div class="tbr-uni">${esc(k.slice(2))} <span class="ms">· ${list.length} series</span></div>`:'')+list.map(seriesCard).join('')).join('');};
+  const bookCard=(b,s,extra,qi)=>`<div class="tbr-card" data-ser="${esc(s?s.name:'')}"${s&&s.inProg?' data-inprog="1"':''}${qi!=null?` draggable="true" ondragstart="tbrDragStart(event,${qi})" ondragover="tbrDragOver(event)" ondragleave="tbrDragLeave(event)" ondragend="tbrDragEnd(event)" ondrop="tbrDrop(event,${qi})"`:''}>
+    ${qi!=null?'<span class="tbr-handle" title="drag to reorder">⋮⋮</span>':''}
+    <div class="tbr-cov">${cover(b)}</div>
+    <div class="tbr-info">
+      <div class="tbr-ser">${qi!=null?`<span class="tbr-num">${qi+1}</span>`:''}${esc(b.title)}${b.seq?' <span class="ms">#'+esc(b.seq)+'</span>':''}</div>
+      <div class="tbr-prog">${s?esc(s.name)+(s.author?' · '+esc(s.author):'')+' · '+s.read+'/'+s.total:(b.author?esc(b.author):'')}</div>
+      <div class="tbr-next">${extra}</div>
+      ${acts(b,qi)}
+    </div></div>`;
+  const grTile=r=>r.cover?`<div class="ct" style="width:40px;height:60px" title="${esc(r.title)}"><img loading="lazy" alt="" src="${esc(r.cover)}"></div>`:coverTile(r.title,'butthead','',r.isbn||r.isbn13||null,40);
+  const bnCard=x=>`<div class="tbr-card" data-ser="${esc(x.s.name)}"><div class="tbr-cov">${grTile(x.r)}</div><div class="tbr-info"><div class="tbr-ser">${esc(x.r.title)}</div><div class="tbr-prog">${esc(x.s.name)} · ${esc(x.r.author)} · ${x.s.read}/${x.s.total} · Book Notification, not in the register</div><div class="tbr-next"><span class="badge b-teal">📅 ${esc(x.date||'TBA')}</span></div><div class="tbr-acts"><a class="tbr-a" href="${tomboloUrl(x.r.title)}" target="_blank" rel="noopener">Tombolo ↗</a><button class="log-act" onclick="switchSection('bookclub','flyer')">flyer</button></div></div></div>`;
   const orderChip=b=>onOrder(b.title)?' <span class="badge b-gold">on order</span>':b.owned?' <span class="badge b-green">on the shelf</span>':'';
+  const sOf=b=>by[b.series]||null;
+  // Finished series don't belong on a to-read page (tracking and This Year
+  // cover them), so the focus list shows only what still has volumes left.
+  const focusLeft=focusRows.filter(s=>s.unread>0);
   document.getElementById('tbr-m').innerHTML=
+    mH(queue.length,'Next up','your list')+
     mH(inProg.length,'Series in progress','read some, not all')+
-    mH(focusRows.length,'Focus series',cy)+
+    mH(focusLeft.length,'Focus series',cy+', unfinished')+
     mH(newBook.length,'New book in series','','t')+
     mH(waiting.length,'Waiting for','no date or further out')+
     mH(toGet.length,'To get','out, not on the shelf','c')+
     mH(reading.length,'Reading now','Goodreads shelf');
-  document.getElementById('tbr-focus').innerHTML=focusRows.map(row).join('')||'<div class="ms">No focus list for this year.</div>';
   const rw=document.getElementById('tbr-reading-wrap');
   rw.style.display=reading.length?'':'none';
   document.getElementById('tbr-reading').innerHTML=reading.map(r=>{const b=r.reg,i=b?bidx(b):-1,pr=b&&pendRead.has(pk(b));
-    return`<div class="tbr-row tbr-mini"><div class="tbr-cov">${b?cover(b):grTile(r)}</div><div class="tbr-info"><div class="tbr-ser"><strong>${esc(b?b.title:r.title)}</strong><span class="ms"> · ${esc(r.author)}</span></div><div class="tbr-prog">${b?esc(b.series)+(b.seq?' #'+esc(b.seq):''):'not in the register'}${r.added?' · on the shelf since '+esc(r.added):''}</div><div class="tbr-acts">${b?(pr?'<span class="badge b-teal">read · pending</span>':`<button class="log-act" onclick="tbrReadRow(${i})">✓ Read</button>`):`<button class="log-act" data-t="${esc(r.title)}" onclick="LOG.findInRegister(this.dataset.t)">🔎 Find</button>`}</div>${b?`<div id="tbr-rr-${i}" style="display:none"></div>`:''}</div></div>`;}).join('');
+    return`<div class="tbr-card"><div class="tbr-cov">${b?cover(b):grTile(r)}</div><div class="tbr-info"><div class="tbr-ser">${esc(b?b.title:r.title)}</div><div class="tbr-prog">${esc(r.author)}${b?' · '+esc(b.series)+(b.seq?' #'+esc(b.seq):''):' · not in the register'}${r.added?' · since '+esc(r.added):''}</div><div class="tbr-acts">${b?(pr?'<span class="badge b-teal">read · pending</span>':`<button class="log-act" onclick="tbrReadRow(${i})">✓ Read</button>`):`<button class="log-act" data-t="${esc(r.title)}" onclick="LOG.findInRegister(this.dataset.t)">🔎 Find</button>`}</div>${b?`<div id="tbr-rr-${i}" style="display:none"></div>`:''}</div></div>`;}).join('');
+  document.getElementById('tbr-queue').innerHTML=queue.map((q,qi)=>bookCard(q.b,sOf(q.b),chip(q.b)+(q.pending?' <span class="badge b-gold">pending</span>':''),qi)).join('')
+    ||'<div class="ms">Nothing picked yet — tap ＋ Next up on any card below to build your list.</div>';
+  document.getElementById('tbr-focus').innerHTML=focusLeft.map(seriesCard).join('')||'<div class="ms">'+(focusRows.length?'Every focus series is finished.':'No focus list for this year.')+'</div>';
   document.getElementById('tbr-prog').innerHTML=grouped(prog)||'<div class="ms">Nothing in progress outside the focus list.</div>';
-  document.getElementById('tbr-new').innerHTML=newBook.map(x=>x.src==='register'?mini(x.b,x.s,`<span class="badge b-teal">📅 ${esc(x.date)}</span>${orderChip(x.b)}`):bnRow(x)).join('')
+  document.getElementById('tbr-new').innerHTML=newBook.map(x=>x.src==='register'?bookCard(x.b,x.s,`<span class="badge b-teal">📅 ${esc(x.date)}</span>${orderChip(x.b)}`):bnCard(x)).join('')
     ||'<div class="ms">Nothing due in the next six months in a series you\'ve read.</div>';
-  document.getElementById('tbr-wait').innerHTML=waiting.map(x=>mini(x.b,x.s,`<span class="badge b-gray">${x.date?'📅 '+esc(x.date):'no date yet · TBA'}</span>${orderChip(x.b)}`)).join('')
+  document.getElementById('tbr-wait').innerHTML=waiting.map(x=>bookCard(x.b,x.s,`<span class="badge b-gray">${x.date?'📅 '+esc(x.date):'no date yet · TBA'}</span>${orderChip(x.b)}`)).join('')
     ||'<div class="ms">Nothing announced without a date.</div>';
-  document.getElementById('tbr-get').innerHTML=toGet.map(s=>mini(s.next,s,chip(s.next))).join('')||'<div class="ms">Every next volume is on the shelf, on order, or not out yet.</div>';
+  document.getElementById('tbr-get').innerHTML=toGet.map(s=>bookCard(s.next,s,chip(s.next))).join('')||'<div class="ms">Every next volume is on the shelf, on order, or not out yet.</div>';
 }
 function renderThisYear(year){
   tyYear=year;
@@ -3887,6 +3956,7 @@ const LOG=(()=>{
       case'finished':return`✓ ${who} finished “${b.title}”${p.date?' · '+p.date:''}`;
       case'acquired':return`📦 Got “${b.title}”${b.media?' ('+b.media+')':''}${p.edition?' · '+(p.edition.format||'edition')+(p.edition.edition?' '+p.edition.edition:'')+(p.edition.replaces?' (swap)':''):''}`;
       case'copy_let_go':return`🗑 Let go copy #${p.copy_id}${p.date?' · '+p.date:''}`;
+      case'queue_set':return`📌 Next up ${p.action||'add'}: “${b.title}”${p.position!=null?' · slot '+p.position:''}`;
       case'add_book':return`＋ New book “${p.title}”${p.read?' · read':''}${p.owned?' · owned':''}`;
       case'book_update':return`✎ “${b.title}” → ${Object.keys(p.set||{}).join(', ')}`;
       case'meta_add':return`🏷 New ${p.kind}: ${p.value}`;
@@ -4232,6 +4302,19 @@ const LOG=(()=>{
   // flag, and the queued sets so the tab can show what is already pending.
   function finishBook(b,date){return submit('finished',{book:bookRef(b),date},b);}
   function setNeed(b,flag){return submit('book_update',{book:bookRef(b),set:{need:!!flag}},b);}
+  // Next up queue: add / move / remove (docs/INBOX.md queue_set); position
+  // is a float between neighbours, null on add = append server-side.
+  function queueSet(b,action,position){const p={book:bookRef(b),action};if(position!=null)p.position=position;return submit('queue_set',p,b);}
+  // Latest pending queue_set per book (title|series), oldest first so a
+  // later move overrides an earlier add.
+  function pendingQueue(){
+    const m=new Map(),seen=new Set();
+    [...(pendCache||[]),...sent().filter(e=>!BUNDLE||e.at>BUNDLE.generated_at)]
+      .filter(e=>e.type==='queue_set'&&!seen.has(e.id)&&seen.add(e.id))
+      .sort((a,b)=>a.at<b.at?-1:1)
+      .forEach(ev=>{const p=ev.payload||{},b=p.book;if(b)m.set(b.title+'|'+(b.series||''),{action:p.action||'add',position:p.position});});
+    return m;
+  }
   function pendingBooks(type){
     const ks=new Set();
     [...(pendCache||[]),...sent().filter(e=>!BUNDLE||e.at>BUNDLE.generated_at)].forEach(ev=>{const b=ev.payload&&ev.payload.book;if(b&&ev.type===type)ks.add(b.title+'|'+(b.series||''));});
@@ -5057,7 +5140,7 @@ const LOG=(()=>{
     toggleAdd,doAdd,addDates,toggleTrack,doTrackSeries,trackFromRow,isbnLookup,addFromIsbn,scanIsbn,stopScan,saveBookEdit,doCopyLetGo,vocabFor,pendingVocab,followAuthor,doNewOrder,doNewBoxOrder,setOrderStyle,expandOrder,doOrderUpdate,
     toggleRow,saveOrderEdit,expandBox,doBoxUpdate,saveBoxEdit,saveSetup,forgetSetup,refreshBadge,
     toggleOrderHistory,findInRegister,storeFromOrderNo,logFlyerOrders,trackSeriesFromIsbn,submitTrackSeries,
-    finishBook,setNeed,pendingBooks,today};
+    finishBook,setNeed,pendingBooks,today,queueSet,pendingQueue};
 })();
 
 async function init(){
@@ -5106,6 +5189,8 @@ async function init(){
     // Goodreads shelves (bookdb|Goodreads): Shelf|Title|Author|ISBN13|Added|
     // ReadAt|Book (matched register title)|Cover — the TBR tab's Reading now.
     G.goodreads=(BUNDLE.tabs['bookdb|Goodreads']||[]).slice(1).map(r=>({shelf:(r[0]||'').trim(),title:(r[1]||'').trim(),author:(r[2]||'').trim(),isbn13:(r[3]||'').trim(),added:(r[4]||'').trim(),readAt:(r[5]||'').trim(),book:(r[6]||'').trim(),cover:(r[7]||'').trim().replace(/^http:/,'https:')}));
+    // Next up queue (bookdb|Queue): Title|Series|Owner|Position|AddedOn.
+    G.queue=(BUNDLE.tabs['bookdb|Queue']||[]).slice(1).map(r=>({title:(r[0]||'').trim(),series:(r[1]||'').trim(),owner:(r[2]||'butthead').trim(),pos:parseFloat(r[3])||0,added:(r[4]||'').trim()})).filter(q=>q.title);
     // ISBNs tab: identifiers (owned-edition first) + best stored cover URL.
     // isbnMap answers "do I have this exact edition?"; bookIsbn drives the
     // cover thumbnails (OL by-ISBN first, stored cover_url as fallback).

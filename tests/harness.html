@@ -187,7 +187,7 @@ async function main(){
     const want=Object.values(per).filter(s=>s.r>0&&s.u>0).length;
     // every in-progress series surfaces somewhere: focus, in progress, or as
     // a book row under New book / Waiting for / Get these next
-    const rows=new Set([...doc().querySelectorAll('#tab-tbr .tbr-row[data-inprog]')].map(e=>e.dataset.ser)).size;
+    const rows=new Set([...doc().querySelectorAll('#tab-tbr .tbr-card[data-inprog]')].map(e=>e.dataset.ser)).size;
     const shown=norm((ptxt('tbr').match(/([\d,]+)\s*Series in progress/i)||[])[1]);
     res('TBR lists every series in progress',rows===want&&shown===want,`distinct series rows ${rows}, metric ${shown} vs register ${want}`);
   });
