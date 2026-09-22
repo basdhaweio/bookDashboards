@@ -293,6 +293,10 @@ dropdowns before any row uses it.
 `kind` is one of `genre, sub_genre, media, publisher, vendor, box`.
 Duplicate adds are no-ops.
 
+`pub_date` accepts `YYYY`, `YYYY-MM`, `YYYY-MM-DD`, month-name forms, and
+`TBA` (2026-09-22: announced, no date — Doors of Stone, The Queens); the TBR
+tab files TBA and far-off dates under Waiting for.
+
 ### `order_new`
 Two shapes, discriminated by `list`.
 

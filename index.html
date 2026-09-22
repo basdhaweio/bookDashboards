@@ -521,18 +521,20 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <button onclick="switchTab('toread','reading')">To Read</button>
     </div>
     <div class="panel active" id="tab-tbr">
-      <div class="sl">TBR — series in progress, and what comes next in each</div>
+      <div class="sl">TBR — what to read next, series by series</div>
       <div class="mg" id="tbr-m"></div>
-      <div class="sl">Reading now — Goodreads currently-reading shelf</div>
-      <div class="cb" id="tbr-reading"></div>
-      <div class="sl" style="margin-top:2rem">Get these next — the next volume isn't on the shelf</div>
+      <div class="sl">Focus series — this year's list</div>
+      <div class="cb" id="tbr-focus"></div>
+      <div id="tbr-reading-wrap"><div class="sl" style="margin-top:2rem">Reading now — Goodreads currently-reading shelf</div>
+      <div class="cb" id="tbr-reading"></div></div>
+      <div class="sl" style="margin-top:2rem">In progress — most of the series read, not all</div>
+      <div class="cb" id="tbr-prog"></div>
+      <div class="sl" style="margin-top:2rem">New book in series — out within six months, or just announced</div>
+      <div class="cb" id="tbr-new"></div>
+      <div class="sl" style="margin-top:2rem">Waiting for — announced, no date or further out</div>
+      <div class="cb" id="tbr-wait"></div>
+      <div class="sl" style="margin-top:2rem">Get these next — out, tracked, not on the shelf</div>
       <div class="cb" id="tbr-get"></div>
-      <div class="sl" style="margin-top:2rem">Coming — release dates ahead in series you're reading, and Book Notification announcements</div>
-      <div class="cb" id="tbr-soon"></div>
-      <div class="sl" style="margin-top:2rem">In progress — a book finished this year</div>
-      <div class="cb" id="tbr-now"></div>
-      <div class="sl" style="margin-top:2rem">In progress — last read before this year</div>
-      <div class="cb" id="tbr-earlier"></div>
     </div>
     <div class="panel" id="tab-history">
       <div class="sl">Year-over-year — stacked area by media type</div>
@@ -1480,23 +1482,33 @@ async function tbrFinish(i){
   const b=(G._tbrBooks||[])[i],d=(document.getElementById('tbr-rd-'+i)||{}).value;if(!b||!d)return;
   if(await LOG.finishBook(b,d))tbrRerender();
 }
-async function tbrNeed(i,flag){
-  const b=(G._tbrBooks||[])[i];if(!b)return;
-  if(await LOG.setNeed(b,flag))tbrRerender();
-}
 // Goodreads currently-reading rows (bookdb|Goodreads tab), matched to the
 // register by jerry's exact-norm title. A display signal only — reads still
 // come from finished events (John's 2026-07-24 rule).
 function tbrReadingNow(nk){
   return(G.goodreads||[]).filter(r=>r.shelf==='currently-reading').map(r=>Object.assign({},r,{reg:r.book?(G.indBooks||[]).find(b=>nk(b.title)===nk(r.book))||null:null}));
 }
+// Release state from the register's pub_date. Blank means nothing says the
+// book is unreleased (backlist rows mostly have no date); 'TBA' is announced
+// with no date; a date or year ahead is unreleased — 'soon' inside six
+// months (Book Notification's own horizon), 'later' beyond it or year-only.
+function tbrRel(pd,todayIso,limIso){
+  pd=(pd||'').trim();
+  if(!pd)return'out';
+  if(/^tba$/i.test(pd))return'tba';
+  if(pd.length===4)return +pd>+todayIso.slice(0,4)?'later':'out';
+  if(pd.length===7)return pd>todayIso.slice(0,7)?(pd<=limIso.slice(0,7)?'soon':'later'):'out';
+  return pd>todayIso?(pd<=limIso?'soon':'later'):'out';
+}
 function renderTBR(){
   const books=G.indBooks||[],cy=String(new Date().getFullYear()),todayIso=LOG.today();
+  const limIso=(()=>{const d=new Date(todayIso+'T12:00:00');d.setMonth(d.getMonth()+6);return d.toISOString().slice(0,10);})();
+  const rel=b=>tbrRel(b.pubDate,todayIso,limIso);
   const seqN=b=>{const v=parseFloat(String(b.seq||'').replace(/[^0-9.]/g,''));return isNaN(v)?Infinity:v;};
   // BN writes Spy×Family, the register Spy x Family
   const nl=t=>(t||'').toLowerCase().replace(/×/g,'x').replace(/^\s*(the|a|an)\s+/,'').replace(/[^a-z0-9]/g,'');
   const nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
-  const pendRead=LOG.pendingBooks('finished'),pendNeed=LOG.pendingBooks('book_update');
+  const pendRead=LOG.pendingBooks('finished');
   const pk=b=>b.title+'|'+(b.series||'');
   const by={};
   for(const b of books){
@@ -1509,72 +1521,88 @@ function renderTBR(){
   const series=Object.values(by);
   for(const s of series){
     s.books.sort((a,b)=>seqN(a)-seqN(b)||a.title.localeCompare(b.title));
-    s.total=s.books.length;
+    s.total=s.books.length;s.pct=s.total?s.read/s.total:0;
     const rs=s.books.filter(b=>b.read).map(seqN).filter(x=>x!==Infinity);
     const maxRead=rs.length?Math.max(...rs):-Infinity;
     const unread=s.books.filter(b=>!b.read);
     s.unread=unread.length;
     s.next=unread.find(b=>seqN(b)>maxRead)||unread[0]||null;
+    s.inProg=s.read>0&&s.unread>0;
   }
   const open=(G.orders||[]).filter(o=>o.delivered!=='Fulfilled'&&o.delivered!=='Cancelled');
   const onOrder=t=>{const k=nl(t);return k?open.find(o=>nl(o.books).includes(k)||(o.contains||'').split('\n').some(l=>nl(l.replace(/\s+#\S+$/,''))===k)):null;};
-  const inProg=series.filter(s=>s.read>0&&s.unread>0);
-  const byLast=(a,b)=>(b.last||'').localeCompare(a.last||'')||a.name.localeCompare(b.name);
-  const nowRows=inProg.filter(s=>s.last.startsWith(cy)).sort(byLast);
-  const earlier=inProg.filter(s=>!s.last.startsWith(cy)).sort(byLast);
-  // Book Notification releases in a series with at least one book read
+  const inProg=series.filter(s=>s.inProg);
+  // Focus series: this year's list from the Reading History year tab (Com's).
+  const focusNames=OWNER==='butthead'?(((typeof allYD!=='undefined'&&allYD[cy])||{}).focus||[]):[];
+  const focusRows=focusNames.map(n=>series.find(s=>nl(s.name)===nl(n))).filter(Boolean);
+  const focusSet=new Set(focusRows.map(s=>s.name));
+  // Most read, not all: closest to finished first. A series whose next
+  // volume isn't out yet belongs under New book / Waiting for instead.
+  const byPct=(a,b)=>b.pct-a.pct||(b.last||'').localeCompare(a.last||'')||a.name.localeCompare(b.name);
+  const prog=inProg.filter(s=>!focusSet.has(s.name)&&(!s.next||rel(s.next)==='out')).sort(byPct);
+  // Unreleased volumes in any series with a book read: dated inside six
+  // months = New book in series (with Book Notification's not-yet-adopted
+  // announcements); TBA, year-only or further out = Waiting for.
   const have=new Set(books.map(b=>nl(b.title)));
   const readSeries=new Map(series.filter(s=>s.read>0).map(s=>[nl(s.name),s]));
   const news=(G.bookClub||[]).filter(r=>r.series&&readSeries.has(nl(r.series))&&!have.has(nl(r.title)))
     .map(r=>Object.assign({},r,{s:readSeries.get(nl(r.series))}));
-  // To get: the next volume is not on the shelf, not on order, and out.
-  const toGet=inProg.filter(s=>s.next&&!s.next.owned&&!onOrder(s.next.title)&&!(s.next.pubDate&&s.next.pubDate>todayIso)).sort(byLast);
-  // Coming: any unread volume with a release ahead in a series in progress
-  // (the register's tracked announcements), plus BN's not-yet-adopted ones.
-  const soon=[...inProg.flatMap(s=>s.books.filter(b=>!b.read&&b.pubDate&&b.pubDate>todayIso).map(b=>({b,s,date:b.pubDate,src:'register'}))),
-    ...news.map(r=>({r,s:r.s,date:r.release||'',src:'bn'}))].sort((a,b)=>(a.date||'9999').localeCompare(b.date||'9999'));
+  const unrel=series.filter(s=>s.read>0).flatMap(s=>s.books.filter(b=>!b.read&&rel(b)!=='out').map(b=>({b,s,state:rel(b)})));
+  const byDate=(a,b)=>(a.date||'9999').localeCompare(b.date||'9999');
+  const newBook=[...unrel.filter(x=>x.state==='soon').map(x=>Object.assign(x,{date:x.b.pubDate,src:'register'})),
+    ...news.map(r=>({r,s:r.s,date:r.release||'',src:'bn'}))].sort(byDate);
+  const waiting=unrel.filter(x=>x.state!=='soon').map(x=>Object.assign(x,{date:/^tba$/i.test(x.b.pubDate)?'':x.b.pubDate})).sort((a,b)=>byDate(a,b)||a.s.name.localeCompare(b.s.name));
+  // To get: tracked, out, not on the shelf, not on order — "if I don't own
+  // it and it's tracked then I need it" (John, 2026-09-22), so no flag.
+  const toGet=inProg.filter(s=>s.next&&!s.next.owned&&!onOrder(s.next.title)&&rel(s.next)==='out').sort(byPct);
   const reading=tbrReadingNow(nk);
   G._tbrBooks=[];const bidx=b=>{G._tbrBooks.push(b);return G._tbrBooks.length-1;};
   const chip=nx=>{if(pendRead.has(pk(nx)))return'<span class="badge b-teal">read · pending</span>';
     const o=onOrder(nx.title);
     if(o)return`<span class="badge b-gold">on order${o.store?' · '+esc(o.store):''}</span>`;
     if(nx.owned)return'<span class="badge b-green">on the shelf</span>';
-    if(nx.pubDate&&nx.pubDate>todayIso)return`<span class="badge b-teal">coming ${esc(nx.pubDate)}</span>`;
-    return`<span class="badge b-coral">not owned</span>${nx.need?' <span class="badge b-coral">NEED</span>':''}${pendNeed.has(pk(nx))?' <span class="badge b-coral">need · pending</span>':''}`;};
-  const acts=nx=>{const i=bidx(nx),pr=pendRead.has(pk(nx)),pn=pendNeed.has(pk(nx));
-    return`<div class="tbr-acts">${pr?'':`<button class="log-act" onclick="tbrReadRow(${i})">✓ Read</button>`}${nx.owned||pn?'':`<button class="log-act" onclick="tbrNeed(${i},${nx.need?'false':'true'})" title="${nx.need?'clear the NEED flag':'flag it to buy — shows under To Acquire'}">${nx.need?'🚩 needed · clear':'🚩 Need it'}</button>`}${nx.owned?'':`<a class="tbr-a" href="${tomboloUrl(nx.title)}" target="_blank" rel="noopener">Tombolo ↗</a>`}</div><div id="tbr-rr-${i}" style="display:none"></div>`;};
+    const r=rel(nx);
+    if(r==='tba')return'<span class="badge b-gray">not out yet · TBA</span>';
+    if(r!=='out')return`<span class="badge b-teal">coming ${esc(nx.pubDate)}</span>`;
+    return'<span class="badge b-coral">not owned</span>';};
+  const acts=nx=>{const i=bidx(nx),pr=pendRead.has(pk(nx));
+    return`<div class="tbr-acts">${pr?'':`<button class="log-act" onclick="tbrReadRow(${i})">✓ Read</button>`}${nx.owned||rel(nx)!=='out'?'':`<a class="tbr-a" href="${tomboloUrl(nx.title)}" target="_blank" rel="noopener">Tombolo ↗</a>`}</div><div id="tbr-rr-${i}" style="display:none"></div>`;};
   const cover=b=>coverTile(b.title,b.owner||'butthead','',null,44);
-  const row=s=>{const nx=s.next;return`<div class="tbr-row">
+  const row=s=>{const nx=s.next;return`<div class="tbr-row" data-ser="${esc(s.name)}"${s.inProg?' data-inprog="1"':''}>
     <div class="tbr-cov">${nx?cover(nx):''}</div>
     <div class="tbr-info">
       <div class="tbr-ser"><button class="tbr-link" data-s="${esc(s.name)}" onclick="tbrBrowse(this.dataset.s)" title="browse the series">${esc(s.name)}</button>${s.author?`<span class="ms"> · ${esc(s.author)}</span>`:''}</div>
-      <div class="tbr-prog"><span class="tbr-bar"><span style="width:${Math.round(100*s.read/s.total)}%"></span></span>${s.read}/${s.total} read${s.last?' · last '+esc(s.last):''}</div>
-      <div class="tbr-next">${nx?`Up next: <strong>${esc(nx.title)}</strong>${nx.seq?' <span class="ms">#'+esc(nx.seq)+'</span>':''} ${chip(nx)}`:'—'}</div>
+      <div class="tbr-prog"><span class="tbr-bar"><span style="width:${Math.round(100*s.pct)}%"></span></span>${s.read}/${s.total} read${s.last?' · last '+esc(s.last):''}</div>
+      <div class="tbr-next">${nx?`Up next: <strong>${esc(nx.title)}</strong>${nx.seq?' <span class="ms">#'+esc(nx.seq)+'</span>':''} ${chip(nx)}`:(s.read===s.total?'<span class="badge b-green">all read</span>':'—')}</div>
       ${nx?acts(nx):''}
     </div></div>`;};
   // Universe grouping: a universe's series sit together under its name
-  // (Malazan's several series read as one shelf); groups keep the recency
-  // order of their most recently read series, everything else stays put.
+  // (Malazan's several series read as one shelf); groups take the position
+  // of their first series in the order, everything else stays put.
   const grouped=rows=>{const m=new Map();rows.forEach(s=>{const k=s.universe?'u:'+s.universe:'s:'+s.name;if(!m.has(k))m.set(k,[]);m.get(k).push(s);});
     return[...m.entries()].map(([k,list])=>(k.startsWith('u:')&&list.length>1?`<div class="tbr-uni">${esc(k.slice(2))} <span class="ms">· ${list.length} series</span></div>`:'')+list.map(row).join('')).join('');};
-  const mini=(b,s,extra)=>`<div class="tbr-row tbr-mini"><div class="tbr-cov">${cover(b)}</div><div class="tbr-info"><div class="tbr-ser"><strong>${esc(b.title)}</strong>${b.seq?' <span class="ms">#'+esc(b.seq)+'</span>':''}</div><div class="tbr-prog">${esc(s.name)}${s.author?' · '+esc(s.author):''} · ${s.read}/${s.total} read${s.last?' · last '+esc(s.last):''}</div><div class="tbr-next">${extra}</div>${acts(b)}</div></div>`;
+  const mini=(b,s,extra)=>`<div class="tbr-row tbr-mini" data-ser="${esc(s.name)}"${s.inProg?' data-inprog="1"':''}><div class="tbr-cov">${cover(b)}</div><div class="tbr-info"><div class="tbr-ser"><strong>${esc(b.title)}</strong>${b.seq?' <span class="ms">#'+esc(b.seq)+'</span>':''}</div><div class="tbr-prog">${esc(s.name)}${s.author?' · '+esc(s.author):''} · ${s.read}/${s.total} read${s.last?' · last '+esc(s.last):''}</div><div class="tbr-next">${extra}</div>${acts(b)}</div></div>`;
   const grTile=r=>r.cover?`<div class="ct" style="width:44px;height:66px" title="${esc(r.title)}"><img loading="lazy" alt="" src="${esc(r.cover)}"></div>`:coverTile(r.title,'butthead','',r.isbn||r.isbn13||null,44);
+  const bnRow=x=>`<div class="tbr-row tbr-mini" data-ser="${esc(x.s.name)}"><div class="tbr-cov">${grTile(x.r)}</div><div class="tbr-info"><div class="tbr-ser"><strong>${esc(x.r.title)}</strong><span class="ms"> · ${esc(x.r.author)}</span></div><div class="tbr-prog">${esc(x.s.name)} · ${x.s.read}/${x.s.total} read · Book Notification, not in the register</div><div class="tbr-next"><span class="badge b-teal">📅 ${esc(x.date||'TBA')}</span> <a class="tbr-a" href="${tomboloUrl(x.r.title)}" target="_blank" rel="noopener">Tombolo ↗</a> · <button class="tbr-link" onclick="switchSection('bookclub','flyer')">flyer</button></div></div></div>`;
+  const orderChip=b=>onOrder(b.title)?' <span class="badge b-gold">on order</span>':b.owned?' <span class="badge b-green">on the shelf</span>':'';
   document.getElementById('tbr-m').innerHTML=
     mH(inProg.length,'Series in progress','read some, not all')+
-    mH(nowRows.length,'Read this year','','t')+
-    mH(toGet.length,'Next volume to get','','c')+
-    mH(soon.length,'Coming','release ahead or announced','t')+
+    mH(focusRows.length,'Focus series',cy)+
+    mH(newBook.length,'New book in series','','t')+
+    mH(waiting.length,'Waiting for','no date or further out')+
+    mH(toGet.length,'To get','out, not on the shelf','c')+
     mH(reading.length,'Reading now','Goodreads shelf');
+  document.getElementById('tbr-focus').innerHTML=focusRows.map(row).join('')||'<div class="ms">No focus list for this year.</div>';
+  const rw=document.getElementById('tbr-reading-wrap');
+  rw.style.display=reading.length?'':'none';
   document.getElementById('tbr-reading').innerHTML=reading.map(r=>{const b=r.reg,i=b?bidx(b):-1,pr=b&&pendRead.has(pk(b));
-    return`<div class="tbr-row tbr-mini"><div class="tbr-cov">${b?cover(b):grTile(r)}</div><div class="tbr-info"><div class="tbr-ser"><strong>${esc(b?b.title:r.title)}</strong><span class="ms"> · ${esc(r.author)}</span></div><div class="tbr-prog">${b?esc(b.series)+(b.seq?' #'+esc(b.seq):''):'not in the register'}${r.added?' · on the shelf since '+esc(r.added):''}</div><div class="tbr-acts">${b?(pr?'<span class="badge b-teal">read · pending</span>':`<button class="log-act" onclick="tbrReadRow(${i})">✓ Read</button>`):`<button class="log-act" data-t="${esc(r.title)}" onclick="LOG.findInRegister(this.dataset.t)">🔎 Find</button>`}</div>${b?`<div id="tbr-rr-${i}" style="display:none"></div>`:''}</div></div>`;}).join('')
-    ||'<div class="ms">Nothing on the currently-reading shelf — or Goodreads isn\'t connected yet (the My Books RSS URL goes on jerry; see the session notes).</div>';
+    return`<div class="tbr-row tbr-mini"><div class="tbr-cov">${b?cover(b):grTile(r)}</div><div class="tbr-info"><div class="tbr-ser"><strong>${esc(b?b.title:r.title)}</strong><span class="ms"> · ${esc(r.author)}</span></div><div class="tbr-prog">${b?esc(b.series)+(b.seq?' #'+esc(b.seq):''):'not in the register'}${r.added?' · on the shelf since '+esc(r.added):''}</div><div class="tbr-acts">${b?(pr?'<span class="badge b-teal">read · pending</span>':`<button class="log-act" onclick="tbrReadRow(${i})">✓ Read</button>`):`<button class="log-act" data-t="${esc(r.title)}" onclick="LOG.findInRegister(this.dataset.t)">🔎 Find</button>`}</div>${b?`<div id="tbr-rr-${i}" style="display:none"></div>`:''}</div></div>`;}).join('');
+  document.getElementById('tbr-prog').innerHTML=grouped(prog)||'<div class="ms">Nothing in progress outside the focus list.</div>';
+  document.getElementById('tbr-new').innerHTML=newBook.map(x=>x.src==='register'?mini(x.b,x.s,`<span class="badge b-teal">📅 ${esc(x.date)}</span>${orderChip(x.b)}`):bnRow(x)).join('')
+    ||'<div class="ms">Nothing due in the next six months in a series you\'ve read.</div>';
+  document.getElementById('tbr-wait').innerHTML=waiting.map(x=>mini(x.b,x.s,`<span class="badge b-gray">${x.date?'📅 '+esc(x.date):'no date yet · TBA'}</span>${orderChip(x.b)}`)).join('')
+    ||'<div class="ms">Nothing announced without a date.</div>';
   document.getElementById('tbr-get').innerHTML=toGet.map(s=>mini(s.next,s,chip(s.next))).join('')||'<div class="ms">Every next volume is on the shelf, on order, or not out yet.</div>';
-  document.getElementById('tbr-soon').innerHTML=soon.map(x=>x.src==='register'
-    ?mini(x.b,x.s,`<span class="badge b-teal">coming ${esc(x.date)}</span>${onOrder(x.b.title)?' <span class="badge b-gold">on order</span>':x.b.owned?' <span class="badge b-green">on the shelf</span>':''}`)
-    :`<div class="tbr-row tbr-mini"><div class="tbr-cov">${grTile(x.r)}</div><div class="tbr-info"><div class="tbr-ser"><strong>${esc(x.r.title)}</strong><span class="ms"> · ${esc(x.r.author)}</span></div><div class="tbr-prog">${esc(x.s.name)} · ${x.s.read}/${x.s.total} read · Book Notification, not in the register</div><div class="tbr-next"><span class="badge b-teal">📅 ${esc(x.date||'TBA')}</span> <a class="tbr-a" href="${tomboloUrl(x.r.title)}" target="_blank" rel="noopener">Tombolo ↗</a> · <button class="tbr-link" onclick="switchSection('bookclub','flyer')">flyer</button></div></div></div>`).join('')
-    ||'<div class="ms">Nothing announced ahead in a series you\'re reading.</div>';
-  document.getElementById('tbr-now').innerHTML=grouped(nowRows)||'<div class="ms">No series with a book finished this year.</div>';
-  document.getElementById('tbr-earlier').innerHTML=grouped(earlier)||'<div class="ms">Nothing unfinished from earlier years.</div>';
 }
 function renderThisYear(year){
   tyYear=year;
@@ -4098,7 +4126,7 @@ const LOG=(()=>{
         f==='room'?roomSelect(`log-bke-${f}-${i}`,cur[f]||'')
         :VOCAB_FIELDS.includes(f)?vocabInput(`log-bke-${f}-${i}`,f,cur[f]||'')
         :DATE_FIELDS.includes(f)?`<input type="date" id="log-bke-${f}-${i}" value="${esc(cur[f]||'')}">`
-        :`<input id="log-bke-${f}-${i}" value="${esc(cur[f]||'')}" ${f==='series'?'list="log-dl-series" placeholder="blank = standalone"':f==='universe'?'list="log-dl-universe"':f==='pub_date'?'placeholder="1990 · July 1990 · 1990-07-14"':f==='need'?'placeholder="x = hunting for it, blank = not"':''}>`}</div>`).join('')
+        :`<input id="log-bke-${f}-${i}" value="${esc(cur[f]||'')}" ${f==='series'?'list="log-dl-series" placeholder="blank = standalone"':f==='universe'?'list="log-dl-universe"':f==='pub_date'?'placeholder="1990 · July 1990 · 1990-07-14 · TBA"':f==='need'?'placeholder="x = hunting for it, blank = not"':''}>`}</div>`).join('')
         +entityDatalists()
         +`<button class="log-act primary" onclick="LOG.saveBookEdit(${i})">Save changed fields</button>
         <div class="ms" style="margin-top:6px">Only changed fields are sent. Status stays with ✓/📦. Missing a genre or publisher? Add it under Metadata first.</div>`
