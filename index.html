@@ -112,6 +112,9 @@ a.bc-burst:hover{transform:rotate(12deg) scale(1.08);}
 .tbr-next{font-size:13px;line-height:1.7;}
 button.tbr-link{background:none;border:none;padding:0;font:inherit;font-weight:inherit;color:inherit;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;}
 .tbr-a{color:var(--gold);text-decoration:none;}
+.tbr-uni{font-family:var(--font-m);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--gold);margin:12px 0 0;padding-top:8px;border-top:2px solid var(--gold2);}
+.tbr-acts{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:5px;}
+.tbr-mini .tbr-ser{font-weight:500;}
 .bc-burst.bc-b-blue{background:#3a6ea8;}
 .bc-rel{margin-top:auto;font-family:'DM Mono',monospace !important;font-size:10px;font-weight:500;background:#2b2620;color:#e8a33d;display:inline-block;align-self:flex-start;padding:2px 8px;letter-spacing:0.1em;text-transform:uppercase;}
 .bc-form{margin:2.2rem 2rem 0;border-top:3px dashed #2b2620;padding-top:0.4rem;position:relative;}
@@ -510,7 +513,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
   <!-- READING -->
   <div id="sec-reading" style="display:none">
     <div class="tab-nav">
-      <button class="active" onclick="switchTab('tbr','reading')">Up Next</button>
+      <button class="active" onclick="switchTab('tbr','reading')">TBR</button>
       <button onclick="switchTab('history','reading')">Reading History</button>
       <button onclick="switchTab('thisyear','reading')">This Year</button>
       <button onclick="switchTab('completion','reading')">Completion</button>
@@ -518,14 +521,18 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <button onclick="switchTab('toread','reading')">To Read</button>
     </div>
     <div class="panel active" id="tab-tbr">
-      <div class="sl">Up next — series in progress, and what comes next in each</div>
+      <div class="sl">TBR — series in progress, and what comes next in each</div>
       <div class="mg" id="tbr-m"></div>
-      <div class="sl">Reading now — a book finished this year</div>
+      <div class="sl">Reading now — Goodreads currently-reading shelf</div>
+      <div class="cb" id="tbr-reading"></div>
+      <div class="sl" style="margin-top:2rem">Get these next — the next volume isn't on the shelf</div>
+      <div class="cb" id="tbr-get"></div>
+      <div class="sl" style="margin-top:2rem">Coming — release dates ahead in series you're reading, and Book Notification announcements</div>
+      <div class="cb" id="tbr-soon"></div>
+      <div class="sl" style="margin-top:2rem">In progress — a book finished this year</div>
       <div class="cb" id="tbr-now"></div>
-      <div class="sl" style="margin-top:2rem">Picked up earlier — unfinished, last read before this year</div>
+      <div class="sl" style="margin-top:2rem">In progress — last read before this year</div>
       <div class="cb" id="tbr-earlier"></div>
-      <div class="sl" style="margin-top:2rem">New in a series you've read — announced on Book Notification, not in the register</div>
-      <div class="cb" id="tbr-news"></div>
     </div>
     <div class="panel" id="tab-history">
       <div class="sl">Year-over-year — stacked area by media type</div>
@@ -652,7 +659,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
         <div id="tbb-orders"></div>
       </div>
       <div class="sl">Full order history</div>
-      <div class="tw"><table><thead><tr><th>Date</th><th>Books</th><th>Series</th><th>Author</th><th>Store</th><th>Type</th><th class="nr">Count</th><th>Status</th></tr></thead><tbody id="tbb-all"></tbody></table></div>
+      <div class="tw"><table><thead><tr><th>Date</th><th>Arrived</th><th>Books</th><th>Series</th><th>Author</th><th>Store</th><th>Type</th><th class="nr">Count</th><th>Status</th></tr></thead><tbody id="tbb-all"></tbody></table></div>
     </div>
     <div class="panel" id="tab-toacquire">
       <div class="sl">To acquire — reconciling the "need to buy" gap</div>
@@ -1458,16 +1465,44 @@ function tbrBrowse(name){
   m.value='series';LOG.brMode();
   document.getElementById('log-br-q').value=name;LOG.browse();
 }
+// Tap-throughs from the TBR rows (top-level so inline handlers see them):
+// ✓ Read opens a date row and logs a finished event; 🚩 Need flags the
+// register's need column (To Acquire picks it up). G._tbrBooks indexes the
+// books behind the buttons — titles never ride inside onclick strings.
+function tbrRerender(){rendered.delete('tbr');renderTab('tbr');rendered.add('tbr');}
+function tbrReadRow(i){
+  const b=(G._tbrBooks||[])[i],el=document.getElementById('tbr-rr-'+i);if(!b||!el)return;
+  if(el.style.display!=='none'){el.style.display='none';return;}
+  el.style.display='';
+  el.innerHTML=`<div class="log-frow"><label>Finished</label><input type="date" id="tbr-rd-${i}" value="${LOG.today()}"><button class="log-act primary" onclick="tbrFinish(${i})">Log it — read “${esc(b.title)}”</button></div>`;
+}
+async function tbrFinish(i){
+  const b=(G._tbrBooks||[])[i],d=(document.getElementById('tbr-rd-'+i)||{}).value;if(!b||!d)return;
+  if(await LOG.finishBook(b,d))tbrRerender();
+}
+async function tbrNeed(i,flag){
+  const b=(G._tbrBooks||[])[i];if(!b)return;
+  if(await LOG.setNeed(b,flag))tbrRerender();
+}
+// Goodreads currently-reading rows (bookdb|Goodreads tab), matched to the
+// register by jerry's exact-norm title. A display signal only — reads still
+// come from finished events (John's 2026-07-24 rule).
+function tbrReadingNow(nk){
+  return(G.goodreads||[]).filter(r=>r.shelf==='currently-reading').map(r=>Object.assign({},r,{reg:r.book?(G.indBooks||[]).find(b=>nk(b.title)===nk(r.book))||null:null}));
+}
 function renderTBR(){
-  const books=G.indBooks||[],now=new Date(),cy=String(now.getFullYear()),todayIso=now.toISOString().slice(0,10);
+  const books=G.indBooks||[],cy=String(new Date().getFullYear()),todayIso=LOG.today();
   const seqN=b=>{const v=parseFloat(String(b.seq||'').replace(/[^0-9.]/g,''));return isNaN(v)?Infinity:v;};
   // BN writes Spy×Family, the register Spy x Family
   const nl=t=>(t||'').toLowerCase().replace(/×/g,'x').replace(/^\s*(the|a|an)\s+/,'').replace(/[^a-z0-9]/g,'');
+  const nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const pendRead=LOG.pendingBooks('finished'),pendNeed=LOG.pendingBooks('book_update');
+  const pk=b=>b.title+'|'+(b.series||'');
   const by={};
   for(const b of books){
     if(!b.series||b.series==='Standalones')continue;
-    const s=by[b.series]=by[b.series]||{name:b.series,author:'',books:[],read:0,owned:0,last:''};
-    s.books.push(b);if(!s.author&&b.author)s.author=b.author;
+    const s=by[b.series]=by[b.series]||{name:b.series,author:'',universe:'',books:[],read:0,owned:0,last:''};
+    s.books.push(b);if(!s.author&&b.author)s.author=b.author;if(!s.universe&&b.universe)s.universe=b.universe;
     if(b.read){s.read++;if((b.readOn||'')>s.last)s.last=b.readOn;}
     if(b.owned)s.owned++;
   }
@@ -1491,34 +1526,55 @@ function renderTBR(){
   const have=new Set(books.map(b=>nl(b.title)));
   const readSeries=new Map(series.filter(s=>s.read>0).map(s=>[nl(s.name),s]));
   const news=(G.bookClub||[]).filter(r=>r.series&&readSeries.has(nl(r.series))&&!have.has(nl(r.title)))
-    .map(r=>Object.assign({},r,{s:readSeries.get(nl(r.series))})).sort((a,b)=>(a.release||'').localeCompare(b.release||''));
-  const chip=nx=>{const o=onOrder(nx.title);
+    .map(r=>Object.assign({},r,{s:readSeries.get(nl(r.series))}));
+  // To get: the next volume is not on the shelf, not on order, and out.
+  const toGet=inProg.filter(s=>s.next&&!s.next.owned&&!onOrder(s.next.title)&&!(s.next.pubDate&&s.next.pubDate>todayIso)).sort(byLast);
+  // Coming: any unread volume with a release ahead in a series in progress
+  // (the register's tracked announcements), plus BN's not-yet-adopted ones.
+  const soon=[...inProg.flatMap(s=>s.books.filter(b=>!b.read&&b.pubDate&&b.pubDate>todayIso).map(b=>({b,s,date:b.pubDate,src:'register'}))),
+    ...news.map(r=>({r,s:r.s,date:r.release||'',src:'bn'}))].sort((a,b)=>(a.date||'9999').localeCompare(b.date||'9999'));
+  const reading=tbrReadingNow(nk);
+  G._tbrBooks=[];const bidx=b=>{G._tbrBooks.push(b);return G._tbrBooks.length-1;};
+  const chip=nx=>{if(pendRead.has(pk(nx)))return'<span class="badge b-teal">read · pending</span>';
+    const o=onOrder(nx.title);
     if(o)return`<span class="badge b-gold">on order${o.store?' · '+esc(o.store):''}</span>`;
     if(nx.owned)return'<span class="badge b-green">on the shelf</span>';
     if(nx.pubDate&&nx.pubDate>todayIso)return`<span class="badge b-teal">coming ${esc(nx.pubDate)}</span>`;
-    return`<span class="badge b-coral">not owned</span>${nx.need?' <span class="badge b-coral">NEED</span>':''}`;};
+    return`<span class="badge b-coral">not owned</span>${nx.need?' <span class="badge b-coral">NEED</span>':''}${pendNeed.has(pk(nx))?' <span class="badge b-coral">need · pending</span>':''}`;};
+  const acts=nx=>{const i=bidx(nx),pr=pendRead.has(pk(nx)),pn=pendNeed.has(pk(nx));
+    return`<div class="tbr-acts">${pr?'':`<button class="log-act" onclick="tbrReadRow(${i})">✓ Read</button>`}${nx.owned||pn?'':`<button class="log-act" onclick="tbrNeed(${i},${nx.need?'false':'true'})" title="${nx.need?'clear the NEED flag':'flag it to buy — shows under To Acquire'}">${nx.need?'🚩 needed · clear':'🚩 Need it'}</button>`}${nx.owned?'':`<a class="tbr-a" href="${tomboloUrl(nx.title)}" target="_blank" rel="noopener">Tombolo ↗</a>`}</div><div id="tbr-rr-${i}" style="display:none"></div>`;};
+  const cover=b=>coverTile(b.title,b.owner||'butthead','',null,44);
   const row=s=>{const nx=s.next;return`<div class="tbr-row">
-    <div class="tbr-cov">${nx?coverTile(nx.title,nx.owner||'butthead','',null,44):''}</div>
+    <div class="tbr-cov">${nx?cover(nx):''}</div>
     <div class="tbr-info">
       <div class="tbr-ser"><button class="tbr-link" data-s="${esc(s.name)}" onclick="tbrBrowse(this.dataset.s)" title="browse the series">${esc(s.name)}</button>${s.author?`<span class="ms"> · ${esc(s.author)}</span>`:''}</div>
       <div class="tbr-prog"><span class="tbr-bar"><span style="width:${Math.round(100*s.read/s.total)}%"></span></span>${s.read}/${s.total} read${s.last?' · last '+esc(s.last):''}</div>
       <div class="tbr-next">${nx?`Up next: <strong>${esc(nx.title)}</strong>${nx.seq?' <span class="ms">#'+esc(nx.seq)+'</span>':''} ${chip(nx)}`:'—'}</div>
+      ${nx?acts(nx):''}
     </div></div>`;};
+  // Universe grouping: a universe's series sit together under its name
+  // (Malazan's several series read as one shelf); groups keep the recency
+  // order of their most recently read series, everything else stays put.
+  const grouped=rows=>{const m=new Map();rows.forEach(s=>{const k=s.universe?'u:'+s.universe:'s:'+s.name;if(!m.has(k))m.set(k,[]);m.get(k).push(s);});
+    return[...m.entries()].map(([k,list])=>(k.startsWith('u:')&&list.length>1?`<div class="tbr-uni">${esc(k.slice(2))} <span class="ms">· ${list.length} series</span></div>`:'')+list.map(row).join('')).join('');};
+  const mini=(b,s,extra)=>`<div class="tbr-row tbr-mini"><div class="tbr-cov">${cover(b)}</div><div class="tbr-info"><div class="tbr-ser"><strong>${esc(b.title)}</strong>${b.seq?' <span class="ms">#'+esc(b.seq)+'</span>':''}</div><div class="tbr-prog">${esc(s.name)}${s.author?' · '+esc(s.author):''} · ${s.read}/${s.total} read${s.last?' · last '+esc(s.last):''}</div><div class="tbr-next">${extra}</div>${acts(b)}</div></div>`;
+  const grTile=r=>r.cover?`<div class="ct" style="width:44px;height:66px" title="${esc(r.title)}"><img loading="lazy" alt="" src="${esc(r.cover)}"></div>`:coverTile(r.title,'butthead','',r.isbn||r.isbn13||null,44);
   document.getElementById('tbr-m').innerHTML=
     mH(inProg.length,'Series in progress','read some, not all')+
     mH(nowRows.length,'Read this year','','t')+
-    mH(inProg.filter(s=>s.next&&s.next.owned).length,'Next book on the shelf','','t')+
-    mH(inProg.filter(s=>s.next&&!s.next.owned).length,'Next book to get','','c')+
-    mH(news.length,'New in read series','Book Notification');
-  document.getElementById('tbr-now').innerHTML=nowRows.map(row).join('')||'<div class="ms">No series with a book finished this year.</div>';
-  document.getElementById('tbr-earlier').innerHTML=earlier.map(row).join('')||'<div class="ms">Nothing unfinished from earlier years.</div>';
-  document.getElementById('tbr-news').innerHTML=news.map(r=>`<div class="tbr-row">
-    <div class="tbr-cov">${r.cover?`<div class="ct" style="width:44px;height:66px" title="${esc(r.title)}"><img loading="lazy" alt="" src="${esc(r.cover)}"></div>`:coverTile(r.title,'butthead','',r.isbn||null,44)}</div>
-    <div class="tbr-info">
-      <div class="tbr-ser"><strong>${esc(r.title)}</strong><span class="ms"> · ${esc(r.author)}</span></div>
-      <div class="tbr-prog">${esc(r.s.name)} · ${r.s.read}/${r.s.total} read${r.s.last?' · last '+esc(r.s.last):''}</div>
-      <div class="tbr-next">📅 ${esc(r.release||'TBA')} · <a class="tbr-a" href="${tomboloUrl(r.title)}" target="_blank" rel="noopener">Tombolo ↗</a> · <button class="tbr-link" onclick="switchSection('bookclub','flyer')">flyer</button></div>
-    </div></div>`).join('')||'<div class="ms">Book Notification lists nothing new in a series you\'ve read.</div>';
+    mH(toGet.length,'Next volume to get','','c')+
+    mH(soon.length,'Coming','release ahead or announced','t')+
+    mH(reading.length,'Reading now','Goodreads shelf');
+  document.getElementById('tbr-reading').innerHTML=reading.map(r=>{const b=r.reg,i=b?bidx(b):-1,pr=b&&pendRead.has(pk(b));
+    return`<div class="tbr-row tbr-mini"><div class="tbr-cov">${b?cover(b):grTile(r)}</div><div class="tbr-info"><div class="tbr-ser"><strong>${esc(b?b.title:r.title)}</strong><span class="ms"> · ${esc(r.author)}</span></div><div class="tbr-prog">${b?esc(b.series)+(b.seq?' #'+esc(b.seq):''):'not in the register'}${r.added?' · on the shelf since '+esc(r.added):''}</div><div class="tbr-acts">${b?(pr?'<span class="badge b-teal">read · pending</span>':`<button class="log-act" onclick="tbrReadRow(${i})">✓ Read</button>`):`<button class="log-act" data-t="${esc(r.title)}" onclick="LOG.findInRegister(this.dataset.t)">🔎 Find</button>`}</div>${b?`<div id="tbr-rr-${i}" style="display:none"></div>`:''}</div></div>`;}).join('')
+    ||'<div class="ms">Nothing on the currently-reading shelf — or Goodreads isn\'t connected yet (the My Books RSS URL goes on jerry; see the session notes).</div>';
+  document.getElementById('tbr-get').innerHTML=toGet.map(s=>mini(s.next,s,chip(s.next))).join('')||'<div class="ms">Every next volume is on the shelf, on order, or not out yet.</div>';
+  document.getElementById('tbr-soon').innerHTML=soon.map(x=>x.src==='register'
+    ?mini(x.b,x.s,`<span class="badge b-teal">coming ${esc(x.date)}</span>${onOrder(x.b.title)?' <span class="badge b-gold">on order</span>':x.b.owned?' <span class="badge b-green">on the shelf</span>':''}`)
+    :`<div class="tbr-row tbr-mini"><div class="tbr-cov">${grTile(x.r)}</div><div class="tbr-info"><div class="tbr-ser"><strong>${esc(x.r.title)}</strong><span class="ms"> · ${esc(x.r.author)}</span></div><div class="tbr-prog">${esc(x.s.name)} · ${x.s.read}/${x.s.total} read · Book Notification, not in the register</div><div class="tbr-next"><span class="badge b-teal">📅 ${esc(x.date||'TBA')}</span> <a class="tbr-a" href="${tomboloUrl(x.r.title)}" target="_blank" rel="noopener">Tombolo ↗</a> · <button class="tbr-link" onclick="switchSection('bookclub','flyer')">flyer</button></div></div></div>`).join('')
+    ||'<div class="ms">Nothing announced ahead in a series you\'re reading.</div>';
+  document.getElementById('tbr-now').innerHTML=grouped(nowRows)||'<div class="ms">No series with a book finished this year.</div>';
+  document.getElementById('tbr-earlier').innerHTML=grouped(earlier)||'<div class="ms">Nothing unfinished from earlier years.</div>';
 }
 function renderThisYear(year){
   tyYear=year;
@@ -2070,7 +2126,7 @@ function renderBookMail(orders){
   // Books ordered excludes cancelled orders — those books are never coming.
   document.getElementById('tbb-m').innerHTML=mH(orders.length,'Total orders')+mH(ful.length,'Fulfilled','','t')+mH(pending.length,'Pending','','c')+mH(orders.filter(o=>o.delivered!=='Cancelled').reduce((s,o)=>s+o.count,0),'Books ordered');
   document.getElementById('tbb-orders').innerHTML=pending.map(o=>{const sb=o.paid==='Unpaid'?'b-coral':o.tracking?'b-teal':'b-gold',sl=o.paid==='Unpaid'?'Unpaid':o.tracking?'Shipped':'Unfulfilled';return`<div class="or"><div style="font-family:var(--font-m);font-size:11px;color:var(--text3)">${o.date}</div><div style="font-size:12px">${esc(o.books||(o.sub&&o.sub!=='N/A'?o.sub+' credit — TBD':'TBD'))}</div><div style="font-size:11px;color:var(--text3)">${esc(o.series||(o.type==='Sub'?(o.sub&&o.sub!=='N/A'?o.sub+' sub':'sub'):'—'))}</div><div style="font-family:var(--font-m);font-size:10px;color:var(--text3)">${o.order||'—'}${o.store?`<br><span style="font-family:var(--font)">${esc(o.store)}</span>`:''}</div><div data-okey="${esc(ordKeyMail(o))}"><span class="badge ${sb}">${sl}</span></div></div>`;}).join('');
-  document.getElementById('tbb-all').innerHTML=[...orders].reverse().map(o=>`<tr><td style="font-family:var(--font-m);font-size:11px;white-space:nowrap">${o.date}</td><td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.books||'—'}</td><td>${o.series||'—'}</td><td>${o.author||'—'}</td><td>${esc(o.store||'—')}</td><td>${esc(o.type||'—')}${o.type==='Sub'&&o.sub&&o.sub!=='N/A'?' · '+esc(o.sub):''}</td><td class="nr">${o.count||1}</td><td style="white-space:nowrap" data-okey="${esc(ordKeyMail(o))}">${o.delivered==='Cancelled'?'<span class="badge b-gray">Cancelled</span>':`<span class="badge ${o.paid==='Paid'?'b-green':'b-coral'}">${o.paid}</span> <span class="badge ${o.delivered==='Fulfilled'?'b-teal':'b-gold'}">${o.delivered==='Fulfilled'?'Fulfilled':o.tracking?'Shipped':o.delivered}</span>`}</td></tr>`).join('');
+  document.getElementById('tbb-all').innerHTML=[...orders].reverse().map(o=>`<tr><td style="font-family:var(--font-m);font-size:11px;white-space:nowrap">${o.date}</td><td style="font-family:var(--font-m);font-size:11px;white-space:nowrap">${esc(o.fulfil||'—')}</td><td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.books||'—'}</td><td>${o.series||'—'}</td><td>${o.author||'—'}</td><td>${esc(o.store||'—')}</td><td>${esc(o.type||'—')}${o.type==='Sub'&&o.sub&&o.sub!=='N/A'?' · '+esc(o.sub):''}</td><td class="nr">${o.count||1}</td><td style="white-space:nowrap" data-okey="${esc(ordKeyMail(o))}">${o.delivered==='Cancelled'?'<span class="badge b-gray">Cancelled</span>':`<span class="badge ${o.paid==='Paid'?'b-green':'b-coral'}">${o.paid}</span> <span class="badge ${o.delivered==='Fulfilled'?'b-teal':'b-gold'}">${o.delivered==='Fulfilled'?'Fulfilled':o.tracking?'Shipped':o.delivered}</span>`}</td></tr>`).join('');
   decorateOrderPending();
 }
 
@@ -4144,6 +4200,15 @@ const LOG=(()=>{
   // series carries that name) — jerry matches on the true, empty series.
   function realSeries(b){return b.series==='Standalones'?'':b.series;}
   function bookRef(b){return{title:b.title,series:realSeries(b),seq:b.seq,author:b.author,media:b.media,owner:b.owner||'butthead'};}
+  // TBR-tab entry points: a finished event for a register book, the NEED
+  // flag, and the queued sets so the tab can show what is already pending.
+  function finishBook(b,date){return submit('finished',{book:bookRef(b),date},b);}
+  function setNeed(b,flag){return submit('book_update',{book:bookRef(b),set:{need:!!flag}},b);}
+  function pendingBooks(type){
+    const ks=new Set();
+    [...(pendCache||[]),...sent().filter(e=>!BUNDLE||e.at>BUNDLE.generated_at)].forEach(ev=>{const b=ev.payload&&ev.payload.book;if(b&&ev.type===type)ks.add(b.title+'|'+(b.series||''));});
+    return ks;
+  }
   async function doFinished(i){
     const b=(document.getElementById('log-results')._hits||[])[i];if(!b)return;
     const ok=await submit('finished',{book:bookRef(b),date:document.getElementById('log-f-date').value,
@@ -4568,7 +4633,7 @@ const LOG=(()=>{
     q.value=t;search();
     const r=document.getElementById('log-results');if(r)r.scrollIntoView({behavior:'smooth',block:'start'});
   }
-  const MAIL_EDIT=['date','order','store','books','series','author','count','type','sub','paid','delivered','contains'];
+  const MAIL_EDIT=['date','order','store','books','series','author','count','type','sub','paid','delivered','fulfil','contains'];
   const MAIL_EDIT_SEL={paid:['Paid','Unpaid'],delivered:['Unfulfilled','Fulfilled','Cancelled']};
   // The order's books, one per line: declared omnibus contents when there
   // are any (seq markers dropped), else the Books text as typed.
@@ -4583,10 +4648,17 @@ const LOG=(()=>{
     const el=document.getElementById('log-oexp-'+tag);
     if(el.classList.contains('open')){el.classList.remove('open');return;}
     document.querySelectorAll('#log-orders-open .log-exp.open,#log-orders-done .log-exp.open').forEach(e=>e.classList.remove('open'));
-    const books=`<div class="log-frow"><label>Books</label><div style="flex:1">${orderTitles(o).map(t=>`<div style="display:flex;gap:8px;align-items:center;margin:2px 0;flex-wrap:wrap"><span>${esc(t)}</span><button class="log-act" data-t="${esc(t)}" onclick="LOG.findInRegister(this.dataset.t)" title="find it on the Book tab — Got it › Edition records a hardback or special edition">🔎 Find</button></div>`).join('')||'<span class="ms">no titles named</span>'}</div></div>`;
+    // Each named book with the register's own acquired date beside it —
+    // the answer to "when did this edition arrive" lives on the book row.
+    const nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    const regOf=t=>(G.allIndBooks||[]).find(b=>nk(b.title)===nk(t)&&(b.owner||'butthead')==='butthead');
+    const regTag=t=>{const r=regOf(t);return r?(r.acquiredOn?` · acquired ${esc(r.acquiredOn)}`:(r.owned?' · owned, no date on the book':' · in the register, not owned')):' · no exact register title';};
+    const books=`<div class="log-frow"><label>Books</label><div style="flex:1">${orderTitles(o).map(t=>`<div style="display:flex;gap:8px;align-items:center;margin:2px 0;flex-wrap:wrap"><span>${esc(t)}<span class="ms">${regTag(t)}</span></span><button class="log-act" data-t="${esc(t)}" onclick="LOG.findInRegister(this.dataset.t)" title="find it on the Book tab — Got it › Edition records a hardback or special edition">🔎 Find</button></div>`).join('')||'<span class="ms">no titles named</span>'}</div></div>`;
     const edit=`<div id="log-o-edit-${tag}" style="display:none">
         ${MAIL_EDIT.map(f=>f==='contains'
           ?`<div class="log-frow"><label>Contains</label><textarea id="log-oe-${f}-${tag}" rows="3" placeholder="omnibus? list the works inside, one per line (optional #seq) — arrival then marks each one owned" style="flex:1;font:inherit">${esc(String(o[f]??''))}</textarea></div>`
+          :f==='fulfil'
+          ?`<div class="log-frow"><label>Arrived</label><input type="date" id="log-oe-${f}-${tag}" value="${esc(o.fulfil||'')}"></div>`
           :f==='store'
           ?`<div class="log-frow"><label>Store</label>${storeSelect(`log-oe-${f}-${tag}`,o.store||'')}</div>`
           :MAIL_EDIT_SEL[f]
@@ -4598,7 +4670,7 @@ const LOG=(()=>{
     if(list==='done'){
       // History rows: status, the books (to log editions), edit details.
       el.innerHTML=`
-      <div class="log-frow"><label>Status</label><span class="ms" style="flex:1">${o.delivered==='Cancelled'?'Cancelled':'Fulfilled'+(o.fulfil?' · arrived '+esc(o.fulfil):'')}${o.tracking?' · '+esc(o.tracking):''}${o.store?' · '+esc(o.store):''}</span>
+      <div class="log-frow"><label>Dates</label><span style="flex:1">Ordered <strong>${esc(o.date||'?')}</strong> · ${o.delivered==='Cancelled'?'cancelled':o.fulfil?`arrived <strong>${esc(o.fulfil)}</strong>`:'<span style="color:var(--coral)">arrival date not recorded — set Arrived under Edit details</span>'}${o.tracking?` · <span class="ms">${esc(o.tracking)}</span>`:''}${o.store?` · <span class="ms">${esc(o.store)}</span>`:''}</span>
         <button class="log-act" onclick="LOG.toggleRow('log-o-edit-${tag}')">Edit details</button></div>
       ${books}${edit}`;
       el.classList.add('open');return;
@@ -4956,7 +5028,8 @@ const LOG=(()=>{
   return{renderBook,renderOrders,renderPending,renderProposed,doPropDecide,propEdit,doPropDecideSet,doSyncRequest,importLibib,renderMeta,doMetaAdd,dupeCheck,showNeedsData,search,browse,brMode,expand,doFinished,doAcquired,
     toggleAdd,doAdd,addDates,toggleTrack,doTrackSeries,trackFromRow,isbnLookup,addFromIsbn,scanIsbn,stopScan,saveBookEdit,doCopyLetGo,vocabFor,pendingVocab,followAuthor,doNewOrder,doNewBoxOrder,setOrderStyle,expandOrder,doOrderUpdate,
     toggleRow,saveOrderEdit,expandBox,doBoxUpdate,saveBoxEdit,saveSetup,forgetSetup,refreshBadge,
-    toggleOrderHistory,findInRegister,storeFromOrderNo,logFlyerOrders,trackSeriesFromIsbn,submitTrackSeries};
+    toggleOrderHistory,findInRegister,storeFromOrderNo,logFlyerOrders,trackSeriesFromIsbn,submitTrackSeries,
+    finishBook,setNeed,pendingBooks,today};
 })();
 
 async function init(){
@@ -5002,6 +5075,9 @@ async function init(){
       if(c.contains.length>1)(G.inCopy[k]=G.inCopy[k]||[]).push(c.title);
       else(G.editionOf[k]=G.editionOf[k]||[]).push([c.format||'copy',c.edition].filter(Boolean).join(' · '));
     }
+    // Goodreads shelves (bookdb|Goodreads): Shelf|Title|Author|ISBN13|Added|
+    // ReadAt|Book (matched register title)|Cover — the TBR tab's Reading now.
+    G.goodreads=(BUNDLE.tabs['bookdb|Goodreads']||[]).slice(1).map(r=>({shelf:(r[0]||'').trim(),title:(r[1]||'').trim(),author:(r[2]||'').trim(),isbn13:(r[3]||'').trim(),added:(r[4]||'').trim(),readAt:(r[5]||'').trim(),book:(r[6]||'').trim(),cover:(r[7]||'').trim().replace(/^http:/,'https:')}));
     // ISBNs tab: identifiers (owned-edition first) + best stored cover URL.
     // isbnMap answers "do I have this exact edition?"; bookIsbn drives the
     // cover thumbnails (OL by-ISBN first, stored cover_url as fallback).

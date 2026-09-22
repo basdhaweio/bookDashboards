@@ -175,7 +175,7 @@ async function main(){
         `${spines} spines vs owned all ${per.all}, Com ${per.butthead||0}, Shereen ${per.goblin||0}`);
   });
 
-  await check('Up Next lists every series in progress',async()=>{
+  await check('TBR lists every series in progress',async()=>{
     await go('tbr','reading');
     // Com's shelf: a real series (not Standalones) with ≥1 read and ≥1 unread
     const per={};
@@ -187,7 +187,7 @@ async function main(){
     const want=Object.values(per).filter(s=>s.r>0&&s.u>0).length;
     const rows=doc().querySelectorAll('#tbr-now .tbr-row,#tbr-earlier .tbr-row').length;
     const shown=norm((ptxt('tbr').match(/([\d,]+)\s*Series in progress/i)||[])[1]);
-    res('Up Next lists every series in progress',rows===want&&shown===want,`rows ${rows}, metric ${shown} vs register ${want}`);
+    res('TBR lists every series in progress',rows===want&&shown===want,`rows ${rows}, metric ${shown} vs register ${want}`);
   });
 
   await check('Order history expands and names its books',async()=>{
