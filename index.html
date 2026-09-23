@@ -32,9 +32,16 @@
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--text);font-family:var(--font-b);font-size:14px;line-height:1.6;min-height:100vh;}
-header{background:var(--bg2);padding:2rem 3rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:1rem;box-shadow:var(--shadow);}
-.h-title{font-family:var(--font-d);font-size:2.4rem;font-weight:600;color:var(--gold);letter-spacing:-0.02em;line-height:1;}
-.h-sub{font-family:var(--font-m);font-size:10px;color:var(--text3);letter-spacing:0.12em;text-transform:uppercase;margin-top:5px;}
+/* Sticky, slim masthead (John, 2026-09-23): title, section nav and the
+   owner switch in one bar that stays put while the page scrolls; each
+   section's tab bar sticks just under it (--hdr-h is measured live). */
+header{position:sticky;top:0;z-index:70;background:var(--bg2);padding:.35rem 1.2rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:nowrap;gap:.2rem 1rem;box-shadow:var(--shadow);}
+.h-title{font-family:var(--font-d);font-size:1.3rem;font-weight:600;color:var(--gold);letter-spacing:-0.02em;line-height:1;white-space:nowrap;}
+.h-sub{display:none;}
+.h-right{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;white-space:nowrap;}
+@media (max-width:1100px){.h-right .status{display:none;}}
+.plan-done{opacity:.6;}.plan-done .tbr-ser{text-decoration:line-through;text-decoration-color:var(--teal2);}
+.plan-pending{border-style:dashed;}
 .status{font-family:var(--font-m);font-size:11px;color:var(--text3);}
 .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--teal2);margin-right:5px;animation:pulse 2s infinite;}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
@@ -170,12 +177,12 @@ button.tbr-link{background:none;border:none;padding:0;font:inherit;font-weight:i
 .bc-return:hover{background:#d94f30;}
 .bc-foot{text-align:center;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:#8a7a5e;margin-top:1.2rem;font-weight:700;}
 #dash{display:none;}
-.sec-nav{background:var(--bg2);border-bottom:2px solid var(--border);display:flex;padding:0 3rem;}
-.sec-nav button{font-family:var(--font-d);font-size:1rem;font-weight:600;padding:1rem 1.5rem;background:none;border:none;color:var(--text3);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all 0.15s;letter-spacing:-0.01em;}
+.sec-nav{background:var(--bg2);display:flex;flex:1;min-width:0;padding:0;overflow-x:auto;scrollbar-width:none;}
+.sec-nav button{font-family:var(--font-d);font-size:.9rem;font-weight:600;padding:.4rem .7rem;background:none;border:none;color:var(--text3);cursor:pointer;border-bottom:3px solid transparent;transition:all 0.15s;letter-spacing:-0.01em;white-space:nowrap;}
 .sec-nav button:hover{color:var(--text2);}
 .sec-nav button.active{color:var(--gold);border-bottom-color:var(--gold2);}
 .sec-nav button.bc-btn{margin-left:auto;color:#b5502f;}
-.tab-nav{background:var(--bg3);border-bottom:1px solid var(--border);display:flex;padding:0 3rem;overflow-x:auto;}
+.tab-nav{position:sticky;top:var(--hdr-h,48px);z-index:60;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;padding:0 3rem;overflow-x:auto;}
 .tab-nav button{font-family:var(--font-m);font-size:11px;letter-spacing:0.07em;text-transform:uppercase;padding:0.7rem 1.1rem;background:none;border:none;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;transition:all 0.15s;}
 .tab-nav button:hover{color:var(--text2);}
 .tab-nav button.active{color:var(--gold);border-bottom-color:var(--gold2);}
@@ -336,24 +343,25 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
   html,body{max-width:100%;overflow-x:hidden;}
 
   /* Chrome: 3rem gutters are most of a phone screen */
-  header{padding:1.1rem 1rem 0.9rem;align-items:stretch;flex-direction:column;gap:0.9rem;}
-  .h-title{font-size:1.9rem;}
-  header>div:last-child{flex-direction:row!important;align-items:center!important;justify-content:space-between;gap:10px;flex-wrap:wrap;}
-  .status{font-size:10px;}
-  #owner-note{flex-basis:100%;order:3;}
+  /* the masthead stays one slim row on a phone too: title left, owner
+     switch right; the section nav is the fixed bottom bar below */
+  header{padding:.3rem .8rem;align-items:center;flex-direction:row;gap:.6rem;}
+  .h-title{font-size:1.2rem;}
+  .h-right{flex-direction:row;align-items:center;gap:8px;flex-wrap:nowrap;}
+  .status{display:none;}
+  #owner-note{display:none;}
 
   /* Sections become a fixed bottom tab bar (all six always visible — the
      old scrolling row hid Log and Book Club off the right edge); sub-tabs
      still scroll sideways, with a fade at the edge so cut-off tabs read as
      "more". The body reserves room so nothing hides under the bar. */
   body{padding-bottom:calc(58px + env(safe-area-inset-bottom));}
-  .h-title{font-size:1.5rem;}
   .sec-nav{position:fixed;left:0;right:0;bottom:0;z-index:60;padding:0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);border-bottom:none;border-top:1px solid var(--border);box-shadow:0 -2px 12px rgba(0,0,0,.08);}
   .sec-nav button{flex:1 1 0;min-width:0;font-size:0.68rem;letter-spacing:0;padding:0.6rem 0.15rem 0.55rem;margin:0;border-bottom:none;border-top:3px solid transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .sec-nav button.active{border-top-color:var(--gold2);}
   .sec-nav button.bc-btn{margin-left:0;}
   .sec-nav .bc-x{display:none;}
-  .tab-nav{padding:0 0.75rem;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-wrap:nowrap;position:relative;}
+  .tab-nav{padding:0 0.75rem;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-wrap:nowrap;position:sticky;top:var(--hdr-h,44px);}
   .tab-nav::-webkit-scrollbar{display:none;}
   .tab-nav::after{content:'';position:sticky;right:0;flex:none;width:34px;margin-left:-34px;background:linear-gradient(90deg,rgba(0,0,0,0),var(--bg3) 70%);pointer-events:none;}
   .tab-nav button{padding:0.7rem 0.75rem;flex:none;}
@@ -451,22 +459,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
 <body>
 
 <header>
-  <div><div class="h-title">The Library</div><div class="h-sub">Personal reading tracker · database edition</div></div>
-  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
-    <div id="owner-filter" class="owner-filter">
-      <button data-o="butthead" class="active" onclick="setOwner('butthead')">Com</button>
-      <button data-o="goblin" onclick="setOwner('goblin')">Shereen</button>
-      <button data-o="all" onclick="setOwner('all')">Both</button>
-    </div>
-    <div id="owner-note" style="font-family:var(--font-m);font-size:9px;color:var(--coral);height:11px"></div>
-    <div class="status"><span class="dot"></span><span id="updateTime">Loading...</span></div>
-  </div>
-</header>
-
-<div id="loading"><div class="spinner"></div><div class="load-txt">Fetching from Google Sheets...</div></div>
-<div id="error"></div>
-
-<div id="dash">
+  <div class="h-brand"><div class="h-title">The Library</div><div class="h-sub">Personal reading tracker · database edition</div></div>
   <div class="sec-nav">
     <button class="active" onclick="switchSection('tracking')">Tracking</button>
     <button onclick="switchSection('reading')">Reading</button>
@@ -475,7 +468,21 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
     <button onclick="switchSection('log')">Log <span id="log-nav-dot" style="display:none;color:var(--coral)">●</span></button>
     <button class="bc-btn" onclick="switchSection('bookclub')">Book Club<span class="bc-x"> ✂</span></button>
   </div>
+  <div class="h-right">
+    <div id="owner-filter" class="owner-filter">
+      <button data-o="butthead" class="active" onclick="setOwner('butthead')">Com</button>
+      <button data-o="goblin" onclick="setOwner('goblin')">Shereen</button>
+      <button data-o="all" onclick="setOwner('all')">Both</button>
+    </div>
+    <div id="owner-note" style="font-family:var(--font-m);font-size:9px;color:var(--coral)"></div>
+    <div class="status"><span class="dot"></span><span id="updateTime">Loading...</span></div>
+  </div>
+</header>
 
+<div id="loading"><div class="spinner"></div><div class="load-txt">Fetching from Google Sheets...</div></div>
+<div id="error"></div>
+
+<div id="dash">
   <!-- TRACKING -->
   <div id="sec-tracking">
     <div class="tab-nav">
@@ -546,6 +553,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
   <div id="sec-reading" style="display:none">
     <div class="tab-nav">
       <button class="active" onclick="switchTab('tbr','reading')">TBR</button>
+      <button onclick="switchTab('plan','reading')">Plan</button>
       <button onclick="switchTab('history','reading')">Reading History</button>
       <button onclick="switchTab('thisyear','reading')">This Year</button>
       <button onclick="switchTab('completion','reading')">Completion</button>
@@ -572,6 +580,17 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div class="tbr-grid" id="tbr-get"></div>
       <div class="sl" style="margin-top:1.5rem">Start a series — owned, nothing read yet</div>
       <div class="tbr-grid" id="tbr-start"></div>
+    </div>
+    <div class="panel" id="tab-plan">
+      <div class="sl">Plan — rough intentions for a year, checked against the goals</div>
+      <div class="ms" style="margin-bottom:8px">A slot is the shape of a book you mean to read — "long, hard sci-fi", "cozy fantasy novella" — with a media type, genre and length when you know them. Pin a register book to it whenever one turns up; a pinned book that gets read ticks the slot. Goals come from the year's targets.</div>
+      <div class="ytog" id="plan-tog"></div>
+      <div class="mg" id="plan-m"></div>
+      <div class="tc"><div><div class="sl">By media <span class="ms">— read (solid) · planned (faint) · goal (red mark)</span></div><div class="cb" id="plan-media"></div></div><div><div class="sl">By genre</div><div class="cb" id="plan-genre"></div></div></div>
+      <div class="sl">Slots</div>
+      <div class="tbr-grid" id="plan-list"></div>
+      <div class="sl">Add slots</div>
+      <div class="cb" id="plan-add"></div>
     </div>
     <div class="panel" id="tab-history">
       <div class="sl">Year-over-year — stacked area by media type</div>
@@ -617,6 +636,8 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
         <span style="color:var(--text3)">bubble size = total tracked</span>
       </div>
       <div class="cb"><div style="height:440px"><canvas id="bubbleChart" role="img" aria-label="Author completion bubble chart — x=total tracked, y=percent read, size=owned"></canvas></div></div>
+      <div class="sl">By author <span class="ms">— books credited to each person, with their series</span></div>
+      <div class="cb" id="comp-authors"></div>
       <div class="sl">TTRPG breakdown</div>
       <div class="mg" id="ttrpg-m"></div>
       <div class="tc">
@@ -1468,7 +1489,7 @@ function peekSpine(i,j){
   const b=((G._shelves||{})[i]||[])[j];const el=document.getElementById('room-peek-'+i);if(!b||!el)return;
   if(el.dataset.j===String(j)&&el.style.display!=='none'){el.style.display='none';return;}
   el.dataset.j=j;el.style.display='flex';
-  el.innerHTML=`${coverTile(b.title,b.owner,'',null,72)}<div><div style="font-weight:600">${esc(b.title)}</div><div class="ms">${esc(b.series!=='Standalones'?b.series+(b.seq?' #'+b.seq:''):'Standalone')} · ${esc(b.author)}${b.media?' · '+esc(b.media):''}${b.pages?' · '+b.pages+' pages':''}</div><div class="ms">${b.read?'read':'unread'}${b.readOn?' · '+esc(b.readOn):''}${b.acquiredOn?' · acquired '+esc(b.acquiredOn):''}</div></div>`;
+  el.innerHTML=`${coverTile(b.title,b.owner,'',null,72,b.series)}<div><div style="font-weight:600">${esc(b.title)}</div><div class="ms">${esc(b.series!=='Standalones'?b.series+(b.seq?' #'+b.seq:''):'Standalone')} · ${esc(b.author)}${b.media?' · '+esc(b.media):''}${b.pages?' · '+b.pages+' pages':''}</div><div class="ms">${b.read?'read':'unread'}${b.readOn?' · '+esc(b.readOn):''}${b.acquiredOn?' · acquired '+esc(b.acquiredOn):''}</div></div>`;
 }
 function renderRoomTiles(bm){
   const defs=[{k:'Main Library',i:'📚',th:'Big Series + Classics'},{k:'Hidden — TTRPG',i:'🎲',th:'FR · DL · SR · Warhammer'},{k:'Hidden — Comics/GN/Manga',i:'🎌',th:'Comics · Manga · Nier · Evangelion'},{k:'Hidden — Franchise',i:'🚀',th:'Firefly · Star Wars · Critical Role'},{k:'Goblin Office',i:'🌿',th:'Wren — Asian Writers',display:'Wren Office'},{k:'Butthead Office',i:'🏛️',th:'Com — NF · History · Philosophy',display:'Com Office'},{k:'Sitting Room',i:'🪑',th:'Small Series + Pretty Books'},{k:'Bedroom',i:'🌙',th:'Spicy / Kink'}];
@@ -1522,7 +1543,12 @@ function renderHistory(metrics){
     type:'line',
     data:{labels:yrsAsc.map(String),datasets:stackedDatasets},
     options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},filler:{propagate:true}},
+      plugins:{legend:{display:false},filler:{propagate:true},
+        // the bands are drawn cumulatively so they stack; the hover says the
+        // band's own count, not where its top sits (John, 2026-09-23)
+        tooltip:{callbacks:{label:ctx=>{const y=yrsAsc[ctx.dataIndex];
+          if(ctx.dataset.label==='Total')return' Total: '+ctx.parsed.y;
+          const t=stackOrder[ctx.datasetIndex];return' '+t+': '+(metrics[t]?metrics[t][y]||0:0);}}}},
       scales:{
         x:{ticks:{color:'#9a9688'},grid:{color:'rgba(0,0,0,0.04)'}},
         y:{ticks:{color:'#9a9688'},grid:{color:'rgba(0,0,0,0.04)'}}
@@ -1890,7 +1916,7 @@ function renderTBR(){
       :`<button class="log-act" onclick="tbrMoveBy(${qi},-1)" title="move up"${qi===0||queue[qi-1].owner!==queue[qi].owner?' disabled':''}>▲</button><button class="log-act" onclick="tbrMoveBy(${qi},1)" title="move down"${qi>=queue.length-1||queue[qi+1].owner!==queue[qi].owner?' disabled':''}>▼</button><button class="log-act" onclick="tbrQueue(${i},'remove')" title="take it off the list">✕</button>`;
     if(nx._gap)return`<div class="tbr-acts"><button class="log-act gold" onclick="tbrTrackGap(${i})" title="add the missing volume to the register as tracked">＋ Track #${nx._gap}</button><a class="tbr-a" href="${tomboloUrl((nx.series||'')+' '+nx._gap)}" target="_blank" rel="noopener">Tombolo ↗</a></div><div id="tbr-rr-${i}" style="display:none"></div>`;
     return`<div class="tbr-acts">${pr?'':`<button class="log-act" onclick="tbrReadRow(${i})">✓ Read</button>`}${queueBtns}${nx.owned||rel(nx)!=='out'?'':`<a class="tbr-a" href="${tomboloUrl(nx.title)}" target="_blank" rel="noopener">Tombolo ↗</a>`}</div><div id="tbr-rr-${i}" style="display:none"></div>`;};
-  const cover=b=>coverTile(b.title,b.owner||'butthead','',null,40);
+  const cover=b=>coverTile(b.title,b.owner||'butthead','',null,40,b.series);
   const seriesCard=s=>{const nx=s.next;return`<div class="tbr-card${both?(s.owner==='goblin'?' own-gob':' own-com'):''}" data-ser="${esc(s.name)}" data-owner="${s.owner}"${s.inProg?' data-inprog="1"':''}>
     <div class="tbr-cov">${nx?cover(nx):''}</div>
     <div class="tbr-info">
@@ -1913,7 +1939,7 @@ function renderTBR(){
       <div class="tbr-next">${extra}</div>
       ${acts(b,qi)}
     </div></div>`;
-  const grTile=r=>r.cover?`<div class="ct" style="width:40px;height:60px" title="${esc(r.title)}"><img loading="lazy" alt="" src="${esc(r.cover)}"></div>`:coverTile(r.title,'butthead','',r.isbn||r.isbn13||null,40);
+  const grTile=r=>r.cover?`<div class="ct" style="width:40px;height:60px" title="${esc(r.title)}"><img loading="lazy" alt="" referrerpolicy="no-referrer" src="${esc(r.cover)}"></div>`:coverTile(r.title,r.owner||'butthead','',r.isbn||r.isbn13||null,40);
   const bnCard=x=>`<div class="tbr-card${both?(x.s.owner==='goblin'?' own-gob':' own-com'):''}" data-ser="${esc(x.s.name)}" data-owner="${x.s.owner}"><div class="tbr-cov">${grTile(x.r)}</div><div class="tbr-info"><div class="tbr-ser">${esc(x.r.title)}</div><div class="tbr-prog">${esc(x.s.name)} · ${esc(x.r.author)} · ${x.s.read}/${x.s.total} · Book Notification, not in the register</div><div class="tbr-next"><span class="badge b-teal">📅 ${esc(x.date||'TBA')}</span></div><div class="tbr-acts"><a class="tbr-a" href="${tomboloUrl(x.r.title)}" target="_blank" rel="noopener">Tombolo ↗</a><button class="log-act" onclick="switchSection('bookclub','flyer')">flyer</button></div></div></div>`;
   const orderChip=b=>onOrder(b)?' <span class="badge b-gold">on order</span>':b.owned?' <span class="badge b-green">on the shelf</span>':'';
   const sOf=b=>by[own(b)+'|'+seriesKey(b)]||null;
@@ -1968,6 +1994,119 @@ function renderTBR(){
   const first=pick?(pick.books.find(b=>b.owned)||pick.books[0]):null;
   document.getElementById('tbr-start').innerHTML=`<div class="log-frow" style="grid-column:1/-1"><label>Series</label><input id="tbr-start-q" list="tbr-dl-start" value="${esc(G._tbrStart||'')}" placeholder="${fresh.length} series on the shelf with nothing read yet" onchange="tbrPickStart()"><datalist id="tbr-dl-start">${fresh.map(s=>`<option>${esc(s.label)}</option>`).join('')}</datalist></div>`
     +(first?bookCard(first,pick,chip(first)):(G._tbrStart?'<div class="ms">No unstarted series by that name.</div>':''));
+}
+// ── Reading › Plan (John, 2026-09-23): "some way of vaguely planning my TBR
+// for next year … as simple as genres/length … and see how my TBR is
+// tracking against my reading goals". Slots live in bookdb (reading_plan,
+// bundle tab bookdb|Plan) and change through plan_set events; pending
+// events overlay until jerry's next publish. One reader at a time (Com
+// when the header says Both).
+let planYear=null;
+const PLAN_LENGTHS=[['',"—"],['short','short / novella'],['medium','medium'],['long','long'],['doorstop','doorstop']];
+function planSetToSlot(set){const o={};if('label'in set)o.label=set.label;if('media'in set)o.media=set.media;if('genre'in set)o.genre=set.genre;if('length'in set)o.length=set.length;if('notes'in set)o.notes=set.notes;if('done'in set)o.done=!!set.done;if('book'in set){o.book=(set.book&&set.book.title)||'';o.series=(set.book&&set.book.series)||'';}if('position'in set&&set.position!=null&&set.position!=='')o.pos=+set.position;return o;}
+// media / genre / length guessed from the words of a pasted line
+function planGuess(line){
+  const l=(line||'').toLowerCase(),g={};
+  for(const[re,m]of[[/\baudio(book)?s?\b/,'Audio'],[/\bmanga\b/,'Manga'],[/\bgraphic novels?\b/,'Graphic Novel'],[/\bcomics?\b/,'Comics'],[/\be-?books?\b/,'eBook'],[/\bshort stor|\bcollection\b|\banthology\b/,'Short Stories']])if(re.test(l)){g.media=m;break;}
+  for(const[re,gg]of[[/sci[- ]?fi|science fiction|space opera/,'Scifi'],[/fantasy|romantasy/,'Fantasy'],[/horror/,'Horror'],[/mystery|detective|crime|whodunit/,'Mystery'],[/non-?fiction|history\b|memoir|biograph|philosoph|popular science|essays?/,'Nonfiction'],[/romance/,'Romance'],[/superhero/,'Superhero'],[/slice of life/,'Slice of Life'],[/classic/,'Classics'],[/literary|litfic/,'Fiction']])if(re.test(l)){g.genre=gg;break;}
+  if(/doorstop|epic\b|huge|massive|1000\+?|brick|tome/.test(l))g.length='doorstop';else if(/\blong\b|\bbig\b|chunky|thick/.test(l))g.length='long';else if(/novella|\bshort\b|quick|slim|thin/.test(l))g.length='short';
+  return g;
+}
+function planFindBook(q){const owner=OWNER==='all'?'butthead':OWNER;const cut=q.lastIndexOf(' — '),t=cut<0?q:q.slice(0,cut),s=cut<0?'':q.slice(cut+3);return(G.allIndBooks||[]).find(x=>(x.owner||'butthead')===owner&&x.title===t&&(s?x.series===s:(!x.series||x.series==='Standalones')))||null;}
+function planTitles(owner){return(G.allIndBooks||[]).filter(x=>(x.owner||'butthead')===owner).map(x=>x.title+(x.series&&x.series!=='Standalones'?' — '+x.series:'')).sort((a,b)=>a.localeCompare(b));}
+function renderPlan(){
+  const now=new Date(),cy=now.getFullYear();
+  const owner=OWNER==='all'?'butthead':OWNER;
+  const mine=(G.plan||[]).filter(p=>p.owner===owner);
+  const years=[...new Set([cy,cy+1,...mine.map(p=>p.year)])].sort();
+  if(!planYear||!years.includes(planYear))planYear=now.getMonth()>=8?cy+1:cy; // from September the plan is next year's
+  document.getElementById('plan-tog').innerHTML=years.map(y=>`<button class="${y===planYear?'active':''}" onclick="planYear=${y};renderPlan()">${y}</button>`).join('');
+  const yd=(typeof allYD!=='undefined'&&allYD[planYear])||{books:[],targets:{},focus:[]};
+  const tg=yd.targets||{},goal=(tg.Total&&tg.Total.total)||0;
+  const readBooks=owner==='butthead'?(yd.books||[]):[]; // Shereen has no year tabs yet
+  // slots: bundle rows + pending plan_set events (adds appear, updates and removes apply)
+  let slots=mine.filter(p=>p.year===planYear).map(p=>Object.assign({},p,{pending:false}));
+  for(const ev of LOG.pendingPlan()){const q=ev.payload||{};if(+q.year!==planYear||(ev.by||'butthead')!==owner)continue;
+    if(q.action==='remove'){slots=slots.filter(s=>s.id!==+q.id);continue;}
+    if(q.action==='update'){const s=slots.find(x=>x.id===+q.id);if(s){Object.assign(s,planSetToSlot(q.set||{}));s.pending=true;}continue;}
+    slots.push(Object.assign({id:0,owner,year:planYear,pos:1e9,label:'',media:'',genre:'',length:'',book:'',series:'',done:false,notes:'',bookRead:false},planSetToSlot(q.set||{}),{pending:true}));}
+  slots.sort((a,b)=>a.pos-b.pos||a.id-b.id);
+  const isDone=s=>s.done||s.bookRead;
+  const done=slots.filter(isDone).length,planned=slots.length,read=readBooks.length;
+  const left=goal?goal-read-(planned-done):null;
+  document.getElementById('plan-m').innerHTML=mH(planned,'Slots planned',String(planYear))+mH(done,'Done','pinned book read, or ticked','t')+mH(goal||'—','Goal',goal?"the year's targets":'no targets set for '+planYear)+(planYear<=cy?mH(read,'Read so far',String(planYear)):'')+(goal?mH((left>0?'':'+')+Math.abs(left),left>0?'Still to plan':'Over the goal',left>0?'goal − read − open slots':'more planned than the goal needs',left>0?'c':'t'):'');
+  const cnt=(arr,f)=>arr.reduce((m,x)=>{const k=f(x);if(k)m[k]=(m[k]||0)+1;return m;},{});
+  const pm=cnt(slots,s=>s.media),rm=cnt(readBooks,b=>/^ebook$/i.test(b.media||'')?'eBook':b.media);
+  const mediaRows=MEDIA.filter(m=>pm[m]||rm[m]||(tg[m]&&tg[m].total)).map(m=>{const t=(tg[m]&&tg[m].total)||0,p=pm[m]||0,r=planYear<=cy?(rm[m]||0):0,max=Math.max(t,p+r,1);
+    return`<div class="pr" style="margin-bottom:12px"><div class="pl">${m}</div><div style="flex:1;position:relative;height:10px;border-radius:5px;background:var(--bg3)"><div style="position:absolute;left:0;top:0;height:100%;width:${(r/max*100).toFixed(1)}%;background:${MCOL[m]||'#9a9688'};border-radius:5px"></div><div style="position:absolute;left:${(r/max*100).toFixed(1)}%;top:0;height:100%;width:${(p/max*100).toFixed(1)}%;background:${MCOL[m]||'#9a9688'};opacity:.35;border-radius:5px"></div>${t?`<div style="position:absolute;left:${(t/max*100).toFixed(1)}%;top:-3px;width:2px;height:16px;background:var(--coral);transform:translateX(-50%)"></div>`:''}</div><div style="font-family:var(--font-m);font-size:11px;min-width:150px;text-align:right;color:var(--text2)">${p} planned${planYear<=cy?' · '+r+' read':''}${t?' · goal '+t:''}</div></div>`;}).join('');
+  document.getElementById('plan-media').innerHTML=mediaRows||'<div class="ms">Nothing planned yet.</div>';
+  const pg=cnt(slots,s=>s.genre),rg=planYear<=cy?cnt(readBooks,b=>b.genre):{};
+  const genres=[...new Set([...Object.keys(pg),...Object.keys(rg)])].sort((a,b)=>(pg[b]||0)-(pg[a]||0)||(rg[b]||0)-(rg[a]||0));
+  document.getElementById('plan-genre').innerHTML=genres.map(g=>`<div class="pr"><div class="pl">${esc(g)}</div><div class="pt"><div class="pf" style="width:${Math.min(100,(pg[g]||0)/Math.max(1,planned)*100).toFixed(1)}%;background:var(--purple)"></div></div><div class="pv">${pg[g]||0} planned${planYear<=cy?' · '+(rg[g]||0)+' read':''}</div></div>`).join('')||'<div class="ms">No genres on the slots yet.</div>';
+  G._planSlots=slots;
+  document.getElementById('plan-list').innerHTML=slots.map((s,i)=>{const b=s.book?(G.allIndBooks||[]).find(x=>(x.owner||'butthead')===owner&&x.title===s.book&&(s.series?x.series===s.series:true)):null;
+    return`<div class="tbr-card${isDone(s)?' plan-done':''}${s.pending?' plan-pending':''}" data-plan="${s.id}">
+      <div class="tbr-cov">${b?coverTile(b.title,b.owner,'',null,40,b.series):'<div class="ct ct-ph" style="width:40px;height:60px"><span>?</span></div>'}</div>
+      <div class="tbr-info"><div class="tbr-ser">${isDone(s)?'✓ ':''}${esc(s.label||(b?b.title:''))}</div>
+        <div class="tbr-prog">${[s.media,s.genre,s.length].filter(Boolean).map(esc).join(' · ')||'<span class="ms">no shape yet</span>'}${s.pending?' <span class="badge b-gold">pending</span>':''}</div>
+        <div class="tbr-next">${b?`<strong>${esc(b.title)}</strong>${b.series&&b.series!=='Standalones'?' <span class="ms">'+esc(b.series)+(b.seq?' #'+esc(b.seq):'')+'</span>':''} ${b.read?'<span class="badge b-teal">read</span>':b.owned?'<span class="badge b-green">on the shelf</span>':'<span class="badge b-coral">not owned</span>'}`:'<span class="ms">no book pinned yet</span>'}${s.notes?`<div class="ms">${esc(s.notes)}</div>`:''}</div>
+        <div class="tbr-acts">${s.id?`<button class="log-act" onclick="planToggleDone(${i})">${s.done?'↺ not done':'✓ Done'}</button><button class="log-act" onclick="planEditRow(${i})" title="edit the slot or pin a book">✎</button><button class="log-act" onclick="planRemove(${i})" title="drop the slot">✕</button>`:'<span class="ms">saving…</span>'}</div>
+        <div id="plan-ed-${i}" style="display:none"></div>
+      </div></div>`;}).join('')||'<div class="ms">No slots yet — add a few shapes below, or paste your Keep list.</div>';
+  const titles=planTitles(owner),genresV=(G.vocab&&G.vocab.genre)||[];
+  document.getElementById('plan-add').innerHTML=`
+    <div class="log-frow"><label>Label</label><input id="plan-n-label" placeholder="e.g. long, hard sci-fi"></div>
+    <div class="log-frow"><label>Media</label><select id="plan-n-media"><option value="">—</option>${MEDIA.map(m=>`<option>${m}</option>`).join('')}</select></div>
+    <div class="log-frow"><label>Genre</label><input id="plan-n-genre" list="plan-dl-genre" placeholder="optional"><datalist id="plan-dl-genre">${genresV.map(g=>`<option>${esc(g)}</option>`).join('')}</datalist></div>
+    <div class="log-frow"><label>Length</label><select id="plan-n-length">${PLAN_LENGTHS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select></div>
+    <div class="log-frow"><label>Book</label><input id="plan-n-book" list="plan-dl-book" placeholder="pin a register book (optional)"><datalist id="plan-dl-book">${titles.map(t=>`<option>${esc(t)}</option>`).join('')}</datalist></div>
+    <div class="log-frow"><label>Notes</label><input id="plan-n-notes" placeholder="optional"></div>
+    <button class="log-act primary" onclick="planAdd()">Add slot to ${planYear}</button>
+    <div class="log-frow" style="margin-top:14px"><label>Paste list</label><textarea id="plan-n-bulk" rows="4" placeholder="one slot per line, straight from Keep:&#10;long, hard sci-fi&#10;cozy fantasy novella&#10;a manga run I already own" style="flex:1;font:inherit"></textarea></div>
+    <button class="log-act" onclick="planBulk()">Add every line</button> <span class="ms">media, genre and length are guessed from the words (sci-fi, cozy fantasy, novella, manga, audio…) — fix any slot with ✎</span>`;
+}
+async function planAdd(){
+  const v=id=>(document.getElementById(id)||{}).value||'';
+  const label=v('plan-n-label').trim(),bookQ=v('plan-n-book').trim();
+  if(!label&&!bookQ)return toast('Give the slot a label or pin a book',true);
+  const set={label,media:v('plan-n-media'),genre:v('plan-n-genre').trim(),length:v('plan-n-length'),notes:v('plan-n-notes').trim()};
+  if(bookQ){const b=planFindBook(bookQ);if(!b)return toast('Pick the book from the list',true);set.book={title:b.title,series:b.series==='Standalones'?'':b.series,owner:b.owner||'butthead'};}
+  if(await LOG.planSet(planYear,'add',null,set)){toast('Slot added — it lands in a minute or two');renderPlan();}
+}
+async function planBulk(){
+  const lines=((document.getElementById('plan-n-bulk')||{}).value||'').split('\n').map(s=>s.replace(/^[-*•\d.)\s]+/,'').trim()).filter(Boolean);
+  if(!lines.length)return toast('Paste at least one line',true);
+  let n=0;for(const line of lines){if(await LOG.planSet(planYear,'add',null,Object.assign({label:line},planGuess(line))))n++;else break;}
+  toast(`${n} slot${n===1?'':'s'} queued for ${planYear}`);renderPlan();
+}
+async function planToggleDone(i){const s=(G._planSlots||[])[i];if(!s||!s.id)return;if(await LOG.planSet(planYear,'update',s.id,{done:!s.done}))renderPlan();}
+async function planRemove(i){const s=(G._planSlots||[])[i];if(!s||!s.id)return;if(!confirm(`Drop the slot “${s.label||s.book}”?`))return;if(await LOG.planSet(planYear,'remove',s.id,{}))renderPlan();}
+function planEditRow(i){
+  const s=(G._planSlots||[])[i],el=document.getElementById('plan-ed-'+i);if(!s||!el)return;
+  if(el.style.display!=='none'){el.style.display='none';return;}
+  el.style.display='';
+  const titles=planTitles(OWNER==='all'?'butthead':OWNER);
+  el.innerHTML=`<div class="log-frow"><label>Label</label><input id="plan-e-label-${i}" value="${esc(s.label)}"></div>
+    <div class="log-frow"><label>Media</label><select id="plan-e-media-${i}"><option value="">—</option>${MEDIA.map(m=>`<option${m===s.media?' selected':''}>${m}</option>`).join('')}</select></div>
+    <div class="log-frow"><label>Genre</label><input id="plan-e-genre-${i}" list="plan-dl-genre" value="${esc(s.genre)}"></div>
+    <div class="log-frow"><label>Length</label><select id="plan-e-length-${i}">${PLAN_LENGTHS.map(([v,l])=>`<option value="${v}"${v===s.length?' selected':''}>${l}</option>`).join('')}</select></div>
+    <div class="log-frow"><label>Book</label><input id="plan-e-book-${i}" list="plan-dl-edit-${i}" value="${esc(s.book?s.book+(s.series?' — '+s.series:''):'')}" placeholder="blank = unpin"><datalist id="plan-dl-edit-${i}">${titles.map(t=>`<option>${esc(t)}</option>`).join('')}</datalist></div>
+    <div class="log-frow"><label>Notes</label><input id="plan-e-notes-${i}" value="${esc(s.notes)}"></div>
+    <button class="log-act primary" onclick="planSaveEdit(${i})">Save changed fields</button>`;
+}
+async function planSaveEdit(i){
+  const s=(G._planSlots||[])[i];if(!s||!s.id)return;
+  const v=id=>(document.getElementById(id)||{}).value||'';
+  const set={};
+  const label=v(`plan-e-label-${i}`).trim();if(label!==s.label)set.label=label;
+  const media=v(`plan-e-media-${i}`);if(media!==s.media)set.media=media;
+  const genre=v(`plan-e-genre-${i}`).trim();if(genre!==s.genre)set.genre=genre;
+  const length=v(`plan-e-length-${i}`);if(length!==s.length)set.length=length;
+  const notes=v(`plan-e-notes-${i}`).trim();if(notes!==s.notes)set.notes=notes;
+  const bq=v(`plan-e-book-${i}`).trim(),cur=s.book?s.book+(s.series?' — '+s.series:''):'';
+  if(bq!==cur){if(!bq)set.book='';else{const b=planFindBook(bq);if(!b)return toast('Pick the book from the list',true);set.book={title:b.title,series:b.series==='Standalones'?'':b.series,owner:b.owner||'butthead'};}}
+  if(!Object.keys(set).length)return toast('Nothing changed',true);
+  if(await LOG.planSet(planYear,'update',s.id,set))renderPlan();
 }
 function renderThisYear(year){
   tyYear=year;
@@ -2094,15 +2233,58 @@ function renderThisYear(year){
   const bBadge={Print:'b-gold',Audio:'b-teal',Manga:'b-purple',Comics:'b-green',eBook:'b-teal','Graphic Novel':'b-coral','Short Stories':'b-coral'};
   document.getElementById('ty-books').innerHTML=books.map(b=>`<tr><td class="nr" style="color:var(--text3);font-family:var(--font-m)">${b.num}</td><td class="nr" style="color:var(--text3);font-family:var(--font-m)">${b.date}</td><td>${b.title}</td><td>${b.genre}</td><td><span class="badge ${bBadge[b.media]||'b-gray'}">${b.media}</span></td><td class="nr" style="font-family:var(--font-m);color:var(--text3)">${b.pages>0?fmt(b.pages):'—'}</td></tr>`).join('');
 }
+// Per person, from the register's own credits (Book Authors tab) over the
+// books the header shows: a co-written series no longer hands every
+// co-author the whole series (John, 2026-09-23: "what are all these Douglas
+// Niles books? 47?" — his credits say 28). Groups (Various…) are skipped;
+// a book without credit rows falls back to its author line.
+function authorStats(){
+  const nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const groups=new Set((G.authors||[]).filter(a=>a.kind==='group').map(a=>a.name));
+  const m={};
+  for(const b of (G.indBooks||[])){
+    const cr=((G.bookAuthors||{})[nk(b.title)+'|'+(b.owner||'butthead')]||[]).filter(c=>c.role==='author').map(c=>c.name);
+    const ppl=cr.length?cr:peopleOf(b.author);
+    const sname=b.series&&b.series!=='Standalones'?seriesLabel(b):'';
+    for(const p of new Set(ppl)){
+      if(!p||groups.has(p)||/various/i.test(p))continue;
+      const a=m[p]=m[p]||{name:p,tracked:0,read:0,owned:0,series:{}};
+      a.tracked++;if(b.read)a.read++;if(b.owned)a.owned++;
+      if(sname){const s=a.series[sname]=a.series[sname]||{n:0,read:0,owned:0};s.n++;if(b.read)s.read++;if(b.owned)s.owned++;}
+      else{const s=a.series['(standalone)']=a.series['(standalone)']||{n:0,read:0,owned:0};s.n++;if(b.read)s.read++;if(b.owned)s.owned++;}
+    }
+  }
+  return Object.values(m).sort((a,b)=>b.tracked-a.tracked||a.name.localeCompare(b.name));
+}
+let compSort='tracked',compQ='',compAll=false;
+function compAuthorsRender(){
+  const el=document.getElementById('comp-authors');if(!el)return;
+  const all=G._authorStats||[];
+  const q=compQ.toLowerCase();
+  let rows=all.filter(a=>!q||a.name.toLowerCase().includes(q)||Object.keys(a.series).some(s=>s.toLowerCase().includes(q)));
+  const key={tracked:(a,b)=>b.tracked-a.tracked,read:(a,b)=>b.read-a.read,pctread:(a,b)=>pctN(b.read,b.tracked)-pctN(a.read,a.tracked)||b.tracked-a.tracked,pctowned:(a,b)=>pctN(b.owned,a.tracked)-pctN(a.owned,a.tracked)||b.tracked-a.tracked,shelf:(a,b)=>(b.owned-b.read)-(a.owned-a.read),name:(a,b)=>a.name.localeCompare(b.name)}[compSort]||((a,b)=>b.tracked-a.tracked);
+  rows=rows.slice().sort(key);
+  const shown=compAll?rows:rows.slice(0,60);
+  const ser=a=>Object.entries(a.series).sort((x,y)=>y[1].n-x[1].n).map(([s,v])=>`<span class="badge ${v.read===v.n?'b-teal':v.read?'b-gold':'b-gray'}" title="${v.read} read · ${v.owned} owned of ${v.n}">${esc(s)} ${v.read}/${v.n}</span>`).join(' ');
+  el.innerHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+      <input id="comp-q" value="${esc(compQ)}" placeholder="person or series" oninput="compQ=this.value;compAuthorsRender();document.getElementById('comp-q').focus()" style="font:inherit;font-size:12px;padding:4px 8px;border:1px solid var(--border2);border-radius:6px;min-width:200px">
+      <select onchange="compSort=this.value;compAuthorsRender()" style="font:inherit;font-size:12px;padding:4px 6px">${[['tracked','most tracked'],['read','most read'],['pctread','% read'],['pctowned','% owned'],['shelf','most on the shelf unread'],['name','name']].map(([k,l])=>`<option value="${k}"${compSort===k?' selected':''}>${l}</option>`).join('')}</select>
+      <span class="ms">${all.length} people · counts are books credited to the person, per the register</span></div>
+    <div class="tw"><table><thead><tr><th>Author</th><th class="nr">Tracked</th><th class="nr">Read</th><th class="nr">Owned</th><th class="nr">Read %</th><th class="nr">Owned %</th><th>Series</th></tr></thead><tbody>
+    ${shown.map(a=>`<tr><td><strong>${esc(a.name)}</strong></td><td class="nr">${a.tracked}</td><td class="nr" style="color:var(--teal)">${a.read}</td><td class="nr">${a.owned}</td><td class="nr">${pctN(a.read,a.tracked)}%</td><td class="nr">${pctN(a.owned,a.tracked)}%</td><td style="max-width:520px">${ser(a)}</td></tr>`).join('')||'<tr><td colspan="7" class="ms">Nobody matches.</td></tr>'}
+    </tbody></table></div>
+    ${rows.length>shown.length?`<button class="log-act" style="margin-top:8px" onclick="compAll=true;compAuthorsRender()">Show all ${rows.length}</button>`:''}`;
+}
 function renderCompletion(bm){
   // Quadrant bubble: x=% owned of tracked, y=% read of tracked, r=total count (scaled)
-  const authors=Object.entries(bm.byAuthor)
-    .filter(([a,d])=>d.tracked>=3&&a&&a!=='Various'&&!a.toLowerCase().includes('various')&&a!=='(unassigned)')
-    .map(([a,d])=>({
-      a,tracked:d.tracked,read:d.read,owned:d.owned,
-      pctOwned:pctN(d.owned,d.tracked),
-      pctRead:pctN(d.read,d.tracked)
+  G._authorStats=authorStats();
+  const authors=G._authorStats.filter(a=>a.tracked>=3)
+    .map(a=>({
+      a:a.name,tracked:a.tracked,read:a.read,owned:a.owned,
+      pctOwned:pctN(a.owned,a.tracked),
+      pctRead:pctN(a.read,a.tracked)
     }));
+  compAuthorsRender();
 
   // Colour by quadrant: top-right=teal(owned&read), top-left=gold(read but not owned), bottom-right=purple(owned unread), bottom-left=coral(neither much)
   function qColor(x,y){
@@ -2429,8 +2611,17 @@ function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 // Stored URL first: jerry resolves works to OL cover IDs (unlimited); the
 // by-ISBN endpoint is rate-limited (100/IP/5 min) so it is only the fallback
 // for works the resolver hasn't reached yet.
-function coverSrcs(title,owner,isbnOverride){
-  const bi=(G.bookIsbn||{})[(title||'').toLowerCase().replace(/[^a-z0-9]/g,'')+'|'+(owner||'butthead')]||{};
+// `series` picks the exact work when two share a title on one shelf; the
+// bare-title key only answers while it is unique.
+function coverSrcs(title,owner,isbnOverride,series){
+  const nt=(title||'').toLowerCase().replace(/[^a-z0-9]/g,''),o=owner||'butthead';
+  let want=series==null?null:String(series).toLowerCase();if(want==='standalones')want='';
+  const bySer=want!=null?(G.bookIsbnBySeries||{})[nt+'|'+(want||'standalones')+'|'+o]:null;
+  const bt=(G.bookIsbn||{})[nt+'|'+o];
+  // the bare-title record only answers when the caller names no series or
+  // the same one — VanderMeer's Annihilation never borrows the Forgotten
+  // Realms cover just because that row is the only one with an ISBN
+  const bi=bySer||(bt&&(want==null||(bt.series||'').toLowerCase()===want)?bt:null)||{};
   const isbn=isbnOverride||((bi.isbns||[])[0]);
   const s=[];
   if(bi.cover)s.push(bi.cover);
@@ -2439,11 +2630,13 @@ function coverSrcs(title,owner,isbnOverride){
 }
 // A cover tile (2:3) that degrades to a titled placeholder when no source
 // has an image — grids stay complete either way. `w` in px (default 60).
-function coverTile(title,owner,sub,isbn,w){
-  const srcs=coverSrcs(title,owner,isbn),tip=esc(title)+(sub?' — '+esc(sub):'');
+// referrerpolicy=no-referrer: MangaDex's CDN answers a page referer with
+// its "visit mangadex" placard instead of the cover (John, 2026-09-23).
+function coverTile(title,owner,sub,isbn,w,series){
+  const srcs=coverSrcs(title,owner,isbn,series),tip=esc(title)+(sub?' — '+esc(sub):'');
   const sz=w?` style="width:${w}px;height:${Math.round(w*1.5)}px"`:'';
   if(!srcs.length)return`<div class="ct ct-ph"${sz} title="${tip}"><span>${esc(title)}</span></div>`;
-  return`<div class="ct"${sz} title="${tip}"><img loading="lazy" alt="" src="${esc(srcs[0])}" data-alt="${srcs.slice(1).map(esc).join('|')}" onerror="var a=(this.dataset.alt||'').split('|').filter(Boolean);if(a.length){this.dataset.alt=a.slice(1).join('|');this.src=a[0];}else{var p=this.parentNode,s=document.createElement('span');s.textContent=(p.getAttribute('title')||'').split(' — ')[0];p.classList.add('ct-ph');p.replaceChild(s,this);}"></div>`;
+  return`<div class="ct"${sz} title="${tip}"><img loading="lazy" alt="" referrerpolicy="no-referrer" src="${esc(srcs[0])}" data-alt="${srcs.slice(1).map(esc).join('|')}" onerror="var a=(this.dataset.alt||'').split('|').filter(Boolean);if(a.length){this.dataset.alt=a.slice(1).join('|');this.src=a[0];}else{var p=this.parentNode,s=document.createElement('span');s.textContent=(p.getAttribute('title')||'').split(' — ')[0];p.classList.add('ct-ph');p.replaceChild(s,this);}"></div>`;
 }
 // Year in covers: one row per month in reading order (This Year tab).
 // Year-tab dates are 'M/D' or ISO; anything else lands in an undated row.
@@ -2454,14 +2647,20 @@ function renderYearCovers(books){
   const rows={};
   for(const b of books){const k=mo(b.date);(rows[k]=rows[k]||[]).push(b);}
   const keys=Object.keys(rows).map(Number).sort((a,b)=>a-b);
-  el.innerHTML=keys.length?keys.map(k=>`<div class="ycrow"><div class="ycmo">${k?MONTHS[k-1]:'Undated'} <span class="ms">· ${rows[k].length}</span></div><div class="cstrip">${rows[k].sort((a,b)=>a.num-b.num).map(b=>coverTile(b.title,'butthead',[b.genre,b.media].filter(Boolean).join(' · '))).join('')}</div></div>`).join('')
+  // The year tab only names the title; the register row read that year
+  // supplies the series so a shared title (Annihilation) gets its own cover.
+  const nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const yr=String(typeof tyYear!=='undefined'?tyYear:new Date().getFullYear());
+  const serOf=t=>{const c=(G.allIndBooks||[]).filter(x=>(x.owner||'butthead')==='butthead'&&nk(x.title)===nk(t));
+    const pick=c.length===1?c[0]:c.find(x=>(x.readOn||'').startsWith(yr));return pick?pick.series:(c.length?' ':'');};
+  el.innerHTML=keys.length?keys.map(k=>`<div class="ycrow"><div class="ycmo">${k?MONTHS[k-1]:'Undated'} <span class="ms">· ${rows[k].length}</span></div><div class="cstrip">${rows[k].sort((a,b)=>a.num-b.num).map(b=>coverTile(b.title,'butthead',[b.genre,b.media].filter(Boolean).join(' · '),null,undefined,serOf(b.title))).join('')}</div></div>`).join('')
     :'<div class="ms">Nothing finished yet this year.</div>';
 }
 // A capped horizontal strip of covers (To Read, Coming Up).
 function coverStrip(items,cap){
   const shown=items.slice(0,cap||60);
   if(!shown.length)return'';
-  return`<div class="cstrip cstrip-h">${shown.map(b=>coverTile(b.title,b.owner||'butthead',b.sub||'',null)).join('')}${items.length>shown.length?`<div class="ct ct-ph ct-more"><span>+${items.length-shown.length} more</span></div>`:''}</div>`;
+  return`<div class="cstrip cstrip-h">${shown.map(b=>coverTile(b.title,b.owner||'butthead',b.sub||'',null,undefined,b.series)).join('')}${items.length>shown.length?`<div class="ct ct-ph ct-more"><span>+${items.length-shown.length} more</span></div>`:''}</div>`;
 }
 // Cover zoom — hover on desktop, tap on touch — for every .ct / .log-thumb
 // image: the large edition of whatever URL the tile actually loaded, with a
@@ -2472,7 +2671,7 @@ function coverBig(src){
 (function(){
   const sel='.ct img,.log-thumb img';
   let box=null,pinned=false;
-  function ensure(){if(box)return box;box=document.createElement('div');box.id='cover-zoom';box.innerHTML='<img alt=""><div class="cz-cap"></div>';document.body.appendChild(box);return box;}
+  function ensure(){if(box)return box;box=document.createElement('div');box.id='cover-zoom';box.innerHTML='<img alt="" referrerpolicy="no-referrer"><div class="cz-cap"></div>';document.body.appendChild(box);return box;}
   function caption(img){
     const tile=img.closest('.ct,.log-thumb');
     if(tile&&tile.getAttribute('title'))return tile.getAttribute('title');
@@ -2808,12 +3007,14 @@ function switchYear(y){tyYear=y;rendered.delete('thisyear');renderTab('thisyear'
 function updateHash(sec,tab){
   try{history.replaceState(null,'',`#${sec}/${tab}`);}catch(e){}
 }
+// The tab bar sticks just under the masthead, whatever height it wraps to.
+(function(){const h=document.querySelector('header');const set=()=>document.documentElement.style.setProperty('--hdr-h',(h?h.offsetHeight:48)+'px');window.addEventListener('resize',set);window.addEventListener('load',set);set();})();
 
 function restoreFromHash(){
   const hash=(location.hash||'').replace('#','');
   const[sec,tab]=hash.split('/');
   const validSecs=new Set(['tracking','reading','buying','collecting','bookclub','log']);
-  const validTabs=new Set(['overview','bytype','genre','universe','rooms','tbr','history','thisyear','completion','byseries','toread','comingup','bookmail','toacquire','someday','libgrowth','buythisyear','col-fr','col-dl','col-sr','flyer','bnauthors','logbook','logorders','logpending','logproposed','logmeta']);
+  const validTabs=new Set(['overview','bytype','genre','universe','rooms','tbr','plan','history','thisyear','completion','byseries','toread','comingup','bookmail','toacquire','someday','libgrowth','buythisyear','col-fr','col-dl','col-sr','flyer','bnauthors','logbook','logorders','logpending','logproposed','logmeta']);
   const validFRTabs=new Set(['fr-overview','fr-series','fr-completion']);
   const validDLTabs=new Set(['dl-overview','dl-series','dl-completion']);
   const validSRTabs=new Set(['sr-overview','sr-publisher','sr-completion']);
@@ -2852,6 +3053,7 @@ function renderTabInner(id){
   else if(id==='universe')renderUniverse(bm);
   else if(id==='rooms')renderRooms(bm);
   else if(id==='tbr')renderTBR();
+  else if(id==='plan')renderPlan();
   else if(id==='history')renderHistory(H?G.metrics:{});
   else if(id==='thisyear'){
     if(!document.querySelector('#year-tog button'))document.getElementById('year-tog').innerHTML=YEARS.map(y=>`<button data-y="${y}" onclick="switchYear(${y})">${y}</button>`).join('');
@@ -4279,6 +4481,7 @@ const LOG=(()=>{
       case'track_series':return`🔍 Track series: ${p.series}${p.author?' ('+p.author+')':''}`;
       case'sync_request':return p.source==='upcoming'?`🔭 Scan for upcoming books${p.owner&&p.owner!=='all'?' · '+(OWNER_LABEL[p.owner]||p.owner):''}`:`⟳ Sync from ${p.source||'all sources'}`;
       case'goodreads_link':return`🔗 Goodreads “${p.gr_title||p.gr_book_id}” ${p.action==='unlink'?'unlinked':'→ “'+b.title+'”'}`;
+      case'plan_set':{const s=p.set||{};return`📝 Plan ${p.year} ${p.action||'add'}${p.id?' #'+p.id:''}: ${s.label||(s.book&&s.book.title)||Object.keys(s).join(', ')||''}`;}
       case'order_new':return p.list==='bookboxes'
         ?`🎁 Box: ${p.vendor}${p.box?' '+p.box:''} — ${p.title||'title TBA'}${p.want&&p.want!=='Yes'?' · want: '+p.want:''}`
         :`🧾 New order ${p.order||''}${p.store?' at '+p.store:''} — ${p.books||'?'}`;
@@ -4387,7 +4590,7 @@ const LOG=(()=>{
     return`<div class="log-item">
       <div class="log-item-hd">
         ${dots}
-        ${thumbHTML(b.title,b.owner)}
+        ${thumbHTML(b.title,b.owner,null,null,b.series)}
         <div class="log-item-info">
           <div class="log-item-title">${esc(b.title)}${pendMark}${needMark}${missMark}</div>
           <div class="log-item-meta">${esc(seriesLabel(b))}${b.seq?' #'+esc(b.seq):''} · ${esc(b.author)}${rolesTag(b)}${b.media?' · '+esc(b.media):''}${b.pubDate?' · '+esc(b.pubDate):''}${OWNER==='all'?' · '+(OWNER_LABEL[b.owner]||''):''}${(G.inCopy&&G.inCopy[b.title.toLowerCase().replace(/[^a-z0-9]/g,'')+'|'+b.owner]||[]).map(t=>` · <span style="color:var(--purple)">in: ${esc(t)}</span>`).join('')}${(G.editionOf&&G.editionOf[b.title.toLowerCase().replace(/[^a-z0-9]/g,'')+'|'+b.owner]||[]).map(t=>` · <span style="color:var(--gold)">${esc(t)}</span>`).join('')}</div>
@@ -4678,6 +4881,14 @@ const LOG=(()=>{
       .forEach(ev=>{const p=ev.payload||{},b=p.book;if(b)m.set(b.title+'|'+(b.series||''),{action:p.action||'add',position:p.position,owner:b.owner||ev.by||'butthead'});});
     return m;
   }
+  // Reading plan (migration 027): one slot in, changed or out; pending
+  // events overlay the bundle's rows until jerry's next publish.
+  async function planSet(year,action,id,set){
+    const owner=OWNER==='all'?'butthead':OWNER;
+    const p={year,action,set:set||{}};if(id)p.id=id;
+    return submit('plan_set',p,null,owner);
+  }
+  function pendingPlan(){const seen=new Set();return[...(pendCache||[]),...sent().filter(e=>!BUNDLE||e.at>BUNDLE.generated_at)].filter(e=>e.type==='plan_set'&&!seen.has(e.id)&&seen.add(e.id)).sort((a,b)=>a.at<b.at?-1:1);}
   // Goodreads hand links (migration 026): pending until jerry applies them.
   function pendingLinks(){
     const ks=new Set();
@@ -4868,10 +5079,10 @@ const LOG=(()=>{
   // the .log-thumb gutter stays so rows keep their alignment either way.
   // coverSrcs is shared page-wide (defined next to esc); thumbHTML is the
   // Log-row flavour that keeps its gutter on a miss.
-  function thumbHTML(title,owner,isbnOverride,w){
-    const srcs=coverSrcs(title,owner,isbnOverride);
+  function thumbHTML(title,owner,isbnOverride,w,series){
+    const srcs=coverSrcs(title,owner,isbnOverride,series);
     if(!srcs.length)return'<div class="log-thumb"></div>';
-    return`<div class="log-thumb"${w?` style="width:${w}px;min-width:${w}px"`:''}><img loading="lazy" alt="" src="${esc(srcs[0])}" data-alt="${srcs.slice(1).map(esc).join('|')}"${w?` style="width:${w}px"`:''} onerror="var a=(this.dataset.alt||'').split('|').filter(Boolean);if(a.length){this.dataset.alt=a.slice(1).join('|');this.src=a[0];}else this.style.visibility='hidden'"></div>`;
+    return`<div class="log-thumb"${w?` style="width:${w}px;min-width:${w}px"`:''}><img loading="lazy" alt="" referrerpolicy="no-referrer" src="${esc(srcs[0])}" data-alt="${srcs.slice(1).map(esc).join('|')}"${w?` style="width:${w}px"`:''} onerror="var a=(this.dataset.alt||'').split('|').filter(Boolean);if(a.length){this.dataset.alt=a.slice(1).join('|');this.src=a[0];}else this.style.visibility='hidden'"></div>`;
   }
   function isbnNorm(s){return String(s||'').toUpperCase().replace(/[^0-9X]/g,'');}
   let isbnPrefill='';
@@ -5587,7 +5798,7 @@ const LOG=(()=>{
     toggleOrderHistory,findInRegister,storeFromOrderNo,logFlyerOrders,trackSeriesFromIsbn,submitTrackSeries,
     finishBook,setNeed,pendingBooks,today,queueSet,pendingQueue,acquireBook,setPubDate,
     renderPeople,doAuthorMerge,doAuthorRename,doAuthorAlias,addCreditRow,saveCredits,
-    pendingLinks,linkGoodreads,prefillAdd,doScanUpcoming};
+    pendingLinks,linkGoodreads,prefillAdd,doScanUpcoming,planSet,pendingPlan};
 })();
 
 async function init(){
@@ -5656,13 +5867,23 @@ async function init(){
     // ISBNs tab: identifiers (owned-edition first) + best stored cover URL.
     // isbnMap answers "do I have this exact edition?"; bookIsbn drives the
     // cover thumbnails (OL by-ISBN first, stored cover_url as fallback).
-    G.bookIsbn={};G.isbnMap={};
+    // Keys: title|series|owner (exact) and title|owner — the latter only
+    // while it is unique: two Annihilations on one shelf share a title,
+    // never a cover (John, 2026-09-23).
+    G.bookIsbn={};G.bookIsbnBySeries={};G.isbnMap={};
+    const dupTitle=new Set();
     for(const r of (BUNDLE.tabs['bookdb|ISBNs']||[]).slice(1)){
-      const k=(r[0]||'').toLowerCase().replace(/[^a-z0-9]/g,'')+'|'+r[1];
+      const nt=(r[0]||'').toLowerCase().replace(/[^a-z0-9]/g,''),k=nt+'|'+r[1];
       const isbns=(r[2]||'').split('|').filter(Boolean);
-      G.bookIsbn[k]={isbns,cover:(r[3]||'').replace(/^http:/,'https:')};
+      const rec={isbns,cover:(r[3]||'').replace(/^http:/,'https:'),series:(r[4]||'').trim(),id:(r[5]||'').trim()};
+      G.bookIsbnBySeries[nt+'|'+((r[4]||'').trim()||'Standalones').toLowerCase()+'|'+r[1]]=rec;
+      if(k in G.bookIsbn)dupTitle.add(k);else G.bookIsbn[k]=rec;
       for(const i of isbns)if(!(i in G.isbnMap))G.isbnMap[i]={title:r[0],owner:r[1]};
     }
+    dupTitle.forEach(k=>{delete G.bookIsbn[k];});
+    // Reading plan (bookdb|Plan): Id|Owner|Year|Position|Label|Media|Genre|
+    // Length|Book|Series|Done|Notes|BookRead
+    G.plan=(BUNDLE.tabs['bookdb|Plan']||[]).slice(1).map(r=>({id:+r[0],owner:(r[1]||'butthead').trim(),year:+r[2],pos:parseFloat(r[3])||0,label:(r[4]||'').trim(),media:(r[5]||'').trim(),genre:(r[6]||'').trim(),length:(r[7]||'').trim(),book:(r[8]||'').trim(),series:(r[9]||'').trim(),done:(r[10]||'').trim().toLowerCase()==='x',notes:(r[11]||'').trim(),bookRead:(r[12]||'').trim().toLowerCase()==='x'})).filter(p=>p.id);
     if(!Object.keys(G.vocab).length){
       const add=(k,v)=>{if(!v)return;const a=G.vocab[k]=G.vocab[k]||[];if(!a.includes(v))a.push(v);};
       G.allIndBooks.forEach(b=>{add('genre',b.type);add('sub_genre',b.subGenre);add('media',b.media);add('publisher',b.publisher);});

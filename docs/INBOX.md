@@ -349,6 +349,22 @@ display strings regenerate. `kind` is `variant`, `inverted`, `initials`,
 `typo`, or `pseudonym`. `rename` changes the canonical spelling and keeps
 the old one as an alias. `alias` adds a spelling without merging anything.
 
+### `plan_set` — a year's reading plan (migration 027)
+Rough intentions for a year ("long hard sci-fi", "cozy fantasy novella"),
+optionally pinned to a register book later; the Reading › Plan tab checks
+them against the year's targets. `by` owns the slot.
+```json
+{"year": 2027, "action": "add",
+ "set": {"label": "long, hard sci-fi", "media": "Print", "genre": "Scifi", "length": "long"}}
+{"year": 2027, "action": "update", "id": 12,
+ "set": {"book": {"title": "Blindsight", "series": "", "owner": "butthead"}, "done": true}}
+{"year": 2027, "action": "remove", "id": 12}
+```
+`action` is `add` (position appends when absent), `update` or `remove`
+(both need the bundle's `Id`). `set` keys: `label, media, genre, length
+(short|medium|long|doorstop), book (exact ref, or blank to unpin), position,
+done, notes`. A slot needs a label or a book.
+
 ### `queue_set` — the hand-picked TBR ("Next up")
 One register book in, out, or moved within the reader's own queue
 (`reading_queue`, migration 023). `position` is a float the dashboard

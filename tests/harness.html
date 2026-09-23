@@ -299,6 +299,34 @@ async function main(){
     w().setOwner('butthead');
   });
 
+  await check('Completion by-author table comes from the credits',async()=>{
+    await go('completion','reading');
+    const ba=tget('Book Authors');
+    const nk=s=>(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    const titles=new Set(ba.slice(1).filter(r=>r[3]==='Douglas Niles'&&r[4]==='author'&&(r[1]||'butthead')==='butthead').map(r=>nk(r[0])));
+    const want=ind.slice(1).filter(r=>(r[10]||'butthead')==='butthead'&&titles.has(nk(r[0]))).length;
+    const q=doc().getElementById('comp-q');q.value='Douglas Niles';q.dispatchEvent(new (w().Event)('input',{bubbles:true}));
+    await new Promise(r=>setTimeout(r,200));
+    const row=[...doc().querySelectorAll('#comp-authors tbody tr')].find(tr=>tr.textContent.includes('Douglas Niles'));
+    const shown=row?norm(row.children[1].textContent):-1;
+    res('Completion by-author table comes from the credits',shown===want&&want>0,`Douglas Niles: table ${shown} vs credits ${want}`);
+  });
+
+  await check('Plan tab renders with a year toggle and add form',async()=>{
+    await go('plan','reading');
+    const yrs=doc().querySelectorAll('#plan-tog button').length,form=!!doc().getElementById('plan-n-label');
+    const active=doc().querySelector('#plan-tog button.active')?.textContent||'';
+    const plan=tget('Plan');
+    const slots=plan?plan.slice(1).filter(r=>(r[1]||'butthead')==='butthead'&&String(r[2])===active).length:0;
+    const cards=doc().querySelectorAll('#plan-list .tbr-card').length;
+    res('Plan tab renders with a year toggle and add form',yrs>=2&&form&&cards===slots,`${yrs} years, active ${active}, ${cards} slots vs tab ${slots}`);
+  });
+
+  await check('Masthead is sticky and slim',async()=>{
+    const h=doc().querySelector('header');const cs=w().getComputedStyle(h);
+    res('Masthead is sticky and slim',cs.position==='sticky'&&h.offsetHeight<90&&!!h.querySelector('.sec-nav'),`position ${cs.position}, height ${h.offsetHeight}px, nav inside ${!!h.querySelector('.sec-nav')}`);
+  });
+
   res('no runtime errors in the app',errors.length===0,errors.slice(0,3).join(' | '));
   draw();
 }
