@@ -947,6 +947,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div style="display:flex;gap:8px;margin-bottom:1.2rem;flex-wrap:wrap">
         <button class="log-act" onclick="LOG.doSyncRequest('goodreads')">⟳ Sync Goodreads</button>
         <button class="log-act" onclick="LOG.doScanUpcoming()" title="Google Books newest per author + Wikidata series rosters, for every series with a book read — finds land here as proposals">🔭 Scan for upcoming books</button>
+        <button class="log-act" onclick="LOG.doSyncRequest('boxes')" title="re-read the Book Boxes tab of Shereen's sheet — rows marked Ordered flag as on the way">⟳ Sync Shereen's sheet</button>
         <button class="log-act" onclick="document.getElementById('log-libib-file').click()">⇪ Import Libib CSV</button>
         <input type="file" id="log-libib-file" accept=".csv,text/csv" style="display:none" onchange="LOG.importLibib(this)">
       </div>
@@ -1167,7 +1168,10 @@ function parseBoxes(vals){
     boxes.push({author:(r[0]||'').trim(),title:(r[1]||'').trim(),want:(r[3]||'').trim(),
       ordered:(r[4]||'').trim(),received:(r[5]||'').trim(),vendor:(r[6]||'').trim(),
       box:(r[7]||'').trim(),date:(r[8]||'').trim(),eta:(r[9]||'').trim(),
-      order:(r[10]||'').trim(),tracking:(r[11]||'').trim(),notes:(r[12]||'').trim()});
+      order:(r[10]||'').trim(),tracking:(r[11]||'').trim(),notes:(r[12]||'').trim(),
+      // on the way = the sheet says Ordered and not yet Received — the only
+      // rows that count as orders anywhere (John, 2026-09-23)
+      open:(r[4]||'').trim()==='Yes'&&!(r[5]||'').trim()});
   }
   return boxes;
 }
@@ -1794,7 +1798,13 @@ function renderTBR(){
     }
   }
   const open=(G.orders||[]).filter(o=>o.delivered!=='Fulfilled'&&o.delivered!=='Cancelled');
-  const onOrder=t=>{const k=nl(t);return k?open.find(o=>nl(o.books).includes(k)||(o.contains||'').split('\n').some(l=>nl(l.replace(/\s+#\S+$/,''))===k)):null;};
+  // Com's orders are the Book Mail rows; Shereen's are her Book Boxes
+  // sheet's rows marked Ordered and not yet Received (John, 2026-09-23).
+  // Returns {store, eta} or null; the book decides whose list to ask.
+  const openBoxes=(G.boxes||[]).filter(x=>x.open);
+  const onOrder=b=>{const k=nl(b.title);if(!k)return null;
+    if(own(b)==='goblin'){const x=openBoxes.find(x=>x.title&&(nl(x.title)===k||(k.length>=8&&nl(x.title).includes(k))));return x?{store:[x.vendor,x.box].filter(Boolean).join(' '),eta:x.eta||''}:null;}
+    const o=open.find(o=>nl(o.books).includes(k)||(o.contains||'').split('\n').some(l=>nl(l.replace(/\s+#\S+$/,''))===k));return o?{store:o.store||'',eta:''}:null;};
   const inProg=series.filter(s=>s.inProg);
   const reading=tbrReadingNow(nk,owners);
   // A book on the Goodreads shelf is being read: its series lives under
@@ -1832,7 +1842,7 @@ function renderTBR(){
   // next volume isn't on the shelf (or on order) belongs under Get these
   // next only — no double listing (John, 2026-09-22).
   const byPct=(a,b)=>b.pct-a.pct||(b.last||'').localeCompare(a.last||'')||a.name.localeCompare(b.name);
-  const onShelfOrWay=s=>!s.next||s.next.owned||!!onOrder(s.next.title);
+  const onShelfOrWay=s=>!s.next||s.next.owned||!!onOrder(s.next);
   const prog=inProg.filter(s=>!focusSet.has(s)&&!beingRead(s)&&!s.gap&&(!s.next||rel(s.next)==='out')&&onShelfOrWay(s)).sort(byPct);
   // Unreleased volumes in any series with a book read: dated inside six
   // months = New book in series (with Book Notification's not-yet-adopted
@@ -1856,12 +1866,12 @@ function renderTBR(){
   const waiting=unrel.filter(x=>x.state!=='soon').map(x=>Object.assign(x,{date:/^tba$/i.test(x.b.pubDate)?'':x.b.pubDate})).sort((a,b)=>byDate(a,b)||a.s.name.localeCompare(b.s.name));
   // To get: tracked, out, not on the shelf, not on order — "if I don't own
   // it and it's tracked then I need it" (John, 2026-09-22), so no flag.
-  const toGet=inProg.filter(s=>s.next&&!beingRead(s)&&(s.gap||(!s.next.owned&&!onOrder(s.next.title)&&rel(s.next)==='out'))).sort(byPct);
+  const toGet=inProg.filter(s=>s.next&&!beingRead(s)&&(s.gap||(!s.next.owned&&!onOrder(s.next)&&rel(s.next)==='out'))).sort(byPct);
   G._tbrBooks=[];const bidx=b=>{G._tbrBooks.push(b);return G._tbrBooks.length-1;};
   const chip=nx=>{if(pendRead.has(pk(nx)))return'<span class="badge b-teal">read · pending</span>';
     if(nx._gap)return`<span class="badge b-coral">#${nx._gap} missing from the register</span>`;
-    const o=onOrder(nx.title);
-    if(o)return`<span class="badge b-gold">on order${o.store?' · '+esc(o.store):''}</span>`;
+    const o=onOrder(nx);
+    if(o)return`<span class="badge b-gold">on order${o.store?' · '+esc(o.store):''}${o.eta?' · ETA '+esc(o.eta):''}</span>`;
     if(nx.owned)return'<span class="badge b-green">on the shelf</span>';
     const r=rel(nx);
     if(r==='tba')return'<span class="badge b-gray">not out yet · TBA</span>';
@@ -1900,7 +1910,7 @@ function renderTBR(){
     </div></div>`;
   const grTile=r=>r.cover?`<div class="ct" style="width:40px;height:60px" title="${esc(r.title)}"><img loading="lazy" alt="" src="${esc(r.cover)}"></div>`:coverTile(r.title,'butthead','',r.isbn||r.isbn13||null,40);
   const bnCard=x=>`<div class="tbr-card${both?(x.s.owner==='goblin'?' own-gob':' own-com'):''}" data-ser="${esc(x.s.name)}" data-owner="${x.s.owner}"><div class="tbr-cov">${grTile(x.r)}</div><div class="tbr-info"><div class="tbr-ser">${esc(x.r.title)}</div><div class="tbr-prog">${esc(x.s.name)} · ${esc(x.r.author)} · ${x.s.read}/${x.s.total} · Book Notification, not in the register</div><div class="tbr-next"><span class="badge b-teal">📅 ${esc(x.date||'TBA')}</span></div><div class="tbr-acts"><a class="tbr-a" href="${tomboloUrl(x.r.title)}" target="_blank" rel="noopener">Tombolo ↗</a><button class="log-act" onclick="switchSection('bookclub','flyer')">flyer</button></div></div></div>`;
-  const orderChip=b=>onOrder(b.title)?' <span class="badge b-gold">on order</span>':b.owned?' <span class="badge b-green">on the shelf</span>':'';
+  const orderChip=b=>onOrder(b)?' <span class="badge b-gold">on order</span>':b.owned?' <span class="badge b-green">on the shelf</span>':'';
   const sOf=b=>by[own(b)+'|'+seriesKey(b)]||null;
   // Finished series don't belong on a to-read page (tracking and This Year
   // cover them), so the focus list shows only what still has volumes left
@@ -2343,11 +2353,17 @@ function toggleAcc(aid){
 // keyed by year; the last three months stay at the bottom as "Out now".
 function renderComingUp(){
   const el=document.getElementById('upcoming-list'),cuc=document.getElementById('cu-covers');
-  if(OWNER==='goblin'){el.innerHTML='<div class="ms">Shereen has no Coming Up list yet.</div>';if(cuc)cuc.innerHTML='';return;}
-  const items=bcBuildItems();
-  const seen=new Set(items.map(it=>bcKey(it.title)));
   const now=new Date(),cy=now.getFullYear(),cm=now.getMonth()+1,todayIso=LOG.today();
   const names=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  // Shereen's list (John, 2026-09-23): the Book Boxes sheet's rows marked
+  // Ordered and not yet Received, by ETA (else the month charged), plus her
+  // register's books with a date ahead — the same cards as Com's list.
+  const items=OWNER==='goblin'
+    ?(G.boxes||[]).filter(x=>x.open).map(x=>{const when=x.eta||x.date||'',m=when.match(/^(\d{4})-(\d{2})/);
+      return{title:x.title||[x.vendor,x.box,'box'].filter(Boolean).join(' '),author:x.author,series:'',genre:'',release:when,ordered:'Preordered',store:[x.vendor,x.box].filter(Boolean).join(' '),publisher:'',cover:'',isNew:false,src:'box',etaKnown:!!x.eta,
+        yr:m?+m[1]:9999,mo:m?+m[2]:99,moName:m?names[+m[2]-1]:'Date TBA',day:''};})
+    :bcBuildItems();
+  const seen=new Set(items.map(it=>bcKey(it.title)));
   (G.indBooks||[]).forEach(b=>{
     if(b.owned||b.read)return;
     const pd=(b.pubDate||'').trim(),tba=/^tba$/i.test(pd);
@@ -2365,13 +2381,15 @@ function renderComingUp(){
   const curKey=`${cy}-${String(cm).padStart(2,'0')}`;
   const past=it=>keyOf(it)<curKey;
   const cutoff=(()=>{const d=new Date(cy,cm-1-3,1);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;})();
-  const kept=items.filter(it=>!past(it)||keyOf(it)>=cutoff);
+  // A box charged months ago and still not received is exactly what
+  // Shereen wants to see, so box rows never age out.
+  const kept=items.filter(it=>it.src==='box'||!past(it)||keyOf(it)>=cutoff);
   const byMo={},label={};
   kept.forEach(it=>{const k=keyOf(it);(byMo[k]=byMo[k]||[]).push(it);
-    if(!label[k])label[k]=it.moName==='Date TBA'?'Date TBA':(past(it)?'Out now · ':'')+(it.mo?it.moName:'Sometime')+(it.yr!==cy&&it.yr!==9999?' '+it.yr:'');});
+    if(!label[k])label[k]=it.moName==='Date TBA'?'Date TBA':(past(it)?(it.src==='box'?'Still waiting · ':'Out now · '):'')+(it.mo?it.moName:'Sometime')+(it.yr!==cy&&it.yr!==9999?' '+it.yr:'');});
   const ahead=Object.keys(byMo).filter(k=>k>=curKey).sort(),behind=Object.keys(byMo).filter(k=>k<curKey).sort().reverse();
   const state=it=>it.ordered==='Have'?['b-green','Have it']:it.ordered==='Preordered'?['b-gold','Ordered'+(it.store?' · '+esc(it.store):'')]:it.ordered==='Scheduled'?['b-teal','On the way']:['b-coral','Not ordered'];
-  const srcBadge=it=>it.src==='bn'?'<span class="badge b-purple" style="font-size:9px">Book Notification</span>':it.src==='register'?'<span class="badge b-gray" style="font-size:9px">tracked</span>':'<span class="badge b-gray" style="font-size:9px">Interested</span>';
+  const srcBadge=it=>it.src==='bn'?'<span class="badge b-purple" style="font-size:9px">Book Notification</span>':it.src==='register'?'<span class="badge b-gray" style="font-size:9px">tracked</span>':it.src==='box'?'<span class="badge b-purple" style="font-size:9px">Book Box</span>':'<span class="badge b-gray" style="font-size:9px">Interested</span>';
   const card=it=>{const[bc,txt]=state(it);
     const tint=it.ordered==='Have'?'background:#f8f8f6;border-color:#d8d6ce;opacity:0.65':it.ordered==='Preordered'?'background:#fffdf0;border-color:#e8d88a;border-width:1.5px':it.ordered==='Scheduled'?'background:#fff;border-color:var(--border)':'background:#fff8f7;border-color:#e8b0a8;border-width:1.5px';
     const when=it.moName==='Date TBA'?'TBA':(it.mo?it.moName.slice(0,3):'')+(it.day?' '+it.day:'')+(it.yr!==cy&&it.yr!==9999?' '+it.yr:'');
@@ -2381,7 +2399,7 @@ function renderComingUp(){
       ${sub?`<div style="font-family:var(--font-m);font-size:10px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(sub)}</div>`:''}
       <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:2px;align-items:center">
         <span class="badge ${bc}" style="font-size:9px">${txt}</span>
-        <span class="badge b-teal" style="font-size:9px">📅 ${esc(when)}</span>
+        <span class="badge b-teal" style="font-size:9px">${it.src==='box'&&!it.etaKnown?'charged '+esc(when)+' · no ETA':'📅 '+esc(when)}</span>
         ${srcBadge(it)}
         ${it.genre?`<span class="badge b-purple" style="font-size:9px">${esc(it.genre)}</span>`:''}
       </div>
@@ -2393,7 +2411,7 @@ function renderComingUp(){
   el.innerHTML=[...ahead.map(group),...behind.map(group)].join('')||'<div class="ms">Nothing ahead on any list.</div>';
   // Covers strip: what is ahead, in release order; tracked titles resolve
   // through the register's identifiers, the rest get title tiles.
-  if(cuc)cuc.innerHTML=coverStrip(ahead.flatMap(k=>byMo[k]).map(it=>({title:it.title,owner:'butthead',sub:[it.series,it.author,it.release].filter(Boolean).join(' · ')})),60);
+  if(cuc)cuc.innerHTML=coverStrip(ahead.flatMap(k=>byMo[k]).map(it=>({title:it.title,owner:OWNER==='goblin'?'goblin':'butthead',sub:[it.series,it.author,it.release].filter(Boolean).join(' · ')})),60);
 }
 
 // ── Order pending-change flags (shared by the Log panel and Book Mail tab) ──
@@ -5038,20 +5056,24 @@ const LOG=(()=>{
       <div class="log-frow"><label>Notes</label><input id="log-b-notes" placeholder="Book 2, Sept YA box, …"></div>
       <button class="log-act primary" onclick="LOG.doNewBoxOrder()">Log box order</button>
       </div>`;
-      const openB=(G.boxes||[]).filter(b=>!b.received&&b.ordered!=='CANCELLED').slice().reverse();
+      // Only rows the sheet marks Ordered count as on the way (John,
+      // 2026-09-23); boxes she has pencilled in but not ordered sit apart.
+      const openB=(G.boxes||[]).filter(b=>b.open).slice().reverse();
+      const aheadB=(G.boxes||[]).filter(b=>!b.ordered&&!b.received).slice().reverse();
       const doneB=(G.boxes||[]).filter(b=>b.received).slice(-5).reverse();
       const brow=(b,i,canEdit)=>`<div class="log-item">
         <div class="log-item-hd" ${canEdit?`style="cursor:pointer" onclick="LOG.expandBox(${i})"`:''}>
           <div class="log-item-info">
             <div class="log-item-title" data-okey="${esc(ordKeyBox(b))}" data-olist="box">${esc(b.title||'Title TBA')}</div>
-            <div class="log-item-meta">${esc(b.vendor||'—')}${b.box?' · '+esc(b.box):''}${b.date?' · charged '+esc(b.date):''}${b.eta?' · ETA '+esc(b.eta):''}${b.author?' · '+esc(b.author):''}</div>
+            <div class="log-item-meta">${esc(b.vendor||'—')}${b.box?' · '+esc(b.box):''}${b.date?' · charged '+esc(b.date):''}${b.eta?' · ETA '+esc(b.eta):''}${b.order?' · #'+esc(b.order):''}${b.author?' · '+esc(b.author):''}</div>
           </div>
+          ${b.open?'<span class="badge b-gold">ordered</span>':b.received?'<span class="badge b-green">received</span>':b.ordered==='CANCELLED'?'<span class="badge b-gray">cancelled</span>':'<span class="badge b-gray">not ordered yet</span>'}
           <span class="badge ${b.want==='No'?'b-coral':b.want==='Unsure'?'b-gold':'b-green'}">${esc(b.want||'—')}</span>
         </div>
         ${canEdit?`<div class="log-exp" id="log-bexp-${i}"></div>`:''}</div>`;
-      document.getElementById('log-orders-open').innerHTML=openB.map((b,i)=>brow(b,i,true)).join('')||'<div class="ms">No open boxes.</div>';
+      document.getElementById('log-orders-open').innerHTML=`<div class="ms" style="margin-bottom:6px">${openB.length} ordered, not yet received — mirrored from Shereen's sheet (Book Boxes tab) nightly and by ⟳ Sync Shereen's sheet on the Proposed tab; edits made here stand until the sheet row changes</div>`+(openB.map((b,i)=>brow(b,i,true)).join('')||'<div class="ms">No open boxes.</div>');
       document.getElementById('log-orders-open')._openB=openB;
-      document.getElementById('log-orders-done').innerHTML=doneB.map(b=>brow(b,-1,false)).join('')||'<div class="ms">—</div>';
+      document.getElementById('log-orders-done').innerHTML=(aheadB.length?`<div class="ms" style="margin:6px 0">Pencilled in, not ordered yet · ${aheadB.length}</div>`+aheadB.map(b=>brow(b,-1,false)).join(''):'')+`<div class="ms" style="margin:10px 0 6px">Received · last 5</div>`+(doneB.map(b=>brow(b,-1,false)).join('')||'<div class="ms">—</div>');
       refreshBadge();return;
     }
     document.getElementById('log-orderform').innerHTML=tog+`
@@ -5390,7 +5412,9 @@ const LOG=(()=>{
   // ── Sync: on-demand pulls that land as proposals ──
   async function doSyncRequest(source){
     const ok=await submit('sync_request',{source},null,'butthead');
-    if(ok)toast('Sync requested — jerry runs it within a minute or two; read-shelf finds land here as proposals, the currently-reading shelf on TBR');
+    if(ok)toast(source==='boxes'
+      ?"Sync requested — jerry re-reads the Book Boxes tab of Shereen's sheet within a minute or two; rows marked Ordered then flag on her TBR, Coming Up and the Orders tab"
+      :'Sync requested — jerry runs it within a minute or two; read-shelf finds land here as proposals, the currently-reading shelf on TBR');
   }
   // Libib has no API: the sync is a fresh CSV export parsed HERE, diffed
   // against the register; new titles leave as add_book events (which land as

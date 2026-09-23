@@ -276,7 +276,12 @@ once; the 2026-07-24 rule stands).
 ```json
 {"source": "goodreads"}
 ```
-`source` is `goodreads` | `libib` | `upcoming` | `all`. Goodreads needs the
+`source` is `goodreads` | `libib` | `boxes` | `upcoming` | `all`. `boxes`
+(2026-09-23) re-reads the Book Boxes tab of Shereen's sheet into
+`book_boxes` (`sync_book_boxes.py`; also nightly at 02:25) — her system of
+record for subscription boxes; the dashboard treats rows marked Ordered and
+not yet Received as her open orders (TBR chips, Coming Up, Log › Orders).
+Rows the Log view created or edited keep their app values. Goodreads needs the
 My Books RSS URL (shelf=read, with `key=`) in `jobs/.goodreads_rss` on jerry
 (Shereen's in `jobs/.goodreads_rss_goblin`; each file is optional and every
 row and proposal is scoped to its owner); it also runs nightly at 02:20.

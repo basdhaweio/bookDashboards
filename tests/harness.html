@@ -281,6 +281,24 @@ async function main(){
     res('Goodreads unmatched row offers Add and Link',!!gr&&adds===miss&&links===miss,`${miss} unmatched shelf row(s); ${adds} Add, ${links} Link buttons`);
   });
 
+  await check("Shereen's Coming Up and Orders flag only ordered boxes",async()=>{
+    const bx=tget('Book Boxes');
+    const open=bx?bx.slice(1).filter(r=>(r[4]||'').trim()==='Yes'&&!(r[5]||'').trim()&&((r[1]||'').trim()||(r[6]||'').trim())).length:0;
+    w().setOwner('goblin');
+    await go('comingup','buying');
+    const cards=[...doc().querySelectorAll('#upcoming-list .badge')].filter(b=>b.textContent==='Book Box').length;
+    res("Shereen's Coming Up lists her ordered boxes",!!bx&&cards===open&&open>0,`${cards} box cards vs ${open} ordered-not-received rows in the tab`);
+    await go('logorders','log');
+    // LOG is a module-scoped const, not a window property: use its buttons
+    const tog=t=>[...doc().querySelectorAll('#log-orderform .ytog button')].find(b=>b.textContent.includes(t));
+    tog('Shereen')?.click();
+    await new Promise(r=>setTimeout(r,200));
+    const rows=doc().querySelectorAll('#log-orders-open .log-item').length;
+    res('Book Box orders panel shows only ordered boxes',rows===open,`${rows} open rows vs ${open}`);
+    tog('Com')?.click();
+    w().setOwner('butthead');
+  });
+
   res('no runtime errors in the app',errors.length===0,errors.slice(0,3).join(' | '));
   draw();
 }
