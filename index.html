@@ -1668,7 +1668,26 @@ function renderTBR(){
   // A book on the Goodreads shelf is being read: its series lives under
   // Reading now and nowhere else (John, 2026-09-22).
   const readingKeys=new Set(reading.flatMap(r=>[...(r.reg?[r.reg]:[]),...(r.works||[])]).map(pk));
-  const beingRead=s=>!!(s.next&&readingKeys.has(pk(s.next)));
+  // Next up: the bundle's queue for this owner, matched to register books,
+  // with pending queue_set events folded in (adds append, moves reposition,
+  // removes drop). Built early: a queued book's series shows only here.
+  const pq=LOG.pendingQueue(),qmap=new Map();
+  (G.queue||[]).filter(q=>OWNER==='all'||(q.owner||'butthead')===OWNER).forEach(q=>{
+    const b=books.find(x=>nk(x.title)===nk(q.title)&&(!q.series||nl(x.series)===nl(q.series)));
+    if(b)qmap.set(pk(b),{b,pos:q.pos,pending:false});});
+  let qmax=Math.max(0,...[...qmap.values()].map(v=>v.pos));
+  for(const[k,v]of pq){
+    if(v.action==='remove'){qmap.delete(k);continue;}
+    const cur=qmap.get(k),b=cur?cur.b:books.find(x=>pk(x)===k);if(!b)continue;
+    const pos=v.position!=null&&v.position!==''?+v.position:(cur?cur.pos:++qmax);
+    qmap.set(k,{b,pos,pending:true});
+  }
+  const queue=[...qmap.values()].sort((a,b)=>a.pos-b.pos||a.b.title.localeCompare(b.b.title));
+  G._tbrQueue=queue;
+  // A series whose next volume is being read (Goodreads) or sits on the
+  // Next up list is spoken for: it shows under that section and nowhere
+  // else (John, 2026-09-22 — no double listing).
+  const beingRead=s=>!!(s.next&&(readingKeys.has(pk(s.next))||qmap.has(pk(s.next))));
   // Focus series: this year's list from the Reading History year tab (Com's).
   const focusNames=OWNER==='butthead'?(((typeof allYD!=='undefined'&&allYD[cy])||{}).focus||[]):[];
   const focusRows=focusNames.map(n=>series.find(s=>nl(s.name)===nl(n))).filter(Boolean);
@@ -1695,22 +1714,6 @@ function renderTBR(){
   // To get: tracked, out, not on the shelf, not on order — "if I don't own
   // it and it's tracked then I need it" (John, 2026-09-22), so no flag.
   const toGet=inProg.filter(s=>s.next&&!s.next.owned&&!onOrder(s.next.title)&&rel(s.next)==='out'&&!beingRead(s)).sort(byPct);
-  // Next up: the bundle's queue for this owner, matched to register books,
-  // with pending queue_set events folded in (adds append, moves reposition,
-  // removes drop). Series membership is looked up for the card's context.
-  const pq=LOG.pendingQueue(),qmap=new Map();
-  (G.queue||[]).filter(q=>OWNER==='all'||(q.owner||'butthead')===OWNER).forEach(q=>{
-    const b=books.find(x=>nk(x.title)===nk(q.title)&&(!q.series||nl(x.series)===nl(q.series)));
-    if(b)qmap.set(pk(b),{b,pos:q.pos,pending:false});});
-  let qmax=Math.max(0,...[...qmap.values()].map(v=>v.pos));
-  for(const[k,v]of pq){
-    if(v.action==='remove'){qmap.delete(k);continue;}
-    const cur=qmap.get(k),b=cur?cur.b:books.find(x=>pk(x)===k);if(!b)continue;
-    const pos=v.position!=null&&v.position!==''?+v.position:(cur?cur.pos:++qmax);
-    qmap.set(k,{b,pos,pending:true});
-  }
-  const queue=[...qmap.values()].sort((a,b)=>a.pos-b.pos||a.b.title.localeCompare(b.b.title));
-  G._tbrQueue=queue;
   G._tbrBooks=[];const bidx=b=>{G._tbrBooks.push(b);return G._tbrBooks.length-1;};
   const chip=nx=>{if(pendRead.has(pk(nx)))return'<span class="badge b-teal">read · pending</span>';
     const o=onOrder(nx.title);
