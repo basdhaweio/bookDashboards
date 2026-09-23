@@ -249,6 +249,38 @@ async function main(){
     res('Order history expands and names its books',rows===Math.min(5,hist)&&(!hist||finds>0),`${rows} shown of ${hist} history rows; first expands with ${finds} book(s)`);
   });
 
+  await check('TBR with Both shows each shelf in its own tint',async()=>{
+    w().setOwner('all');
+    await go('tbr','reading');
+    const cards=[...doc().querySelectorAll('#tab-tbr .tbr-card')];
+    const com=cards.filter(c=>c.classList.contains('own-com')).length,gob=cards.filter(c=>c.classList.contains('own-gob')).length;
+    const legend=doc().getElementById('tbr-legend')?.textContent||'';
+    res('TBR with Both shows each shelf in its own tint',cards.length>0&&com+gob===cards.length&&com>0&&/Shereen/.test(legend),`${cards.length} cards: ${com} Com, ${gob} Shereen; legend "${legend.slice(0,40)}"`);
+    w().setOwner('butthead');
+    await go('tbr','reading');
+    const plain=doc().querySelectorAll('#tab-tbr .tbr-card.own-com,#tab-tbr .tbr-card.own-gob').length;
+    res('TBR with one owner carries no tint',plain===0,`${plain} tinted card(s) with Com alone`);
+  });
+
+  await check('By Universe orders series by first publication',async()=>{
+    await go('universe','tracking');
+    w().uvOpen('Shannara');
+    await new Promise(r=>setTimeout(r,300));
+    const nums=[...doc().querySelectorAll('#uv-detail .uv-ser')].map(e=>e.dataset.first).filter(v=>v!=='').map(Number);
+    const sorted=nums.every((v,i)=>i===0||nums[i-1]<=v);
+    res('By Universe orders series by first publication',nums.length>=3&&sorted,`${nums.length} dated series: ${nums.join(', ')}`);
+    w().uvClose();
+  });
+
+  await check('Goodreads unmatched row offers Add and Link',async()=>{
+    const gr=tget('Goodreads');
+    const miss=gr?gr.slice(1).filter(r=>r[0]==='currently-reading'&&!(r[6]||'').trim()&&!(r[8]||'').trim()&&(r[10]||'butthead')==='butthead').length:0;
+    await go('tbr','reading');
+    const adds=doc().querySelectorAll('#tbr-reading button[onclick^="tbrAddFromGoodreads"]').length;
+    const links=doc().querySelectorAll('#tbr-reading button[onclick^="tbrLinkRow"]').length;
+    res('Goodreads unmatched row offers Add and Link',!!gr&&adds===miss&&links===miss,`${miss} unmatched shelf row(s); ${adds} Add, ${links} Link buttons`);
+  });
+
   res('no runtime errors in the app',errors.length===0,errors.slice(0,3).join(' | '));
   draw();
 }

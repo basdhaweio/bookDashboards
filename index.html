@@ -124,6 +124,11 @@ button.tbr-link{background:none;border:none;padding:0;font:inherit;font-weight:i
 .tbr-handle{position:absolute;top:6px;right:8px;color:var(--text3);cursor:grab;font-size:13px;user-select:none;line-height:1;}
 .tbr-num{font-family:var(--font-m);font-size:10px;color:var(--gold);margin-right:4px;}
 .tbr-card.tbr-wide{grid-column:1/-1;}
+/* Both shelves at once: teal = Com, lavender = Shereen (John, 2026-09-23) */
+.tbr-card.own-com{background:var(--teal-bg);border-color:#9dcdc4;}
+.tbr-card.own-gob{background:var(--purple-bg);border-color:#b8afd6;}
+.tbr-legend{display:flex;gap:14px;flex-wrap:wrap;font-family:var(--font-m);font-size:10px;color:var(--text3);margin:-4px 0 10px;}
+.tbr-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px;border:1px solid;}
 .tbr-works{columns:2 220px;column-gap:16px;margin-top:6px;font-size:12px;}
 .tbr-work{break-inside:avoid;padding:2px 0;color:var(--text2);line-height:1.6;}
 /* Tracking › By Universe drill-down rows */
@@ -550,6 +555,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
     <div class="panel active" id="tab-tbr">
       <div class="sl">TBR — what to read next</div>
       <div class="mg" id="tbr-m"></div>
+      <div class="tbr-legend" id="tbr-legend"></div>
       <div id="tbr-reading-wrap"><div class="sl">Reading now — Goodreads currently-reading shelf</div>
       <div class="tbr-grid" id="tbr-reading"></div></div>
       <div class="sl">Next up — your own order · drag a card, or ▲ ▼</div>
@@ -940,6 +946,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div class="ms" style="margin-bottom:1rem">Suggestions from jerry and other systems (series completion, imports). Nothing enters the register until you Add it; Drop closes it. Decisions apply on the next sync (~15 min).</div>
       <div style="display:flex;gap:8px;margin-bottom:1.2rem;flex-wrap:wrap">
         <button class="log-act" onclick="LOG.doSyncRequest('goodreads')">⟳ Sync Goodreads</button>
+        <button class="log-act" onclick="LOG.doScanUpcoming()" title="Google Books newest per author + Wikidata series rosters, for every series with a book read — finds land here as proposals">🔭 Scan for upcoming books</button>
         <button class="log-act" onclick="document.getElementById('log-libib-file').click()">⇪ Import Libib CSV</button>
         <input type="file" id="log-libib-file" accept=".csv,text/csv" style="display:none" onchange="LOG.importLibib(this)">
       </div>
@@ -1348,7 +1355,13 @@ function uvOpen(name,filter){
   const unpub=b=>tbrRel(b.pubDate,todayIso,todayIso)!=='out';
   const seqN=b=>{const v=parseFloat(String(b.seq||'').replace(/[^0-9.]/g,''));return isNaN(v)?Infinity:v;};
   const by={};books.forEach(b=>{(by[b.series]=by[b.series]||[]).push(b);});
-  const sers=Object.keys(by).sort((a,b)=>(a==='Standalones')-(b==='Standalones')||a.localeCompare(b));
+  // Series in publication order (John, 2026-09-23: "Shannara is alphabetical,
+  // not chronological"): the earliest year any source gives for a volume
+  // (FirstPub, else the register date), undated series last, Standalones
+  // at the end.
+  const yearOf=b=>{const y=parseInt((b.firstPub||b.pubDate||'').slice(0,4),10);return isNaN(y)?null:y;};
+  const span={};for(const s in by){const ys=by[s].map(yearOf).filter(Boolean);span[s]=ys.length?[Math.min(...ys),Math.max(...ys)]:null;}
+  const sers=Object.keys(by).sort((a,b)=>(a==='Standalones')-(b==='Standalones')||(!span[a])-(!span[b])||((span[a]||[0])[0]-(span[b]||[0])[0])||a.localeCompare(b));
   const n={tracked:books.length,read:books.filter(b=>b.read).length,owned:books.filter(b=>b.owned).length,need:books.filter(b=>b.need).length,unpub:books.filter(unpub).length,unread:books.filter(b=>!b.read).length,unowned:books.filter(b=>!b.owned).length};
   const show=b=>uvFilter==='all'||(uvFilter==='unread'&&!b.read)||(uvFilter==='unowned'&&!b.owned)||(uvFilter==='need'&&b.need)||(uvFilter==='unpub'&&unpub(b));
   G._uvBooks=[];const bidx=b=>{G._uvBooks.push(b);return G._uvBooks.length-1;};
@@ -1359,7 +1372,7 @@ function uvOpen(name,filter){
     const btns=[!b.read&&!pr?`<button class="log-act" onclick="uvAct(${i},'read')">✓ Read</button>`:'',
       !b.owned&&!pa?`<button class="log-act gold" onclick="uvAct(${i},'got')">📦 Got it</button>`:'',
       !b.owned&&!pu?`<button class="log-act" onclick="uvSet(${i},'need',${b.need?'false':'true'})">${b.need?'🚩 clear need':'🚩 Need'}</button>`:'',
-      !b.owned&&!up&&!pu?`<button class="log-act" onclick="uvSet(${i},'tba')" title="not published yet, no date">📅 TBA</button>`:''].filter(Boolean).join('');
+      !b.owned&&!up&&!pu&&!(b.pubDate||'').trim()?`<button class="log-act" onclick="uvSet(${i},'tba')" title="not published yet, no date">📅 TBA</button>`:''].filter(Boolean).join('');
     return`<div class="uv-row"${show(b)?'':' style="display:none"'}>${dots}<div class="uv-t">${esc(b.title)}${b.seq?` <span class="ms">#${esc(b.seq)}</span>`:''}${b.media&&b.media!=='Print'?` <span class="ms">· ${esc(b.media)}</span>`:''} ${chips}</div><div class="uv-acts">${btns}</div><div class="uv-inline" id="uv-in-${i}" style="display:none"></div></div>`;};
   const filt=[['all','All '+n.tracked],['unread','Unread '+n.unread],['unowned','Not owned '+n.unowned],['need','Needed '+n.need],['unpub','Unpublished '+n.unpub]];
   el.innerHTML=`<div class="cb" style="margin-bottom:1.5rem">
@@ -1368,9 +1381,10 @@ function uvOpen(name,filter){
       <button class="log-act" onclick="uvClose()">✕ Close</button>
     </div>
     <div class="ytog" style="margin:8px 0 4px">${filt.map(([k,l])=>`<button class="${uvFilter===k?'active':''}" data-u="${esc(name)}" onclick="uvOpen(this.dataset.u,'${k}')">${l}</button>`).join('')}</div>
-    <div class="ms" style="margin-bottom:4px">Dots: read · owned · need · unpublished. Taps send the same events as the Log tab and show as pending until jerry syncs, a minute or two.</div>
+    <div class="ms" style="margin-bottom:4px">Dots: read · owned · need · unpublished. Series in publication order (first year any source gives). Taps send the same events as the Log tab and show as pending until jerry syncs, a minute or two.</div>
     ${sers.map(s=>{const list=by[s].slice().sort((a,b)=>seqN(a)-seqN(b)||a.title.localeCompare(b.title));if(!list.some(show))return'';
-      return`<div class="uv-ser">${esc(s)} <span class="ms">· ${list.filter(b=>b.read).length}/${list.length} read · ${list.filter(b=>b.owned).length} owned</span></div>${list.map(row).join('')}`;}).join('')||'<div class="ms">Nothing matches this filter.</div>'}
+      const yr=span[s]?(span[s][0]+(span[s][1]!==span[s][0]?'–'+span[s][1]:'')):'undated';
+      return`<div class="uv-ser" data-first="${span[s]?span[s][0]:''}">${esc(s)} <span class="ms">· ${yr} · ${list.filter(b=>b.read).length}/${list.length} read · ${list.filter(b=>b.owned).length} owned</span></div>${list.map(row).join('')}`;}).join('')||'<div class="ms">Nothing matches this filter.</div>'}
   </div>`;
   if(!filter)el.scrollIntoView({behavior:'smooth',block:'start'});
 }
@@ -1625,14 +1639,17 @@ async function tbrFinish(i){
 // Goodreads currently-reading rows (bookdb|Goodreads tab), matched to the
 // register by jerry's exact-norm title. A display signal only — reads still
 // come from finished events (John's 2026-07-24 rule).
-function tbrReadingNow(nk){
+function tbrReadingNow(nk,owners){
   // A book the register already has as read is done, whatever the shelf
   // still says — it drops out here as soon as the finished event lands. A
   // collection matched on the copies layer carries its works instead
-  // (all read = done).
-  const find=t=>(G.indBooks||[]).find(b=>nk(b.title)===nk(t))||null;
-  return(G.goodreads||[]).filter(r=>r.shelf==='currently-reading')
-    .map(r=>Object.assign({},r,{reg:r.book?find(r.book):null,works:(r.contains||[]).map(find).filter(Boolean)}))
+  // (all read = done). Rows are whose shelf they came from (migration 026:
+  // Shereen's feed sits beside Com's) and match that owner's register.
+  owners=owners||[OWNER==='all'?'butthead':OWNER];
+  const all=G.allIndBooks||[];
+  const find=(t,o)=>all.find(b=>(b.owner||'butthead')===o&&nk(b.title)===nk(t))||null;
+  return(G.goodreads||[]).filter(r=>r.shelf==='currently-reading'&&owners.includes(r.owner||'butthead'))
+    .map(r=>{const o=r.owner||'butthead';return Object.assign({},r,{owner:o,reg:r.book?find(r.book,o):null,works:(r.contains||[]).map(t=>find(t,o)).filter(Boolean)});})
     .filter(r=>!(r.reg&&r.reg.read)&&!(r.works.length&&r.works.every(w=>w.read)));
 }
 // Release state from the register's pub_date. Blank means nothing says the
@@ -1660,14 +1677,48 @@ function tbrMoveBy(i,d){const L=G._tbrQueue||[];const before=d<0?i-1:i+2;if(befo
 async function tbrMoveBefore(from,before){
   const L=G._tbrQueue||[],it=L[from];if(!it)return;
   const rest=L.filter((_,j)=>j!==from),idx=before>from?before-1:before;
-  const pos=!rest.length?1:idx<=0?rest[0].pos-1:idx>=rest.length?rest[rest.length-1].pos+1:(rest[idx-1].pos+rest[idx].pos)/2;
+  // Neighbours count only when they belong to the same reader: with the
+  // header on Both the two lists share one grid but never mix.
+  const prev=idx>0&&rest[idx-1].owner===it.owner?rest[idx-1]:null,next=idx<rest.length&&rest[idx].owner===it.owner?rest[idx]:null;
+  if(!prev&&!next&&rest.some(x=>x.owner===it.owner))return toast("That's the other reader's list — a card stays on its own",true);
+  const pos=!prev&&!next?1:!prev?next.pos-1:!next?prev.pos+1:(prev.pos+next.pos)/2;
   if(await LOG.queueSet(it.b,'move',pos))tbrRerender();
 }
 async function tbrQueue(i,action){
   const b=(G._tbrBooks||[])[i];if(!b)return;
-  const L=G._tbrQueue||[];
+  const L=(G._tbrQueue||[]).filter(q=>q.owner===(b.owner||'butthead'));
   const pos=action==='add'?(L.length?L[L.length-1].pos+1:1):null;
   if(await LOG.queueSet(b,action,pos))tbrRerender();
+}
+// An unmatched Goodreads row → the Books tab's add form, prefilled from the
+// feed: bare title, series and number from Goodreads' own "(Series, #n)"
+// suffix, author, ISBN (so the next sync matches it), owner = whose shelf.
+// The old 🔎 Find only searched the register, which is not what a card
+// that isn't in the register needs (John, 2026-09-23).
+function tbrAddFromGoodreads(ri){
+  const r=(G._tbrGR||[])[ri];if(!r)return;
+  const m=(r.title||'').match(/^(.*?)\s*\(([^()]*?)(?:,?\s*#\s*([\d.]+))?\)\s*$/);
+  const tagged=!!(m&&m[3]);
+  const title=tagged?m[1].trim():r.title,series=tagged?m[2].replace(/,\s*$/,'').trim():'',seq=tagged?m[3]:'';
+  LOG.prefillAdd({title,series,seq,author:r.author,isbn:r.isbn13,owner:r.owner,status:'owned',
+    note:'Prefilled from the Goodreads shelf — check series, genre and status, then Add'});
+}
+// …or it IS in the register under another title: pick that row and jerry
+// keeps the match (goodreads_link) across every later sync.
+function tbrLinkRow(ri){
+  const r=(G._tbrGR||[])[ri],el=document.getElementById('tbr-lk-'+ri);if(!r||!el)return;
+  if(el.style.display!=='none'){el.style.display='none';return;}
+  el.style.display='';
+  const opts=(G.allIndBooks||[]).filter(b=>(b.owner||'butthead')===r.owner).map(b=>b.title+(b.series&&b.series!=='Standalones'?' — '+b.series:'')).sort((a,b)=>a.localeCompare(b));
+  el.innerHTML=`<div class="log-frow"><label>Register</label><input id="tbr-lk-q-${ri}" list="tbr-dl-lk-${ri}" placeholder="the register's title for this book"><datalist id="tbr-dl-lk-${ri}">${opts.map(o=>`<option>${esc(o)}</option>`).join('')}</datalist><button class="log-act primary" onclick="tbrLinkGo(${ri})">Link</button></div><div class="ms">jerry keeps this match from now on; ✓ Read then logs against that row.</div>`;
+  const q=document.getElementById('tbr-lk-q-'+ri);if(q)q.focus();
+}
+async function tbrLinkGo(ri){
+  const r=(G._tbrGR||[])[ri],q=((document.getElementById('tbr-lk-q-'+ri)||{}).value||'').trim();if(!r||!q)return;
+  const cut=q.lastIndexOf(' — '),t=cut<0?q:q.slice(0,cut),s=cut<0?'':q.slice(cut+3);
+  const b=(G.allIndBooks||[]).find(x=>(x.owner||'butthead')===r.owner&&x.title===t&&(s?x.series===s:(!x.series||x.series==='Standalones')));
+  if(!b)return toast('Pick a title from the list',true);
+  if(await LOG.linkGoodreads(r,b))tbrRerender();
 }
 // Track the volume the register skipped (Kaiju No 8 has 16 but no 15):
 // open the add form prefilled from the next-known volume's title with the
@@ -1695,10 +1746,14 @@ function tbrPickStart(){
   G._tbrStart=q;tbrRerender();
 }
 function renderTBR(){
-  // Always one shelf: the header's owner, or Com's when both are shown —
-  // a merged TBR would let Shereen's Villains finish Com's (John, 2026-09-23).
-  const tbrOwner=OWNER==='all'?'butthead':OWNER;
-  const books=(G.allIndBooks||[]).filter(b=>(b.owner||'butthead')===tbrOwner),cy=String(new Date().getFullYear()),todayIso=LOG.today();
+  // Both shelves at once when the header says Both (John, 2026-09-23):
+  // every series, queue entry and shelf row stays keyed by its owner —
+  // Com's cards teal, Shereen's lavender — so one person's Villains never
+  // finishes the other's.
+  const both=OWNER==='all',owners=both?['butthead','goblin']:[OWNER];
+  const own=b=>b.owner||'butthead';
+  const ownCls=b=>both?(own(b)==='goblin'?' own-gob':' own-com'):'';
+  const books=(G.allIndBooks||[]).filter(b=>owners.includes(own(b))),cy=String(new Date().getFullYear()),todayIso=LOG.today();
   const limIso=(()=>{const d=new Date(todayIso+'T12:00:00');d.setMonth(d.getMonth()+6);return d.toISOString().slice(0,10);})();
   const rel=b=>tbrRel(b.pubDate,todayIso,limIso);
   const seqN=b=>{const v=parseFloat(String(b.seq||'').replace(/[^0-9.]/g,''));return isNaN(v)?Infinity:v;};
@@ -1708,10 +1763,13 @@ function renderTBR(){
   const pendRead=LOG.pendingBooks('finished');
   // Keys match the inbox payload's book ref: title|series, standalone = ''.
   const pk=b=>b.title+'|'+(!b.series||b.series==='Standalones'?'':b.series);
+  // owner-qualified key: the maps below may hold both shelves at once
+  const ok=b=>own(b)+'|'+pk(b);
   const by={};
   for(const b of books){
     if(!b.series||b.series==='Standalones')continue;
-    const s=by[seriesKey(b)]=by[seriesKey(b)]||{name:seriesLabel(b),raw:b.series,author:'',universe:'',books:[],read:0,owned:0,last:''};
+    const sk=own(b)+'|'+seriesKey(b);
+    const s=by[sk]=by[sk]||{name:seriesLabel(b),raw:b.series,owner:own(b),author:'',universe:'',books:[],read:0,owned:0,last:''};
     s.books.push(b);if(!s.author&&b.author)s.author=b.author;if(!s.universe&&b.universe)s.universe=b.universe;
     if(b.read){s.read++;if((b.readOn||'')>s.last)s.last=b.readOn;}
     if(b.owned)s.owned++;
@@ -1738,49 +1796,60 @@ function renderTBR(){
   const open=(G.orders||[]).filter(o=>o.delivered!=='Fulfilled'&&o.delivered!=='Cancelled');
   const onOrder=t=>{const k=nl(t);return k?open.find(o=>nl(o.books).includes(k)||(o.contains||'').split('\n').some(l=>nl(l.replace(/\s+#\S+$/,''))===k)):null;};
   const inProg=series.filter(s=>s.inProg);
-  const reading=tbrReadingNow(nk);
+  const reading=tbrReadingNow(nk,owners);
   // A book on the Goodreads shelf is being read: its series lives under
   // Reading now and nowhere else (John, 2026-09-22).
-  const readingKeys=new Set(reading.flatMap(r=>[...(r.reg?[r.reg]:[]),...(r.works||[])]).map(pk));
-  // Next up: the bundle's queue for this owner, matched to register books,
+  const readingKeys=new Set(reading.flatMap(r=>[...(r.reg?[r.reg]:[]),...(r.works||[])]).map(ok));
+  // Next up: the bundle's queue per owner, matched to register books,
   // with pending queue_set events folded in (adds append, moves reposition,
   // removes drop). Built early: a queued book's series shows only here.
   const pq=LOG.pendingQueue(),qmap=new Map();
-  (G.queue||[]).filter(q=>OWNER==='all'||(q.owner||'butthead')===OWNER).forEach(q=>{
-    const b=books.find(x=>nk(x.title)===nk(q.title)&&(!q.series||nl(x.series)===nl(q.series)));
-    if(b)qmap.set(pk(b),{b,pos:q.pos,pending:false});});
-  let qmax=Math.max(0,...[...qmap.values()].map(v=>v.pos));
+  (G.queue||[]).filter(q=>owners.includes(q.owner||'butthead')).forEach(q=>{
+    const b=books.find(x=>own(x)===(q.owner||'butthead')&&nk(x.title)===nk(q.title)&&(!q.series||nl(x.series)===nl(q.series)));
+    if(b)qmap.set(ok(b),{b,pos:q.pos,pending:false,owner:own(b)});});
+  const qmaxOf={};for(const v of qmap.values())qmaxOf[v.owner]=Math.max(qmaxOf[v.owner]||0,v.pos);
   for(const[k,v]of pq){
-    if(v.action==='remove'){qmap.delete(k);continue;}
-    const cur=qmap.get(k),b=cur?cur.b:books.find(x=>pk(x)===k);if(!b)continue;
-    const pos=v.position!=null&&v.position!==''?+v.position:(cur?cur.pos:++qmax);
-    qmap.set(k,{b,pos,pending:true});
+    const b=books.find(x=>pk(x)===k&&(!v.owner||own(x)===v.owner));if(!b)continue;
+    const kk=ok(b);
+    if(v.action==='remove'){qmap.delete(kk);continue;}
+    const cur=qmap.get(kk);
+    const pos=v.position!=null&&v.position!==''?+v.position:(cur?cur.pos:(qmaxOf[own(b)]=(qmaxOf[own(b)]||0)+1));
+    qmap.set(kk,{b,pos,pending:true,owner:own(b)});
   }
-  const queue=[...qmap.values()].sort((a,b)=>a.pos-b.pos||a.b.title.localeCompare(b.b.title));
+  // Com's list first, then Shereen's; a move never crosses that line.
+  const queue=[...qmap.values()].sort((a,b)=>(a.owner==='goblin')-(b.owner==='goblin')||a.pos-b.pos||a.b.title.localeCompare(b.b.title));
   G._tbrQueue=queue;
   // A series whose next volume is being read (Goodreads) or sits on the
   // Next up list is spoken for: it shows under that section and nowhere
   // else (John, 2026-09-22 — no double listing).
-  const beingRead=s=>!!(s.next&&(readingKeys.has(pk(s.next))||qmap.has(pk(s.next))));
+  const beingRead=s=>!!(s.next&&(readingKeys.has(ok(s.next))||qmap.has(ok(s.next))));
   // Focus series: this year's list from the Reading History year tab (Com's).
-  const focusNames=OWNER==='butthead'?(((typeof allYD!=='undefined'&&allYD[cy])||{}).focus||[]):[];
-  const focusRows=focusNames.map(n=>series.find(s=>nl(s.name)===nl(n))).filter(Boolean);
-  const focusSet=new Set(focusRows.map(s=>s.name));
+  const focusNames=OWNER!=='goblin'?(((typeof allYD!=='undefined'&&allYD[cy])||{}).focus||[]):[];
+  const focusRows=focusNames.map(n=>series.find(s=>s.owner==='butthead'&&nl(s.name)===nl(n))).filter(Boolean);
+  const focusSet=new Set(focusRows);
   // Most read, not all: closest to finished first. A series whose next
   // volume isn't out yet belongs under New book / Waiting for; one whose
   // next volume isn't on the shelf (or on order) belongs under Get these
   // next only — no double listing (John, 2026-09-22).
   const byPct=(a,b)=>b.pct-a.pct||(b.last||'').localeCompare(a.last||'')||a.name.localeCompare(b.name);
   const onShelfOrWay=s=>!s.next||s.next.owned||!!onOrder(s.next.title);
-  const prog=inProg.filter(s=>!focusSet.has(s.name)&&!beingRead(s)&&!s.gap&&(!s.next||rel(s.next)==='out')&&onShelfOrWay(s)).sort(byPct);
+  const prog=inProg.filter(s=>!focusSet.has(s)&&!beingRead(s)&&!s.gap&&(!s.next||rel(s.next)==='out')&&onShelfOrWay(s)).sort(byPct);
   // Unreleased volumes in any series with a book read: dated inside six
   // months = New book in series (with Book Notification's not-yet-adopted
-  // announcements); TBA, year-only or further out = Waiting for.
-  const have=new Set(books.map(b=>nl(b.title)));
-  const readSeries=new Map(series.filter(s=>s.read>0).map(s=>[nl(s.name),s]));
-  const news=(G.bookClub||[]).filter(r=>r.series&&readSeries.has(nl(r.series))&&!have.has(nl(r.title)))
+  // announcements); TBA, year-only or further out = Waiting for. Titles
+  // compare without a subtitle too (BN's "X: A Tale of…" is the register's
+  // "X"); BN names the plain series, so the unqualified name is the key.
+  const nl2=t=>nl((t||'').split(':')[0]);
+  const have=new Set(books.flatMap(b=>[nl(b.title),nl2(b.title)]));
+  const readSeries=new Map();series.filter(s=>s.read>0).forEach(s=>{const k=nl(s.raw||s.name);if(!readSeries.has(k)||s.owner==='butthead')readSeries.set(k,s);});
+  const news=(G.bookClub||[]).filter(r=>r.series&&readSeries.has(nl(r.series))&&!have.has(nl(r.title))&&!have.has(nl2(r.title)))
     .map(r=>Object.assign({},r,{s:readSeries.get(nl(r.series))}));
-  const unrel=series.filter(s=>s.read>0).flatMap(s=>s.books.filter(b=>!b.read&&rel(b)!=='out').map(b=>({b,s,state:rel(b)})));
+  // A universe with a series read counts as engaged for its adjunct series
+  // too: Threshing Day (Empyrean Novellas, nothing read there yet) belongs
+  // under New book in series because Empyrean itself is read.
+  const readUni=new Set(series.filter(s=>s.read>0&&s.universe).map(s=>s.owner+'|'+s.universe));
+  const engaged=s=>s.read>0||!!(s.universe&&readUni.has(s.owner+'|'+s.universe));
+  const unrel=series.filter(engaged).flatMap(s=>s.books.filter(b=>!b.read&&rel(b)!=='out').map(b=>({b,s,state:rel(b)})));
   const byDate=(a,b)=>(a.date||'9999').localeCompare(b.date||'9999');
   const newBook=[...unrel.filter(x=>x.state==='soon').map(x=>Object.assign(x,{date:x.b.pubDate,src:'register'})),
     ...news.map(r=>({r,s:r.s,date:r.release||'',src:'bn'}))].sort(byDate);
@@ -1803,11 +1872,11 @@ function renderTBR(){
   const acts=(nx,qi)=>{const i=bidx(nx),k=pk(nx),pr=pendRead.has(k),q=qmap.get(k);
     const queueBtns=qi==null
       ?(q?`<span class="badge b-gold">next up${q.pending?' · pending':''}</span>`:`<button class="log-act" onclick="tbrQueue(${i},'add')" title="put it on your Next up list">＋ Next up</button>`)
-      :`<button class="log-act" onclick="tbrMoveBy(${qi},-1)" title="move up"${qi===0?' disabled':''}>▲</button><button class="log-act" onclick="tbrMoveBy(${qi},1)" title="move down"${qi>=queue.length-1?' disabled':''}>▼</button><button class="log-act" onclick="tbrQueue(${i},'remove')" title="take it off the list">✕</button>`;
+      :`<button class="log-act" onclick="tbrMoveBy(${qi},-1)" title="move up"${qi===0||queue[qi-1].owner!==queue[qi].owner?' disabled':''}>▲</button><button class="log-act" onclick="tbrMoveBy(${qi},1)" title="move down"${qi>=queue.length-1||queue[qi+1].owner!==queue[qi].owner?' disabled':''}>▼</button><button class="log-act" onclick="tbrQueue(${i},'remove')" title="take it off the list">✕</button>`;
     if(nx._gap)return`<div class="tbr-acts"><button class="log-act gold" onclick="tbrTrackGap(${i})" title="add the missing volume to the register as tracked">＋ Track #${nx._gap}</button><a class="tbr-a" href="${tomboloUrl((nx.series||'')+' '+nx._gap)}" target="_blank" rel="noopener">Tombolo ↗</a></div><div id="tbr-rr-${i}" style="display:none"></div>`;
     return`<div class="tbr-acts">${pr?'':`<button class="log-act" onclick="tbrReadRow(${i})">✓ Read</button>`}${queueBtns}${nx.owned||rel(nx)!=='out'?'':`<a class="tbr-a" href="${tomboloUrl(nx.title)}" target="_blank" rel="noopener">Tombolo ↗</a>`}</div><div id="tbr-rr-${i}" style="display:none"></div>`;};
   const cover=b=>coverTile(b.title,b.owner||'butthead','',null,40);
-  const seriesCard=s=>{const nx=s.next;return`<div class="tbr-card" data-ser="${esc(s.name)}"${s.inProg?' data-inprog="1"':''}>
+  const seriesCard=s=>{const nx=s.next;return`<div class="tbr-card${both?(s.owner==='goblin'?' own-gob':' own-com'):''}" data-ser="${esc(s.name)}" data-owner="${s.owner}"${s.inProg?' data-inprog="1"':''}>
     <div class="tbr-cov">${nx?cover(nx):''}</div>
     <div class="tbr-info">
       <div class="tbr-ser"><button class="tbr-link" data-s="${esc(s.name)}" onclick="tbrBrowse(this.dataset.s)" title="browse the series">${esc(s.name)}</button></div>
@@ -1818,9 +1887,9 @@ function renderTBR(){
   // Universe grouping: a universe's series sit together under its name
   // (Malazan's several series read as one shelf); groups take the position
   // of their first series in the order, everything else stays put.
-  const grouped=rows=>{const m=new Map();rows.forEach(s=>{const k=s.universe?'u:'+s.universe:'s:'+s.name;if(!m.has(k))m.set(k,[]);m.get(k).push(s);});
-    return[...m.entries()].map(([k,list])=>(k.startsWith('u:')&&list.length>1?`<div class="tbr-uni">${esc(k.slice(2))} <span class="ms">· ${list.length} series</span></div>`:'')+list.map(seriesCard).join('')).join('');};
-  const bookCard=(b,s,extra,qi)=>`<div class="tbr-card" data-ser="${esc(s?s.name:'')}"${s&&s.inProg?' data-inprog="1"':''}${qi!=null?` draggable="true" ondragstart="tbrDragStart(event,${qi})" ondragover="tbrDragOver(event)" ondragleave="tbrDragLeave(event)" ondragend="tbrDragEnd(event)" ondrop="tbrDrop(event,${qi})"`:''}>
+  const grouped=rows=>{const m=new Map();rows.forEach(s=>{const k=s.universe?'u:'+s.owner+'|'+s.universe:'s:'+s.owner+'|'+s.name;if(!m.has(k))m.set(k,[]);m.get(k).push(s);});
+    return[...m.entries()].map(([k,list])=>(k.startsWith('u:')&&list.length>1?`<div class="tbr-uni">${esc(list[0].universe)} <span class="ms">· ${list.length} series${both?' · '+OWNER_LABEL[list[0].owner]:''}</span></div>`:'')+list.map(seriesCard).join('')).join('');};
+  const bookCard=(b,s,extra,qi)=>`<div class="tbr-card${ownCls(b)}" data-ser="${esc(s?s.name:'')}" data-owner="${own(b)}"${s&&s.inProg?' data-inprog="1"':''}${qi!=null?` draggable="true" ondragstart="tbrDragStart(event,${qi})" ondragover="tbrDragOver(event)" ondragleave="tbrDragLeave(event)" ondragend="tbrDragEnd(event)" ondrop="tbrDrop(event,${qi})"`:''}>
     ${qi!=null?'<span class="tbr-handle" title="drag to reorder">⋮⋮</span>':''}
     <div class="tbr-cov">${cover(b)}</div>
     <div class="tbr-info">
@@ -1830,9 +1899,9 @@ function renderTBR(){
       ${acts(b,qi)}
     </div></div>`;
   const grTile=r=>r.cover?`<div class="ct" style="width:40px;height:60px" title="${esc(r.title)}"><img loading="lazy" alt="" src="${esc(r.cover)}"></div>`:coverTile(r.title,'butthead','',r.isbn||r.isbn13||null,40);
-  const bnCard=x=>`<div class="tbr-card" data-ser="${esc(x.s.name)}"><div class="tbr-cov">${grTile(x.r)}</div><div class="tbr-info"><div class="tbr-ser">${esc(x.r.title)}</div><div class="tbr-prog">${esc(x.s.name)} · ${esc(x.r.author)} · ${x.s.read}/${x.s.total} · Book Notification, not in the register</div><div class="tbr-next"><span class="badge b-teal">📅 ${esc(x.date||'TBA')}</span></div><div class="tbr-acts"><a class="tbr-a" href="${tomboloUrl(x.r.title)}" target="_blank" rel="noopener">Tombolo ↗</a><button class="log-act" onclick="switchSection('bookclub','flyer')">flyer</button></div></div></div>`;
+  const bnCard=x=>`<div class="tbr-card${both?(x.s.owner==='goblin'?' own-gob':' own-com'):''}" data-ser="${esc(x.s.name)}" data-owner="${x.s.owner}"><div class="tbr-cov">${grTile(x.r)}</div><div class="tbr-info"><div class="tbr-ser">${esc(x.r.title)}</div><div class="tbr-prog">${esc(x.s.name)} · ${esc(x.r.author)} · ${x.s.read}/${x.s.total} · Book Notification, not in the register</div><div class="tbr-next"><span class="badge b-teal">📅 ${esc(x.date||'TBA')}</span></div><div class="tbr-acts"><a class="tbr-a" href="${tomboloUrl(x.r.title)}" target="_blank" rel="noopener">Tombolo ↗</a><button class="log-act" onclick="switchSection('bookclub','flyer')">flyer</button></div></div></div>`;
   const orderChip=b=>onOrder(b.title)?' <span class="badge b-gold">on order</span>':b.owned?' <span class="badge b-green">on the shelf</span>':'';
-  const sOf=b=>by[seriesKey(b)]||null;
+  const sOf=b=>by[own(b)+'|'+seriesKey(b)]||null;
   // Finished series don't belong on a to-read page (tracking and This Year
   // cover them), so the focus list shows only what still has volumes left
   // and isn't already under Reading now.
@@ -1845,19 +1914,28 @@ function renderTBR(){
     mH(waiting.length,'Waiting for','no date or further out')+
     mH(toGet.length,'To get','out, not on the shelf','c')+
     mH(reading.length,'Reading now','Goodreads shelf');
+  const lg=document.getElementById('tbr-legend');
+  if(lg)lg.innerHTML=both?'<span><i style="background:var(--teal-bg);border-color:#9dcdc4"></i>Com</span><span><i style="background:var(--purple-bg);border-color:#b8afd6"></i>Shereen</span><span>each shelf keeps its own series, Next up list and Goodreads rows</span>':'';
   const rw=document.getElementById('tbr-reading-wrap');
   rw.style.display=reading.length?'':'none';
-  const serAttr=b=>{const s=b&&by[seriesKey(b)];return s?` data-ser="${esc(s.name)}"${s.inProg?' data-inprog="1"':''}`:'';};
-  document.getElementById('tbr-reading').innerHTML=reading.map(r=>{const b=r.reg,i=b?bidx(b):-1,pr=b&&pendRead.has(pk(b));
+  const serAttr=b=>{const s=b?sOf(b):null;return s?` data-ser="${esc(s.name)}"${s.inProg?' data-inprog="1"':''}`:'';};
+  const rCls=r=>both?(r.owner==='goblin'?' own-gob':' own-com'):'';
+  const pendLinks=LOG.pendingLinks();
+  G._tbrGR=reading;
+  document.getElementById('tbr-reading').innerHTML=reading.map((r,ri)=>{const b=r.reg,i=b?bidx(b):-1,pr=b&&pendRead.has(pk(b));
     if(!b&&r.works.length){
       // a collection: the stories stay folded (they'd stretch the whole
       // row) — one line with the count, tap to open it full-width, then
       // one ✓ Read per story still unread, read ones ticked
       const readN=r.works.filter(w=>w.read).length;
       const ws=r.works.map(w=>{const wi=bidx(w),wp=pendRead.has(pk(w));return`<div class="tbr-work">${w.read?'✓ ':''}${esc(w.title)}${w.read?'':wp?' <span class="badge b-teal">read · pending</span>':` <button class="log-act" onclick="tbrReadRow(${wi})">✓ Read</button>`}<div id="tbr-rr-${wi}" style="display:none"></div></div>`;}).join('');
-      return`<div class="tbr-card"${serAttr(r.works[0])}><div class="tbr-cov">${grTile(r)}</div><div class="tbr-info"><div class="tbr-ser">${esc(r.title)}</div><div class="tbr-prog">${esc(r.author)} · collection${r.copy?' · '+esc(r.copy):''}${r.added?' · since '+esc(r.added):''}</div><div class="tbr-acts"><button class="log-act" onclick="tbrToggleWorks(this)">▸ ${r.works.length} stories · ${readN} read</button></div><div class="tbr-works" style="display:none">${ws}</div></div></div>`;
+      return`<div class="tbr-card${rCls(r)}" data-owner="${r.owner}"${serAttr(r.works[0])}><div class="tbr-cov">${grTile(r)}</div><div class="tbr-info"><div class="tbr-ser">${esc(r.title)}</div><div class="tbr-prog">${esc(r.author)} · collection${r.copy?' · '+esc(r.copy):''}${r.added?' · since '+esc(r.added):''}</div><div class="tbr-acts"><button class="log-act" onclick="tbrToggleWorks(this)">▸ ${r.works.length} stories · ${readN} read</button></div><div class="tbr-works" style="display:none">${ws}</div></div></div>`;
     }
-    return`<div class="tbr-card"${serAttr(b)}><div class="tbr-cov">${b?cover(b):grTile(r)}</div><div class="tbr-info"><div class="tbr-ser">${esc(b?b.title:r.title)}</div><div class="tbr-prog">${esc(r.author)}${b?' · '+esc(b.series)+(b.seq?' #'+esc(b.seq):''):' · not in the register'}${r.added?' · since '+esc(r.added):''}</div><div class="tbr-acts">${b?(pr?'<span class="badge b-teal">read · pending</span>':`<button class="log-act" onclick="tbrReadRow(${i})">✓ Read</button>`):`<button class="log-act" data-t="${esc(r.title)}" onclick="LOG.findInRegister(this.dataset.t)">🔎 Find</button>`}</div>${b?`<div id="tbr-rr-${i}" style="display:none"></div>`:''}</div></div>`;}).join('');
+    // Not matched: add it to the register prefilled from Goodreads, or
+    // name the register row it already is (goodreads_link).
+    const miss=pendLinks.has(r.grId)?'<span class="badge b-gold">linked · pending</span>'
+      :`<button class="log-act gold" onclick="tbrAddFromGoodreads(${ri})" title="add it to the register, prefilled from Goodreads">＋ Add it</button><button class="log-act" onclick="tbrLinkRow(${ri})" title="it is already in the register under another title">🔗 It's in the register as…</button>`;
+    return`<div class="tbr-card${rCls(r)}" data-owner="${r.owner}"${serAttr(b)}><div class="tbr-cov">${b?cover(b):grTile(r)}</div><div class="tbr-info"><div class="tbr-ser">${esc(b?b.title:r.title)}</div><div class="tbr-prog">${esc(r.author)}${b?' · '+esc(b.series)+(b.seq?' #'+esc(b.seq):''):' · not in the register'}${r.added?' · since '+esc(r.added):''}</div><div class="tbr-acts">${b?(pr?'<span class="badge b-teal">read · pending</span>':`<button class="log-act" onclick="tbrReadRow(${i})">✓ Read</button>`):miss}</div>${b?`<div id="tbr-rr-${i}" style="display:none"></div>`:`<div id="tbr-lk-${ri}" style="display:none"></div>`}</div></div>`;}).join('');
   document.getElementById('tbr-queue').innerHTML=queue.map((q,qi)=>bookCard(q.b,sOf(q.b),chip(q.b)+(q.pending?' <span class="badge b-gold">pending</span>':''),qi)).join('')
     ||'<div class="ms">Nothing picked yet — tap ＋ Next up on any card below to build your list.</div>';
   document.getElementById('tbr-focus').innerHTML=focusLeft.map(seriesCard).join('')||'<div class="ms">'+(focusRows.length?'Every focus series is finished.':'No focus list for this year.')+'</div>';
@@ -1870,10 +1948,10 @@ function renderTBR(){
   // Start a series: owned, nothing read yet — pick one and its first
   // volume gets a card (John, 2026-09-23: "add new series from my shelf
   // that aren't in progress yet")
-  const fresh=series.filter(s=>s.read===0&&s.owned>0).sort((a,b)=>a.name.localeCompare(b.name));
-  const pick=G._tbrStart?fresh.find(s=>s.name.toLowerCase()===G._tbrStart.toLowerCase()):null;
+  const fresh=series.filter(s=>s.read===0&&s.owned>0).map(s=>Object.assign(s,{label:both&&s.owner==='goblin'?s.name+' (Shereen)':s.name})).sort((a,b)=>a.label.localeCompare(b.label));
+  const pick=G._tbrStart?fresh.find(s=>s.label.toLowerCase()===G._tbrStart.toLowerCase()):null;
   const first=pick?(pick.books.find(b=>b.owned)||pick.books[0]):null;
-  document.getElementById('tbr-start').innerHTML=`<div class="log-frow" style="grid-column:1/-1"><label>Series</label><input id="tbr-start-q" list="tbr-dl-start" value="${esc(G._tbrStart||'')}" placeholder="${fresh.length} series on the shelf with nothing read yet" onchange="tbrPickStart()"><datalist id="tbr-dl-start">${fresh.map(s=>`<option>${esc(s.name)}</option>`).join('')}</datalist></div>`
+  document.getElementById('tbr-start').innerHTML=`<div class="log-frow" style="grid-column:1/-1"><label>Series</label><input id="tbr-start-q" list="tbr-dl-start" value="${esc(G._tbrStart||'')}" placeholder="${fresh.length} series on the shelf with nothing read yet" onchange="tbrPickStart()"><datalist id="tbr-dl-start">${fresh.map(s=>`<option>${esc(s.label)}</option>`).join('')}</datalist></div>`
     +(first?bookCard(first,pick,chip(first)):(G._tbrStart?'<div class="ms">No unstarted series by that name.</div>':''));
 }
 function renderThisYear(year){
@@ -3480,6 +3558,7 @@ function parseIndividual(vals){
       room:(r[17]||'').trim(),
       pages:n(r[18]),
       collection:(r[19]||'main').trim(),
+      firstPub:(r[20]||'').trim(), // earliest year any source gives (publication order)
     });
   }
   return books;
@@ -4175,7 +4254,8 @@ const LOG=(()=>{
       case'meta_add':return`🏷 New ${p.kind}: ${p.value}`;
       case'proposal_decide':return`${p.decision==='edit'?'✎ Save edits':p.decision==='approve'?'✔ Add':'✖ Drop'}${p.set?' ('+Object.keys(p.set).join(', ')+')':''}: ${p.target||('proposal '+p.id)}`;
       case'track_series':return`🔍 Track series: ${p.series}${p.author?' ('+p.author+')':''}`;
-      case'sync_request':return`⟳ Sync from ${p.source||'all sources'}`;
+      case'sync_request':return p.source==='upcoming'?`🔭 Scan for upcoming books${p.owner&&p.owner!=='all'?' · '+(OWNER_LABEL[p.owner]||p.owner):''}`:`⟳ Sync from ${p.source||'all sources'}`;
+      case'goodreads_link':return`🔗 Goodreads “${p.gr_title||p.gr_book_id}” ${p.action==='unlink'?'unlinked':'→ “'+b.title+'”'}`;
       case'order_new':return p.list==='bookboxes'
         ?`🎁 Box: ${p.vendor}${p.box?' '+p.box:''} — ${p.title||'title TBA'}${p.want&&p.want!=='Yes'?' · want: '+p.want:''}`
         :`🧾 New order ${p.order||''}${p.store?' at '+p.store:''} — ${p.books||'?'}`;
@@ -4572,8 +4652,39 @@ const LOG=(()=>{
     [...(pendCache||[]),...sent().filter(e=>!BUNDLE||e.at>BUNDLE.generated_at)]
       .filter(e=>e.type==='queue_set'&&!seen.has(e.id)&&seen.add(e.id))
       .sort((a,b)=>a.at<b.at?-1:1)
-      .forEach(ev=>{const p=ev.payload||{},b=p.book;if(b)m.set(b.title+'|'+(b.series||''),{action:p.action||'add',position:p.position});});
+      .forEach(ev=>{const p=ev.payload||{},b=p.book;if(b)m.set(b.title+'|'+(b.series||''),{action:p.action||'add',position:p.position,owner:b.owner||ev.by||'butthead'});});
     return m;
+  }
+  // Goodreads hand links (migration 026): pending until jerry applies them.
+  function pendingLinks(){
+    const ks=new Set();
+    [...(pendCache||[]),...sent().filter(e=>!BUNDLE||e.at>BUNDLE.generated_at)].forEach(ev=>{if(ev.type==='goodreads_link'&&ev.payload&&ev.payload.gr_book_id&&ev.payload.action!=='unlink')ks.add(ev.payload.gr_book_id);});
+    return ks;
+  }
+  async function linkGoodreads(r,b){
+    if(!r.grId)return toast('This shelf row has no Goodreads id yet — wait for the next publish',true)||false;
+    const ok=await submit('goodreads_link',{gr_book_id:r.grId,gr_title:r.title,book:{title:b.title,series:realSeries(b),owner:b.owner||'butthead'}},b,r.owner);
+    if(ok)toast(`Linked “${r.title}” to “${b.title}” — jerry applies it within a minute or two`);
+    return ok;
+  }
+  // Open the Books tab's add form with fields filled (a Goodreads row, a
+  // skipped volume…); the person still checks the fields and presses Add.
+  function prefillAdd(o){
+    switchTab('logbook','log');
+    const form=document.getElementById('log-addform');
+    if(form.style.display==='none')toggleAdd();
+    const set=(id,v)=>{const el=document.getElementById(id);if(el&&v!=null&&v!=='')el.value=v;};
+    set('log-n-title',o.title);set('log-n-series',o.series);set('log-n-seq',o.seq);set('log-n-author',o.author);
+    set('log-n-media',o.media);set('log-n-genre',o.genre);set('log-n-universe',o.universe);
+    if(o.owner)set('log-n-owner',o.owner);
+    if(o.status){set('log-n-status',o.status);addDates();}
+    isbnPrefill=o.isbn||'';
+    form.scrollIntoView({behavior:'smooth',block:'start'});
+    toast(o.note||'Prefilled — check the fields, then Add');
+  }
+  async function doScanUpcoming(){
+    const ok=await submit('sync_request',{source:'upcoming',owner:OWNER==='all'?'all':OWNER},null,'butthead');
+    if(ok)toast('Scan requested — Google Books and Wikidata are asked about every series with a book read; finds land here as proposals within a few minutes');
   }
   function pendingBooks(type){
     const ks=new Set();
@@ -5446,7 +5557,8 @@ const LOG=(()=>{
     toggleRow,saveOrderEdit,expandBox,doBoxUpdate,saveBoxEdit,saveSetup,forgetSetup,refreshBadge,
     toggleOrderHistory,findInRegister,storeFromOrderNo,logFlyerOrders,trackSeriesFromIsbn,submitTrackSeries,
     finishBook,setNeed,pendingBooks,today,queueSet,pendingQueue,acquireBook,setPubDate,
-    renderPeople,doAuthorMerge,doAuthorRename,doAuthorAlias,addCreditRow,saveCredits};
+    renderPeople,doAuthorMerge,doAuthorRename,doAuthorAlias,addCreditRow,saveCredits,
+    pendingLinks,linkGoodreads,prefillAdd,doScanUpcoming};
 })();
 
 async function init(){
@@ -5497,7 +5609,7 @@ async function init(){
     // ReadAt|Book (matched register title)|Cover — the TBR tab's Reading now.
     // Contains|Copy (cols I-J): a collection matched on the copies layer,
     // with the register works inside it.
-    G.goodreads=(BUNDLE.tabs['bookdb|Goodreads']||[]).slice(1).map(r=>({shelf:(r[0]||'').trim(),title:(r[1]||'').trim(),author:(r[2]||'').trim(),isbn13:(r[3]||'').trim(),added:(r[4]||'').trim(),readAt:(r[5]||'').trim(),book:(r[6]||'').trim(),cover:(r[7]||'').trim().replace(/^http:/,'https:'),contains:(r[8]||'').split('|').filter(Boolean),copy:(r[9]||'').trim()}));
+    G.goodreads=(BUNDLE.tabs['bookdb|Goodreads']||[]).slice(1).map(r=>({shelf:(r[0]||'').trim(),title:(r[1]||'').trim(),author:(r[2]||'').trim(),isbn13:(r[3]||'').trim(),added:(r[4]||'').trim(),readAt:(r[5]||'').trim(),book:(r[6]||'').trim(),cover:(r[7]||'').trim().replace(/^http:/,'https:'),contains:(r[8]||'').split('|').filter(Boolean),copy:(r[9]||'').trim(),owner:(r[10]||'butthead').trim(),grId:(r[11]||'').trim()}));
     // Authors (bookdb|Authors): Name|SortName|Kind|Aliases|Books|Read|Owned|
     // Series. aliasMap folds every listed spelling onto its person, which
     // peopleOf() applies everywhere authors are grouped. Built before

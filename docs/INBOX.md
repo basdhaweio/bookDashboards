@@ -276,11 +276,34 @@ once; the 2026-07-24 rule stands).
 ```json
 {"source": "goodreads"}
 ```
-`source` is `goodreads` | `libib` | `all`. Goodreads needs the My Books RSS
-URL (shelf=read, with `key=`) in `jobs/.goodreads_rss` on jerry; it also runs
-nightly at 02:20. Libib has no API — its "sync" is the dashboard's Import
-Libib CSV button, which diffs a fresh export client-side and queues new
-titles as `add_book` events.
+`source` is `goodreads` | `libib` | `upcoming` | `all`. Goodreads needs the
+My Books RSS URL (shelf=read, with `key=`) in `jobs/.goodreads_rss` on jerry
+(Shereen's in `jobs/.goodreads_rss_goblin`; each file is optional and every
+row and proposal is scoped to its owner); it also runs nightly at 02:20.
+Libib has no API — its "sync" is the dashboard's Import Libib CSV button,
+which diffs a fresh export client-side and queues new titles as `add_book`
+events. `upcoming` (2026-09-23) runs `scan_upcoming.py` — Google Books
+newest-first per author of every series with a book read, plus Wikidata
+series rosters with ordinals and dates — and parks the finds as
+`add_book_from_inbox` proposals (owned false, pub_date when known); it is
+slow (minutes) so it never rides along with `all`. Optional `owner`
+(`butthead` | `goblin` | `all`, default `all`). It also runs weekly
+(Wednesday 04:30, `install_scan_cron.sh`).
+
+### `goodreads_link`
+A hand match for a currently-reading shelf row the sync could not place —
+the TBR card's "It's in the register as…" action (2026-09-23, migration 026).
+`gr_book_id` is the Goodreads book id from the `bookdb|Goodreads` tab's
+`GrId` column; `book` is the usual exact reference (or `copy_id` for a
+collection on the copies layer). jerry stores it in `goodreads_links`, updates
+the shelf row at once, and consults the table before its own title/ISBN
+ladder on every later sync, so the match survives re-syncs.
+```json
+{"gr_book_id": "230170279", "gr_title": "Bedside Companion to Folklore & Magic",
+ "book": {"title": "Bedside Companion to Folklore and Magic", "series": "", "owner": "butthead"}}
+{"gr_book_id": "230170279", "action": "unlink"}
+```
+`action` is `link` (default) or `unlink`. `gr_title` is display-only.
 
 ### `meta_add`
 Add a value to a picklist vocabulary (the Metadata tab). Applies to
