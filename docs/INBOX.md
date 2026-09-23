@@ -297,6 +297,30 @@ Duplicate adds are no-ops.
 `TBA` (2026-09-22: announced, no date — Doors of Stone, The Queens); the TBR
 tab files TBA and far-off dates under Waiting for.
 
+### Authors (phase 2, 2026-09-23)
+`book_update` accepts `set.authors`, a list of people in credit order with
+roles (`author`, `editor`, `artist`, `translator`, `illustrator`); jerry
+rewrites the book's credits and regenerates the display string from them.
+`set.author` (a string) still works: it is split the register's way into
+credits. Send one or the other, not both.
+```json
+{"book": {"title": "Brona", "series": "First Druids of Shannara", "owner": "butthead"},
+ "set": {"authors": [{"name": "Terry Brooks", "role": "author"},
+                     {"name": "Delilah S. Dawson", "role": "author"}]}}
+```
+
+### `author_update` — people-level edits
+```json
+{"action": "merge", "from": "David Wong", "into": "Jason Pargin", "kind": "pseudonym"}
+{"action": "rename", "name": "Justin Pargin", "new_name": "Jason Pargin"}
+{"action": "alias", "name": "R.A. Salvatore", "alias": "RA Salvatore", "kind": "variant"}
+```
+`merge` folds one person into another: spellings become aliases of the
+survivor, credits re-point (the printed name is kept as `credited_as`),
+display strings regenerate. `kind` is `variant`, `inverted`, `initials`,
+`typo`, or `pseudonym`. `rename` changes the canonical spelling and keeps
+the old one as an alias. `alias` adds a spelling without merging anything.
+
 ### `queue_set` — the hand-picked TBR ("Next up")
 One register book in, out, or moved within the reader's own queue
 (`reading_queue`, migration 023). `position` is a float the dashboard

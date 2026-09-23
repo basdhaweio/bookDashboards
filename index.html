@@ -948,6 +948,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div class="sl">Metadata vocabularies</div>
       <div class="ms" style="margin-bottom:1rem">These feed the picklists on the Books and Orders forms. Add a value here first, then it's selectable everywhere — even before any book uses it.</div>
       <div id="log-meta-list"></div>
+      <div id="log-people"></div>
     </div>
   </div>
 
@@ -4101,6 +4102,7 @@ const LOG=(()=>{
       case'acquired':return`📦 Got “${b.title}”${b.media?' ('+b.media+')':''}${p.edition?' · '+(p.edition.format||'edition')+(p.edition.edition?' '+p.edition.edition:'')+(p.edition.replaces?' (swap)':''):''}`;
       case'copy_let_go':return`🗑 Let go copy #${p.copy_id}${p.date?' · '+p.date:''}`;
       case'queue_set':return`📌 Next up ${p.action||'add'}: “${b.title}”${p.position!=null?' · slot '+p.position:''}`;
+      case'author_update':return`👤 ${p.action}: ${p.from||p.name||''}${p.into?' → '+p.into:p.new_name?' → '+p.new_name:p.alias?' += '+p.alias:''}${p.kind?' ('+p.kind+')':''}`;
       case'add_book':return`＋ New book “${p.title}”${p.read?' · read':''}${p.owned?' · owned':''}`;
       case'book_update':return`✎ “${b.title}” → ${Object.keys(p.set||{}).join(', ')}`;
       case'meta_add':return`🏷 New ${p.kind}: ${p.value}`;
@@ -4218,7 +4220,7 @@ const LOG=(()=>{
         ${thumbHTML(b.title,b.owner)}
         <div class="log-item-info">
           <div class="log-item-title">${esc(b.title)}${pendMark}${needMark}${missMark}</div>
-          <div class="log-item-meta">${esc(b.series)}${b.seq?' #'+esc(b.seq):''} · ${esc(b.author)}${b.media?' · '+esc(b.media):''}${b.pubDate?' · '+esc(b.pubDate):''}${OWNER==='all'?' · '+(OWNER_LABEL[b.owner]||''):''}${(G.inCopy&&G.inCopy[b.title.toLowerCase().replace(/[^a-z0-9]/g,'')+'|'+b.owner]||[]).map(t=>` · <span style="color:var(--purple)">in: ${esc(t)}</span>`).join('')}${(G.editionOf&&G.editionOf[b.title.toLowerCase().replace(/[^a-z0-9]/g,'')+'|'+b.owner]||[]).map(t=>` · <span style="color:var(--gold)">${esc(t)}</span>`).join('')}</div>
+          <div class="log-item-meta">${esc(b.series)}${b.seq?' #'+esc(b.seq):''} · ${esc(b.author)}${rolesTag(b)}${b.media?' · '+esc(b.media):''}${b.pubDate?' · '+esc(b.pubDate):''}${OWNER==='all'?' · '+(OWNER_LABEL[b.owner]||''):''}${(G.inCopy&&G.inCopy[b.title.toLowerCase().replace(/[^a-z0-9]/g,'')+'|'+b.owner]||[]).map(t=>` · <span style="color:var(--purple)">in: ${esc(t)}</span>`).join('')}${(G.editionOf&&G.editionOf[b.title.toLowerCase().replace(/[^a-z0-9]/g,'')+'|'+b.owner]||[]).map(t=>` · <span style="color:var(--gold)">${esc(t)}</span>`).join('')}</div>
         </div>
         <div class="log-acts">
           <button class="log-act primary" onclick="LOG.expand(${key},'finished')">✓ Read it</button>
@@ -4340,10 +4342,11 @@ const LOG=(()=>{
         f==='room'?roomSelect(`log-bke-${f}-${i}`,cur[f]||'')
         :VOCAB_FIELDS.includes(f)?vocabInput(`log-bke-${f}-${i}`,f,cur[f]||'')
         :DATE_FIELDS.includes(f)?`<input type="date" id="log-bke-${f}-${i}" value="${esc(cur[f]||'')}">`
-        :`<input id="log-bke-${f}-${i}" value="${esc(cur[f]||'')}" ${f==='series'?'list="log-dl-series" placeholder="blank = standalone"':f==='universe'?'list="log-dl-universe"':f==='pub_date'?'placeholder="1990 · July 1990 · 1990-07-14 · TBA"':f==='need'?'placeholder="x = hunting for it, blank = not"':''}>`}</div>`).join('')
+        :`<input id="log-bke-${f}-${i}" value="${esc(cur[f]||'')}" ${f==='series'?'list="log-dl-series" placeholder="blank = standalone"':f==='universe'?'list="log-dl-universe"':f==='author'?'list="log-dl-people" placeholder="pick a person · or edit the credits below"':f==='pub_date'?'placeholder="1990 · July 1990 · 1990-07-14 · TBA"':f==='need'?'placeholder="x = hunting for it, blank = not"':''}>`}</div>`).join('')
         +entityDatalists()
         +`<button class="log-act primary" onclick="LOG.saveBookEdit(${i})">Save changed fields</button>
         <div class="ms" style="margin-top:6px">Only changed fields are sent. Status stays with ✓/📦. Missing a genre or publisher? Add it under Metadata first.</div>`
+        +creditsHTML(b,i)
         +copiesHTML(b);
     }else{
       el.innerHTML=`<div class="log-frow"><label>Date</label><input type="date" id="log-a-date" value="${today()}"></div>
@@ -4408,8 +4411,44 @@ const LOG=(()=>{
   function entityDatalists(){
     const sers=[...new Set((G.allIndBooks||[]).map(b=>b.series).filter(s=>s&&s!=='Standalones'))].sort();
     const unis=[...new Set((G.allIndBooks||[]).map(b=>b.universe).filter(Boolean))].sort();
+    // people: every person on the Authors tab plus their other spellings,
+    // so a pseudonym or an old spelling still finds the one person
+    const ppl=(G.authors&&G.authors.length?G.authors.filter(a=>a.kind!=='group').flatMap(a=>[a.name,...a.aliases]):[...new Set((G.allIndBooks||[]).flatMap(b=>peopleOf(b.author)))]).sort((a,b)=>a.localeCompare(b));
     return`<datalist id="log-dl-series">${sers.map(v=>`<option>${esc(v)}</option>`).join('')}</datalist>
-      <datalist id="log-dl-universe">${unis.map(v=>`<option>${esc(v)}</option>`).join('')}</datalist>`;
+      <datalist id="log-dl-universe">${unis.map(v=>`<option>${esc(v)}</option>`).join('')}</datalist>
+      <datalist id="log-dl-people">${ppl.map(v=>`<option>${esc(v)}</option>`).join('')}</datalist>`;
+  }
+  // ✎ › Credits (authors phase 2): who did what, in credit order. Names
+  // come from the people list, roles are author/editor/artist/translator/
+  // illustrator. Saving sends the list; jerry rewrites the credits and
+  // regenerates the author line from them.
+  const ROLE_OPTS=['author','editor','artist','translator','illustrator'];
+  function bookCredits(b){
+    const k=(b.title||'').toLowerCase().replace(/[^a-z0-9]/g,'')+'|'+(b.owner||'butthead');
+    return(G.bookAuthors&&G.bookAuthors[k])||peopleOf(b.author).map(n=>({name:n,role:'author',credited:''}));
+  }
+  function rolesTag(b){
+    const cs=bookCredits(b).filter(c=>c.role&&c.role!=='author');
+    return cs.length?` <span class="ms">(${cs.map(c=>esc(c.role)+': '+esc(c.credited||c.name)).join(', ')})</span>`:'';
+  }
+  function creditRow(c,first){
+    return`<div class="log-frow log-credit"><label>${first?'Credits':''}</label><input list="log-dl-people" class="lc-name" value="${esc(c.credited||c.name||'')}" placeholder="person"><select class="lc-role">${ROLE_OPTS.map(r=>`<option${r===(c.role||'author')?' selected':''}>${r}</option>`).join('')}</select><button class="log-act" onclick="this.parentNode.remove()" title="remove this credit">✕</button></div>`;
+  }
+  function creditsHTML(b,i){
+    const cs=bookCredits(b);
+    return`<div id="log-credits-${i}" style="margin-top:10px">${cs.map((c,j)=>creditRow(c,j===0)).join('')||creditRow({name:'',role:'author'},true)}
+      <div class="log-frow lc-foot"><label></label><button class="log-act" onclick="LOG.addCreditRow(${i})">＋ person</button><button class="log-act primary" onclick="LOG.saveCredits(${i})">Save credits</button></div>
+      <div class="ms">Order is credit order; the author line regenerates from these. A pen name stays as printed (David Wong) and counts for the person (Jason Pargin).</div></div>`;
+  }
+  function addCreditRow(i){const box=document.getElementById('log-credits-'+i);if(!box)return;box.querySelector('.lc-foot').insertAdjacentHTML('beforebegin',creditRow({name:'',role:'author'},false));}
+  async function saveCredits(i){
+    const b=(document.getElementById('log-results')._hits||[])[i],box=document.getElementById('log-credits-'+i);if(!b||!box)return;
+    const authors=[...box.querySelectorAll('.log-credit')].map(r=>({name:r.querySelector('.lc-name').value.trim(),role:r.querySelector('.lc-role').value})).filter(c=>c.name);
+    if(!authors.length)return toast('Name at least one person',true);
+    const cur=bookCredits(b);
+    if(cur.length===authors.length&&cur.every((c,j)=>(c.credited||c.name)===authors[j].name&&(c.role||'author')===authors[j].role))return toast('Nothing changed',true);
+    const ok=await submit('book_update',{book:bookRef(b),set:{authors}},b);
+    if(ok){toast('Credits logged for “'+b.title+'”');search();}
   }
   // Returns null if ok; on ok, snaps values in `set` to canonical casing.
   // The shop rides as `source` (acquired events) or `source_store` (add_book
@@ -4556,7 +4595,7 @@ const LOG=(()=>{
         <div id="log-n-dupes"></div>
         <div class="log-frow"><label>Series</label><input id="log-n-series" list="log-dl-series" placeholder="blank = standalone"></div>${entityDatalists()}
         <div class="log-frow"><label>Seq #</label><input id="log-n-seq" inputmode="numeric" style="max-width:90px"></div>
-        <div class="log-frow"><label>Author</label><input id="log-n-author" placeholder="e.g. Sophie Jordan"></div>
+        <div class="log-frow"><label>Author</label><input id="log-n-author" list="log-dl-people" placeholder="pick a person · co-authors as “A and B”"></div>
         <div class="log-frow"><label>Media</label>${vocabInput('log-n-media','media','Print')}</div>
         <div class="log-frow"><label>Genre</label>${vocabInput('log-n-genre','genre','')}</div>
         <div class="log-frow"><label>Sub-genre</label>${vocabInput('log-n-subgenre','sub_genre','')}</div>
@@ -5255,7 +5294,52 @@ const LOG=(()=>{
         <div style="margin:8px 0 10px">${vals.map(v=>`<span class="mv-chip">${esc(v)}</span>`).join('')||'<span class="ms">—</span>'}</div>
         <div class="log-frow"><label>New</label><input id="log-mv-${k}" placeholder="add a ${lbl.toLowerCase()}"><button class="log-act" onclick="LOG.doMetaAdd('${k}')">Add</button></div>
       </div>`;}).join('');
+    renderPeople();
     refreshBadge();
+  }
+  // Metadata › People (authors phase 2): find a person by any spelling,
+  // then merge them into who they really are, rename the canonical
+  // spelling, or add a spelling — each an author_update event jerry
+  // applies to the credits and the author lines.
+  const ALIAS_KINDS=['variant','typo','initials','inverted','pseudonym'];
+  function renderPeople(){
+    const el=document.getElementById('log-people');if(!el)return;
+    const q=((document.getElementById('log-pp-q')||{}).value||'').trim();
+    const a=q?(G.authors||[]).find(x=>x.name.toLowerCase()===q.toLowerCase()||x.aliases.some(al=>al.toLowerCase()===q.toLowerCase())):null;
+    const kinds=id=>`<select id="${id}">${ALIAS_KINDS.map(k=>`<option>${k}</option>`).join('')}</select>`;
+    el.innerHTML=`<div class="cb" style="margin-bottom:12px">
+      <div class="sl">People <span style="font-weight:normal;color:var(--text3)">· ${(G.authors||[]).filter(x=>x.kind!=='group').length}</span></div>
+      <div class="log-frow"><label>Find</label><input id="log-pp-q" list="log-dl-people" value="${esc(q)}" placeholder="a person, or any spelling of them" onchange="LOG.renderPeople()"></div>${entityDatalists()}
+      ${a?`<div class="log-item"><div class="log-item-hd"><div class="log-item-info"><div class="log-item-title">${esc(a.name)} <span class="ms">· ${a.books} books · ${a.read} read · ${a.owned} owned</span></div><div class="log-item-meta">${a.aliases.length?'also written: '+a.aliases.map(esc).join(' · '):'one spelling'}${a.series.length?' · '+a.series.slice(0,6).map(esc).join(' · ')+(a.series.length>6?' …':''):''}</div></div></div></div>
+        <div class="log-frow"><label>Merge into</label><input id="log-pp-into" list="log-dl-people" placeholder="who this really is">${kinds('log-pp-kind')}<button class="log-act" onclick="LOG.doAuthorMerge()">Merge</button></div>
+        <div class="log-frow"><label>Rename</label><input id="log-pp-new" placeholder="new canonical spelling"><button class="log-act" onclick="LOG.doAuthorRename()">Rename</button></div>
+        <div class="log-frow"><label>Add spelling</label><input id="log-pp-alias" placeholder="a spelling that means this person">${kinds('log-pp-akind')}<button class="log-act" onclick="LOG.doAuthorAlias()">Add</button></div>
+        <div class="ms">A merge re-points every credit and regenerates the author lines once jerry syncs, a minute or two.</div>`
+      :(q?'<div class="ms">No person by that spelling.</div>':'<div class="ms">Type a name to see their spellings and books.</div>')}</div>`;
+  }
+  function personShown(){const q=((document.getElementById('log-pp-q')||{}).value||'').trim();return(G.authors||[]).find(x=>x.name.toLowerCase()===q.toLowerCase()||x.aliases.some(al=>al.toLowerCase()===q.toLowerCase()));}
+  async function doAuthorMerge(){
+    const a=personShown();if(!a)return toast('Find the person first',true);
+    const into=(document.getElementById('log-pp-into').value||'').trim(),kind=document.getElementById('log-pp-kind').value;
+    if(!into)return toast('Name who this really is',true);
+    if(into.toLowerCase()===a.name.toLowerCase())return toast('That is the same person',true);
+    if(!confirm(`Merge “${a.name}” into “${into}” as a ${kind}? Every credit moves; the printed name stays on each book.`))return;
+    const ok=await submit('author_update',{action:'merge',from:a.name,into,kind},null,'butthead');
+    if(ok)toast('Merge logged — lines regenerate after jerry syncs');
+  }
+  async function doAuthorRename(){
+    const a=personShown();if(!a)return toast('Find the person first',true);
+    const nn=(document.getElementById('log-pp-new').value||'').trim();
+    if(!nn||nn===a.name)return toast('Enter a different spelling',true);
+    const ok=await submit('author_update',{action:'rename',name:a.name,new_name:nn},null,'butthead');
+    if(ok)toast('Rename logged — the old spelling stays as an alias');
+  }
+  async function doAuthorAlias(){
+    const a=personShown();if(!a)return toast('Find the person first',true);
+    const al=(document.getElementById('log-pp-alias').value||'').trim(),kind=document.getElementById('log-pp-akind').value;
+    if(!al||al===a.name)return toast('Enter a different spelling',true);
+    const ok=await submit('author_update',{action:'alias',name:a.name,alias:al,kind},null,'butthead');
+    if(ok)toast('Spelling logged');
   }
   // Book Club › Authors to follow: a tick is a vocab event (kind bn_author)
   // so the followed list lives in the register, not in one browser.
@@ -5294,7 +5378,8 @@ const LOG=(()=>{
     toggleAdd,doAdd,addDates,toggleTrack,doTrackSeries,trackFromRow,isbnLookup,addFromIsbn,scanIsbn,stopScan,saveBookEdit,doCopyLetGo,vocabFor,pendingVocab,followAuthor,doNewOrder,doNewBoxOrder,setOrderStyle,expandOrder,doOrderUpdate,
     toggleRow,saveOrderEdit,expandBox,doBoxUpdate,saveBoxEdit,saveSetup,forgetSetup,refreshBadge,
     toggleOrderHistory,findInRegister,storeFromOrderNo,logFlyerOrders,trackSeriesFromIsbn,submitTrackSeries,
-    finishBook,setNeed,pendingBooks,today,queueSet,pendingQueue,acquireBook,setPubDate};
+    finishBook,setNeed,pendingBooks,today,queueSet,pendingQueue,acquireBook,setPubDate,
+    renderPeople,doAuthorMerge,doAuthorRename,doAuthorAlias,addCreditRow,saveCredits};
 })();
 
 async function init(){
@@ -5351,6 +5436,12 @@ async function init(){
     // applyOwner so calcBooks sees it.
     G.authors=(BUNDLE.tabs['bookdb|Authors']||[]).slice(1).map(r=>({name:(r[0]||'').trim(),sort:(r[1]||'').trim(),kind:(r[2]||'').trim(),aliases:(r[3]||'').split('|').filter(Boolean),books:n(r[4]),read:n(r[5]),owned:n(r[6]),series:(r[7]||'').split('|').filter(Boolean)})).filter(a=>a.name);
     G.aliasMap={};G.authors.forEach(a=>a.aliases.forEach(al=>{if(al!==a.name)G.aliasMap[al]=a.name;}));
+    // Book Authors (bookdb|Book Authors): Title|Owner|Position|Author|Role|
+    // CreditedAs — per-book credits in order, for the ✎ credits editor and
+    // the role tags on Log rows.
+    G.bookAuthors={};
+    (BUNDLE.tabs['bookdb|Book Authors']||[]).slice(1).forEach(r=>{const k=(r[0]||'').toLowerCase().replace(/[^a-z0-9]/g,'')+'|'+((r[1]||'butthead').trim());(G.bookAuthors[k]=G.bookAuthors[k]||[]).push({pos:n(r[2]),name:(r[3]||'').trim(),role:(r[4]||'author').trim(),credited:(r[5]||'').trim()});});
+    Object.values(G.bookAuthors).forEach(l=>l.sort((a,b)=>a.pos-b.pos));
     // Next up queue (bookdb|Queue): Title|Series|Owner|Position|AddedOn.
     G.queue=(BUNDLE.tabs['bookdb|Queue']||[]).slice(1).map(r=>({title:(r[0]||'').trim(),series:(r[1]||'').trim(),owner:(r[2]||'butthead').trim(),pos:parseFloat(r[3])||0,added:(r[4]||'').trim()})).filter(q=>q.title);
     // ISBNs tab: identifiers (owned-edition first) + best stored cover URL.

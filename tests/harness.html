@@ -223,6 +223,18 @@ async function main(){
         `${opts.length} people, ${joined.length} joined strings; Authors tab ${authorsTab?authorsTab.length-1:'absent'}`);
   });
 
+  await check('✎ panel carries a credits editor fed by the Book Authors tab',async()=>{
+    await go('logbook','log');
+    const q=doc().getElementById('log-q');q.value='the';q.dispatchEvent(new (w().Event)('input',{bubbles:true}));
+    await new Promise(r=>setTimeout(r,250));
+    const edit=doc().querySelector('#log-results .log-item .log-acts button[title="edit register details"]');
+    if(edit)edit.click();
+    await new Promise(r=>setTimeout(r,200));
+    const rows=doc().querySelectorAll('#log-results .log-credit').length;
+    const ba=tget('Book Authors');
+    res('✎ panel carries a credits editor fed by the Book Authors tab',rows>=1&&!!ba&&ba.length>1000,`${rows} credit row(s); Book Authors tab ${ba?ba.length-1:'absent'}`);
+  });
+
   await check('Order history expands and names its books',async()=>{
     await go('logorders','log');
     const orders=tget('Book Mail Orders');
