@@ -178,10 +178,12 @@ async function main(){
   await check('TBR lists every series in progress',async()=>{
     await go('tbr','reading');
     // Com's shelf: a real series (not Standalones) with ≥1 read and ≥1 unread
+    // series are told apart by collection too (two 'Villains' under Com)
     const per={};
     for(const r of ind.slice(1)){
       if((r[10]||'butthead')!=='butthead'||!r[1]||r[1]==='-'||r[1]==='Standalones')continue;
-      const s=per[r[1]]=per[r[1]]||{r:0,u:0};
+      const k=r[1]+'|'+(r[19]||'main');
+      const s=per[k]=per[k]||{r:0,u:0};
       if((r[7]||'').trim().toLowerCase()==='x')s.r++;else s.u++;
     }
     const want=Object.values(per).filter(s=>s.r>0&&s.u>0).length;

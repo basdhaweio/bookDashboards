@@ -562,8 +562,10 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div class="tbr-grid" id="tbr-new"></div>
       <div class="sl" style="margin-top:1.5rem">Waiting for — announced, no date or further out</div>
       <div class="tbr-grid" id="tbr-wait"></div>
-      <div class="sl" style="margin-top:1.5rem">Get these next — out, tracked, not on the shelf</div>
+      <div class="sl" style="margin-top:1.5rem">Get these next — out, tracked, not on the shelf, or a volume the register skipped</div>
       <div class="tbr-grid" id="tbr-get"></div>
+      <div class="sl" style="margin-top:1.5rem">Start a series — owned, nothing read yet</div>
+      <div class="tbr-grid" id="tbr-start"></div>
     </div>
     <div class="panel" id="tab-history">
       <div class="sl">Year-over-year — stacked area by media type</div>
@@ -1177,6 +1179,21 @@ function peopleOf(s){
   }
   return out.map(p=>(G.aliasMap&&G.aliasMap[p])||p).filter(p=>!/^(others|various(?: authors)?|anonymous)$/i.test(p));
 }
+// Two series can share a name under one owner (Com's Dragonlance
+// 'Villains' and Schwab's). The register tells them apart by collection;
+// the label adds the universe or collection so the eye can too, while
+// b.series stays the plain name that inbox refs use.
+function seriesLabel(b){
+  const dup=G.seriesDupes&&G.seriesDupes[(b.owner||'butthead')+'|'+b.series];
+  if(!dup||b.series==='Standalones')return b.series;
+  return b.series+' ('+(b.universe||(b.collection==='dnd'?'D&D':b.collection))+')';
+}
+function seriesKey(b){return b.series+'|'+((G.seriesDupes&&G.seriesDupes[(b.owner||'butthead')+'|'+b.series])?(b.collection||'main'):'');}
+function buildSeriesDupes(){
+  const m={};
+  for(const b of (G.allIndBooks||[])){if(!b.series||b.series==='Standalones')continue;const k=(b.owner||'butthead')+'|'+b.series;(m[k]=m[k]||new Set()).add(b.collection||'main');}
+  G.seriesDupes={};for(const k in m)if(m[k].size>1)G.seriesDupes[k]=true;
+}
 function calcBooks(rows){
   const m={tracked:0,read:0,owned:0,readNotOwned:0,byType:{},byGenre:{},byRoom:{},byUniverse:{},byAuthor:{},fr:{t:0,r:0,o:0},dl:{t:0,r:0,o:0},sr:{t:0,r:0,o:0},ttrpg:{t:0,r:0,o:0}};
   for(const r of rows){
@@ -1649,8 +1666,36 @@ async function tbrQueue(i,action){
   const pos=action==='add'?(L.length?L[L.length-1].pos+1:1):null;
   if(await LOG.queueSet(b,action,pos))tbrRerender();
 }
+// Track the volume the register skipped (Kaiju No 8 has 16 but no 15):
+// open the add form prefilled from the next-known volume's title with the
+// number swapped, series and author carried over, tracked only.
+function tbrTrackGap(i){
+  const b=(G._tbrBooks||[])[i],gap=b&&b._gap;if(!b||!gap)return;
+  switchTab('logbook','log');
+  const form=document.getElementById('log-addform');
+  if(form.style.display==='none')LOG.toggleAdd();
+  const t=/\b\d+\s*$/.test(b.title)?b.title.replace(/\b\d+\s*$/,String(gap)):`${b.series} ${gap}`;
+  document.getElementById('log-n-title').value=t;
+  document.getElementById('log-n-series').value=b.series||'';
+  document.getElementById('log-n-seq').value=String(gap);
+  document.getElementById('log-n-author').value=b.author||'';
+  document.getElementById('log-n-media').value=b.media||'Print';
+  if(b.type)document.getElementById('log-n-genre').value=b.type;
+  document.getElementById('log-n-status').value='wish';LOG.addDates();
+  form.scrollIntoView({behavior:'smooth',block:'start'});
+  toast(`Prefilled #${gap} of ${b.series} as tracked — check the title, then Add`);
+}
+// Start a series: pick one you own but haven't started; its first volume
+// gets a card with ＋ Next up so it can join the list.
+function tbrPickStart(){
+  const q=(document.getElementById('tbr-start-q').value||'').trim();
+  G._tbrStart=q;tbrRerender();
+}
 function renderTBR(){
-  const books=G.indBooks||[],cy=String(new Date().getFullYear()),todayIso=LOG.today();
+  // Always one shelf: the header's owner, or Com's when both are shown —
+  // a merged TBR would let Shereen's Villains finish Com's (John, 2026-09-23).
+  const tbrOwner=OWNER==='all'?'butthead':OWNER;
+  const books=(G.allIndBooks||[]).filter(b=>(b.owner||'butthead')===tbrOwner),cy=String(new Date().getFullYear()),todayIso=LOG.today();
   const limIso=(()=>{const d=new Date(todayIso+'T12:00:00');d.setMonth(d.getMonth()+6);return d.toISOString().slice(0,10);})();
   const rel=b=>tbrRel(b.pubDate,todayIso,limIso);
   const seqN=b=>{const v=parseFloat(String(b.seq||'').replace(/[^0-9.]/g,''));return isNaN(v)?Infinity:v;};
@@ -1663,7 +1708,7 @@ function renderTBR(){
   const by={};
   for(const b of books){
     if(!b.series||b.series==='Standalones')continue;
-    const s=by[b.series]=by[b.series]||{name:b.series,author:'',universe:'',books:[],read:0,owned:0,last:''};
+    const s=by[seriesKey(b)]=by[seriesKey(b)]||{name:seriesLabel(b),raw:b.series,author:'',universe:'',books:[],read:0,owned:0,last:''};
     s.books.push(b);if(!s.author&&b.author)s.author=b.author;if(!s.universe&&b.universe)s.universe=b.universe;
     if(b.read){s.read++;if((b.readOn||'')>s.last)s.last=b.readOn;}
     if(b.owned)s.owned++;
@@ -1678,6 +1723,14 @@ function renderTBR(){
     s.unread=unread.length;
     s.next=unread.find(b=>seqN(b)>maxRead)||unread[0]||null;
     s.inProg=s.read>0&&s.unread>0;
+    // A hole between the last read and the next known volume means the
+    // register never had that number — you can't read 16 before 15 exists
+    // (John, 2026-09-23). The gap becomes the thing to get.
+    s.gap=null;
+    if(s.next&&Number.isInteger(maxRead)&&maxRead>0){
+      const want=maxRead+1,nx=seqN(s.next);
+      if(nx!==Infinity&&nx>want&&!s.books.some(b=>seqN(b)===want)&&Number.isInteger(nx)){s.gap=want;s.next._gap=want;}
+    }
   }
   const open=(G.orders||[]).filter(o=>o.delivered!=='Fulfilled'&&o.delivered!=='Cancelled');
   const onOrder=t=>{const k=nl(t);return k?open.find(o=>nl(o.books).includes(k)||(o.contains||'').split('\n').some(l=>nl(l.replace(/\s+#\S+$/,''))===k)):null;};
@@ -1716,7 +1769,7 @@ function renderTBR(){
   // next only — no double listing (John, 2026-09-22).
   const byPct=(a,b)=>b.pct-a.pct||(b.last||'').localeCompare(a.last||'')||a.name.localeCompare(b.name);
   const onShelfOrWay=s=>!s.next||s.next.owned||!!onOrder(s.next.title);
-  const prog=inProg.filter(s=>!focusSet.has(s.name)&&!beingRead(s)&&(!s.next||rel(s.next)==='out')&&onShelfOrWay(s)).sort(byPct);
+  const prog=inProg.filter(s=>!focusSet.has(s.name)&&!beingRead(s)&&!s.gap&&(!s.next||rel(s.next)==='out')&&onShelfOrWay(s)).sort(byPct);
   // Unreleased volumes in any series with a book read: dated inside six
   // months = New book in series (with Book Notification's not-yet-adopted
   // announcements); TBA, year-only or further out = Waiting for.
@@ -1731,9 +1784,10 @@ function renderTBR(){
   const waiting=unrel.filter(x=>x.state!=='soon').map(x=>Object.assign(x,{date:/^tba$/i.test(x.b.pubDate)?'':x.b.pubDate})).sort((a,b)=>byDate(a,b)||a.s.name.localeCompare(b.s.name));
   // To get: tracked, out, not on the shelf, not on order — "if I don't own
   // it and it's tracked then I need it" (John, 2026-09-22), so no flag.
-  const toGet=inProg.filter(s=>s.next&&!s.next.owned&&!onOrder(s.next.title)&&rel(s.next)==='out'&&!beingRead(s)).sort(byPct);
+  const toGet=inProg.filter(s=>s.next&&!beingRead(s)&&(s.gap||(!s.next.owned&&!onOrder(s.next.title)&&rel(s.next)==='out'))).sort(byPct);
   G._tbrBooks=[];const bidx=b=>{G._tbrBooks.push(b);return G._tbrBooks.length-1;};
   const chip=nx=>{if(pendRead.has(pk(nx)))return'<span class="badge b-teal">read · pending</span>';
+    if(nx._gap)return`<span class="badge b-coral">#${nx._gap} missing from the register</span>`;
     const o=onOrder(nx.title);
     if(o)return`<span class="badge b-gold">on order${o.store?' · '+esc(o.store):''}</span>`;
     if(nx.owned)return'<span class="badge b-green">on the shelf</span>';
@@ -1747,6 +1801,7 @@ function renderTBR(){
     const queueBtns=qi==null
       ?(q?`<span class="badge b-gold">next up${q.pending?' · pending':''}</span>`:`<button class="log-act" onclick="tbrQueue(${i},'add')" title="put it on your Next up list">＋ Next up</button>`)
       :`<button class="log-act" onclick="tbrMoveBy(${qi},-1)" title="move up"${qi===0?' disabled':''}>▲</button><button class="log-act" onclick="tbrMoveBy(${qi},1)" title="move down"${qi>=queue.length-1?' disabled':''}>▼</button><button class="log-act" onclick="tbrQueue(${i},'remove')" title="take it off the list">✕</button>`;
+    if(nx._gap)return`<div class="tbr-acts"><button class="log-act gold" onclick="tbrTrackGap(${i})" title="add the missing volume to the register as tracked">＋ Track #${nx._gap}</button><a class="tbr-a" href="${tomboloUrl((nx.series||'')+' '+nx._gap)}" target="_blank" rel="noopener">Tombolo ↗</a></div><div id="tbr-rr-${i}" style="display:none"></div>`;
     return`<div class="tbr-acts">${pr?'':`<button class="log-act" onclick="tbrReadRow(${i})">✓ Read</button>`}${queueBtns}${nx.owned||rel(nx)!=='out'?'':`<a class="tbr-a" href="${tomboloUrl(nx.title)}" target="_blank" rel="noopener">Tombolo ↗</a>`}</div><div id="tbr-rr-${i}" style="display:none"></div>`;};
   const cover=b=>coverTile(b.title,b.owner||'butthead','',null,40);
   const seriesCard=s=>{const nx=s.next;return`<div class="tbr-card" data-ser="${esc(s.name)}"${s.inProg?' data-inprog="1"':''}>
@@ -1774,7 +1829,7 @@ function renderTBR(){
   const grTile=r=>r.cover?`<div class="ct" style="width:40px;height:60px" title="${esc(r.title)}"><img loading="lazy" alt="" src="${esc(r.cover)}"></div>`:coverTile(r.title,'butthead','',r.isbn||r.isbn13||null,40);
   const bnCard=x=>`<div class="tbr-card" data-ser="${esc(x.s.name)}"><div class="tbr-cov">${grTile(x.r)}</div><div class="tbr-info"><div class="tbr-ser">${esc(x.r.title)}</div><div class="tbr-prog">${esc(x.s.name)} · ${esc(x.r.author)} · ${x.s.read}/${x.s.total} · Book Notification, not in the register</div><div class="tbr-next"><span class="badge b-teal">📅 ${esc(x.date||'TBA')}</span></div><div class="tbr-acts"><a class="tbr-a" href="${tomboloUrl(x.r.title)}" target="_blank" rel="noopener">Tombolo ↗</a><button class="log-act" onclick="switchSection('bookclub','flyer')">flyer</button></div></div></div>`;
   const orderChip=b=>onOrder(b.title)?' <span class="badge b-gold">on order</span>':b.owned?' <span class="badge b-green">on the shelf</span>':'';
-  const sOf=b=>by[b.series]||null;
+  const sOf=b=>by[seriesKey(b)]||null;
   // Finished series don't belong on a to-read page (tracking and This Year
   // cover them), so the focus list shows only what still has volumes left
   // and isn't already under Reading now.
@@ -1789,7 +1844,7 @@ function renderTBR(){
     mH(reading.length,'Reading now','Goodreads shelf');
   const rw=document.getElementById('tbr-reading-wrap');
   rw.style.display=reading.length?'':'none';
-  const serAttr=b=>{const s=b&&by[b.series];return s?` data-ser="${esc(s.name)}"${s.inProg?' data-inprog="1"':''}`:'';};
+  const serAttr=b=>{const s=b&&by[seriesKey(b)];return s?` data-ser="${esc(s.name)}"${s.inProg?' data-inprog="1"':''}`:'';};
   document.getElementById('tbr-reading').innerHTML=reading.map(r=>{const b=r.reg,i=b?bidx(b):-1,pr=b&&pendRead.has(pk(b));
     if(!b&&r.works.length){
       // a collection: the stories stay folded (they'd stretch the whole
@@ -1808,7 +1863,15 @@ function renderTBR(){
     ||'<div class="ms">Nothing due in the next six months in a series you\'ve read.</div>';
   document.getElementById('tbr-wait').innerHTML=waiting.map(x=>bookCard(x.b,x.s,`<span class="badge b-gray">${x.date?'📅 '+esc(x.date):'no date yet · TBA'}</span>${orderChip(x.b)}`)).join('')
     ||'<div class="ms">Nothing announced without a date.</div>';
-  document.getElementById('tbr-get').innerHTML=toGet.map(s=>bookCard(s.next,s,chip(s.next))).join('')||'<div class="ms">Every next volume is on the shelf, on order, or not out yet.</div>';
+  document.getElementById('tbr-get').innerHTML=toGet.map(s=>bookCard(s.next,s,s.gap?`<span class="badge b-coral">#${s.gap} missing from the register</span> <span class="ms">next known: ${esc(s.next.title)}</span>`:chip(s.next))).join('')||'<div class="ms">Every next volume is on the shelf, on order, or not out yet.</div>';
+  // Start a series: owned, nothing read yet — pick one and its first
+  // volume gets a card (John, 2026-09-23: "add new series from my shelf
+  // that aren't in progress yet")
+  const fresh=series.filter(s=>s.read===0&&s.owned>0).sort((a,b)=>a.name.localeCompare(b.name));
+  const pick=G._tbrStart?fresh.find(s=>s.name.toLowerCase()===G._tbrStart.toLowerCase()):null;
+  const first=pick?(pick.books.find(b=>b.owned)||pick.books[0]):null;
+  document.getElementById('tbr-start').innerHTML=`<div class="log-frow" style="grid-column:1/-1"><label>Series</label><input id="tbr-start-q" list="tbr-dl-start" value="${esc(G._tbrStart||'')}" placeholder="${fresh.length} series on the shelf with nothing read yet" onchange="tbrPickStart()"><datalist id="tbr-dl-start">${fresh.map(s=>`<option>${esc(s.name)}</option>`).join('')}</datalist></div>`
+    +(first?bookCard(first,pick,chip(first)):(G._tbrStart?'<div class="ms">No unstarted series by that name.</div>':''));
 }
 function renderThisYear(year){
   tyYear=year;
@@ -3413,6 +3476,7 @@ function parseIndividual(vals){
       need:(r[16]||'').trim().toLowerCase()==='x',
       room:(r[17]||'').trim(),
       pages:n(r[18]),
+      collection:(r[19]||'main').trim(),
     });
   }
   return books;
@@ -4220,7 +4284,7 @@ const LOG=(()=>{
         ${thumbHTML(b.title,b.owner)}
         <div class="log-item-info">
           <div class="log-item-title">${esc(b.title)}${pendMark}${needMark}${missMark}</div>
-          <div class="log-item-meta">${esc(b.series)}${b.seq?' #'+esc(b.seq):''} · ${esc(b.author)}${rolesTag(b)}${b.media?' · '+esc(b.media):''}${b.pubDate?' · '+esc(b.pubDate):''}${OWNER==='all'?' · '+(OWNER_LABEL[b.owner]||''):''}${(G.inCopy&&G.inCopy[b.title.toLowerCase().replace(/[^a-z0-9]/g,'')+'|'+b.owner]||[]).map(t=>` · <span style="color:var(--purple)">in: ${esc(t)}</span>`).join('')}${(G.editionOf&&G.editionOf[b.title.toLowerCase().replace(/[^a-z0-9]/g,'')+'|'+b.owner]||[]).map(t=>` · <span style="color:var(--gold)">${esc(t)}</span>`).join('')}</div>
+          <div class="log-item-meta">${esc(seriesLabel(b))}${b.seq?' #'+esc(b.seq):''} · ${esc(b.author)}${rolesTag(b)}${b.media?' · '+esc(b.media):''}${b.pubDate?' · '+esc(b.pubDate):''}${OWNER==='all'?' · '+(OWNER_LABEL[b.owner]||''):''}${(G.inCopy&&G.inCopy[b.title.toLowerCase().replace(/[^a-z0-9]/g,'')+'|'+b.owner]||[]).map(t=>` · <span style="color:var(--purple)">in: ${esc(t)}</span>`).join('')}${(G.editionOf&&G.editionOf[b.title.toLowerCase().replace(/[^a-z0-9]/g,'')+'|'+b.owner]||[]).map(t=>` · <span style="color:var(--gold)">${esc(t)}</span>`).join('')}</div>
         </div>
         <div class="log-acts">
           <button class="log-act primary" onclick="LOG.expand(${key},'finished')">✓ Read it</button>
@@ -4247,7 +4311,7 @@ const LOG=(()=>{
     const src=(G.indBooks||[]);
     let vals;
     if(m==='author')vals=[...new Set(src.flatMap(b=>peopleOf(b.author)))];
-    else if(m==='series')vals=[...new Set(src.map(b=>b.series).filter(s=>s&&s!=='Standalones'))];
+    else if(m==='series')vals=[...new Set(src.filter(b=>b.series&&b.series!=='Standalones').map(seriesLabel))];
     else vals=[...new Set(src.map(b=>b.universe).filter(Boolean))];
     document.getElementById('log-dl-br').innerHTML=vals.sort((a,b)=>a.localeCompare(b)).map(v=>`<option>${esc(v)}</option>`).join('');
   }
@@ -4265,7 +4329,7 @@ const LOG=(()=>{
         if(needOnly&&!b.need)return false;
         if(!q)return true;
         if(m==='author')return(b.author||'').toLowerCase().includes(q)||peopleOf(b.author).some(p=>p.toLowerCase().includes(q));
-        if(m==='series')return(b.series||'').toLowerCase().includes(q);
+        if(m==='series')return seriesLabel(b).toLowerCase().includes(q)||(b.series||'').toLowerCase().includes(q.replace(/\s*\(.*\)\s*$/,''));
         return(b.universe||'').toLowerCase().includes(q);
       });
       const seqN=b=>{const n=parseFloat(b.seq);return isNaN(n)?9e9:n;};
@@ -5403,6 +5467,7 @@ async function init(){
     G.boxes=parseBoxes(boxesV);
     G.allBookRows=parseBooks(booksV);
     G.allIndBooks=parseIndividual(indV);
+    buildSeriesDupes();
     // Open proposals for the Proposed tab (Id|Kind|Target|Proposal|Recommend|Note)
     G.proposals=(BUNDLE.tabs['bookdb|Proposals']||[]).slice(1).map(r=>({
       id:+r[0],kind:(r[1]||'').trim(),target:(r[2]||'').trim(),
