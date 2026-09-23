@@ -211,6 +211,18 @@ async function main(){
     res('Coming Up merges its three sources without duplicates',cards.length>0&&dups===0,`${cards.length} cards, ${dups} duplicate titles`);
   });
 
+  await check('Browse by author lists people, not co-author strings',async()=>{
+    await go('logbook','log');
+    const sel=doc().getElementById('log-br-mode');
+    sel.value='author';sel.dispatchEvent(new (w().Event)('change',{bubbles:true}));
+    await new Promise(r=>setTimeout(r,300));
+    const opts=[...doc().querySelectorAll('#log-dl-br option')].map(o=>o.textContent);
+    const joined=opts.filter(o=>/\s(and|&)\s/i.test(o)||/,\s*\S+\s+\S+/.test(o));
+    const authorsTab=tget('Authors');
+    res('Browse by author lists people, not co-author strings',opts.length>100&&joined.length===0&&(!authorsTab||authorsTab.length>100),
+        `${opts.length} people, ${joined.length} joined strings; Authors tab ${authorsTab?authorsTab.length-1:'absent'}`);
+  });
+
   await check('Order history expands and names its books',async()=>{
     await go('logorders','log');
     const orders=tget('Book Mail Orders');

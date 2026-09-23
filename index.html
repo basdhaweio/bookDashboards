@@ -1162,6 +1162,20 @@ function parseBoxes(vals){
   return boxes;
 }
 
+// People in an author string — the split the register cleanup uses (and,
+// &, with, ;, and commas between full names; 'Last, First' stays whole),
+// with aliases from the Authors tab folded in so a pseudonym or an old
+// spelling counts under the one person. Groups ('Various', 'others') drop.
+function peopleOf(s){
+  s=(s||'').trim();if(!s)return[];
+  const out=[];
+  for(let p of s.split(/\s+(?:and|with|&)\s+|\s*;\s*/i)){
+    p=p.trim().replace(/,$/,'').trim();if(!p)continue;
+    if(p.includes(',')){const pieces=p.split(',').map(x=>x.trim()).filter(Boolean);if(pieces.every(x=>x.split(/\s+/).length>=2)||pieces.length>2){out.push(...pieces);continue;}}
+    out.push(p);
+  }
+  return out.map(p=>(G.aliasMap&&G.aliasMap[p])||p).filter(p=>!/^(others|various(?: authors)?|anonymous)$/i.test(p));
+}
 function calcBooks(rows){
   const m={tracked:0,read:0,owned:0,readNotOwned:0,byType:{},byGenre:{},byRoom:{},byUniverse:{},byAuthor:{},fr:{t:0,r:0,o:0},dl:{t:0,r:0,o:0},sr:{t:0,r:0,o:0},ttrpg:{t:0,r:0,o:0}};
   for(const r of rows){
@@ -1199,10 +1213,13 @@ function calcBooks(rows){
     const uvKey=`${uv}||${r.type}`;
     if(!m.byUniverse[uvKey])m.byUniverse[uvKey]={name:uv,type:r.type,tracked:0,read:0,owned:0};
     m.byUniverse[uvKey].tracked+=r.count;m.byUniverse[uvKey].read+=r.read;m.byUniverse[uvKey].owned+=r.owned;
-    // Author
-    const au=r.author||'Unknown';
-    if(!m.byAuthor[au])m.byAuthor[au]={tracked:0,read:0,owned:0};
-    m.byAuthor[au].tracked+=r.count;m.byAuthor[au].read+=r.read;m.byAuthor[au].owned+=r.owned;
+    // Author — per person: a co-authored series credits each name, and an
+    // alias (David Wong) counts under the person (Jason Pargin)
+    const ppl=peopleOf(r.author);
+    for(const au of (ppl.length?ppl:['Unknown'])){
+      if(!m.byAuthor[au])m.byAuthor[au]={tracked:0,read:0,owned:0};
+      m.byAuthor[au].tracked+=r.count;m.byAuthor[au].read+=r.read;m.byAuthor[au].owned+=r.owned;
+    }
   }
   m.shelf=m.owned-m.read;m.needBuy=m.tracked-m.owned;
   const now=new Date();
@@ -3852,11 +3869,14 @@ function renderBnAuthors(){
   const byA={};
   for(const b of (G.allIndBooks||[])){
     if((b.owner||'butthead')!=='butthead')continue;
-    const a=(b.author||'').trim();if(!a||a==='Various')continue;
-    const r=byA[a]=byA[a]||{author:a,recent:0,series:new Set(),last:'',need:0,total:0};
-    r.total++;if(b.need)r.need++;
-    if(b.acquiredOn&&b.acquiredOn>r.last)r.last=b.acquiredOn;
-    if(b.owned&&b.acquiredOn&&b.acquiredOn>=iso(yr)){r.recent++;if(b.series&&b.series!=='Standalones')r.series.add(b.series);}
+    // per person — Book Notification follows individuals, so Brona counts
+    // for Terry Brooks and for Delilah S. Dawson
+    for(const a of peopleOf(b.author)){
+      const r=byA[a]=byA[a]||{author:a,recent:0,series:new Set(),last:'',need:0,total:0};
+      r.total++;if(b.need)r.need++;
+      if(b.acquiredOn&&b.acquiredOn>r.last)r.last=b.acquiredOn;
+      if(b.owned&&b.acquiredOn&&b.acquiredOn>=iso(yr)){r.recent++;if(b.series&&b.series!=='Standalones')r.series.add(b.series);}
+    }
   }
   const rows=Object.values(byA);
   const isF=r=>followed.has(r.author.toLowerCase());
@@ -4224,7 +4244,7 @@ const LOG=(()=>{
     const m=document.getElementById('log-br-mode').value;
     const src=(G.indBooks||[]);
     let vals;
-    if(m==='author')vals=[...new Set(src.map(b=>b.author).filter(Boolean))];
+    if(m==='author')vals=[...new Set(src.flatMap(b=>peopleOf(b.author)))];
     else if(m==='series')vals=[...new Set(src.map(b=>b.series).filter(s=>s&&s!=='Standalones'))];
     else vals=[...new Set(src.map(b=>b.universe).filter(Boolean))];
     document.getElementById('log-dl-br').innerHTML=vals.sort((a,b)=>a.localeCompare(b)).map(v=>`<option>${esc(v)}</option>`).join('');
@@ -4242,7 +4262,7 @@ const LOG=(()=>{
       const hits=(G.indBooks||[]).filter(b=>{
         if(needOnly&&!b.need)return false;
         if(!q)return true;
-        if(m==='author')return(b.author||'').toLowerCase().includes(q);
+        if(m==='author')return(b.author||'').toLowerCase().includes(q)||peopleOf(b.author).some(p=>p.toLowerCase().includes(q));
         if(m==='series')return(b.series||'').toLowerCase().includes(q);
         return(b.universe||'').toLowerCase().includes(q);
       });
@@ -5325,6 +5345,12 @@ async function init(){
     // Contains|Copy (cols I-J): a collection matched on the copies layer,
     // with the register works inside it.
     G.goodreads=(BUNDLE.tabs['bookdb|Goodreads']||[]).slice(1).map(r=>({shelf:(r[0]||'').trim(),title:(r[1]||'').trim(),author:(r[2]||'').trim(),isbn13:(r[3]||'').trim(),added:(r[4]||'').trim(),readAt:(r[5]||'').trim(),book:(r[6]||'').trim(),cover:(r[7]||'').trim().replace(/^http:/,'https:'),contains:(r[8]||'').split('|').filter(Boolean),copy:(r[9]||'').trim()}));
+    // Authors (bookdb|Authors): Name|SortName|Kind|Aliases|Books|Read|Owned|
+    // Series. aliasMap folds every listed spelling onto its person, which
+    // peopleOf() applies everywhere authors are grouped. Built before
+    // applyOwner so calcBooks sees it.
+    G.authors=(BUNDLE.tabs['bookdb|Authors']||[]).slice(1).map(r=>({name:(r[0]||'').trim(),sort:(r[1]||'').trim(),kind:(r[2]||'').trim(),aliases:(r[3]||'').split('|').filter(Boolean),books:n(r[4]),read:n(r[5]),owned:n(r[6]),series:(r[7]||'').split('|').filter(Boolean)})).filter(a=>a.name);
+    G.aliasMap={};G.authors.forEach(a=>a.aliases.forEach(al=>{if(al!==a.name)G.aliasMap[al]=a.name;}));
     // Next up queue (bookdb|Queue): Title|Series|Owner|Position|AddedOn.
     G.queue=(BUNDLE.tabs['bookdb|Queue']||[]).slice(1).map(r=>({title:(r[0]||'').trim(),series:(r[1]||'').trim(),owner:(r[2]||'butthead').trim(),pos:parseFloat(r[3])||0,added:(r[4]||'').trim()})).filter(q=>q.title);
     // ISBNs tab: identifiers (owned-edition first) + best stored cover URL.
