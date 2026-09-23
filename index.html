@@ -123,6 +123,20 @@ button.tbr-link{background:none;border:none;padding:0;font:inherit;font-weight:i
 .tbr-acts .badge{font-size:9px;}
 .tbr-handle{position:absolute;top:6px;right:8px;color:var(--text3);cursor:grab;font-size:13px;user-select:none;line-height:1;}
 .tbr-num{font-family:var(--font-m);font-size:10px;color:var(--gold);margin-right:4px;}
+/* Tracking › By Universe drill-down rows */
+.uv-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;}
+.uv-row:last-child{border-bottom:none;}
+.uv-t{flex:1;min-width:180px;line-height:1.5;}
+.uv-acts{display:flex;gap:4px;flex-wrap:wrap;}
+.uv-acts .log-act{padding:3px 7px;font-size:10px;border-radius:6px;}
+.uv-inline{flex-basis:100%;}
+.uv-dots{display:inline-flex;gap:3px;flex:none;}
+.uv-dot{width:9px;height:9px;border-radius:50%;background:var(--bg3);border:1px solid var(--border2);}
+.uv-dot.on-read{background:var(--teal2);border-color:var(--teal2);}
+.uv-dot.on-own{background:var(--gold2);border-color:var(--gold2);}
+.uv-dot.on-need{background:var(--coral);border-color:var(--coral);}
+.uv-dot.on-unpub{background:#9a9688;border-color:#9a9688;}
+.uv-ser{font-family:var(--font-m);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--gold);margin:12px 0 2px;}
 .bc-burst.bc-b-blue{background:#3a6ea8;}
 .bc-rel{margin-top:auto;font-family:'DM Mono',monospace !important;font-size:10px;font-weight:500;background:#2b2620;color:#e8a33d;display:inline-block;align-self:flex-start;padding:2px 8px;letter-spacing:0.1em;text-transform:uppercase;}
 .bc-form{margin:2.2rem 2rem 0;border-top:3px dashed #2b2620;padding-top:0.4rem;position:relative;}
@@ -492,6 +506,8 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div class="tw"><table><thead><tr><th>Genre</th><th class="nr">Tracked</th><th class="nr">Read</th><th class="nr">Owned</th><th class="nr">On Shelf</th><th class="nr">Need to Buy</th><th class="nr">% Read</th></tr></thead><tbody id="genreBody"></tbody></table></div>
     </div>
     <div class="panel" id="tab-universe">
+      <div class="ms" style="margin-bottom:10px">Tap a universe for every book in it — read, owned, needed, unpublished — and register a status in one tap.</div>
+      <div id="uv-detail" style="display:none"></div>
       <div id="uv-series-section" class="uv-section">
         <div class="uv-section-title">📚 Series</div>
         <div id="uv-series-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;margin-bottom:1rem;"></div>
@@ -659,7 +675,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div id="sd-list"></div>
     </div>
     <div class="panel" id="tab-comingup">
-      <div class="sl">Upcoming releases</div><div id="cu-covers"></div><div id="upcoming-list"></div>
+      <div class="sl">Upcoming releases — Interested list, Book Notification, and tracked books with a date ahead</div><div id="cu-covers"></div><div id="upcoming-list"></div>
     </div>
     <div class="panel" id="tab-bookmail">
       <div class="sl">Order overview</div><div class="mg" id="tbb-m"></div>
@@ -1264,7 +1280,7 @@ function renderUniverseSection(uvList,gridId,chartId,wrapId,color){
   const cols=TKCOL;
   document.getElementById(gridId).innerHTML=sorted.map((u,i)=>{
     const rp=pctN(u.read,u.tracked),op=pctN(u.owned,u.tracked),col=cols[i%cols.length];
-    return`<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:1rem 1.2rem;box-shadow:var(--shadow)"><div style="font-family:var(--font-d);font-size:.95rem;font-weight:600;color:var(--text);margin-bottom:6px">${u.name}</div><div style="display:flex;gap:12px;font-family:var(--font-m);font-size:11px;color:var(--text3);margin-bottom:8px"><span>tracked <strong style="color:var(--text)">${u.tracked}</strong></span><span>read <strong style="color:var(--text)">${u.read}</strong></span><span>owned <strong style="color:var(--text)">${u.owned}</strong></span></div><div class="pr"><div class="pl">Read</div><div class="pt"><div class="pf" style="width:${rp}%;background:${col}"></div></div><div class="pv">${rp}%</div></div><div class="pr"><div class="pl">Owned</div><div class="pt"><div class="pf" style="width:${op}%;background:${col};opacity:0.35"></div></div><div class="pv">${op}%</div></div></div>`;
+    return`<div data-u="${esc(u.name)}" onclick="uvOpen(this.dataset.u)" title="open ${esc(u.name)}" style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:1rem 1.2rem;box-shadow:var(--shadow);cursor:pointer"><div style="font-family:var(--font-d);font-size:.95rem;font-weight:600;color:var(--text);margin-bottom:6px">${esc(u.name)} <span class="ms">›</span></div><div style="display:flex;gap:12px;font-family:var(--font-m);font-size:11px;color:var(--text3);margin-bottom:8px"><span>tracked <strong style="color:var(--text)">${u.tracked}</strong></span><span>read <strong style="color:var(--text)">${u.read}</strong></span><span>owned <strong style="color:var(--text)">${u.owned}</strong></span></div><div class="pr"><div class="pl">Read</div><div class="pt"><div class="pf" style="width:${rp}%;background:${col}"></div></div><div class="pv">${rp}%</div></div><div class="pr"><div class="pl">Owned</div><div class="pt"><div class="pf" style="width:${op}%;background:${col};opacity:0.35"></div></div><div class="pv">${op}%</div></div></div>`;
   }).join('');
   const top=sorted.slice(0,20);
   const h=Math.max(200,top.length*32+80);
@@ -1273,6 +1289,71 @@ function renderUniverseSection(uvList,gridId,chartId,wrapId,color){
   charts[chartId]=new Chart(document.getElementById(chartId),{type:'bar',data:{labels:top.map(u=>u.name),datasets:[{label:'Read',data:top.map(u=>u.read),backgroundColor:'#4a9b8e',borderRadius:2},{label:'Owned unread',data:top.map(u=>Math.max(0,u.owned-u.read)),backgroundColor:'#e8e0c8',borderRadius:2},{label:'Not owned',data:top.map(u=>Math.max(0,u.tracked-u.owned)),backgroundColor:'#f0ebe0',borderRadius:2}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,ticks:{color:'#9a9688'},grid:{color:'rgba(0,0,0,0.04)'}},y:{stacked:true,ticks:{color:'#5a5850',font:{size:11}},grid:{display:false}}}}});
 }
 
+// Tracking › By Universe drill-down (John, 2026-09-22): tap a universe for
+// every book in it, series by series, with status dots and one-tap
+// registration — ✓ Read (finished), 📦 Got it (acquired), 🚩 Need and
+// 📅 TBA (book_update) — the same inbox events the Log tab sends.
+let uvFilter='all';
+function uvOpen(name,filter){
+  if(filter)uvFilter=filter;else if(name!==G._uvName)uvFilter='all';
+  G._uvName=name;
+  const el=document.getElementById('uv-detail');if(!el)return;
+  const books=(G.indBooks||[]).filter(b=>b.universe===name);
+  el.style.display='';
+  if(!books.length){el.innerHTML=`<div class="cb" style="margin-bottom:1.5rem"><div class="ms">No individual books carry the universe “${esc(name)}” — only series rows do.</div><button class="log-act" onclick="uvClose()">✕ Close</button></div>`;return;}
+  const todayIso=LOG.today();
+  const pR=LOG.pendingBooks('finished'),pA=LOG.pendingBooks('acquired'),pU=LOG.pendingBooks('book_update');
+  const pk=b=>b.title+'|'+(!b.series||b.series==='Standalones'?'':b.series);
+  const unpub=b=>tbrRel(b.pubDate,todayIso,todayIso)!=='out';
+  const seqN=b=>{const v=parseFloat(String(b.seq||'').replace(/[^0-9.]/g,''));return isNaN(v)?Infinity:v;};
+  const by={};books.forEach(b=>{(by[b.series]=by[b.series]||[]).push(b);});
+  const sers=Object.keys(by).sort((a,b)=>(a==='Standalones')-(b==='Standalones')||a.localeCompare(b));
+  const n={tracked:books.length,read:books.filter(b=>b.read).length,owned:books.filter(b=>b.owned).length,need:books.filter(b=>b.need).length,unpub:books.filter(unpub).length,unread:books.filter(b=>!b.read).length,unowned:books.filter(b=>!b.owned).length};
+  const show=b=>uvFilter==='all'||(uvFilter==='unread'&&!b.read)||(uvFilter==='unowned'&&!b.owned)||(uvFilter==='need'&&b.need)||(uvFilter==='unpub'&&unpub(b));
+  G._uvBooks=[];const bidx=b=>{G._uvBooks.push(b);return G._uvBooks.length-1;};
+  const row=b=>{const i=bidx(b),k=pk(b),pr=pR.has(k),pa=pA.has(k),pu=pU.has(k),up=unpub(b);
+    const dots=`<span class="uv-dots"><span class="uv-dot${b.read?' on-read':''}" title="read"></span><span class="uv-dot${b.owned?' on-own':''}" title="owned"></span><span class="uv-dot${b.need?' on-need':''}" title="need"></span><span class="uv-dot${up?' on-unpub':''}" title="unpublished"></span></span>`;
+    const chips=[pr?'<span class="badge b-teal">read · pending</span>':'',pa?'<span class="badge b-gold">got it · pending</span>':'',pu?'<span class="badge b-gray">edit · pending</span>':'',
+      up?`<span class="badge b-gray">${/^tba$/i.test(b.pubDate)?'TBA':'📅 '+esc(b.pubDate)}</span>`:'',b.need?'<span class="badge b-coral">NEED</span>':''].filter(Boolean).join(' ');
+    const btns=[!b.read&&!pr?`<button class="log-act" onclick="uvAct(${i},'read')">✓ Read</button>`:'',
+      !b.owned&&!pa?`<button class="log-act gold" onclick="uvAct(${i},'got')">📦 Got it</button>`:'',
+      !b.owned&&!pu?`<button class="log-act" onclick="uvSet(${i},'need',${b.need?'false':'true'})">${b.need?'🚩 clear need':'🚩 Need'}</button>`:'',
+      !b.owned&&!up&&!pu?`<button class="log-act" onclick="uvSet(${i},'tba')" title="not published yet, no date">📅 TBA</button>`:''].filter(Boolean).join('');
+    return`<div class="uv-row"${show(b)?'':' style="display:none"'}>${dots}<div class="uv-t">${esc(b.title)}${b.seq?` <span class="ms">#${esc(b.seq)}</span>`:''}${b.media&&b.media!=='Print'?` <span class="ms">· ${esc(b.media)}</span>`:''} ${chips}</div><div class="uv-acts">${btns}</div><div class="uv-inline" id="uv-in-${i}" style="display:none"></div></div>`;};
+  const filt=[['all','All '+n.tracked],['unread','Unread '+n.unread],['unowned','Not owned '+n.unowned],['need','Needed '+n.need],['unpub','Unpublished '+n.unpub]];
+  el.innerHTML=`<div class="cb" style="margin-bottom:1.5rem">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+      <div style="font-family:var(--font-d);font-size:1.05rem;font-weight:600">${esc(name)} <span class="ms">· ${n.tracked} tracked · ${n.read} read · ${n.owned} owned · ${n.need} needed · ${n.unpub} unpublished</span></div>
+      <button class="log-act" onclick="uvClose()">✕ Close</button>
+    </div>
+    <div class="ytog" style="margin:8px 0 4px">${filt.map(([k,l])=>`<button class="${uvFilter===k?'active':''}" data-u="${esc(name)}" onclick="uvOpen(this.dataset.u,'${k}')">${l}</button>`).join('')}</div>
+    <div class="ms" style="margin-bottom:4px">Dots: read · owned · need · unpublished. Taps send the same events as the Log tab and show as pending until jerry syncs, a minute or two.</div>
+    ${sers.map(s=>{const list=by[s].slice().sort((a,b)=>seqN(a)-seqN(b)||a.title.localeCompare(b.title));if(!list.some(show))return'';
+      return`<div class="uv-ser">${esc(s)} <span class="ms">· ${list.filter(b=>b.read).length}/${list.length} read · ${list.filter(b=>b.owned).length} owned</span></div>${list.map(row).join('')}`;}).join('')||'<div class="ms">Nothing matches this filter.</div>'}
+  </div>`;
+  if(!filter)el.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function uvClose(){const el=document.getElementById('uv-detail');if(el){el.style.display='none';el.innerHTML='';}G._uvName=null;}
+function uvRerender(){if(G._uvName)uvOpen(G._uvName,uvFilter);}
+function uvAct(i,kind){
+  const b=(G._uvBooks||[])[i],el=document.getElementById('uv-in-'+i);if(!b||!el)return;
+  if(el.style.display!=='none'&&el.dataset.kind===kind){el.style.display='none';return;}
+  el.dataset.kind=kind;el.style.display='';
+  el.innerHTML=kind==='read'
+    ?`<div class="log-frow"><label>Finished</label><input type="date" id="uv-d-${i}" value="${LOG.today()}"><button class="log-act primary" onclick="uvGo(${i},'read')">Log it — read “${esc(b.title)}”</button></div>`
+    :`<div class="log-frow"><label>Got it</label><input type="date" id="uv-d-${i}" value="${LOG.today()}"><input id="uv-s-${i}" list="uv-dl-src" placeholder="shop (optional)" autocomplete="off"><datalist id="uv-dl-src">${(LOG.vocabFor('source')||[]).map(v=>`<option>${esc(v)}</option>`).join('')}</datalist><button class="log-act primary" onclick="uvGo(${i},'got')">Log it</button></div>`;
+}
+async function uvGo(i,kind){
+  const b=(G._uvBooks||[])[i];if(!b)return;
+  const d=(document.getElementById('uv-d-'+i)||{}).value;if(!d)return;
+  const ok=kind==='read'?await LOG.finishBook(b,d):await LOG.acquireBook(b,d,(document.getElementById('uv-s-'+i)||{}).value||'');
+  if(ok)uvRerender();
+}
+async function uvSet(i,what,val){
+  const b=(G._uvBooks||[])[i];if(!b)return;
+  const ok=what==='need'?await LOG.setNeed(b,val):await LOG.setPubDate(b,'TBA');
+  if(ok)uvRerender();
+}
 function renderUniverse(bm){
   const all=Object.values(bm.byUniverse);
   renderUniverseSection(all.filter(u=>u.type==='Series'),'uv-series-grid','uvSeriesChart','uv-series-wrap');
@@ -1496,7 +1577,11 @@ async function tbrFinish(i){
 // register by jerry's exact-norm title. A display signal only — reads still
 // come from finished events (John's 2026-07-24 rule).
 function tbrReadingNow(nk){
-  return(G.goodreads||[]).filter(r=>r.shelf==='currently-reading').map(r=>Object.assign({},r,{reg:r.book?(G.indBooks||[]).find(b=>nk(b.title)===nk(r.book))||null:null}));
+  // A book the register already has as read is done, whatever the shelf
+  // still says — it drops out here as soon as the finished event lands.
+  return(G.goodreads||[]).filter(r=>r.shelf==='currently-reading')
+    .map(r=>Object.assign({},r,{reg:r.book?(G.indBooks||[]).find(b=>nk(b.title)===nk(r.book))||null:null}))
+    .filter(r=>!(r.reg&&r.reg.read));
 }
 // Release state from the register's pub_date. Blank means nothing says the
 // book is unreleased (backlist rows mostly have no date); 'TBA' is announced
@@ -2054,61 +2139,65 @@ function toggleAcc(aid){
   if(head)head.classList.toggle('open',!isOpen);
 }
 
-function renderComingUp(up){
-  const sorted=[...up].sort((a,b)=>relSort(a.release)-relSort(b.release));
-  const grouped={};
-  sorted.forEach(u=>{
-    let moKey='Unknown';
-    const lo=(u.release||'').toLowerCase();
-    for(const[m]of Object.entries(MO_ORD))if(lo.includes(m)){moKey=m.charAt(0).toUpperCase()+m.slice(1);break;}
-    if(!grouped[moKey])grouped[moKey]=[];
-    grouped[moKey].push(u);
+// Buying › Coming Up: every release ahead from three sources — the
+// Interested list, Book Notification's feed, and register books tracked
+// with a future or TBA date — one card per title, HAVE/ORDERED derived from
+// the register and open orders (John, 2026-09-22: the sheet-only list was
+// missing releases and its Ordered column had gone stale). Months are
+// keyed by year; the last three months stay at the bottom as "Out now".
+function renderComingUp(){
+  const el=document.getElementById('upcoming-list'),cuc=document.getElementById('cu-covers');
+  if(OWNER==='goblin'){el.innerHTML='<div class="ms">Shereen has no Coming Up list yet.</div>';if(cuc)cuc.innerHTML='';return;}
+  const items=bcBuildItems();
+  const seen=new Set(items.map(it=>bcKey(it.title)));
+  const now=new Date(),cy=now.getFullYear(),cm=now.getMonth()+1,todayIso=LOG.today();
+  const names=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  (G.indBooks||[]).forEach(b=>{
+    if(b.owned||b.read)return;
+    const pd=(b.pubDate||'').trim(),tba=/^tba$/i.test(pd);
+    const m=pd.match(/^(\d{4})(?:-(\d{2}))?(?:-(\d{2}))?$/);
+    if(!tba&&!m)return;
+    if(m&&pd<=todayIso.slice(0,pd.length))return; // already out at its own precision
+    const k=bcKey(b.title);if(seen.has(k))return;seen.add(k);
+    const yr=tba?9999:+m[1],mo=tba?99:(m[2]?+m[2]:0);
+    items.push({title:b.title,author:b.author,series:b.series==='Standalones'?'':b.series,genre:b.type,release:tba?'TBA':pd,ordered:'',publisher:b.publisher,cover:'',src:'register',
+      yr,mo,moName:tba?'Date TBA':(mo?names[mo-1]:'Sometime'),day:m&&m[3]?String(+m[3]):''});
   });
-  const monthOrder=['January','February','March','April','May','June','July','August','September','October','November','December','Unknown'];
-
-  // Status → card tint styles
-  function cardStyle(ordered){
-    if(ordered==='Have')    return'background:#f8f8f6;border-color:#d8d6ce;opacity:0.65';       // greyed out
-    if(ordered==='Preordered') return'background:#fffdf0;border-color:#e8d88a;border-width:1.5px'; // yellow tint
-    if(!ordered||ordered==='')  return'background:#fff8f7;border-color:#e8b0a8;border-width:1.5px'; // red tint — unordered
-    return'background:#fff;border-color:var(--border)'; // default / Scheduled
-  }
-  function badgeClass(ordered){
-    if(ordered==='Have')       return'b-green';
-    if(ordered==='Preordered') return'b-gold';
-    if(ordered==='Scheduled')  return'b-teal';
-    return'b-coral'; // not ordered
-  }
-
-  let html='';
-  for(const mo of monthOrder){
-    if(!grouped[mo])continue;
-    html+=`<div style="margin-bottom:1.5rem">
-      <div style="font-family:var(--font-d);font-size:1rem;font-weight:600;color:var(--gold);margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border)">${mo}</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px">
-        ${grouped[mo].map(u=>{
-          const cs=cardStyle(u.ordered);
-          const bc=badgeClass(u.ordered);
-          const displayTitle=u.title||u.series||'TBD';
-          const sub=[u.series&&u.title?u.series:'',u.author].filter(Boolean).join(' · ');
-          return`<div style="${cs};border-style:solid;border-radius:8px;padding:9px 12px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:4px">
-            <div style="font-size:12px;font-weight:500;color:var(--text);line-height:1.3">${displayTitle}</div>
-            ${sub?`<div style="font-family:var(--font-m);font-size:10px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${sub}</div>`:''}
-            <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:2px">
-              <span class="badge ${bc}" style="font-size:9px">${u.ordered||'Not ordered'}</span>
-              ${u.publisher?`<span class="badge b-gray" style="font-size:9px">${u.publisher}</span>`:''}
-              ${u.genre?`<span class="badge b-purple" style="font-size:9px">${u.genre}</span>`:''}
-            </div>
-          </div>`;
-        }).join('')}
+  // Month buckets: ahead ascending, then Date TBA, then the last three
+  // months as "Out now" (older drops off — that's the register's job).
+  const keyOf=it=>it.moName==='Date TBA'?'9999-99':`${it.yr}-${String(it.mo).padStart(2,'0')}`;
+  const curKey=`${cy}-${String(cm).padStart(2,'0')}`;
+  const past=it=>keyOf(it)<curKey;
+  const cutoff=(()=>{const d=new Date(cy,cm-1-3,1);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;})();
+  const kept=items.filter(it=>!past(it)||keyOf(it)>=cutoff);
+  const byMo={},label={};
+  kept.forEach(it=>{const k=keyOf(it);(byMo[k]=byMo[k]||[]).push(it);
+    if(!label[k])label[k]=it.moName==='Date TBA'?'Date TBA':(past(it)?'Out now · ':'')+(it.mo?it.moName:'Sometime')+(it.yr!==cy&&it.yr!==9999?' '+it.yr:'');});
+  const ahead=Object.keys(byMo).filter(k=>k>=curKey).sort(),behind=Object.keys(byMo).filter(k=>k<curKey).sort().reverse();
+  const state=it=>it.ordered==='Have'?['b-green','Have it']:it.ordered==='Preordered'?['b-gold','Ordered'+(it.store?' · '+esc(it.store):'')]:it.ordered==='Scheduled'?['b-teal','On the way']:['b-coral','Not ordered'];
+  const srcBadge=it=>it.src==='bn'?'<span class="badge b-purple" style="font-size:9px">Book Notification</span>':it.src==='register'?'<span class="badge b-gray" style="font-size:9px">tracked</span>':'<span class="badge b-gray" style="font-size:9px">Interested</span>';
+  const card=it=>{const[bc,txt]=state(it);
+    const tint=it.ordered==='Have'?'background:#f8f8f6;border-color:#d8d6ce;opacity:0.65':it.ordered==='Preordered'?'background:#fffdf0;border-color:#e8d88a;border-width:1.5px':it.ordered==='Scheduled'?'background:#fff;border-color:var(--border)':'background:#fff8f7;border-color:#e8b0a8;border-width:1.5px';
+    const when=it.moName==='Date TBA'?'TBA':(it.mo?it.moName.slice(0,3):'')+(it.day?' '+it.day:'')+(it.yr!==cy&&it.yr!==9999?' '+it.yr:'');
+    const sub=[it.series,it.author].filter(Boolean).join(' · ');
+    return`<div style="${tint};border-style:solid;border-radius:8px;padding:9px 12px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:4px">
+      <div style="font-size:12px;font-weight:500;color:var(--text);line-height:1.3">${esc(it.title)}</div>
+      ${sub?`<div style="font-family:var(--font-m);font-size:10px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(sub)}</div>`:''}
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:2px;align-items:center">
+        <span class="badge ${bc}" style="font-size:9px">${txt}</span>
+        <span class="badge b-teal" style="font-size:9px">📅 ${esc(when)}</span>
+        ${srcBadge(it)}
+        ${it.genre?`<span class="badge b-purple" style="font-size:9px">${esc(it.genre)}</span>`:''}
       </div>
+    </div>`;};
+  const group=k=>`<div style="margin-bottom:1.5rem">
+      <div style="font-family:var(--font-d);font-size:1rem;font-weight:600;color:var(--gold);margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border)">${label[k]} <span class="ms">· ${byMo[k].length}</span></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px">${byMo[k].sort((a,b)=>(+a.day||99)-(+b.day||99)||a.title.localeCompare(b.title)).map(card).join('')}</div>
     </div>`;
-  }
-  document.getElementById('upcoming-list').innerHTML=html;
-  // Covers strip above the month groups, in release order; tracked books
-  // resolve through the register's identifiers, the rest get title tiles.
-  const cuc=document.getElementById('cu-covers');
-  if(cuc)cuc.innerHTML=coverStrip(sorted.map(u=>({title:u.title||u.series||'TBD',owner:'butthead',sub:[u.series&&u.title?u.series:'',u.author,u.release].filter(Boolean).join(' · ')})),60);
+  el.innerHTML=[...ahead.map(group),...behind.map(group)].join('')||'<div class="ms">Nothing ahead on any list.</div>';
+  // Covers strip: what is ahead, in release order; tracked titles resolve
+  // through the register's identifiers, the rest get title tiles.
+  if(cuc)cuc.innerHTML=coverStrip(ahead.flatMap(k=>byMo[k]).map(it=>({title:it.title,owner:'butthead',sub:[it.series,it.author,it.release].filter(Boolean).join(' · ')})),60);
 }
 
 // ── Order pending-change flags (shared by the Log panel and Book Mail tab) ──
@@ -2552,7 +2641,7 @@ function renderTabInner(id){
   else if(id==='completion')renderCompletion(bm);
   else if(id==='byseries')renderBySeries();
   else if(id==='toread')renderToRead(bm);
-  else if(id==='comingup')renderComingUp(H?G.interested.up:[]);
+  else if(id==='comingup')renderComingUp();
   else if(id==='bookmail')renderBookMail(H?G.orders:[]);
   else if(id==='toacquire')renderToAcquire(G.bookRows,H?G.interested:{up:[],sd:[]});
   else if(id==='someday')renderSomeday(H?G.interested:{up:[],sd:[]});
@@ -3661,7 +3750,8 @@ function bcBuildItems(){
   const items=[],seen=new Map();
   for(const u of G.interested.up){
     const displayTitle=u.title||u.series||'TBD';
-    const it={title:displayTitle,author:u.author,series:u.series&&u.title?u.series:'',genre:u.genre,release:u.release,ordered:u.ordered,publisher:u.publisher,isbn:'',notes:'',cover:'',isNew:false};
+    // the sheet wrote "Ordered" as well as "Preordered" — one meaning
+    const it={title:displayTitle,author:u.author,series:u.series&&u.title?u.series:'',genre:u.genre,release:u.release,ordered:u.ordered==='Ordered'?'Preordered':u.ordered,publisher:u.publisher,isbn:'',notes:'',cover:'',isNew:false,src:'interested'};
     seen.set(bcKey(displayTitle),it);items.push(it);
   }
   for(const b of (G.bookClub||[])){
@@ -3670,7 +3760,7 @@ function bcBuildItems(){
     // date (the sheet only ever says "August 25") and its resolved cover;
     // the pick keeps its ordered status and doesn't get a second card.
     if(dup){if(/^\d{4}-\d{2}-\d{2}/.test(b.release||''))dup.release=b.release;if(b.cover&&!dup.cover)dup.cover=b.cover;continue;}
-    items.push({title:b.title,author:b.author,series:b.series,genre:b.genre,release:b.release,ordered:'',publisher:'',isbn:b.isbn,notes:b.notes,cover:b.cover||'',isNew:true});
+    items.push({title:b.title,author:b.author,series:b.series,genre:b.genre,release:b.release,ordered:'',publisher:'',isbn:b.isbn,notes:b.notes,cover:b.cover||'',isNew:true,src:'bn'});
   }
   // HAVE IT / ORDERED come from the register and the open orders, not only
   // the sheet's Ordered column: a book either owner owns is had, and a title
@@ -4302,6 +4392,16 @@ const LOG=(()=>{
   // flag, and the queued sets so the tab can show what is already pending.
   function finishBook(b,date){return submit('finished',{book:bookRef(b),date},b);}
   function setNeed(b,flag){return submit('book_update',{book:bookRef(b),set:{need:!!flag}},b);}
+  // Plain acquisition (no edition/omnibus) for the By Universe drill-down;
+  // the shop is vetted against the source vocabulary like the Log tab's.
+  async function acquireBook(b,date,source){
+    const p={book:bookRef(b),date,source:(source||'').trim()};
+    const bad=vetVocab(p);if(bad){toast(bad,true);return false;}
+    const ok=await submit('acquired',p,b);
+    if(ok)toast('Logged: got “'+b.title+'”');
+    return ok;
+  }
+  function setPubDate(b,v){return submit('book_update',{book:bookRef(b),set:{pub_date:v}},b);}
   // Next up queue: add / move / remove (docs/INBOX.md queue_set); position
   // is a float between neighbours, null on add = append server-side.
   function queueSet(b,action,position){const p={book:bookRef(b),action};if(position!=null)p.position=position;return submit('queue_set',p,b);}
@@ -5019,7 +5119,7 @@ const LOG=(()=>{
   // ── Sync: on-demand pulls that land as proposals ──
   async function doSyncRequest(source){
     const ok=await submit('sync_request',{source},null,'butthead');
-    if(ok)toast('Sync requested — results appear here as proposals within ~15–30 min');
+    if(ok)toast('Sync requested — jerry runs it within a minute or two; read-shelf finds land here as proposals, the currently-reading shelf on TBR');
   }
   // Libib has no API: the sync is a fresh CSV export parsed HERE, diffed
   // against the register; new titles leave as add_book events (which land as
@@ -5140,7 +5240,7 @@ const LOG=(()=>{
     toggleAdd,doAdd,addDates,toggleTrack,doTrackSeries,trackFromRow,isbnLookup,addFromIsbn,scanIsbn,stopScan,saveBookEdit,doCopyLetGo,vocabFor,pendingVocab,followAuthor,doNewOrder,doNewBoxOrder,setOrderStyle,expandOrder,doOrderUpdate,
     toggleRow,saveOrderEdit,expandBox,doBoxUpdate,saveBoxEdit,saveSetup,forgetSetup,refreshBadge,
     toggleOrderHistory,findInRegister,storeFromOrderNo,logFlyerOrders,trackSeriesFromIsbn,submitTrackSeries,
-    finishBook,setNeed,pendingBooks,today,queueSet,pendingQueue};
+    finishBook,setNeed,pendingBooks,today,queueSet,pendingQueue,acquireBook,setPubDate};
 })();
 
 async function init(){

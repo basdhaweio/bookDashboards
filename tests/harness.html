@@ -192,6 +192,25 @@ async function main(){
     res('TBR lists every series in progress',rows===want&&shown===want,`distinct series rows ${rows}, metric ${shown} vs register ${want}`);
   });
 
+  await check('By Universe drill-down lists every book of the universe',async()=>{
+    await go('universe','tracking');
+    const tile=doc().querySelector('#uv-series-grid [data-u]');
+    if(!tile){res('By Universe drill-down lists every book of the universe',false,'no universe tiles');return;}
+    const name=tile.dataset.u;tile.click();
+    await new Promise(r=>setTimeout(r,300));
+    const want=ind.slice(1).filter(r=>(r[10]||'butthead')==='butthead'&&r[1]&&r[1]!=='-'&&(r[8]||'').trim()===name).length;
+    const rows=doc().querySelectorAll('#uv-detail .uv-row').length;
+    res('By Universe drill-down lists every book of the universe',rows===want&&rows>0,`${name}: ${rows} rows vs register ${want}`);
+  });
+
+  await check('Coming Up merges its three sources without duplicates',async()=>{
+    await go('comingup','buying');
+    const cards=[...doc().querySelectorAll('#upcoming-list > div > div:last-child > div')];
+    const titles=cards.map(c=>c.querySelector('div')?.textContent.trim().toLowerCase());
+    const dups=titles.length-new Set(titles).size;
+    res('Coming Up merges its three sources without duplicates',cards.length>0&&dups===0,`${cards.length} cards, ${dups} duplicate titles`);
+  });
+
   await check('Order history expands and names its books',async()=>{
     await go('logorders','log');
     const orders=tget('Book Mail Orders');
