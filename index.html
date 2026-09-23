@@ -5081,7 +5081,10 @@ const LOG=(()=>{
   // Log-row flavour that keeps its gutter on a miss.
   function thumbHTML(title,owner,isbnOverride,w,series){
     const srcs=coverSrcs(title,owner,isbnOverride,series);
-    if(!srcs.length)return'<div class="log-thumb"></div>';
+    // no image: an empty gutter of the same width, so titles line up down
+    // a list whether or not each row has a cover (John, 2026-09-23: the
+    // Proposed rows looked indented at random)
+    if(!srcs.length)return`<div class="log-thumb"${w?` style="width:${w}px;min-width:${w}px"`:''}></div>`;
     return`<div class="log-thumb"${w?` style="width:${w}px;min-width:${w}px"`:''}><img loading="lazy" alt="" referrerpolicy="no-referrer" src="${esc(srcs[0])}" data-alt="${srcs.slice(1).map(esc).join('|')}"${w?` style="width:${w}px"`:''} onerror="var a=(this.dataset.alt||'').split('|').filter(Boolean);if(a.length){this.dataset.alt=a.slice(1).join('|');this.src=a[0];}else this.style.visibility='hidden'"></div>`;
   }
   function isbnNorm(s){return String(s||'').toUpperCase().replace(/[^0-9X]/g,'');}
@@ -5544,7 +5547,7 @@ const LOG=(()=>{
       let pisbn='';try{pisbn=isbnNorm((JSON.parse(p.proposal)||{}).isbn);}catch(e){}
       return`<div class="cb" style="margin-bottom:10px">
         <div class="log-item-hd" style="align-items:flex-start">
-          ${pisbn?thumbHTML('','',pisbn,40):''}
+          ${thumbHTML('','',pisbn,40)}
           <div class="log-item-info">
             <div class="log-item-title">${esc((propEditCur(p)||{}).title||p.target)}${d?` <span class="log-badge-pend">${d==='approve'?'Add':d==='reject'?'Drop':'Edit'} pending</span>`:''}</div>
             <div class="log-item-meta">${esc(p.kind)}${p.recommend&&p.recommend!=='review'?' · recommends '+esc(p.recommend):''}${propSummary(p)?' · '+esc(propSummary(p)):''}</div>
