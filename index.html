@@ -123,6 +123,9 @@ button.tbr-link{background:none;border:none;padding:0;font:inherit;font-weight:i
 .tbr-acts .badge{font-size:9px;}
 .tbr-handle{position:absolute;top:6px;right:8px;color:var(--text3);cursor:grab;font-size:13px;user-select:none;line-height:1;}
 .tbr-num{font-family:var(--font-m);font-size:10px;color:var(--gold);margin-right:4px;}
+.tbr-card.tbr-wide{grid-column:1/-1;}
+.tbr-works{columns:2 220px;column-gap:16px;margin-top:6px;font-size:12px;}
+.tbr-work{break-inside:avoid;padding:2px 0;color:var(--text2);line-height:1.6;}
 /* Tracking › By Universe drill-down rows */
 .uv-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;}
 .uv-row:last-child{border-bottom:none;}
@@ -1563,6 +1566,14 @@ function tbrBrowse(name){
 // register's need column (To Acquire picks it up). G._tbrBooks indexes the
 // books behind the buttons — titles never ride inside onclick strings.
 function tbrRerender(){rendered.delete('tbr');renderTab('tbr');rendered.add('tbr');}
+// A collection's stories: folded by default; open = the card spans the
+// grid so the list doesn't stretch its neighbours' row.
+function tbrToggleWorks(btn){
+  const card=btn.closest('.tbr-card'),list=card&&card.querySelector('.tbr-works');if(!list)return;
+  const open=list.style.display==='none';
+  list.style.display=open?'':'none';card.classList.toggle('tbr-wide',open);
+  btn.textContent=(open?'▾ ':'▸ ')+btn.textContent.slice(2);
+}
 function tbrReadRow(i){
   const b=(G._tbrBooks||[])[i],el=document.getElementById('tbr-rr-'+i);if(!b||!el)return;
   if(el.style.display!=='none'){el.style.display='none';return;}
@@ -1760,9 +1771,12 @@ function renderTBR(){
   const serAttr=b=>{const s=b&&by[b.series];return s?` data-ser="${esc(s.name)}"${s.inProg?' data-inprog="1"':''}`:'';};
   document.getElementById('tbr-reading').innerHTML=reading.map(r=>{const b=r.reg,i=b?bidx(b):-1,pr=b&&pendRead.has(pk(b));
     if(!b&&r.works.length){
-      // a collection: one ✓ Read per work still unread, works already read ticked
-      const ws=r.works.map(w=>{const wi=bidx(w),wp=pendRead.has(pk(w));return`<div class="tbr-prog" style="color:var(--text2)">${w.read?'✓ ':''}${esc(w.title)}${w.read?'':wp?' <span class="badge b-teal">read · pending</span>':` <button class="log-act" onclick="tbrReadRow(${wi})">✓ Read</button>`}</div><div id="tbr-rr-${wi}" style="display:none"></div>`;}).join('');
-      return`<div class="tbr-card"${serAttr(r.works[0])}><div class="tbr-cov">${grTile(r)}</div><div class="tbr-info"><div class="tbr-ser">${esc(r.title)}</div><div class="tbr-prog">${esc(r.author)} · collection${r.copy?' · '+esc(r.copy):''}${r.added?' · since '+esc(r.added):''}</div>${ws}</div></div>`;
+      // a collection: the stories stay folded (they'd stretch the whole
+      // row) — one line with the count, tap to open it full-width, then
+      // one ✓ Read per story still unread, read ones ticked
+      const readN=r.works.filter(w=>w.read).length;
+      const ws=r.works.map(w=>{const wi=bidx(w),wp=pendRead.has(pk(w));return`<div class="tbr-work">${w.read?'✓ ':''}${esc(w.title)}${w.read?'':wp?' <span class="badge b-teal">read · pending</span>':` <button class="log-act" onclick="tbrReadRow(${wi})">✓ Read</button>`}<div id="tbr-rr-${wi}" style="display:none"></div></div>`;}).join('');
+      return`<div class="tbr-card"${serAttr(r.works[0])}><div class="tbr-cov">${grTile(r)}</div><div class="tbr-info"><div class="tbr-ser">${esc(r.title)}</div><div class="tbr-prog">${esc(r.author)} · collection${r.copy?' · '+esc(r.copy):''}${r.added?' · since '+esc(r.added):''}</div><div class="tbr-acts"><button class="log-act" onclick="tbrToggleWorks(this)">▸ ${r.works.length} stories · ${readN} read</button></div><div class="tbr-works" style="display:none">${ws}</div></div></div>`;
     }
     return`<div class="tbr-card"${serAttr(b)}><div class="tbr-cov">${b?cover(b):grTile(r)}</div><div class="tbr-info"><div class="tbr-ser">${esc(b?b.title:r.title)}</div><div class="tbr-prog">${esc(r.author)}${b?' · '+esc(b.series)+(b.seq?' #'+esc(b.seq):''):' · not in the register'}${r.added?' · since '+esc(r.added):''}</div><div class="tbr-acts">${b?(pr?'<span class="badge b-teal">read · pending</span>':`<button class="log-act" onclick="tbrReadRow(${i})">✓ Read</button>`):`<button class="log-act" data-t="${esc(r.title)}" onclick="LOG.findInRegister(this.dataset.t)">🔎 Find</button>`}</div>${b?`<div id="tbr-rr-${i}" style="display:none"></div>`:''}</div></div>`;}).join('');
   document.getElementById('tbr-queue').innerHTML=queue.map((q,qi)=>bookCard(q.b,sOf(q.b),chip(q.b)+(q.pending?' <span class="badge b-gold">pending</span>':''),qi)).join('')
