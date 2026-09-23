@@ -1358,14 +1358,19 @@ function uvOpen(name,filter){
   const pk=b=>b.title+'|'+(!b.series||b.series==='Standalones'?'':b.series);
   const unpub=b=>tbrRel(b.pubDate,todayIso,todayIso)!=='out';
   const seqN=b=>{const v=parseFloat(String(b.seq||'').replace(/[^0-9.]/g,''));return isNaN(v)?Infinity:v;};
-  const by={};books.forEach(b=>{(by[b.series]=by[b.series]||[]).push(b);});
+  // With the header on Both, each reader's copy of a series is its own
+  // group (Old Kingdom · Com / Old Kingdom · Shereen), never one mixed count
+  // (John, 2026-09-23: both shelves hold some of the same series).
+  const gkey=b=>OWNER==='all'?b.series+' · '+(OWNER_LABEL[b.owner||'butthead']||b.owner):b.series;
+  const by={};books.forEach(b=>{const k=gkey(b);(by[k]=by[k]||[]).push(b);});
   // Series in publication order (John, 2026-09-23: "Shannara is alphabetical,
   // not chronological"): the earliest year any source gives for a volume
   // (FirstPub, else the register date), undated series last, Standalones
   // at the end.
   const yearOf=b=>{const y=parseInt((b.firstPub||b.pubDate||'').slice(0,4),10);return isNaN(y)?null:y;};
   const span={};for(const s in by){const ys=by[s].map(yearOf).filter(Boolean);span[s]=ys.length?[Math.min(...ys),Math.max(...ys)]:null;}
-  const sers=Object.keys(by).sort((a,b)=>(a==='Standalones')-(b==='Standalones')||(!span[a])-(!span[b])||((span[a]||[0])[0]-(span[b]||[0])[0])||a.localeCompare(b));
+  const isStand=s=>s.startsWith('Standalones');
+  const sers=Object.keys(by).sort((a,b)=>isStand(a)-isStand(b)||(!span[a])-(!span[b])||((span[a]||[0])[0]-(span[b]||[0])[0])||a.localeCompare(b));
   const n={tracked:books.length,read:books.filter(b=>b.read).length,owned:books.filter(b=>b.owned).length,need:books.filter(b=>b.need).length,unpub:books.filter(unpub).length,unread:books.filter(b=>!b.read).length,unowned:books.filter(b=>!b.owned).length};
   const show=b=>uvFilter==='all'||(uvFilter==='unread'&&!b.read)||(uvFilter==='unowned'&&!b.owned)||(uvFilter==='need'&&b.need)||(uvFilter==='unpub'&&unpub(b));
   G._uvBooks=[];const bidx=b=>{G._uvBooks.push(b);return G._uvBooks.length-1;};
