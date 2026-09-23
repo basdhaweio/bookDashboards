@@ -1653,14 +1653,22 @@ function renderTBR(){
   const open=(G.orders||[]).filter(o=>o.delivered!=='Fulfilled'&&o.delivered!=='Cancelled');
   const onOrder=t=>{const k=nl(t);return k?open.find(o=>nl(o.books).includes(k)||(o.contains||'').split('\n').some(l=>nl(l.replace(/\s+#\S+$/,''))===k)):null;};
   const inProg=series.filter(s=>s.inProg);
+  const reading=tbrReadingNow(nk);
+  // A book on the Goodreads shelf is being read: its series lives under
+  // Reading now and nowhere else (John, 2026-09-22).
+  const readingKeys=new Set(reading.flatMap(r=>[...(r.reg?[r.reg]:[]),...(r.works||[])]).map(pk));
+  const beingRead=s=>!!(s.next&&readingKeys.has(pk(s.next)));
   // Focus series: this year's list from the Reading History year tab (Com's).
   const focusNames=OWNER==='butthead'?(((typeof allYD!=='undefined'&&allYD[cy])||{}).focus||[]):[];
   const focusRows=focusNames.map(n=>series.find(s=>nl(s.name)===nl(n))).filter(Boolean);
   const focusSet=new Set(focusRows.map(s=>s.name));
   // Most read, not all: closest to finished first. A series whose next
-  // volume isn't out yet belongs under New book / Waiting for instead.
+  // volume isn't out yet belongs under New book / Waiting for; one whose
+  // next volume isn't on the shelf (or on order) belongs under Get these
+  // next only — no double listing (John, 2026-09-22).
   const byPct=(a,b)=>b.pct-a.pct||(b.last||'').localeCompare(a.last||'')||a.name.localeCompare(b.name);
-  const prog=inProg.filter(s=>!focusSet.has(s.name)&&(!s.next||rel(s.next)==='out')).sort(byPct);
+  const onShelfOrWay=s=>!s.next||s.next.owned||!!onOrder(s.next.title);
+  const prog=inProg.filter(s=>!focusSet.has(s.name)&&!beingRead(s)&&(!s.next||rel(s.next)==='out')&&onShelfOrWay(s)).sort(byPct);
   // Unreleased volumes in any series with a book read: dated inside six
   // months = New book in series (with Book Notification's not-yet-adopted
   // announcements); TBA, year-only or further out = Waiting for.
@@ -1675,8 +1683,7 @@ function renderTBR(){
   const waiting=unrel.filter(x=>x.state!=='soon').map(x=>Object.assign(x,{date:/^tba$/i.test(x.b.pubDate)?'':x.b.pubDate})).sort((a,b)=>byDate(a,b)||a.s.name.localeCompare(b.s.name));
   // To get: tracked, out, not on the shelf, not on order — "if I don't own
   // it and it's tracked then I need it" (John, 2026-09-22), so no flag.
-  const toGet=inProg.filter(s=>s.next&&!s.next.owned&&!onOrder(s.next.title)&&rel(s.next)==='out').sort(byPct);
-  const reading=tbrReadingNow(nk);
+  const toGet=inProg.filter(s=>s.next&&!s.next.owned&&!onOrder(s.next.title)&&rel(s.next)==='out'&&!beingRead(s)).sort(byPct);
   // Next up: the bundle's queue for this owner, matched to register books,
   // with pending queue_set events folded in (adds append, moves reposition,
   // removes drop). Series membership is looked up for the card's context.
@@ -1737,8 +1744,9 @@ function renderTBR(){
   const orderChip=b=>onOrder(b.title)?' <span class="badge b-gold">on order</span>':b.owned?' <span class="badge b-green">on the shelf</span>':'';
   const sOf=b=>by[b.series]||null;
   // Finished series don't belong on a to-read page (tracking and This Year
-  // cover them), so the focus list shows only what still has volumes left.
-  const focusLeft=focusRows.filter(s=>s.unread>0);
+  // cover them), so the focus list shows only what still has volumes left
+  // and isn't already under Reading now.
+  const focusLeft=focusRows.filter(s=>s.unread>0&&!beingRead(s));
   document.getElementById('tbr-m').innerHTML=
     mH(queue.length,'Next up','your list')+
     mH(inProg.length,'Series in progress','read some, not all')+
@@ -1749,13 +1757,14 @@ function renderTBR(){
     mH(reading.length,'Reading now','Goodreads shelf');
   const rw=document.getElementById('tbr-reading-wrap');
   rw.style.display=reading.length?'':'none';
+  const serAttr=b=>{const s=b&&by[b.series];return s?` data-ser="${esc(s.name)}"${s.inProg?' data-inprog="1"':''}`:'';};
   document.getElementById('tbr-reading').innerHTML=reading.map(r=>{const b=r.reg,i=b?bidx(b):-1,pr=b&&pendRead.has(pk(b));
     if(!b&&r.works.length){
       // a collection: one ✓ Read per work still unread, works already read ticked
       const ws=r.works.map(w=>{const wi=bidx(w),wp=pendRead.has(pk(w));return`<div class="tbr-prog" style="color:var(--text2)">${w.read?'✓ ':''}${esc(w.title)}${w.read?'':wp?' <span class="badge b-teal">read · pending</span>':` <button class="log-act" onclick="tbrReadRow(${wi})">✓ Read</button>`}</div><div id="tbr-rr-${wi}" style="display:none"></div>`;}).join('');
-      return`<div class="tbr-card"><div class="tbr-cov">${grTile(r)}</div><div class="tbr-info"><div class="tbr-ser">${esc(r.title)}</div><div class="tbr-prog">${esc(r.author)} · collection${r.copy?' · '+esc(r.copy):''}${r.added?' · since '+esc(r.added):''}</div>${ws}</div></div>`;
+      return`<div class="tbr-card"${serAttr(r.works[0])}><div class="tbr-cov">${grTile(r)}</div><div class="tbr-info"><div class="tbr-ser">${esc(r.title)}</div><div class="tbr-prog">${esc(r.author)} · collection${r.copy?' · '+esc(r.copy):''}${r.added?' · since '+esc(r.added):''}</div>${ws}</div></div>`;
     }
-    return`<div class="tbr-card"><div class="tbr-cov">${b?cover(b):grTile(r)}</div><div class="tbr-info"><div class="tbr-ser">${esc(b?b.title:r.title)}</div><div class="tbr-prog">${esc(r.author)}${b?' · '+esc(b.series)+(b.seq?' #'+esc(b.seq):''):' · not in the register'}${r.added?' · since '+esc(r.added):''}</div><div class="tbr-acts">${b?(pr?'<span class="badge b-teal">read · pending</span>':`<button class="log-act" onclick="tbrReadRow(${i})">✓ Read</button>`):`<button class="log-act" data-t="${esc(r.title)}" onclick="LOG.findInRegister(this.dataset.t)">🔎 Find</button>`}</div>${b?`<div id="tbr-rr-${i}" style="display:none"></div>`:''}</div></div>`;}).join('');
+    return`<div class="tbr-card"${serAttr(b)}><div class="tbr-cov">${b?cover(b):grTile(r)}</div><div class="tbr-info"><div class="tbr-ser">${esc(b?b.title:r.title)}</div><div class="tbr-prog">${esc(r.author)}${b?' · '+esc(b.series)+(b.seq?' #'+esc(b.seq):''):' · not in the register'}${r.added?' · since '+esc(r.added):''}</div><div class="tbr-acts">${b?(pr?'<span class="badge b-teal">read · pending</span>':`<button class="log-act" onclick="tbrReadRow(${i})">✓ Read</button>`):`<button class="log-act" data-t="${esc(r.title)}" onclick="LOG.findInRegister(this.dataset.t)">🔎 Find</button>`}</div>${b?`<div id="tbr-rr-${i}" style="display:none"></div>`:''}</div></div>`;}).join('');
   document.getElementById('tbr-queue').innerHTML=queue.map((q,qi)=>bookCard(q.b,sOf(q.b),chip(q.b)+(q.pending?' <span class="badge b-gold">pending</span>':''),qi)).join('')
     ||'<div class="ms">Nothing picked yet — tap ＋ Next up on any card below to build your list.</div>';
   document.getElementById('tbr-focus').innerHTML=focusLeft.map(seriesCard).join('')||'<div class="ms">'+(focusRows.length?'Every focus series is finished.':'No focus list for this year.')+'</div>';
