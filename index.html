@@ -1578,10 +1578,13 @@ async function tbrFinish(i){
 // come from finished events (John's 2026-07-24 rule).
 function tbrReadingNow(nk){
   // A book the register already has as read is done, whatever the shelf
-  // still says — it drops out here as soon as the finished event lands.
+  // still says — it drops out here as soon as the finished event lands. A
+  // collection matched on the copies layer carries its works instead
+  // (all read = done).
+  const find=t=>(G.indBooks||[]).find(b=>nk(b.title)===nk(t))||null;
   return(G.goodreads||[]).filter(r=>r.shelf==='currently-reading')
-    .map(r=>Object.assign({},r,{reg:r.book?(G.indBooks||[]).find(b=>nk(b.title)===nk(r.book))||null:null}))
-    .filter(r=>!(r.reg&&r.reg.read));
+    .map(r=>Object.assign({},r,{reg:r.book?find(r.book):null,works:(r.contains||[]).map(find).filter(Boolean)}))
+    .filter(r=>!(r.reg&&r.reg.read)&&!(r.works.length&&r.works.every(w=>w.read)));
 }
 // Release state from the register's pub_date. Blank means nothing says the
 // book is unreleased (backlist rows mostly have no date); 'TBA' is announced
@@ -1747,6 +1750,11 @@ function renderTBR(){
   const rw=document.getElementById('tbr-reading-wrap');
   rw.style.display=reading.length?'':'none';
   document.getElementById('tbr-reading').innerHTML=reading.map(r=>{const b=r.reg,i=b?bidx(b):-1,pr=b&&pendRead.has(pk(b));
+    if(!b&&r.works.length){
+      // a collection: one ✓ Read per work still unread, works already read ticked
+      const ws=r.works.map(w=>{const wi=bidx(w),wp=pendRead.has(pk(w));return`<div class="tbr-prog" style="color:var(--text2)">${w.read?'✓ ':''}${esc(w.title)}${w.read?'':wp?' <span class="badge b-teal">read · pending</span>':` <button class="log-act" onclick="tbrReadRow(${wi})">✓ Read</button>`}</div><div id="tbr-rr-${wi}" style="display:none"></div>`;}).join('');
+      return`<div class="tbr-card"><div class="tbr-cov">${grTile(r)}</div><div class="tbr-info"><div class="tbr-ser">${esc(r.title)}</div><div class="tbr-prog">${esc(r.author)} · collection${r.copy?' · '+esc(r.copy):''}${r.added?' · since '+esc(r.added):''}</div>${ws}</div></div>`;
+    }
     return`<div class="tbr-card"><div class="tbr-cov">${b?cover(b):grTile(r)}</div><div class="tbr-info"><div class="tbr-ser">${esc(b?b.title:r.title)}</div><div class="tbr-prog">${esc(r.author)}${b?' · '+esc(b.series)+(b.seq?' #'+esc(b.seq):''):' · not in the register'}${r.added?' · since '+esc(r.added):''}</div><div class="tbr-acts">${b?(pr?'<span class="badge b-teal">read · pending</span>':`<button class="log-act" onclick="tbrReadRow(${i})">✓ Read</button>`):`<button class="log-act" data-t="${esc(r.title)}" onclick="LOG.findInRegister(this.dataset.t)">🔎 Find</button>`}</div>${b?`<div id="tbr-rr-${i}" style="display:none"></div>`:''}</div></div>`;}).join('');
   document.getElementById('tbr-queue').innerHTML=queue.map((q,qi)=>bookCard(q.b,sOf(q.b),chip(q.b)+(q.pending?' <span class="badge b-gold">pending</span>':''),qi)).join('')
     ||'<div class="ms">Nothing picked yet — tap ＋ Next up on any card below to build your list.</div>';
@@ -5288,7 +5296,9 @@ async function init(){
     }
     // Goodreads shelves (bookdb|Goodreads): Shelf|Title|Author|ISBN13|Added|
     // ReadAt|Book (matched register title)|Cover — the TBR tab's Reading now.
-    G.goodreads=(BUNDLE.tabs['bookdb|Goodreads']||[]).slice(1).map(r=>({shelf:(r[0]||'').trim(),title:(r[1]||'').trim(),author:(r[2]||'').trim(),isbn13:(r[3]||'').trim(),added:(r[4]||'').trim(),readAt:(r[5]||'').trim(),book:(r[6]||'').trim(),cover:(r[7]||'').trim().replace(/^http:/,'https:')}));
+    // Contains|Copy (cols I-J): a collection matched on the copies layer,
+    // with the register works inside it.
+    G.goodreads=(BUNDLE.tabs['bookdb|Goodreads']||[]).slice(1).map(r=>({shelf:(r[0]||'').trim(),title:(r[1]||'').trim(),author:(r[2]||'').trim(),isbn13:(r[3]||'').trim(),added:(r[4]||'').trim(),readAt:(r[5]||'').trim(),book:(r[6]||'').trim(),cover:(r[7]||'').trim().replace(/^http:/,'https:'),contains:(r[8]||'').split('|').filter(Boolean),copy:(r[9]||'').trim()}));
     // Next up queue (bookdb|Queue): Title|Series|Owner|Position|AddedOn.
     G.queue=(BUNDLE.tabs['bookdb|Queue']||[]).slice(1).map(r=>({title:(r[0]||'').trim(),series:(r[1]||'').trim(),owner:(r[2]||'butthead').trim(),pos:parseFloat(r[3])||0,added:(r[4]||'').trim()})).filter(q=>q.title);
     // ISBNs tab: identifiers (owned-edition first) + best stored cover URL.
