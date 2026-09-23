@@ -1186,7 +1186,10 @@ function peopleOf(s){
 function seriesLabel(b){
   const dup=G.seriesDupes&&G.seriesDupes[(b.owner||'butthead')+'|'+b.series];
   if(!dup||b.series==='Standalones')return b.series;
-  return b.series+' ('+(b.universe||(b.collection==='dnd'?'D&D':b.collection))+')';
+  // qualifier: the universe, else the author's surname (Villains (Schwab))
+  const sur=peopleOf(b.author)[0]||'';
+  const q=b.universe||(sur?sur.split(/\s+/).pop():'')||(b.collection==='dnd'?'D&D':b.collection);
+  return b.series+' ('+q+')';
 }
 function seriesKey(b){return b.series+'|'+((G.seriesDupes&&G.seriesDupes[(b.owner||'butthead')+'|'+b.series])?(b.collection||'main'):'');}
 function buildSeriesDupes(){
