@@ -138,6 +138,7 @@ button.tbr-link{background:none;border:none;padding:0;font:inherit;font-weight:i
 .tbr-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px;border:1px solid;}
 .tbr-works{columns:2 220px;column-gap:16px;margin-top:6px;font-size:12px;}
 .tbr-work{break-inside:avoid;padding:2px 0;color:var(--text2);line-height:1.6;}
+.tbr-work-read{color:var(--teal);}
 /* Tracking › By Universe drill-down rows */
 .uv-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;}
 .uv-row:last-child{border-bottom:none;}
@@ -1969,8 +1970,11 @@ function renderTBR(){
       // row) — one line with the count, tap to open it full-width, then
       // one ✓ Read per story still unread, read ones ticked
       const readN=r.works.filter(w=>w.read).length;
-      const ws=r.works.map(w=>{const wi=bidx(w),wp=pendRead.has(pk(w));return`<div class="tbr-work">${w.read?'✓ ':''}${esc(w.title)}${w.read?'':wp?' <span class="badge b-teal">read · pending</span>':` <button class="log-act" onclick="tbrReadRow(${wi})">✓ Read</button>`}<div id="tbr-rr-${wi}" style="display:none"></div></div>`;}).join('');
-      return`<div class="tbr-card${rCls(r)}" data-owner="${r.owner}"${serAttr(r.works[0])}><div class="tbr-cov">${grTile(r)}</div><div class="tbr-info"><div class="tbr-ser">${esc(r.title)}</div><div class="tbr-prog">${esc(r.author)} · collection${r.copy?' · '+esc(r.copy):''}${r.added?' · since '+esc(r.added):''}</div><div class="tbr-acts"><button class="log-act" onclick="tbrToggleWorks(this)">▸ ${r.works.length} stories · ${readN} read</button></div><div class="tbr-works" style="display:none">${ws}</div></div></div>`;
+      // A read story wears a dated badge; an unread one gets a plain "mark
+      // read" button — the old "✓ Read" button on every unread line read
+      // as a tick (John, 2026-09-24: Small Magic "listed them out as read").
+      const ws=r.works.map(w=>{const wi=bidx(w),wp=pendRead.has(pk(w));return`<div class="tbr-work${w.read?' tbr-work-read':''}">${esc(w.title)}${w.read?` <span class="badge b-teal">✓ read${w.readOn?' · '+esc(w.readOn):''}</span>`:wp?' <span class="badge b-teal">read · pending</span>':` <button class="log-act" onclick="tbrReadRow(${wi})" title="log it as read">mark read</button>`}<div id="tbr-rr-${wi}" style="display:none"></div></div>`;}).join('');
+      return`<div class="tbr-card${rCls(r)}" data-owner="${r.owner}"${serAttr(r.works[0])}><div class="tbr-cov">${grTile(r)}</div><div class="tbr-info"><div class="tbr-ser">${esc(r.title)}</div><div class="tbr-prog">${esc(r.author)} · collection${r.copy?' · '+esc(r.copy):''}${r.added?' · since '+esc(r.added):''}</div><div class="tbr-acts"><button class="log-act" onclick="tbrToggleWorks(this)">▸ ${r.works.length} stories · ${readN} read · ${r.works.length-readN} to go</button></div><div class="tbr-works" style="display:none">${ws}</div></div></div>`;
     }
     // Not matched: add it to the register prefilled from Goodreads, or
     // name the register row it already is (goodreads_link).
