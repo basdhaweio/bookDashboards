@@ -318,13 +318,29 @@ async function main(){
     const active=doc().querySelector('#plan-tog button.active')?.textContent||'';
     const plan=tget('Plan');
     const slots=plan?plan.slice(1).filter(r=>(r[1]||'butthead')==='butthead'&&String(r[2])===active).length:0;
-    const cards=doc().querySelectorAll('#plan-list .tbr-card').length;
+    const cards=doc().querySelectorAll('#plan-list .tbr-card[data-plan]').length; // the ＋ New slot drop zone is not a slot
     res('Plan tab renders with a year toggle and add form',yrs>=2&&form&&cards===slots,`${yrs} years, active ${active}, ${cards} slots vs tab ${slots}`);
   });
 
   await check('Masthead is sticky and slim',async()=>{
     const h=doc().querySelector('header');const cs=w().getComputedStyle(h);
     res('Masthead is sticky and slim',cs.position==='sticky'&&h.offsetHeight<90&&!!h.querySelector('.sec-nav'),`position ${cs.position}, height ${h.offsetHeight}px, nav inside ${!!h.querySelector('.sec-nav')}`);
+  });
+
+  await check('TBR universe groups box only their own series',async()=>{
+    await go('tbr','reading');
+    const groups=[...doc().querySelectorAll('#tbr-prog .tbr-group')];
+    const ok=groups.every(g=>g.querySelector('.tbr-uni')&&g.querySelectorAll('.tbr-card').length>=2);
+    const loose=doc().querySelectorAll('#tbr-prog > .tbr-uni').length;
+    res('TBR universe groups box only their own series',ok&&loose===0,`${groups.length} group(s), ${loose} loose heading(s)`);
+  });
+
+  await check('Plan: shelf pool renders draggable cards and a drop zone',async()=>{
+    await go('plan','reading');
+    const pool=doc().querySelectorAll('#plan-pool .tbr-card[data-pool] .tbr-handle').length;
+    const zone=!!doc().getElementById('plan-dropnew');
+    const bound=doc().getElementById('plan-pool')?.dataset.dnd==='1'&&doc().getElementById('tbr-queue')?.dataset.dnd==='1';
+    res('Plan: shelf pool renders draggable cards and a drop zone',pool>0&&zone&&bound,`${pool} pool cards, drop zone ${zone}, pointer drag bound ${bound}`);
   });
 
   res('no runtime errors in the app',errors.length===0,errors.slice(0,3).join(' | '));

@@ -125,10 +125,30 @@ a.bc-burst:hover{transform:rotate(12deg) scale(1.08);}
 button.tbr-link{background:none;border:none;padding:0;font:inherit;font-weight:inherit;color:inherit;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;text-align:left;}
 .tbr-a{color:var(--gold);text-decoration:none;font-size:11px;}
 .tbr-uni{font-family:var(--font-m);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--gold);margin:8px 0 0;padding-top:6px;border-top:2px solid var(--gold2);}
+/* In progress flows as cards; a universe with several series sits in a
+   dashed box that hugs exactly its own cards, caption on top — the old
+   full-width rule looked like a heading for everything after it (John,
+   2026-09-24). */
+.tbr-grid.tbr-flow{display:flex;flex-wrap:wrap;align-items:flex-start;}
+.tbr-flow>.tbr-card{flex:0 0 250px;max-width:100%;}
+.tbr-flow>.ms{width:100%;}
+.tbr-group{display:flex;flex-wrap:wrap;gap:8px;padding:6px;border:1px dashed var(--gold2);border-radius:12px;max-width:100%;background:rgba(201,168,76,.05);}
+.tbr-group>.tbr-uni{width:100%;margin:0;padding:0 4px 2px;border-top:none;}
+.tbr-group>.tbr-card{flex:0 0 250px;max-width:100%;}
+/* pointer drag and drop (works on touch, unlike HTML5 drag events) */
+.dnd-ghost{position:fixed;z-index:1000;opacity:.9;pointer-events:none;box-shadow:var(--shadow2);transform:rotate(1.5deg);}
+.tbr-card.dropafter{box-shadow:inset -3px 0 0 var(--gold2);}
+.droptarget{outline:2px solid var(--gold2);outline-offset:2px;}
+.plan-dropnew{border-style:dashed;color:var(--text3);}
+.plan-row{cursor:pointer;}.plan-row.open .pl{color:var(--gold);font-weight:600;}
+.plan-detail{margin:-6px 0 12px;padding:6px 10px;border-left:2px solid var(--gold2);background:var(--gold-bg);border-radius:0 8px 8px 0;}
+#plan-pool-bar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px;}
+.pchip{font-family:var(--font-m);font-size:10px;padding:3px 9px;border:1px solid var(--border2);border-radius:12px;background:var(--bg2);cursor:pointer;color:var(--text2);}
+.pchip.on{background:var(--gold2);color:#fff;border-color:var(--gold2);}
 .tbr-acts{display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-top:4px;}
 .tbr-acts .log-act{padding:3px 7px;font-size:10px;border-radius:6px;}
 .tbr-acts .badge{font-size:9px;}
-.tbr-handle{position:absolute;top:6px;right:8px;color:var(--text3);cursor:grab;font-size:13px;user-select:none;line-height:1;}
+.tbr-handle{position:absolute;top:2px;right:2px;color:var(--text3);cursor:grab;font-size:15px;user-select:none;line-height:1;padding:6px 8px;touch-action:none;}
 .tbr-num{font-family:var(--font-m);font-size:10px;color:var(--gold);margin-right:4px;}
 .tbr-card.tbr-wide{grid-column:1/-1;}
 /* Both shelves at once: teal = Com, lavender = Shereen (John, 2026-09-23) */
@@ -568,11 +588,11 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div id="tbr-reading-wrap"><div class="sl">Reading now — Goodreads currently-reading shelf</div>
       <div class="tbr-grid" id="tbr-reading"></div></div>
       <div class="sl">Next up — your own order · drag a card, or ▲ ▼</div>
-      <div class="tbr-grid" id="tbr-queue" ondragover="event.preventDefault()" ondrop="tbrDrop(event,(G._tbrQueue||[]).length)"></div>
+      <div class="tbr-grid" id="tbr-queue"></div>
       <div class="sl" style="margin-top:1.5rem">Focus series — this year's list, still unfinished</div>
       <div class="tbr-grid" id="tbr-focus"></div>
       <div class="sl" style="margin-top:1.5rem">In progress — most of the series read, not all</div>
-      <div class="tbr-grid" id="tbr-prog"></div>
+      <div class="tbr-grid tbr-flow" id="tbr-prog"></div>
       <div class="sl" style="margin-top:1.5rem">New book in series — out within six months, or just announced</div>
       <div class="tbr-grid" id="tbr-new"></div>
       <div class="sl" style="margin-top:1.5rem">Waiting for — announced, no date or further out</div>
@@ -588,8 +608,11 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div class="ytog" id="plan-tog"></div>
       <div class="mg" id="plan-m"></div>
       <div class="tc"><div><div class="sl">By media <span class="ms">— read (solid) · planned (faint) · goal (red mark)</span></div><div class="cb" id="plan-media"></div></div><div><div class="sl">By genre</div><div class="cb" id="plan-genre"></div></div></div>
-      <div class="sl">Slots</div>
+      <div class="sl">Slots <span class="ms">— drag ⋮⋮ to reorder</span></div>
       <div class="tbr-grid" id="plan-list"></div>
+      <div class="sl">Pick from your shelves <span class="ms">— the next volume of every series and every unread standalone; drag a card's ⋮⋮ onto a slot to pin it, or onto ＋ New slot; ＋ Slot does the same by tap</span></div>
+      <div id="plan-pool-bar"></div>
+      <div class="tbr-grid" id="plan-pool"></div>
       <div class="sl">Add slots</div>
       <div class="cb" id="plan-add"></div>
     </div>
@@ -1704,11 +1727,46 @@ function tbrRel(pd,todayIso,limIso){
 // the new float position lands between its neighbours via a queue_set
 // event; the bundle's order plus pending events is what renders.
 let tbrDragFrom=null;
-function tbrDragStart(e,i){tbrDragFrom=i;try{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',String(i));}catch(_){}e.currentTarget.classList.add('dragging');}
-function tbrDragOver(e){e.preventDefault();e.currentTarget.classList.add('dropbefore');}
-function tbrDragLeave(e){e.currentTarget.classList.remove('dropbefore');}
-function tbrDragEnd(e){e.currentTarget.classList.remove('dragging');document.querySelectorAll('#tbr-queue .dropbefore').forEach(x=>x.classList.remove('dropbefore'));}
-function tbrDrop(e,before){e.preventDefault();e.stopPropagation();if(e.currentTarget.classList)e.currentTarget.classList.remove('dropbefore');const from=tbrDragFrom;tbrDragFrom=null;if(from==null||from===before)return;tbrMoveBefore(from,before);}
+// ── Pointer drag and drop (mouse, pen and touch alike) ──────────────────
+// HTML5 drag events never fire from a touch screen, which is why the queue
+// could not be dragged on the iPad (John, 2026-09-24). A handle starts the
+// drag, a ghost follows the pointer, and whatever card sits under the
+// pointer is the drop target: in the same list that is a reorder (left
+// half = before it, right half = after it); `targets` names cross-list
+// drops (a shelf card onto a plan slot). Bound once per container.
+function dndBind(container,opts){
+  if(!container||container.dataset.dnd)return;container.dataset.dnd='1';
+  container.addEventListener('pointerdown',e=>{
+    if(e.button)return;
+    const item=e.target.closest(opts.items);if(!item||!container.contains(item))return;
+    if(opts.handle){if(!e.target.closest(opts.handle))return;}
+    else if(e.target.closest('button,input,select,textarea,a'))return;
+    e.preventDefault();
+    const items=()=>[...container.querySelectorAll(opts.items)];
+    const from=items().indexOf(item),r=item.getBoundingClientRect();
+    const g=item.cloneNode(true);g.classList.add('dnd-ghost');g.style.width=r.width+'px';g.style.left=r.left+'px';g.style.top=r.top+'px';document.body.appendChild(g);
+    const dx=e.clientX-r.left,dy=e.clientY-r.top;
+    item.classList.add('dragging');
+    let before=null,target=null,moved=false;
+    const clear=()=>document.querySelectorAll('.dropbefore,.dropafter,.droptarget').forEach(x=>x.classList.remove('dropbefore','dropafter','droptarget'));
+    const move=ev=>{moved=true;g.style.left=(ev.clientX-dx)+'px';g.style.top=(ev.clientY-dy)+'px';
+      const el=document.elementFromPoint(ev.clientX,ev.clientY);clear();before=null;target=null;
+      const t=opts.targets&&el?el.closest(opts.targets):null;
+      const it=el?el.closest(opts.items):null;
+      if(t&&!container.contains(t)){target=t;t.classList.add('droptarget');return;}
+      if(it&&container.contains(it)&&it!==item){const idx=items().indexOf(it),rr=it.getBoundingClientRect();
+        if(ev.clientX>rr.left+rr.width/2){before=idx+1;it.classList.add('dropafter');}else{before=idx;it.classList.add('dropbefore');}
+      }else if(el&&container.contains(el)&&opts.onMove){before=items().length;}
+    };
+    const up=()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up);window.removeEventListener('pointercancel',up);
+      g.remove();item.classList.remove('dragging');clear();
+      if(!moved)return;
+      if(target&&opts.onTarget)opts.onTarget(from,target);
+      else if(before!=null&&opts.onMove&&before!==from&&before!==from+1)opts.onMove(from,before);
+    };
+    window.addEventListener('pointermove',move);window.addEventListener('pointerup',up);window.addEventListener('pointercancel',up);
+  });
+}
 function tbrMoveBy(i,d){const L=G._tbrQueue||[];const before=d<0?i-1:i+2;if(before<0||before>L.length)return;tbrMoveBefore(i,before);}
 async function tbrMoveBefore(from,before){
   const L=G._tbrQueue||[],it=L[from];if(!it)return;
@@ -1929,9 +1987,11 @@ function renderTBR(){
   // Universe grouping: a universe's series sit together under its name
   // (Malazan's several series read as one shelf); groups take the position
   // of their first series in the order, everything else stays put.
+  // a universe with several series in progress sits in its own dashed box
+  // whose caption covers exactly those cards (John, 2026-09-24)
   const grouped=rows=>{const m=new Map();rows.forEach(s=>{const k=s.universe?'u:'+s.owner+'|'+s.universe:'s:'+s.owner+'|'+s.name;if(!m.has(k))m.set(k,[]);m.get(k).push(s);});
-    return[...m.entries()].map(([k,list])=>(k.startsWith('u:')&&list.length>1?`<div class="tbr-uni">${esc(list[0].universe)} <span class="ms">· ${list.length} series${both?' · '+OWNER_LABEL[list[0].owner]:''}</span></div>`:'')+list.map(seriesCard).join('')).join('');};
-  const bookCard=(b,s,extra,qi)=>`<div class="tbr-card${ownCls(b)}" data-ser="${esc(s?s.name:'')}" data-owner="${own(b)}"${s&&s.inProg?' data-inprog="1"':''}${qi!=null?` draggable="true" ondragstart="tbrDragStart(event,${qi})" ondragover="tbrDragOver(event)" ondragleave="tbrDragLeave(event)" ondragend="tbrDragEnd(event)" ondrop="tbrDrop(event,${qi})"`:''}>
+    return[...m.entries()].map(([k,list])=>k.startsWith('u:')&&list.length>1?`<div class="tbr-group"><div class="tbr-uni">${esc(list[0].universe)} <span class="ms">· ${list.length} series${both?' · '+OWNER_LABEL[list[0].owner]:''}</span></div>${list.map(seriesCard).join('')}</div>`:list.map(seriesCard).join('')).join('');};
+  const bookCard=(b,s,extra,qi)=>`<div class="tbr-card${ownCls(b)}" data-ser="${esc(s?s.name:'')}" data-owner="${own(b)}"${s&&s.inProg?' data-inprog="1"':''}>
     ${qi!=null?'<span class="tbr-handle" title="drag to reorder">⋮⋮</span>':''}
     <div class="tbr-cov">${cover(b)}</div>
     <div class="tbr-info">
@@ -1983,6 +2043,7 @@ function renderTBR(){
     return`<div class="tbr-card${rCls(r)}" data-owner="${r.owner}"${serAttr(b)}><div class="tbr-cov">${b?cover(b):grTile(r)}</div><div class="tbr-info"><div class="tbr-ser">${esc(b?b.title:r.title)}</div><div class="tbr-prog">${esc(r.author)}${b?' · '+esc(b.series)+(b.seq?' #'+esc(b.seq):''):' · not in the register'}${r.added?' · since '+esc(r.added):''}</div><div class="tbr-acts">${b?(pr?'<span class="badge b-teal">read · pending</span>':`<button class="log-act" onclick="tbrReadRow(${i})">✓ Read</button>`):miss}</div>${b?`<div id="tbr-rr-${i}" style="display:none"></div>`:`<div id="tbr-lk-${ri}" style="display:none"></div>`}</div></div>`;}).join('');
   document.getElementById('tbr-queue').innerHTML=queue.map((q,qi)=>bookCard(q.b,sOf(q.b),chip(q.b)+(q.pending?' <span class="badge b-gold">pending</span>':''),qi)).join('')
     ||'<div class="ms">Nothing picked yet — tap ＋ Next up on any card below to build your list.</div>';
+  dndBind(document.getElementById('tbr-queue'),{items:'.tbr-card',handle:'.tbr-handle',onMove:(f,b)=>tbrMoveBefore(f,b)});
   document.getElementById('tbr-focus').innerHTML=focusLeft.map(seriesCard).join('')||'<div class="ms">'+(focusRows.length?'Every focus series is finished.':'No focus list for this year.')+'</div>';
   document.getElementById('tbr-prog').innerHTML=grouped(prog)||'<div class="ms">Nothing in progress outside the focus list.</div>';
   document.getElementById('tbr-new').innerHTML=newBook.map(x=>x.src==='register'?bookCard(x.b,x.s,`<span class="badge b-teal">📅 ${esc(x.date)}</span>${orderChip(x.b)}`):bnCard(x)).join('')
@@ -2040,23 +2101,37 @@ function renderPlan(){
   const left=goal?goal-read-(planned-done):null;
   document.getElementById('plan-m').innerHTML=mH(planned,'Slots planned',String(planYear))+mH(done,'Done','pinned book read, or ticked','t')+mH(goal||'—','Goal',goal?"the year's targets":'no targets set for '+planYear)+(planYear<=cy?mH(read,'Read so far',String(planYear)):'')+(goal?mH((left>0?'':'+')+Math.abs(left),left>0?'Still to plan':'Over the goal',left>0?'goal − read − open slots':'more planned than the goal needs',left>0?'c':'t'):'');
   const cnt=(arr,f)=>arr.reduce((m,x)=>{const k=f(x);if(k)m[k]=(m[k]||0)+1;return m;},{});
-  const pm=cnt(slots,s=>s.media),rm=cnt(readBooks,b=>/^ebook$/i.test(b.media||'')?'eBook':b.media);
+  const mediaOf=b=>/^ebook$/i.test(b.media||'')?'eBook':b.media;
+  const pm=cnt(slots,s=>s.media),rm=cnt(readBooks,mediaOf);
+  // A row opens to the readout behind it — the books read this year that
+  // count for it and the slots planned for it — so the tab answers "what
+  // filled this" without repeating the This Year table (John, 2026-09-24).
+  const open=G._planOpen||'';
+  const detail=(kind,key)=>{if(open!==kind+'|'+key)return'';
+    const rb=readBooks.filter(b=>(kind==='m'?mediaOf(b):b.genre)===key),sl=slots.filter(s=>(kind==='m'?s.media:s.genre)===key);
+    return`<div class="plan-detail">${planYear<=cy?`<div class="cbt">Read in ${planYear} · ${rb.length}</div><div class="tbr-works">${rb.map(b=>`<div class="tbr-work tbr-work-read">${esc(b.title)} <span class="ms">${esc(b.date||'')}${kind!=='m'&&b.media?' · '+esc(b.media):''}</span></div>`).join('')||'<div class="ms">nothing yet</div>'}</div>`:''}<div class="cbt" style="margin-top:6px">Slots · ${sl.length}</div><div class="tbr-works">${sl.map(s=>`<div class="tbr-work">${isDone(s)?'✓ ':'○ '}${esc(s.label||s.book)}${s.book&&s.label?` <span class="ms">→ ${esc(s.book)}</span>`:''}</div>`).join('')||'<div class="ms">none</div>'}</div></div>`;};
   const mediaRows=MEDIA.filter(m=>pm[m]||rm[m]||(tg[m]&&tg[m].total)).map(m=>{const t=(tg[m]&&tg[m].total)||0,p=pm[m]||0,r=planYear<=cy?(rm[m]||0):0,max=Math.max(t,p+r,1);
-    return`<div class="pr" style="margin-bottom:12px"><div class="pl">${m}</div><div style="flex:1;position:relative;height:10px;border-radius:5px;background:var(--bg3)"><div style="position:absolute;left:0;top:0;height:100%;width:${(r/max*100).toFixed(1)}%;background:${MCOL[m]||'#9a9688'};border-radius:5px"></div><div style="position:absolute;left:${(r/max*100).toFixed(1)}%;top:0;height:100%;width:${(p/max*100).toFixed(1)}%;background:${MCOL[m]||'#9a9688'};opacity:.35;border-radius:5px"></div>${t?`<div style="position:absolute;left:${(t/max*100).toFixed(1)}%;top:-3px;width:2px;height:16px;background:var(--coral);transform:translateX(-50%)"></div>`:''}</div><div style="font-family:var(--font-m);font-size:11px;min-width:150px;text-align:right;color:var(--text2)">${p} planned${planYear<=cy?' · '+r+' read':''}${t?' · goal '+t:''}</div></div>`;}).join('');
-  document.getElementById('plan-media').innerHTML=mediaRows||'<div class="ms">Nothing planned yet.</div>';
+    return`<div class="plan-row${open==='m|'+m?' open':''}" data-k="${esc(m)}" onclick="planOpen('m',this.dataset.k)" title="tap for what counted toward it"><div class="pr" style="margin-bottom:12px"><div class="pl">${m}</div><div style="flex:1;position:relative;height:10px;border-radius:5px;background:var(--bg3)"><div style="position:absolute;left:0;top:0;height:100%;width:${(r/max*100).toFixed(1)}%;background:${MCOL[m]||'#9a9688'};border-radius:5px"></div><div style="position:absolute;left:${(r/max*100).toFixed(1)}%;top:0;height:100%;width:${(p/max*100).toFixed(1)}%;background:${MCOL[m]||'#9a9688'};opacity:.35;border-radius:5px"></div>${t?`<div style="position:absolute;left:${(t/max*100).toFixed(1)}%;top:-3px;width:2px;height:16px;background:var(--coral);transform:translateX(-50%)"></div>`:''}</div><div style="font-family:var(--font-m);font-size:11px;min-width:150px;text-align:right;color:var(--text2)">${p} planned${planYear<=cy?' · '+r+' read':''}${t?' · goal '+t:''}</div></div></div>${detail('m',m)}`;}).join('');
+  document.getElementById('plan-media').innerHTML=(mediaRows||'<div class="ms">Nothing planned yet.</div>')+'<div class="ms">tap a row for what counted toward it</div>';
   const pg=cnt(slots,s=>s.genre),rg=planYear<=cy?cnt(readBooks,b=>b.genre):{};
   const genres=[...new Set([...Object.keys(pg),...Object.keys(rg)])].sort((a,b)=>(pg[b]||0)-(pg[a]||0)||(rg[b]||0)-(rg[a]||0));
-  document.getElementById('plan-genre').innerHTML=genres.map(g=>`<div class="pr"><div class="pl">${esc(g)}</div><div class="pt"><div class="pf" style="width:${Math.min(100,(pg[g]||0)/Math.max(1,planned)*100).toFixed(1)}%;background:var(--purple)"></div></div><div class="pv">${pg[g]||0} planned${planYear<=cy?' · '+(rg[g]||0)+' read':''}</div></div>`).join('')||'<div class="ms">No genres on the slots yet.</div>';
+  const showG=G._planAllGenres?genres:genres.slice(0,8);
+  document.getElementById('plan-genre').innerHTML=(showG.map(g=>`<div class="plan-row${open==='g|'+g?' open':''}" data-k="${esc(g)}" onclick="planOpen('g',this.dataset.k)" title="tap for what counted toward it"><div class="pr"><div class="pl">${esc(g)}</div><div class="pt"><div class="pf" style="width:${Math.min(100,(pg[g]||0)/Math.max(1,planned)*100).toFixed(1)}%;background:var(--purple)"></div></div><div class="pv">${pg[g]||0} planned${planYear<=cy?' · '+(rg[g]||0)+' read':''}</div></div></div>${detail('g',g)}`).join('')||'<div class="ms">No genres on the slots yet.</div>')
+    +(genres.length>showG.length?`<button class="log-act" style="margin-top:6px" onclick="G._planAllGenres=true;renderPlan()">${genres.length-showG.length} more genres</button>`:'');
   G._planSlots=slots;
   document.getElementById('plan-list').innerHTML=slots.map((s,i)=>{const b=s.book?(G.allIndBooks||[]).find(x=>(x.owner||'butthead')===owner&&x.title===s.book&&(s.series?x.series===s.series:true)):null;
-    return`<div class="tbr-card${isDone(s)?' plan-done':''}${s.pending?' plan-pending':''}" data-plan="${s.id}">
+    return`<div class="tbr-card${isDone(s)?' plan-done':''}${s.pending?' plan-pending':''}" data-plan="${s.id}" data-i="${i}">
+      ${s.id?'<span class="tbr-handle" title="drag to reorder">⋮⋮</span>':''}
       <div class="tbr-cov">${b?coverTile(b.title,b.owner,'',null,40,b.series):'<div class="ct ct-ph" style="width:40px;height:60px"><span>?</span></div>'}</div>
       <div class="tbr-info"><div class="tbr-ser">${isDone(s)?'✓ ':''}${esc(s.label||(b?b.title:''))}</div>
         <div class="tbr-prog">${[s.media,s.genre,s.length].filter(Boolean).map(esc).join(' · ')||'<span class="ms">no shape yet</span>'}${s.pending?' <span class="badge b-gold">pending</span>':''}</div>
         <div class="tbr-next">${b?`<strong>${esc(b.title)}</strong>${b.series&&b.series!=='Standalones'?' <span class="ms">'+esc(b.series)+(b.seq?' #'+esc(b.seq):'')+'</span>':''} ${b.read?'<span class="badge b-teal">read</span>':b.owned?'<span class="badge b-green">on the shelf</span>':'<span class="badge b-coral">not owned</span>'}`:'<span class="ms">no book pinned yet</span>'}${s.notes?`<div class="ms">${esc(s.notes)}</div>`:''}</div>
         <div class="tbr-acts">${s.id?`<button class="log-act" onclick="planToggleDone(${i})">${s.done?'↺ not done':'✓ Done'}</button><button class="log-act" onclick="planEditRow(${i})" title="edit the slot or pin a book">✎</button><button class="log-act" onclick="planRemove(${i})" title="drop the slot">✕</button>`:'<span class="ms">saving…</span>'}</div>
         <div id="plan-ed-${i}" style="display:none"></div>
-      </div></div>`;}).join('')||'<div class="ms">No slots yet — add a few shapes below, or paste your Keep list.</div>';
+      </div></div>`;}).join('')+`<div class="tbr-card plan-dropnew" id="plan-dropnew"><div class="tbr-info"><div class="tbr-ser">＋ New slot</div><div class="ms">drop a shelf card here, or use the form below</div></div></div>`;
+  if(!slots.length)document.getElementById('plan-list').insertAdjacentHTML('afterbegin','<div class="ms">No slots yet — drag from the shelves below, add a few shapes, or paste your Keep list.</div>');
+  dndBind(document.getElementById('plan-list'),{items:'.tbr-card[data-plan]',handle:'.tbr-handle',onMove:(f,b)=>planMoveBefore(f,b)});
+  planPoolRender(owner);
   const titles=planTitles(owner),genresV=(G.vocab&&G.vocab.genre)||[];
   document.getElementById('plan-add').innerHTML=`
     <div class="log-frow"><label>Label</label><input id="plan-n-label" placeholder="e.g. long, hard sci-fi"></div>
@@ -2111,6 +2186,58 @@ async function planSaveEdit(i){
   if(bq!==cur){if(!bq)set.book='';else{const b=planFindBook(bq);if(!b)return toast('Pick the book from the list',true);set.book={title:b.title,series:b.series==='Standalones'?'':b.series,owner:b.owner||'butthead'};}}
   if(!Object.keys(set).length)return toast('Nothing changed',true);
   if(await LOG.planSet(planYear,'update',s.id,set))renderPlan();
+}
+function planOpen(kind,key){const k=kind+'|'+key;G._planOpen=G._planOpen===k?'':k;renderPlan();}
+// Reorder by drag: the new position is the midpoint of the neighbours it
+// lands between (pending slots, still without an id, don't count).
+async function planMoveBefore(from,before){
+  const L=G._planSlots||[],it=L[from];if(!it||!it.id)return;
+  const rest=L.filter((_,j)=>j!==from),idx=before>from?before-1:before;
+  const real=x=>x&&x.id?x:null,prev=real(rest[idx-1]),next=real(rest[idx]);
+  const pos=!prev&&!next?1:!prev?next.pos-1:!next?prev.pos+1:(prev.pos+next.pos)/2;
+  if(await LOG.planSet(planYear,'update',it.id,{position:pos}))renderPlan();
+}
+// The shelf pool: the next unread volume of every series (its first, for
+// one not started) and every unread standalone — the things a slot can
+// actually be filled with. Filtered by chips, not typed queries (John,
+// 2026-09-24: "visual, not a database entry").
+function planPool(owner){
+  const books=(G.allIndBooks||[]).filter(b=>(b.owner||'butthead')===owner);
+  const seqN=b=>{const v=parseFloat(String(b.seq||'').replace(/[^0-9.]/g,''));return isNaN(v)?Infinity:v;};
+  const by={};for(const b of books){if(!b.series||b.series==='Standalones')continue;const k=seriesKey(b);(by[k]=by[k]||[]).push(b);}
+  const out=[];
+  for(const k in by){const l=by[k].sort((a,b)=>seqN(a)-seqN(b)||a.title.localeCompare(b.title));const rs=l.filter(b=>b.read).map(seqN).filter(x=>x!==Infinity);const maxRead=rs.length?Math.max(...rs):-Infinity;const unread=l.filter(b=>!b.read);const next=unread.find(b=>seqN(b)>maxRead)||unread[0];
+    if(next)out.push(Object.assign({},next,{why:l.some(b=>b.read)?'next in series':'start a series',sread:l.filter(b=>b.read).length,stotal:l.length}));}
+  for(const b of books)if((!b.series||b.series==='Standalones')&&!b.read)out.push(Object.assign({},b,{why:'standalone'}));
+  return out;
+}
+let planPoolF={q:'',media:'',genre:'',shelf:true};
+function planPoolSet(k,v){if(k==='shelf')planPoolF.shelf=!planPoolF.shelf;else planPoolF[k]=planPoolF[k]===v?'':v;planPoolRender(OWNER==='all'?'butthead':OWNER);}
+function planPoolRender(owner){
+  const el=document.getElementById('plan-pool'),bar=document.getElementById('plan-pool-bar');if(!el||!bar)return;
+  const f=planPoolF,all=planPool(owner).filter(b=>!f.shelf||b.owned),nq=f.q.toLowerCase();
+  const rows=all.filter(b=>(!f.media||b.media===f.media)&&(!f.genre||b.type===f.genre)&&(!nq||(b.title+' '+b.series+' '+b.author).toLowerCase().includes(nq)))
+    .sort((a,b)=>(b.owned-a.owned)||((b.why==='next in series')-(a.why==='next in series'))||a.title.localeCompare(b.title));
+  const cnt=g=>all.reduce((m,b)=>{const k=g(b);if(k)m[k]=(m[k]||0)+1;return m;},{});
+  const mc=cnt(b=>b.media),gc=cnt(b=>b.type);
+  const chip=(k,v,l,on)=>`<button class="pchip${on?' on':''}" data-k="${k}" data-v="${esc(v)}" onclick="planPoolSet(this.dataset.k,this.dataset.v)">${esc(l)}</button>`;
+  bar.innerHTML=`<input value="${esc(f.q)}" placeholder="title, series or author" oninput="planPoolF.q=this.value;planPoolRender('${owner}');const i=document.querySelector('#plan-pool-bar input');i.focus();i.setSelectionRange(i.value.length,i.value.length)" style="font:inherit;font-size:12px;padding:4px 8px;border:1px solid var(--border2);border-radius:6px;min-width:180px">`
+    +chip('shelf','',f.shelf?'on the shelf':'everything tracked',f.shelf)
+    +MEDIA.filter(m=>mc[m]).map(m=>chip('media',m,m+' '+mc[m],f.media===m)).join('')
+    +Object.entries(gc).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([g,n])=>chip('genre',g,g+' '+n,f.genre===g)).join('')
+    +`<span class="ms">${rows.length} of ${all.length}</span>`;
+  G._planPool=rows.slice(0,48);
+  el.innerHTML=(G._planPool.map((b,i)=>`<div class="tbr-card" data-pool="${i}"><span class="tbr-handle" title="drag onto a slot">⋮⋮</span><div class="tbr-cov">${coverTile(b.title,b.owner,'',null,40,b.series)}</div><div class="tbr-info"><div class="tbr-ser">${esc(b.title)}${b.seq?' <span class="ms">#'+esc(b.seq)+'</span>':''}</div><div class="tbr-prog">${b.series&&b.series!=='Standalones'?esc(b.series)+' · '+b.sread+'/'+b.stotal+' · ':''}${esc(b.author||'')}</div><div class="tbr-next">${[b.media,b.type].filter(Boolean).map(esc).join(' · ')} ${b.owned?'<span class="badge b-green">on the shelf</span>':'<span class="badge b-coral">not owned</span>'} <span class="ms">${esc(b.why)}</span></div><div class="tbr-acts"><button class="log-act" onclick="planPoolAdd(${i})">＋ Slot</button></div></div></div>`).join('')||'<div class="ms">Nothing matches — loosen the filters.</div>')
+    +(rows.length>48?`<div class="ms">…and ${rows.length-48} more — narrow it down</div>`:'');
+  dndBind(el,{items:'.tbr-card[data-pool]',handle:'.tbr-handle',targets:'#plan-list .tbr-card[data-plan]:not([data-plan="0"]),#plan-dropnew',onTarget:(from,t)=>planDropPool(from,t)});
+}
+function planRef(b){return{title:b.title,series:b.series==='Standalones'?'':b.series,owner:b.owner||'butthead'};}
+async function planPoolAdd(i){const b=(G._planPool||[])[i];if(!b)return;if(await LOG.planSet(planYear,'add',null,{label:b.title,media:b.media||'',genre:b.type||'',book:planRef(b)})){toast(`Slot for “${b.title}” queued`);renderPlan();}}
+async function planDropPool(from,t){
+  const b=(G._planPool||[])[from];if(!b||!t)return;
+  if(t.id==='plan-dropnew')return planPoolAdd(from);
+  const id=+t.dataset.plan;if(!id)return;
+  if(await LOG.planSet(planYear,'update',id,{book:planRef(b)})){toast(`Pinned “${b.title}”`);renderPlan();}
 }
 function renderThisYear(year){
   tyYear=year;
