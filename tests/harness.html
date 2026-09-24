@@ -327,6 +327,18 @@ async function main(){
     res('Masthead is sticky and slim',cs.position==='sticky'&&h.offsetHeight<90&&!!h.querySelector('.sec-nav'),`position ${cs.position}, height ${h.offsetHeight}px, nav inside ${!!h.querySelector('.sec-nav')}`);
   });
 
+  await check("Reads tab feeds Shereen's This Year",async()=>{
+    const reads=tget('Reads');
+    if(!reads){res("Reads tab feeds Shereen's This Year",false,'no bookdb|Reads tab');return;}
+    const y=new Date().getFullYear();
+    const hers=reads.slice(1).filter(r=>r[0]==='goblin'&&String(r[1])===String(y)).length;
+    w().setOwner('goblin');
+    await go('thisyear','reading');
+    const rows=doc().querySelectorAll('#ty-books tr').length;
+    w().setOwner('butthead');
+    res("Reads tab feeds Shereen's This Year",rows===hers,`${rows} rows on her This Year vs ${hers} of her ${y} reads in the tab (${reads.length-1} reads exported in all)`);
+  });
+
   await check('TBR universe groups box only their own series',async()=>{
     await go('tbr','reading');
     const groups=[...doc().querySelectorAll('#tbr-prog .tbr-group')];

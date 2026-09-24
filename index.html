@@ -585,6 +585,8 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div class="sl">TBR — what to read next</div>
       <div class="mg" id="tbr-m"></div>
       <div class="tbr-legend" id="tbr-legend"></div>
+      <div id="tbr-toread-wrap" style="display:none"><div class="sl">Want to read — Goodreads to-read shelf</div>
+      <div class="tbr-grid" id="tbr-toread"></div></div>
       <div id="tbr-reading-wrap"><div class="sl">Reading now — Goodreads currently-reading shelf</div>
       <div class="tbr-grid" id="tbr-reading"></div></div>
       <div class="sl">Next up — your own order · drag a card, or ▲ ▼</div>
@@ -1168,6 +1170,19 @@ function parseYear(vals){
   return{books,targets,focus};
 }
 
+// Reading history per owner: Com's year data comes from the year tabs
+// (targets and focus included), Shereen's from the bookdb|Reads tab.
+const YD_EMPTY={books:[],targets:{},focus:[]};
+function ydFor(year){
+  if(OWNER==='goblin'){const by=(G.readsBy||{}).goblin||{};return by[year]?{books:by[year],targets:{},focus:[]}:YD_EMPTY;}
+  return(typeof allYD!=='undefined'&&allYD[year])||YD_EMPTY;
+}
+function metricsFor(){
+  if(OWNER!=='goblin')return G.metrics||{};
+  const m={},by=(G.readsBy||{}).goblin||{};
+  for(const y in by)for(const b of by[y]){const med=MEDIA.includes(b.media)?b.media:'Print';(m[med]=m[med]||{})[y]=(m[med][y]||0)+1;(m.Total=m.Total||{})[y]=(m.Total[y]||0)+1;}
+  return m;
+}
 function parseMetrics(vals){
   const m={};
   for(const r of vals){const lbl=(r[0]||'').trim();if(!lbl)continue;m[lbl]={2026:n(r[1]),2025:n(r[2]),2024:n(r[3]),2023:n(r[4]),2022:n(r[5]),2021:n(r[6])};}
@@ -1698,7 +1713,7 @@ async function tbrFinish(i){
 // Goodreads currently-reading rows (bookdb|Goodreads tab), matched to the
 // register by jerry's exact-norm title. A display signal only — reads still
 // come from finished events (John's 2026-07-24 rule).
-function tbrReadingNow(nk,owners){
+function tbrReadingNow(nk,owners,shelf){
   // A book the register already has as read is done, whatever the shelf
   // still says — it drops out here as soon as the finished event lands. A
   // collection matched on the copies layer carries its works instead
@@ -1707,7 +1722,7 @@ function tbrReadingNow(nk,owners){
   owners=owners||[OWNER==='all'?'butthead':OWNER];
   const all=G.allIndBooks||[];
   const find=(t,o)=>all.find(b=>(b.owner||'butthead')===o&&nk(b.title)===nk(t))||null;
-  return(G.goodreads||[]).filter(r=>r.shelf==='currently-reading'&&owners.includes(r.owner||'butthead'))
+  return(G.goodreads||[]).filter(r=>r.shelf===(shelf||'currently-reading')&&owners.includes(r.owner||'butthead'))
     .map(r=>{const o=r.owner||'butthead';return Object.assign({},r,{owner:o,reg:r.book?find(r.book,o):null,works:(r.contains||[]).map(t=>find(t,o)).filter(Boolean)});})
     .filter(r=>!(r.reg&&r.reg.read)&&!(r.works.length&&r.works.every(w=>w.read)));
 }
@@ -2041,6 +2056,18 @@ function renderTBR(){
     const miss=pendLinks.has(r.grId)?'<span class="badge b-gold">linked · pending</span>'
       :`<button class="log-act gold" onclick="tbrAddFromGoodreads(${ri})" title="add it to the register, prefilled from Goodreads">＋ Add it</button><button class="log-act" onclick="tbrLinkRow(${ri})" title="it is already in the register under another title">🔗 It's in the register as…</button>`;
     return`<div class="tbr-card${rCls(r)}" data-owner="${r.owner}"${serAttr(b)}><div class="tbr-cov">${b?cover(b):grTile(r)}</div><div class="tbr-info"><div class="tbr-ser">${esc(b?b.title:r.title)}</div><div class="tbr-prog">${esc(r.author)}${b?' · '+esc(b.series)+(b.seq?' #'+esc(b.seq):''):' · not in the register'}${r.added?' · since '+esc(r.added):''}</div><div class="tbr-acts">${b?(pr?'<span class="badge b-teal">read · pending</span>':`<button class="log-act" onclick="tbrReadRow(${i})">✓ Read</button>`):miss}</div>${b?`<div id="tbr-rr-${i}" style="display:none"></div>`:`<div id="tbr-lk-${ri}" style="display:none"></div>`}</div></div>`;}).join('');
+  // Want to read — the Goodreads to-read shelf (2026-09-24, Shereen's
+  // first): register matches get the shelf/order chip and ＋ Next up, the
+  // rest Add / Link. A wanted book already queued or being read isn't
+  // listed twice. Sits below Reading now, above Next up.
+  const wants=tbrReadingNow(nk,owners,'to-read').filter(r=>!(r.reg&&(qmap.has(ok(r.reg))||readingKeys.has(ok(r.reg)))));
+  const tw=document.getElementById('tbr-toread-wrap');if(tw)tw.style.display=wants.length?'':'none';
+  const wantShown=G._tbrWantAll?wants:wants.slice(0,48),base=reading.length;
+  document.getElementById('tbr-toread').innerHTML=wantShown.map((r,wi)=>{const b=r.reg,ri=base+wi;
+    const miss=pendLinks.has(r.grId)?'<span class="badge b-gold">linked · pending</span>':`<button class="log-act gold" onclick="tbrAddFromGoodreads(${ri})" title="add it to the register, prefilled from Goodreads">＋ Add it</button><button class="log-act" onclick="tbrLinkRow(${ri})" title="it is already in the register under another title">🔗 It's in the register as…</button>`;
+    return`<div class="tbr-card${rCls(r)}" data-owner="${r.owner}"${serAttr(b)}><div class="tbr-cov">${b?cover(b):grTile(r)}</div><div class="tbr-info"><div class="tbr-ser">${esc(b?b.title:r.title)}</div><div class="tbr-prog">${esc(r.author)}${b?' · '+esc(b.series)+(b.seq?' #'+esc(b.seq):''):' · not in the register'}${r.added?' · since '+esc(r.added):''}</div>${b?`<div class="tbr-next">${chip(b)}</div>`+acts(b):`<div class="tbr-acts">${miss}</div><div id="tbr-lk-${ri}" style="display:none"></div>`}</div></div>`;}).join('')
+    +(wants.length>wantShown.length?`<div class="ms"><button class="log-act" onclick="G._tbrWantAll=true;tbrRerender()">Show all ${wants.length}</button></div>`:'');
+  G._tbrGR=reading.concat(wants);
   document.getElementById('tbr-queue').innerHTML=queue.map((q,qi)=>bookCard(q.b,sOf(q.b),chip(q.b)+(q.pending?' <span class="badge b-gold">pending</span>':''),qi)).join('')
     ||'<div class="ms">Nothing picked yet — tap ＋ Next up on any card below to build your list.</div>';
   dndBind(document.getElementById('tbr-queue'),{items:'.tbr-card',handle:'.tbr-handle',onMove:(f,b)=>tbrMoveBefore(f,b)});
@@ -2088,7 +2115,7 @@ function renderPlan(){
   document.getElementById('plan-tog').innerHTML=years.map(y=>`<button class="${y===planYear?'active':''}" onclick="planYear=${y};renderPlan()">${y}</button>`).join('');
   const yd=(typeof allYD!=='undefined'&&allYD[planYear])||{books:[],targets:{},focus:[]};
   const tg=yd.targets||{},goal=(tg.Total&&tg.Total.total)||0;
-  const readBooks=owner==='butthead'?(yd.books||[]):[]; // Shereen has no year tabs yet
+  const readBooks=owner==='butthead'?(yd.books||[]):((((G.readsBy||{}).goblin||{})[planYear])||[]); // Shereen's reads come from the Reads tab
   // slots: bundle rows + pending plan_set events (adds appear, updates and removes apply)
   let slots=mine.filter(p=>p.year===planYear).map(p=>Object.assign({},p,{pending:false}));
   for(const ev of LOG.pendingPlan()){const q=ev.payload||{};if(+q.year!==planYear||(ev.by||'butthead')!==owner)continue;
@@ -2244,7 +2271,7 @@ function renderThisYear(year){
   const currentYear=new Date().getFullYear();
   const isCurrentYear=year===currentYear;
   document.querySelectorAll('#year-tog button').forEach(b=>b.classList.toggle('active',parseInt(b.dataset.y)===year));
-  const{books,targets,focus}=(OWNER==='goblin'?{books:[],targets:{},focus:[]}:(allYD[year]||{books:[],targets:{},focus:[]}));
+  const{books,targets,focus}=ydFor(year);
   renderYearCovers(books);
   const tot=targets['Total']||{total:0,bynow:0,actual:0};
   const actual=books.length;
@@ -2782,9 +2809,10 @@ function renderYearCovers(books){
   // supplies the series so a shared title (Annihilation) gets its own cover.
   const nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
   const yr=String(typeof tyYear!=='undefined'?tyYear:new Date().getFullYear());
-  const serOf=t=>{const c=(G.allIndBooks||[]).filter(x=>(x.owner||'butthead')==='butthead'&&nk(x.title)===nk(t));
+  const who=OWNER==='goblin'?'goblin':'butthead';
+  const serOf=t=>{const c=(G.allIndBooks||[]).filter(x=>(x.owner||'butthead')===who&&nk(x.title)===nk(t));
     const pick=c.length===1?c[0]:c.find(x=>(x.readOn||'').startsWith(yr));return pick?pick.series:(c.length?' ':'');};
-  el.innerHTML=keys.length?keys.map(k=>`<div class="ycrow"><div class="ycmo">${k?MONTHS[k-1]:'Undated'} <span class="ms">· ${rows[k].length}</span></div><div class="cstrip">${rows[k].sort((a,b)=>a.num-b.num).map(b=>coverTile(b.title,'butthead',[b.genre,b.media].filter(Boolean).join(' · '),null,undefined,serOf(b.title))).join('')}</div></div>`).join('')
+  el.innerHTML=keys.length?keys.map(k=>`<div class="ycrow"><div class="ycmo">${k?MONTHS[k-1]:'Undated'} <span class="ms">· ${rows[k].length}</span></div><div class="cstrip">${rows[k].sort((a,b)=>a.num-b.num).map(b=>coverTile(b.title,who,[b.genre,b.media].filter(Boolean).join(' · '),null,undefined,serOf(b.title))).join('')}</div></div>`).join('')
     :'<div class="ms">Nothing finished yet this year.</div>';
 }
 // A capped horizontal strip of covers (To Read, Coming Up).
@@ -3101,7 +3129,7 @@ function setOwner(o){
   OWNER=o;
   document.querySelectorAll('#owner-filter button').forEach(b=>b.classList.toggle('active',b.dataset.o===o));
   const note=document.getElementById('owner-note');
-  if(note)note.textContent=o==='goblin'?'Shereen has no reading/buying history yet':'';
+  if(note)note.textContent=o==='goblin'&&!((G.readsBy||{}).goblin)?'Shereen has no reading history yet — her Goodreads backfill fills it':'';
   applyOwner(true);
 }
 
@@ -3178,14 +3206,14 @@ function renderTabInner(id){
   // so pass empty data for her — 'all'/Com show the full log.
   const H=OWNER!=='goblin';
   const EMPTY_YD={books:[],targets:{},focus:[]};
-  if(id==='overview')renderOverview(bm,H?(allYD[2026]||EMPTY_YD):EMPTY_YD);
+  if(id==='overview')renderOverview(bm,ydFor(2026));
   else if(id==='bytype')renderByType(bm);
   else if(id==='genre')renderGenre(bm);
   else if(id==='universe')renderUniverse(bm);
   else if(id==='rooms')renderRooms(bm);
   else if(id==='tbr')renderTBR();
   else if(id==='plan')renderPlan();
-  else if(id==='history')renderHistory(H?G.metrics:{});
+  else if(id==='history')renderHistory(metricsFor());
   else if(id==='thisyear'){
     if(!document.querySelector('#year-tog button'))document.getElementById('year-tog').innerHTML=YEARS.map(y=>`<button data-y="${y}" onclick="switchYear(${y})">${y}</button>`).join('');
     renderThisYear(tyYear);
@@ -6025,6 +6053,16 @@ async function init(){
     }
     applyOwner(false); // sets G.bookRows / G.indBooks / G.books per OWNER
     G.metrics=parseMetrics(metricsV);
+    // Reads (bookdb|Reads): Person|Year|Date|Title|Series|Genre|Media|Pages —
+    // every reader's read events. Com's history keeps coming from the year
+    // tabs (targets, focus); Shereen's This Year / History / Plan readouts
+    // are built from this (Goodreads backfill, 2026-09-24). Dates become
+    // the year tabs' M/D shape so the month charts read them alike.
+    G.readsBy={};
+    (BUNDLE.tabs['bookdb|Reads']||[]).slice(1).forEach(r=>{const who=(r[0]||'butthead').trim(),y=+r[1];if(!y)return;
+      const m=(r[2]||'').match(/^(\d{4})-(\d{2})-(\d{2})/);
+      const list=((G.readsBy[who]=G.readsBy[who]||{})[y]=G.readsBy[who][y]||[]);
+      list.push({num:list.length+1,date:m?(+m[2])+'/'+(+m[3]):'',iso:(r[2]||'').trim(),title:(r[3]||'').trim(),series:(r[4]||'').trim(),genre:(r[5]||'').trim(),media:(r[6]||'').trim(),pages:n(r[7])});});
     G.interested=parseInterested(intV);
     G.orders=parseOrders(ordV);
     G.growthMetrics=parseGrowthMetrics(growthMetricsV);
