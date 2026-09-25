@@ -24,7 +24,7 @@ expectation from the bundle, so ordinary data drift never fails it — only a
 rendering/math/lookup slip does.</p>
 <div id="sum">running…</div>
 <div id="out"></div>
-<iframe id="fr" src="/index.html"></iframe>
+<iframe id="fr"></iframe>
 <script>
 const results=[],errors=[];
 const res=(name,ok,detail)=>results.push({name,ok:!!ok,detail:detail||''});
@@ -53,6 +53,9 @@ async function check(name,fn){
 }
 
 async function main(){
+  // A previous run may have died half way: start clean, and load a fresh copy of the app (no cached build).
+  localStorage.removeItem('library-log-cfg');localStorage.removeItem('library-log-sent');
+  fr.src='/index.html?v='+Date.now();
   const raw=await(await fetch('/data/bookdb.json',{cache:'no-store'})).text();
   const d=JSON.parse(raw);
   const tabs=d.tabs;
@@ -347,6 +350,38 @@ async function main(){
     res('TBR universe groups box only their own series',ok&&loose===0,`${groups.length} group(s), ${loose} loose heading(s)`);
   });
 
+  await check('Plan: a slot dropped from the shelves takes a pin before jerry answers',async()=>{
+    const name='Plan: a slot dropped from the shelves takes a pin before jerry answers';
+    const W=w(),D=doc(),tick=ms=>new Promise(r=>setTimeout(r,ms));
+    // Stand in for the inbox: every GitHub call lands in a stub, nothing leaves the page.
+    const sentBodies=[],realFetch=W.fetch,efp=D.elementFromPoint;
+    let LOGi=null;
+    try{
+    W.fetch=async(url,opts={})=>{const u=String(url);if(!u.includes('api.github.com'))return realFetch(url,opts);
+      if((opts.method||'GET')==='PUT'){try{sentBodies.push(JSON.parse(decodeURIComponent(escape(atob(JSON.parse(opts.body).content)))));}catch(e){sentBodies.push({err:String(e)});}
+        return new W.Response('{"content":{}}',{status:201,headers:{'Content-Type':'application/json'}});}
+      return new W.Response(u.includes('/contents/inbox')?'[]':'{}',{status:200,headers:{'Content-Type':'application/json'}});};
+    const fakeBtn={closest:()=>({querySelector:sel=>({value:sel.includes('repo')?'harness/stub':'harness-stand-in'})})};
+    LOGi=W.eval('LOG'); // a script-scoped const, not a window property
+    await LOGi.saveSetup(fakeBtn);await tick(300);
+    await go('plan','reading');
+    const pool=D.querySelectorAll('#plan-pool .tbr-card[data-pool]');if(pool.length<2)throw new Error('pool too small to test with');
+    await W.planPoolAdd(0);await tick(300);
+    const pend=D.querySelector('#plan-list .tbr-card.plan-pending');
+    const key=pend&&pend.dataset.slot,handle=!!(pend&&pend.querySelector('.tbr-handle')),acts=!!(pend&&pend.querySelector('.tbr-acts button'));
+    // Drop pool card 1 onto the pending slot. The hidden iframe has no hit-testing, so point it at the slot.
+    const from=D.querySelector('#plan-pool .tbr-card[data-pool="1"]'),fromTitle=from.querySelector('.tbr-ser').firstChild.textContent.trim();
+    D.elementFromPoint=()=>pend;
+    const pe=(type,el,x,y)=>el.dispatchEvent(new W.PointerEvent(type,{bubbles:true,cancelable:true,clientX:x,clientY:y,pointerId:1,pointerType:'touch',isPrimary:true,button:0}));
+    pe('pointerdown',from.querySelector('.tbr-handle'),10,10);pe('pointermove',W,200,200);pe('pointermove',W,210,210);
+    const lit=!!(pend&&pend.classList.contains('droptarget'));pe('pointerup',W,210,210);
+    await tick(500);D.elementFromPoint=efp;
+    const upd=sentBodies.find(e=>e.type==='plan_set'&&e.payload.action==='update');
+    const stuck=D.querySelector('#plan-list .tbr-card.plan-pending .tbr-next strong')?.textContent.trim();
+    res(name,!!key&&handle&&acts&&lit&&!!upd&&upd.payload.key===key&&!upd.payload.id&&upd.payload.set.book.title===fromTitle&&stuck===fromTitle,
+      `key ${key}, handle ${handle}, buttons ${acts}, target lit ${lit}, update by key ${!!upd&&upd.payload.key===key}, pinned ${stuck} (expected ${fromTitle})`);
+    }finally{D.elementFromPoint=efp;W.fetch=realFetch;if(LOGi)LOGi.forgetSetup();localStorage.removeItem('library-log-cfg');localStorage.removeItem('library-log-sent');}
+  });
   await check('Plan: shelf pool renders draggable cards and a drop zone',async()=>{
     await go('plan','reading');
     const pool=doc().querySelectorAll('#plan-pool .tbr-card[data-pool] .tbr-handle').length;

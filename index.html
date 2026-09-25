@@ -1762,17 +1762,25 @@ function dndBind(container,opts){
     item.classList.add('dragging');
     let before=null,target=null,moved=false;
     const clear=()=>document.querySelectorAll('.dropbefore,.dropafter,.droptarget').forEach(x=>x.classList.remove('dropbefore','dropafter','droptarget'));
-    const move=ev=>{moved=true;g.style.left=(ev.clientX-dx)+'px';g.style.top=(ev.clientY-dy)+'px';
-      const el=document.elementFromPoint(ev.clientX,ev.clientY);clear();before=null;target=null;
+    let lx=0,ly=0,raf=0;
+    const hit=(x,y)=>{const el=document.elementFromPoint(x,y);clear();before=null;target=null;
       const t=opts.targets&&el?el.closest(opts.targets):null;
       const it=el?el.closest(opts.items):null;
       if(t&&!container.contains(t)){target=t;t.classList.add('droptarget');return;}
       if(it&&container.contains(it)&&it!==item){const idx=items().indexOf(it),rr=it.getBoundingClientRect();
-        if(ev.clientX>rr.left+rr.width/2){before=idx+1;it.classList.add('dropafter');}else{before=idx;it.classList.add('dropbefore');}
+        if(x>rr.left+rr.width/2){before=idx+1;it.classList.add('dropafter');}else{before=idx;it.classList.add('dropbefore');}
       }else if(el&&container.contains(el)&&opts.onMove){before=items().length;}
     };
+    // Near the top or bottom edge the page creeps along, so a touch drag
+    // can reach a target that is off screen (touch-action:none on the
+    // handle means the finger itself can't scroll while dragging).
+    const edge=()=>{raf=0;const m=56,h=window.innerHeight;let dy=0;
+      if(ly<m)dy=-Math.ceil((m-ly)/6)-2;else if(ly>h-m)dy=Math.ceil((ly-(h-m))/6)+2;
+      if(!dy)return;const y0=window.scrollY;window.scrollBy(0,dy);if(window.scrollY===y0)return;
+      hit(lx,ly);raf=requestAnimationFrame(edge);};
+    const move=ev=>{moved=true;lx=ev.clientX;ly=ev.clientY;g.style.left=(lx-dx)+'px';g.style.top=(ly-dy)+'px';hit(lx,ly);if(!raf)raf=requestAnimationFrame(edge);};
     const up=()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up);window.removeEventListener('pointercancel',up);
-      g.remove();item.classList.remove('dragging');clear();
+      if(raf){cancelAnimationFrame(raf);raf=0;}g.remove();item.classList.remove('dragging');clear();
       if(!moved)return;
       if(target&&opts.onTarget)opts.onTarget(from,target);
       else if(before!=null&&opts.onMove&&before!==from&&before!==from+1)opts.onMove(from,before);
@@ -2107,10 +2115,16 @@ function renderPlan(){
   const readBooks=owner==='butthead'?(yd.books||[]):((((G.readsBy||{}).goblin||{})[planYear])||[]); // Shereen's reads come from the Reads tab
   // slots: bundle rows + pending plan_set events (adds appear, updates and removes apply)
   let slots=mine.filter(p=>p.year===planYear).map(p=>Object.assign({},p,{pending:false}));
+  // An event names its slot by id, or by the key minted when the slot was
+  // added — so a slot made a moment ago can already be pinned, moved,
+  // ticked or dropped while jerry is still catching up.
+  const byRef=q=>q.id?slots.find(x=>x.id===+q.id):q.key?slots.find(x=>x.key===q.key):null;
   for(const ev of LOG.pendingPlan()){const q=ev.payload||{};if(+q.year!==planYear||(ev.by||'butthead')!==owner)continue;
-    if(q.action==='remove'){slots=slots.filter(s=>s.id!==+q.id);continue;}
-    if(q.action==='update'){const s=slots.find(x=>x.id===+q.id);if(s){Object.assign(s,planSetToSlot(q.set||{}));s.pending=true;}continue;}
-    slots.push(Object.assign({id:0,owner,year:planYear,pos:1e9,label:'',media:'',genre:'',length:'',book:'',series:'',done:false,notes:'',bookRead:false},planSetToSlot(q.set||{}),{pending:true}));}
+    if(q.action==='remove'){const s=byRef(q);if(s)slots=slots.filter(x=>x!==s);continue;}
+    if(q.action==='update'){const s=byRef(q);if(s){Object.assign(s,planSetToSlot(q.set||{}));s.pending=true;}continue;}
+    // an add lands where jerry will put it: one past the highest position so far
+    const o=planSetToSlot(q.set||{});if(o.pos==null)o.pos=slots.reduce((m,x)=>Math.max(m,x.pos||0),0)+1;
+    slots.push(Object.assign({id:0,key:q.key||'',owner,year:planYear,label:'',media:'',genre:'',length:'',book:'',series:'',done:false,notes:'',bookRead:false},o,{pending:true}));}
   slots.sort((a,b)=>a.pos-b.pos||a.id-b.id);
   const isDone=s=>s.done||s.bookRead;
   const done=slots.filter(isDone).length,planned=slots.length,read=readBooks.length;
@@ -2136,13 +2150,14 @@ function renderPlan(){
     +(genres.length>showG.length?`<button class="log-act" style="margin-top:6px" onclick="G._planAllGenres=true;renderPlan()">${genres.length-showG.length} more genres</button>`:'');
   G._planSlots=slots;
   document.getElementById('plan-list').innerHTML=slots.map((s,i)=>{const b=s.book?(G.allIndBooks||[]).find(x=>(x.owner||'butthead')===owner&&x.title===s.book&&(s.series?x.series===s.series:true)):null;
-    return`<div class="tbr-card${isDone(s)?' plan-done':''}${s.pending?' plan-pending':''}" data-plan="${s.id}" data-i="${i}">
-      ${s.id?'<span class="tbr-handle" title="drag to reorder">⋮⋮</span>':''}
+    const ref=s.id||s.key||'';
+    return`<div class="tbr-card${isDone(s)?' plan-done':''}${s.pending?' plan-pending':''}" data-plan="${s.id}" data-slot="${esc(String(ref))}" data-i="${i}">
+      ${ref?'<span class="tbr-handle" title="drag to reorder">⋮⋮</span>':''}
       <div class="tbr-cov">${b?coverTile(b.title,b.owner,'',null,40,b.series):'<div class="ct ct-ph" style="width:40px;height:60px"><span>?</span></div>'}</div>
-      <div class="tbr-info"><div class="tbr-ser">${isDone(s)?'✓ ':''}${esc(s.label||(b?b.title:''))}</div>
-        <div class="tbr-prog">${[s.media,s.genre,s.length].filter(Boolean).map(esc).join(' · ')||'<span class="ms">no shape yet</span>'}${s.pending?' <span class="badge b-gold">pending</span>':''}</div>
+      <div class="tbr-info"><div class="tbr-ser">${isDone(s)?'✓ ':''}${esc(s.label||s.book||(b?b.title:''))}</div>
+        <div class="tbr-prog">${[s.media,s.genre,s.length].filter(Boolean).map(esc).join(' · ')||'<span class="ms">no shape yet</span>'}${s.pending?' <span class="badge b-gold" title="saved — jerry answers within a minute or two; everything here works meanwhile">pending</span>':''}</div>
         <div class="tbr-next">${b?`<strong>${esc(b.title)}</strong>${b.series&&b.series!=='Standalones'?' <span class="ms">'+esc(b.series)+(b.seq?' #'+esc(b.seq):'')+'</span>':''} ${b.read?'<span class="badge b-teal">read</span>':b.owned?'<span class="badge b-green">on the shelf</span>':'<span class="badge b-coral">not owned</span>'}`:'<span class="ms">no book pinned yet</span>'}${s.notes?`<div class="ms">${esc(s.notes)}</div>`:''}</div>
-        <div class="tbr-acts">${s.id?`<button class="log-act" onclick="planToggleDone(${i})">${s.done?'↺ not done':'✓ Done'}</button><button class="log-act" onclick="planEditRow(${i})" title="edit the slot or pin a book">✎</button><button class="log-act" onclick="planRemove(${i})" title="drop the slot">✕</button>`:'<span class="ms">saving…</span>'}</div>
+        <div class="tbr-acts">${ref?`<button class="log-act" onclick="planToggleDone(${i})">${s.done?'↺ not done':'✓ Done'}</button><button class="log-act" onclick="planEditRow(${i})" title="edit the slot or pin a book">✎</button><button class="log-act" onclick="planRemove(${i})" title="drop the slot">✕</button>`:'<span class="ms">saving…</span>'}</div>
         <div id="plan-ed-${i}" style="display:none"></div>
       </div></div>`;}).join('')+`<div class="tbr-card plan-dropnew" id="plan-dropnew"><div class="tbr-info"><div class="tbr-ser">＋ New slot</div><div class="ms">drop a shelf card here, or use the form below</div></div></div>`;
   if(!slots.length)document.getElementById('plan-list').insertAdjacentHTML('afterbegin','<div class="ms">No slots yet — drag from the shelves below, add a few shapes, or paste your Keep list.</div>');
@@ -2167,8 +2182,8 @@ async function planBulk(){
   let n=0;for(const line of lines){if(await LOG.planSet(planYear,'add',null,Object.assign({label:line},planGuess(line))))n++;else break;}
   toast(`${n} slot${n===1?'':'s'} queued for ${planYear}`);renderPlan();
 }
-async function planToggleDone(i){const s=(G._planSlots||[])[i];if(!s||!s.id)return;if(await LOG.planSet(planYear,'update',s.id,{done:!s.done}))renderPlan();}
-async function planRemove(i){const s=(G._planSlots||[])[i];if(!s||!s.id)return;if(!confirm(`Drop the slot “${s.label||s.book}”?`))return;if(await LOG.planSet(planYear,'remove',s.id,{}))renderPlan();}
+async function planToggleDone(i){const s=(G._planSlots||[])[i],ref=s&&(s.id||s.key);if(!ref)return;if(await LOG.planSet(planYear,'update',ref,{done:!s.done}))renderPlan();}
+async function planRemove(i){const s=(G._planSlots||[])[i],ref=s&&(s.id||s.key);if(!ref)return;if(!confirm(`Drop the slot “${s.label||s.book}”?`))return;if(await LOG.planSet(planYear,'remove',ref,{}))renderPlan();}
 function planEditRow(i){
   const s=(G._planSlots||[])[i],el=document.getElementById('plan-ed-'+i);if(!s||!el)return;
   if(el.style.display!=='none'){el.style.display='none';return;}
@@ -2183,7 +2198,7 @@ function planEditRow(i){
     <button class="log-act primary" onclick="planSaveEdit(${i})">Save changed fields</button>`;
 }
 async function planSaveEdit(i){
-  const s=(G._planSlots||[])[i];if(!s||!s.id)return;
+  const s=(G._planSlots||[])[i],ref=s&&(s.id||s.key);if(!ref)return;
   const v=id=>(document.getElementById(id)||{}).value||'';
   const set={};
   const label=v(`plan-e-label-${i}`).trim();if(label!==s.label)set.label=label;
@@ -2194,17 +2209,18 @@ async function planSaveEdit(i){
   const bq=v(`plan-e-book-${i}`).trim(),cur=s.book?s.book+(s.series?' — '+s.series:''):'';
   if(bq!==cur){if(!bq)set.book='';else{const b=planFindBook(bq);if(!b)return toast('Pick the book from the list',true);set.book={title:b.title,series:b.series==='Standalones'?'':b.series,owner:b.owner||'butthead'};}}
   if(!Object.keys(set).length)return toast('Nothing changed',true);
-  if(await LOG.planSet(planYear,'update',s.id,set))renderPlan();
+  if(await LOG.planSet(planYear,'update',ref,set))renderPlan();
 }
 function planOpen(kind,key){const k=kind+'|'+key;G._planOpen=G._planOpen===k?'':k;renderPlan();}
 // Reorder by drag: the new position is the midpoint of the neighbours it
-// lands between (pending slots, still without an id, don't count).
+// lands between. Pending slots count too — their position is the one
+// jerry will assign (one past the highest at the time of the add).
 async function planMoveBefore(from,before){
-  const L=G._planSlots||[],it=L[from];if(!it||!it.id)return;
+  const L=G._planSlots||[],it=L[from],ref=it&&(it.id||it.key);if(!ref)return;
   const rest=L.filter((_,j)=>j!==from),idx=before>from?before-1:before;
-  const real=x=>x&&x.id?x:null,prev=real(rest[idx-1]),next=real(rest[idx]);
+  const prev=rest[idx-1]||null,next=rest[idx]||null;
   const pos=!prev&&!next?1:!prev?next.pos-1:!next?prev.pos+1:(prev.pos+next.pos)/2;
-  if(await LOG.planSet(planYear,'update',it.id,{position:pos}))renderPlan();
+  if(await LOG.planSet(planYear,'update',ref,{position:pos}))renderPlan();
 }
 // The shelf pool: the next unread volume of every series (its first, for
 // one not started) and every unread standalone — the things a slot can
@@ -2238,15 +2254,17 @@ function planPoolRender(owner){
   G._planPool=rows.slice(0,48);
   el.innerHTML=(G._planPool.map((b,i)=>`<div class="tbr-card" data-pool="${i}"><span class="tbr-handle" title="drag onto a slot">⋮⋮</span><div class="tbr-cov">${coverTile(b.title,b.owner,'',null,40,b.series)}</div><div class="tbr-info"><div class="tbr-ser">${esc(b.title)}${b.seq?' <span class="ms">#'+esc(b.seq)+'</span>':''}</div><div class="tbr-prog">${b.series&&b.series!=='Standalones'?esc(b.series)+' · '+b.sread+'/'+b.stotal+' · ':''}${esc(b.author||'')}</div><div class="tbr-next">${[b.media,b.type].filter(Boolean).map(esc).join(' · ')} ${b.owned?'<span class="badge b-green">on the shelf</span>':'<span class="badge b-coral">not owned</span>'} <span class="ms">${esc(b.why)}</span></div><div class="tbr-acts"><button class="log-act" onclick="planPoolAdd(${i})">＋ Slot</button></div></div></div>`).join('')||'<div class="ms">Nothing matches — loosen the filters.</div>')
     +(rows.length>48?`<div class="ms">…and ${rows.length-48} more — narrow it down</div>`:'');
-  dndBind(el,{items:'.tbr-card[data-pool]',handle:'.tbr-handle',targets:'#plan-list .tbr-card[data-plan]:not([data-plan="0"]),#plan-dropnew',onTarget:(from,t)=>planDropPool(from,t)});
+  dndBind(el,{items:'.tbr-card[data-pool]',handle:'.tbr-handle',targets:'#plan-list .tbr-card[data-slot]:not([data-slot=""]),#plan-dropnew',onTarget:(from,t)=>planDropPool(from,t)});
 }
 function planRef(b){return{title:b.title,series:b.series==='Standalones'?'':b.series,owner:b.owner||'butthead'};}
-async function planPoolAdd(i){const b=(G._planPool||[])[i];if(!b)return;if(await LOG.planSet(planYear,'add',null,{label:b.title,media:b.media||'',genre:b.type||'',book:planRef(b)})){toast(`Slot for “${b.title}” queued`);renderPlan();}}
+async function planPoolAdd(i){const b=(G._planPool||[])[i];if(!b)return;if(await LOG.planSet(planYear,'add',null,{media:b.media||'',genre:b.type||'',book:planRef(b)})){toast(`Slot for “${b.title}” added`);renderPlan();}}
 async function planDropPool(from,t){
   const b=(G._planPool||[])[from];if(!b||!t)return;
   if(t.id==='plan-dropnew')return planPoolAdd(from);
-  const id=+t.dataset.plan;if(!id)return;
-  if(await LOG.planSet(planYear,'update',id,{book:planRef(b)})){toast(`Pinned “${b.title}”`);renderPlan();}
+  const s=(G._planSlots||[])[+t.dataset.i],ref=s&&(s.id||s.key);if(!ref)return toast('That slot is still saving — try again in a moment',true);
+  // A slot that was only ever the book it held takes the new title; a shape keeps its words.
+  const set={book:planRef(b)};if(s.label&&s.label===s.book)set.label='';
+  if(await LOG.planSet(planYear,'update',ref,set)){toast(`Pinned “${b.title}”`+(s.label&&s.label!==s.book?` to “${s.label}”`:''));renderPlan();}
 }
 function renderThisYear(year){
   tyYear=year;
@@ -4540,6 +4558,9 @@ function bcSetCover(el,url){
    Events are small JSON files PUT to <cfg.repo>/inbox/ via the GitHub
    contents API. jerry polls, applies them to bookdb, moves them to
    inbox/processed/, and re-exports the bundle. Schema: docs/INBOX.md. */
+// toast is used by top-level handlers too (Plan drops, TBR moves, Goodreads prefill):
+// keep it outside the LOG closure or those calls throw ReferenceError after the save.
+function toast(msg,bad){const t=document.getElementById('log-toast');t.textContent=msg;t.style.background=bad?'var(--coral)':'var(--text)';t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),3200);}
 const LOG=(()=>{
   const LS_CFG='library-log-cfg',LS_SENT='library-log-sent';
   const API='https://api.github.com';
@@ -4559,7 +4580,6 @@ const LOG=(()=>{
   function today(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
   function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
   function b64(s){return btoa(unescape(encodeURIComponent(s)));}
-  function toast(msg,bad){const t=document.getElementById('log-toast');t.textContent=msg;t.style.background=bad?'var(--coral)':'var(--text)';t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),3200);}
 
   async function submit(type,payload,book,forceBy){
     if(!ready()){toast('Set up the inbox first — see Pending tab',true);switchTab('logpending','log');return false;}
@@ -5024,9 +5044,18 @@ const LOG=(()=>{
   }
   // Reading plan (migration 027): one slot in, changed or out; pending
   // events overlay the bundle's rows until jerry's next publish.
-  async function planSet(year,action,id,set){
+  // ref is the slot's id (a number) or, for a slot the dashboard made a
+  // moment ago and jerry has not answered yet, its key (a string). An add
+  // mints the key (migration 028) so the new slot can take a pin, a
+  // reorder, a tick or a removal straight away — John, 2026-09-25: "the
+  // function works but it didn't stick to the Slot" (the slot he dropped
+  // onto had no id yet, so the drop was silently ignored).
+  async function planSet(year,action,ref,set){
     const owner=OWNER==='all'?'butthead':OWNER;
-    const p={year,action,set:set||{}};if(id)p.id=id;
+    const p={year,action,set:set||{}};
+    if(action==='add')p.key='k'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+    else if(typeof ref==='number'){if(ref)p.id=ref;}
+    else if(typeof ref==='string'&&ref)p.key=ref;
     return submit('plan_set',p,null,owner);
   }
   function pendingPlan(){const seen=new Set();return[...(pendCache||[]),...sent().filter(e=>!BUNDLE||e.at>BUNDLE.generated_at)].filter(e=>e.type==='plan_set'&&!seen.has(e.id)&&seen.add(e.id)).sort((a,b)=>a.at<b.at?-1:1);}
@@ -6027,7 +6056,7 @@ async function init(){
     dupTitle.forEach(k=>{delete G.bookIsbn[k];});
     // Reading plan (bookdb|Plan): Id|Owner|Year|Position|Label|Media|Genre|
     // Length|Book|Series|Done|Notes|BookRead
-    G.plan=(BUNDLE.tabs['bookdb|Plan']||[]).slice(1).map(r=>({id:+r[0],owner:(r[1]||'butthead').trim(),year:+r[2],pos:parseFloat(r[3])||0,label:(r[4]||'').trim(),media:(r[5]||'').trim(),genre:(r[6]||'').trim(),length:(r[7]||'').trim(),book:(r[8]||'').trim(),series:(r[9]||'').trim(),done:(r[10]||'').trim().toLowerCase()==='x',notes:(r[11]||'').trim(),bookRead:(r[12]||'').trim().toLowerCase()==='x'})).filter(p=>p.id);
+    G.plan=(BUNDLE.tabs['bookdb|Plan']||[]).slice(1).map(r=>({id:+r[0],owner:(r[1]||'butthead').trim(),year:+r[2],pos:parseFloat(r[3])||0,label:(r[4]||'').trim(),media:(r[5]||'').trim(),genre:(r[6]||'').trim(),length:(r[7]||'').trim(),book:(r[8]||'').trim(),series:(r[9]||'').trim(),done:(r[10]||'').trim().toLowerCase()==='x',notes:(r[11]||'').trim(),bookRead:(r[12]||'').trim().toLowerCase()==='x',key:(r[13]||'').trim()})).filter(p=>p.id);
     if(!Object.keys(G.vocab).length){
       const add=(k,v)=>{if(!v)return;const a=G.vocab[k]=G.vocab[k]||[];if(!a.includes(v))a.push(v);};
       G.allIndBooks.forEach(b=>{add('genre',b.type);add('sub_genre',b.subGenre);add('media',b.media);add('publisher',b.publisher);});

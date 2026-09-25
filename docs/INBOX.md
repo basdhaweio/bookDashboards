@@ -354,16 +354,21 @@ Rough intentions for a year ("long hard sci-fi", "cozy fantasy novella"),
 optionally pinned to a register book later; the Reading › Plan tab checks
 them against the year's targets. `by` owns the slot.
 ```json
-{"year": 2027, "action": "add",
+{"year": 2027, "action": "add", "key": "kmuhc1x2abcd",
  "set": {"label": "long, hard sci-fi", "media": "Print", "genre": "Scifi", "length": "long"}}
 {"year": 2027, "action": "update", "id": 12,
  "set": {"book": {"title": "Blindsight", "series": "", "owner": "butthead"}, "done": true}}
+{"year": 2027, "action": "update", "key": "kmuhc1x2abcd", "set": {"position": 2.5}}
 {"year": 2027, "action": "remove", "id": 12}
 ```
-`action` is `add` (position appends when absent), `update` or `remove`
-(both need the bundle's `Id`). `set` keys: `label, media, genre, length
-(short|medium|long|doorstop), book (exact ref, or blank to unpin), position,
-done, notes`. A slot needs a label or a book.
+`action` is `add` (position appends when absent), `update` or `remove`.
+An `add` carries a `key` the dashboard mints (migration 028); `update` and
+`remove` name the slot by the bundle's `Id` or by that `key`, so a slot made
+a moment ago can be pinned, moved, ticked or dropped before jerry has
+assigned it an id. The same `key` added twice is a no-op. `set` keys:
+`label, media, genre, length (short|medium|long|doorstop), book (exact ref,
+or blank to unpin), position, done, notes`. A slot needs a label or a book;
+one made from a shelf card carries only the book and is named by it.
 
 ### `queue_set` — the hand-picked TBR ("Next up")
 One register book in, out, or moved within the reader's own queue
