@@ -613,7 +613,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div class="sl">Pick from your shelves <span class="ms">— the next volume of every series and every unread standalone; drag a card's ⋮⋮ onto a slot to pin it, or onto ＋ New slot; ＋ Slot does the same by tap</span></div>
       <div id="plan-pool-bar"></div>
       <div class="tbr-grid" id="plan-pool"></div>
-      <div class="sl">Add slots</div>
+      <div class="sl">Add a shape <span class="ms">— a slot with no book yet</span></div>
       <div class="cb" id="plan-add"></div>
     </div>
     <div class="panel" id="tab-history">
@@ -2148,25 +2148,18 @@ function renderPlan(){
   if(!slots.length)document.getElementById('plan-list').insertAdjacentHTML('afterbegin','<div class="ms">No slots yet — drag from the shelves below, add a few shapes, or paste your Keep list.</div>');
   dndBind(document.getElementById('plan-list'),{items:'.tbr-card[data-plan]',handle:'.tbr-handle',onMove:(f,b)=>planMoveBefore(f,b)});
   planPoolRender(owner);
-  const titles=planTitles(owner),genresV=(G.vocab&&G.vocab.genre)||[];
+  // One line for a shape-only slot (a book you mean to read, in words);
+  // pinning a book is a drag from the shelves, so the old six-field form
+  // went (John, 2026-09-25). The Keep paste box stays behind a link.
   document.getElementById('plan-add').innerHTML=`
-    <div class="log-frow"><label>Label</label><input id="plan-n-label" placeholder="e.g. long, hard sci-fi"></div>
-    <div class="log-frow"><label>Media</label><select id="plan-n-media"><option value="">—</option>${MEDIA.map(m=>`<option>${m}</option>`).join('')}</select></div>
-    <div class="log-frow"><label>Genre</label><input id="plan-n-genre" list="plan-dl-genre" placeholder="optional"><datalist id="plan-dl-genre">${genresV.map(g=>`<option>${esc(g)}</option>`).join('')}</datalist></div>
-    <div class="log-frow"><label>Length</label><select id="plan-n-length">${PLAN_LENGTHS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select></div>
-    <div class="log-frow"><label>Book</label><input id="plan-n-book" list="plan-dl-book" placeholder="pin a register book (optional)"><datalist id="plan-dl-book">${titles.map(t=>`<option>${esc(t)}</option>`).join('')}</datalist></div>
-    <div class="log-frow"><label>Notes</label><input id="plan-n-notes" placeholder="optional"></div>
-    <button class="log-act primary" onclick="planAdd()">Add slot to ${planYear}</button>
-    <div class="log-frow" style="margin-top:14px"><label>Paste list</label><textarea id="plan-n-bulk" rows="4" placeholder="one slot per line, straight from Keep:&#10;long, hard sci-fi&#10;cozy fantasy novella&#10;a manga run I already own" style="flex:1;font:inherit"></textarea></div>
-    <button class="log-act" onclick="planBulk()">Add every line</button> <span class="ms">media, genre and length are guessed from the words (sci-fi, cozy fantasy, novella, manga, audio…) — fix any slot with ✎</span>`;
+    <div class="log-frow"><label>Shape</label><input id="plan-n-label" placeholder="long, hard sci-fi · cozy fantasy novella · a manga run I own" onkeydown="if(event.key==='Enter')planAdd()"><button class="log-act primary" onclick="planAdd()">＋ Add to ${planYear}</button></div>
+    <div class="ms">Media, genre and length are read from the words (sci-fi, cozy fantasy, novella, manga, audio…) — fix any slot with ✎. To pin a book, drag one up from the shelves. <button class="log-act" onclick="const t=document.getElementById('plan-n-bulkwrap');t.style.display=t.style.display==='none'?'':'none'">Paste a list…</button></div>
+    <div id="plan-n-bulkwrap" style="display:none;margin-top:8px"><div class="log-frow"><label>Paste list</label><textarea id="plan-n-bulk" rows="4" placeholder="one slot per line, straight from Keep" style="flex:1;font:inherit"></textarea></div><button class="log-act" onclick="planBulk()">Add every line</button></div>`;
 }
 async function planAdd(){
-  const v=id=>(document.getElementById(id)||{}).value||'';
-  const label=v('plan-n-label').trim(),bookQ=v('plan-n-book').trim();
-  if(!label&&!bookQ)return toast('Give the slot a label or pin a book',true);
-  const set={label,media:v('plan-n-media'),genre:v('plan-n-genre').trim(),length:v('plan-n-length'),notes:v('plan-n-notes').trim()};
-  if(bookQ){const b=planFindBook(bookQ);if(!b)return toast('Pick the book from the list',true);set.book={title:b.title,series:b.series==='Standalones'?'':b.series,owner:b.owner||'butthead'};}
-  if(await LOG.planSet(planYear,'add',null,set)){toast('Slot added — it lands in a minute or two');renderPlan();}
+  const el=document.getElementById('plan-n-label'),label=((el||{}).value||'').trim();
+  if(!label)return toast('Say what the book should be like — long, hard sci-fi…',true);
+  if(await LOG.planSet(planYear,'add',null,Object.assign({label},planGuess(label)))){el.value='';toast('Slot added — it lands in a minute or two');renderPlan();}
 }
 async function planBulk(){
   const lines=((document.getElementById('plan-n-bulk')||{}).value||'').split('\n').map(s=>s.replace(/^[-*•\d.)\s]+/,'').trim()).filter(Boolean);
