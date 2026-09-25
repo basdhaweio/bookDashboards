@@ -2114,7 +2114,8 @@ function renderPlan(){
   if(!planYear||!years.includes(planYear))planYear=now.getMonth()>=8?cy+1:cy; // from September the plan is next year's
   document.getElementById('plan-tog').innerHTML=years.map(y=>`<button class="${y===planYear?'active':''}" onclick="planYear=${y};renderPlan()">${y}</button>`).join('');
   const yd=(typeof allYD!=='undefined'&&allYD[planYear])||{books:[],targets:{},focus:[]};
-  const tg=yd.targets||{},goal=(tg.Total&&tg.Total.total)||0;
+  // targets are Com's year-tab numbers; Shereen has none set yet
+  const tg=owner==='butthead'?(yd.targets||{}):{},goal=(tg.Total&&tg.Total.total)||0;
   const readBooks=owner==='butthead'?(yd.books||[]):((((G.readsBy||{}).goblin||{})[planYear])||[]); // Shereen's reads come from the Reads tab
   // slots: bundle rows + pending plan_set events (adds appear, updates and removes apply)
   let slots=mine.filter(p=>p.year===planYear).map(p=>Object.assign({},p,{pending:false}));
