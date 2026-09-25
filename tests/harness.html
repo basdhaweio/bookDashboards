@@ -350,6 +350,17 @@ async function main(){
     res('TBR universe groups box only their own series',ok&&loose===0,`${groups.length} group(s), ${loose} loose heading(s)`);
   });
 
+  await check('Plan: pool leaves out books on Read next or pinned to a plan',async()=>{
+    const name='Plan: pool leaves out books on Read next or pinned to a plan';
+    await go('plan','reading');
+    const q=(tget('Queue')||[]).slice(1).filter(r=>(r[2]||'butthead').trim()==='butthead').map(r=>(r[0]||'').trim()).filter(Boolean);
+    const p=(tget('Plan')||[]).slice(1).filter(r=>(r[1]||'butthead').trim()==='butthead'&&(r[8]||'').trim()).map(r=>r[8].trim());
+    const taken=new Set([...q,...p]);
+    const pool=w().planPool('butthead'),hit=pool.filter(b=>taken.has(b.title)).map(b=>b.title);
+    const note=doc().querySelector('#plan-pool-bar')?.textContent||'';
+    res(name,hit.length===0&&(taken.size===0||/already on Read next or pinned/.test(note)),
+      `${taken.size} spoken for (${q.length} queued, ${p.length} pinned); ${hit.length} still offered ${hit.slice(0,3).join(', ')}; bar says "${(note.match(/\d+ already[^<]*/)||[''])[0].trim()}"`);
+  });
   await check('Plan: a slot dropped from the shelves takes a pin before jerry answers',async()=>{
     const name='Plan: a slot dropped from the shelves takes a pin before jerry answers';
     const W=w(),D=doc(),tick=ms=>new Promise(r=>setTimeout(r,ms));
@@ -366,7 +377,9 @@ async function main(){
     await LOGi.saveSetup(fakeBtn);await tick(300);
     await go('plan','reading');
     const pool=D.querySelectorAll('#plan-pool .tbr-card[data-pool]');if(pool.length<2)throw new Error('pool too small to test with');
+    const title0=pool[0].querySelector('.tbr-ser').firstChild.textContent.trim();
     await W.planPoolAdd(0);await tick(300);
+    const left=!W.planPool('butthead').some(b=>b.title===title0); // pinned now, so no longer offered
     const pend=D.querySelector('#plan-list .tbr-card.plan-pending');
     const key=pend&&pend.dataset.slot,handle=!!(pend&&pend.querySelector('.tbr-handle')),acts=!!(pend&&pend.querySelector('.tbr-acts button'));
     // Drop pool card 1 onto the pending slot. The hidden iframe has no hit-testing, so point it at the slot.
@@ -378,8 +391,8 @@ async function main(){
     await tick(500);D.elementFromPoint=efp;
     const upd=sentBodies.find(e=>e.type==='plan_set'&&e.payload.action==='update');
     const stuck=D.querySelector('#plan-list .tbr-card.plan-pending .tbr-next strong')?.textContent.trim();
-    res(name,!!key&&handle&&acts&&lit&&!!upd&&upd.payload.key===key&&!upd.payload.id&&upd.payload.set.book.title===fromTitle&&stuck===fromTitle,
-      `key ${key}, handle ${handle}, buttons ${acts}, target lit ${lit}, update by key ${!!upd&&upd.payload.key===key}, pinned ${stuck} (expected ${fromTitle})`);
+    res(name,!!key&&handle&&acts&&left&&lit&&!!upd&&upd.payload.key===key&&!upd.payload.id&&upd.payload.set.book.title===fromTitle&&stuck===fromTitle,
+      `key ${key}, handle ${handle}, buttons ${acts}, left the pool ${left}, target lit ${lit}, update by key ${!!upd&&upd.payload.key===key}, pinned ${stuck} (expected ${fromTitle})`);
     }finally{D.elementFromPoint=efp;W.fetch=realFetch;if(LOGi)LOGi.forgetSetup();localStorage.removeItem('library-log-cfg');localStorage.removeItem('library-log-sent');}
   });
   await check('Plan: shelf pool renders draggable cards and a drop zone',async()=>{

@@ -610,7 +610,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div class="tc"><div><div class="sl">By media <span class="ms">— read (solid) · planned (faint) · goal (red mark)</span></div><div class="cb" id="plan-media"></div></div><div><div class="sl">By genre</div><div class="cb" id="plan-genre"></div></div></div>
       <div class="sl">Slots <span class="ms">— drag ⋮⋮ to reorder</span></div>
       <div class="tbr-grid" id="plan-list"></div>
-      <div class="sl">Pick from your shelves <span class="ms">— the next volume of every series and every unread standalone; drag a card's ⋮⋮ onto a slot to pin it, or onto ＋ New slot; ＋ Slot does the same by tap</span></div>
+      <div class="sl">Pick from your shelves <span class="ms">— the next volume of every series and every unread standalone, leaving out what is already on Read next or pinned to a plan; drag a card's ⋮⋮ onto a slot to pin it, or onto ＋ New slot; ＋ Slot does the same by tap</span></div>
       <div id="plan-pool-bar"></div>
       <div class="tbr-grid" id="plan-pool"></div>
       <div class="sl">Add a shape <span class="ms">— a slot with no book yet</span></div>
@@ -2091,6 +2091,35 @@ function renderTBR(){
 // when the header says Both).
 let planYear=null;
 const PLAN_LENGTHS=[['',"—"],['short','short / novella'],['medium','medium'],['long','long'],['doorstop','doorstop']];
+// The bundle's slots with pending plan_set events folded in: adds appear,
+// updates and removes apply. An event names its slot by id, or by the key
+// minted when the slot was added — so a slot made a moment ago can already
+// be pinned, moved, ticked or dropped while jerry is still catching up.
+// year null = every year (for "is this book already pinned somewhere").
+function planSlotsFor(owner,year){
+  let slots=(G.plan||[]).filter(p=>p.owner===owner&&(year==null||p.year===year)).map(p=>Object.assign({},p,{pending:false}));
+  const byRef=q=>q.id?slots.find(x=>x.id===+q.id):q.key?slots.find(x=>x.key===q.key):null;
+  for(const ev of LOG.pendingPlan()){const q=ev.payload||{};if((year!=null&&+q.year!==year)||(ev.by||'butthead')!==owner)continue;
+    if(q.action==='remove'){const s=byRef(q);if(s)slots=slots.filter(x=>x!==s);continue;}
+    if(q.action==='update'){const s=byRef(q);if(s){Object.assign(s,planSetToSlot(q.set||{}));s.pending=true;}continue;}
+    // an add lands where jerry will put it: one past the highest position in its year so far
+    const o=planSetToSlot(q.set||{});if(o.pos==null)o.pos=slots.filter(x=>x.year===+q.year).reduce((m,x)=>Math.max(m,x.pos||0),0)+1;
+    slots.push(Object.assign({id:0,key:q.key||'',owner,year:+q.year,label:'',media:'',genre:'',length:'',book:'',series:'',done:false,notes:'',bookRead:false},o,{pending:true}));}
+  return slots;
+}
+// Books already spoken for elsewhere — on the Read next queue (bundle rows
+// plus pending queue_set events) or pinned to a plan slot in any year —
+// stay out of the pool: a book shows in one place only, as on the TBR
+// (John, 2026-09-25). Keys are title|series, normalised; a queue row with
+// no series also claims the bare title.
+function planBookKey(title,series){const nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');return nk(title)+'|'+(!series||series==='Standalones'?'':nk(series));}
+function planSpokenFor(owner){
+  const out=new Set();
+  (G.queue||[]).filter(q=>(q.owner||'butthead')===owner).forEach(q=>out.add(planBookKey(q.title,q.series)));
+  for(const[k,v]of LOG.pendingQueue()){if((v.owner||'butthead')!==owner)continue;const i=k.lastIndexOf('|'),kk=planBookKey(k.slice(0,i),k.slice(i+1));if(v.action==='remove')out.delete(kk);else out.add(kk);}
+  for(const s of planSlotsFor(owner,null))if(s.book)out.add(planBookKey(s.book,s.series));
+  return out;
+}
 function planSetToSlot(set){const o={};if('label'in set)o.label=set.label;if('media'in set)o.media=set.media;if('genre'in set)o.genre=set.genre;if('length'in set)o.length=set.length;if('notes'in set)o.notes=set.notes;if('done'in set)o.done=!!set.done;if('book'in set){o.book=(set.book&&set.book.title)||'';o.series=(set.book&&set.book.series)||'';}if('position'in set&&set.position!=null&&set.position!=='')o.pos=+set.position;return o;}
 // media / genre / length guessed from the words of a pasted line
 function planGuess(line){
@@ -2114,18 +2143,7 @@ function renderPlan(){
   const tg=owner==='butthead'?(yd.targets||{}):{},goal=(tg.Total&&tg.Total.total)||0;
   const readBooks=owner==='butthead'?(yd.books||[]):((((G.readsBy||{}).goblin||{})[planYear])||[]); // Shereen's reads come from the Reads tab
   // slots: bundle rows + pending plan_set events (adds appear, updates and removes apply)
-  let slots=mine.filter(p=>p.year===planYear).map(p=>Object.assign({},p,{pending:false}));
-  // An event names its slot by id, or by the key minted when the slot was
-  // added — so a slot made a moment ago can already be pinned, moved,
-  // ticked or dropped while jerry is still catching up.
-  const byRef=q=>q.id?slots.find(x=>x.id===+q.id):q.key?slots.find(x=>x.key===q.key):null;
-  for(const ev of LOG.pendingPlan()){const q=ev.payload||{};if(+q.year!==planYear||(ev.by||'butthead')!==owner)continue;
-    if(q.action==='remove'){const s=byRef(q);if(s)slots=slots.filter(x=>x!==s);continue;}
-    if(q.action==='update'){const s=byRef(q);if(s){Object.assign(s,planSetToSlot(q.set||{}));s.pending=true;}continue;}
-    // an add lands where jerry will put it: one past the highest position so far
-    const o=planSetToSlot(q.set||{});if(o.pos==null)o.pos=slots.reduce((m,x)=>Math.max(m,x.pos||0),0)+1;
-    slots.push(Object.assign({id:0,key:q.key||'',owner,year:planYear,label:'',media:'',genre:'',length:'',book:'',series:'',done:false,notes:'',bookRead:false},o,{pending:true}));}
-  slots.sort((a,b)=>a.pos-b.pos||a.id-b.id);
+  const slots=planSlotsFor(owner,planYear).sort((a,b)=>a.pos-b.pos||a.id-b.id);
   const isDone=s=>s.done||s.bookRead;
   const done=slots.filter(isDone).length,planned=slots.length,read=readBooks.length;
   const left=goal?goal-read-(planned-done):null;
@@ -2229,11 +2247,15 @@ async function planMoveBefore(from,before){
 function planPool(owner){
   const books=(G.allIndBooks||[]).filter(b=>(b.owner||'butthead')===owner);
   const seqN=b=>{const v=parseFloat(String(b.seq||'').replace(/[^0-9.]/g,''));return isNaN(v)?Infinity:v;};
+  // Already on Read next or pinned to a plan: not offered again. A series
+  // whose next volume is spoken for offers the one after it instead.
+  const taken=planSpokenFor(owner),free=b=>!taken.has(planBookKey(b.title,b.series))&&!taken.has(planBookKey(b.title,''));
+  G._planTakenN=books.filter(b=>!b.read&&!free(b)).length;
   const by={};for(const b of books){if(!b.series||b.series==='Standalones')continue;const k=seriesKey(b);(by[k]=by[k]||[]).push(b);}
   const out=[];
-  for(const k in by){const l=by[k].sort((a,b)=>seqN(a)-seqN(b)||a.title.localeCompare(b.title));const rs=l.filter(b=>b.read).map(seqN).filter(x=>x!==Infinity);const maxRead=rs.length?Math.max(...rs):-Infinity;const unread=l.filter(b=>!b.read);const next=unread.find(b=>seqN(b)>maxRead)||unread[0];
-    if(next)out.push(Object.assign({},next,{why:l.some(b=>b.read)?'next in series':'start a series',sread:l.filter(b=>b.read).length,stotal:l.length}));}
-  for(const b of books)if((!b.series||b.series==='Standalones')&&!b.read)out.push(Object.assign({},b,{why:'standalone'}));
+  for(const k in by){const l=by[k].sort((a,b)=>seqN(a)-seqN(b)||a.title.localeCompare(b.title));const rs=l.filter(b=>b.read).map(seqN).filter(x=>x!==Infinity);const maxRead=rs.length?Math.max(...rs):-Infinity;const unread=l.filter(b=>!b.read),open=unread.filter(free);const next=open.find(b=>seqN(b)>maxRead)||open[0];
+    if(next)out.push(Object.assign({},next,{why:l.some(b=>b.read)||open.length<unread.length?'next in series':'start a series',sread:l.filter(b=>b.read).length,stotal:l.length}));}
+  for(const b of books)if((!b.series||b.series==='Standalones')&&!b.read&&free(b))out.push(Object.assign({},b,{why:'standalone'}));
   return out;
 }
 let planPoolF={q:'',media:'',genre:'',shelf:true};
@@ -2250,7 +2272,7 @@ function planPoolRender(owner){
     +chip('shelf','',f.shelf?'on the shelf':'everything tracked',f.shelf)
     +MEDIA.filter(m=>mc[m]).map(m=>chip('media',m,m+' '+mc[m],f.media===m)).join('')
     +Object.entries(gc).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([g,n])=>chip('genre',g,g+' '+n,f.genre===g)).join('')
-    +`<span class="ms">${rows.length} of ${all.length}</span>`;
+    +`<span class="ms">${rows.length} of ${all.length}${G._planTakenN?` · ${G._planTakenN} already on Read next or pinned`:''}</span>`;
   G._planPool=rows.slice(0,48);
   el.innerHTML=(G._planPool.map((b,i)=>`<div class="tbr-card" data-pool="${i}"><span class="tbr-handle" title="drag onto a slot">⋮⋮</span><div class="tbr-cov">${coverTile(b.title,b.owner,'',null,40,b.series)}</div><div class="tbr-info"><div class="tbr-ser">${esc(b.title)}${b.seq?' <span class="ms">#'+esc(b.seq)+'</span>':''}</div><div class="tbr-prog">${b.series&&b.series!=='Standalones'?esc(b.series)+' · '+b.sread+'/'+b.stotal+' · ':''}${esc(b.author||'')}</div><div class="tbr-next">${[b.media,b.type].filter(Boolean).map(esc).join(' · ')} ${b.owned?'<span class="badge b-green">on the shelf</span>':'<span class="badge b-coral">not owned</span>'} <span class="ms">${esc(b.why)}</span></div><div class="tbr-acts"><button class="log-act" onclick="planPoolAdd(${i})">＋ Slot</button></div></div></div>`).join('')||'<div class="ms">Nothing matches — loosen the filters.</div>')
     +(rows.length>48?`<div class="ms">…and ${rows.length-48} more — narrow it down</div>`:'');
