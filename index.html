@@ -3130,7 +3130,7 @@ function setOwner(o){
   OWNER=o;
   document.querySelectorAll('#owner-filter button').forEach(b=>b.classList.toggle('active',b.dataset.o===o));
   const note=document.getElementById('owner-note');
-  if(note)note.textContent=o==='goblin'&&!((G.readsBy||{}).goblin)?'Shereen has no reading history yet — her Goodreads backfill fills it':'';
+  if(note)note.textContent=''; // both readers have history now (Shereen's from Goodreads, 2026-09-25)
   applyOwner(true);
 }
 
