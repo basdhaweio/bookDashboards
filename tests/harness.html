@@ -66,7 +66,8 @@ async function main(){
   // carries the rendered markup's text, and the number-before-label regexes
   // tolerate the missing whitespace.
   const ptxt=id=>doc().getElementById('tab-'+id)?.textContent||'';
-  const go=async(id,group)=>{w().switchTab(id,group);await new Promise(r=>setTimeout(r,600));};
+  // switchTab activates the panel but the section's visibility is set by the header nav — show it too, so layout checks can measure
+  const go=async(id,group)=>{w().switchTab(id,group);['tracking','reading','buying','collecting','bookclub','log'].forEach(s=>{const el=doc().getElementById('sec-'+s);if(el)el.style.display=s===group?'block':'none';});await new Promise(r=>setTimeout(r,600));};
   const waitFor=async(pred,ms)=>{const t=Date.now();while(Date.now()-t<(ms||4000)){try{if(pred())return true;}catch(_){}await new Promise(r=>setTimeout(r,200));}return false;};
 
   // wait for the app's initial render
@@ -350,6 +351,19 @@ async function main(){
     res('TBR universe groups box only their own series',ok&&loose===0,`${groups.length} group(s), ${loose} loose heading(s)`);
   });
 
+  await check('TBR: the finish form stays inside its card',async()=>{
+    const name='TBR: the finish form stays inside its card';
+    await go('tbr','reading');
+    // the first holder may sit in a collapsed section (no layout): take one whose card is on screen
+    const holder=[...doc().querySelectorAll('#tab-tbr [id^="tbr-rr-"]')].find(h=>h.closest('.tbr-card')&&h.closest('.tbr-card').getBoundingClientRect().width>0);
+    if(!holder)throw new Error('no laid-out read-row holder on the TBR');
+    const i=+holder.id.replace('tbr-rr-',''),card=holder.closest('.tbr-card');
+    w().tbrReadRow(i);await new Promise(r=>setTimeout(r,200));
+    const btn=holder.querySelector('.log-act.primary'),inp=holder.querySelector('input[type=date]');
+    const cr=card.getBoundingClientRect(),br=btn.getBoundingClientRect(),ir=inp.getBoundingClientRect();
+    w().tbrReadRow(i); // close it again
+    res(name,br.width>0&&br.right<=cr.right+1&&ir.right<=cr.right+1,`card right ${cr.right.toFixed(0)}; button right ${br.right.toFixed(0)} ("${btn.textContent.trim()}"); date right ${ir.right.toFixed(0)}`);
+  });
   await check('Plan: pool leaves out books on Read next or pinned to a plan',async()=>{
     const name='Plan: pool leaves out books on Read next or pinned to a plan';
     await go('plan','reading');

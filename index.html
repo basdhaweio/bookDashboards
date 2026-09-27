@@ -338,6 +338,9 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
 .log-exp{display:none;border-top:1px solid var(--border);background:var(--bg3);padding:12px 13px;}
 .log-exp.open{display:block;}
 .log-frow{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+/* a long confirm label (Log it — read “…”) wraps inside a 250px card instead of running past its edge (John, 2026-09-27) */
+.log-frow .log-act{white-space:normal;max-width:100%;}
+.log-frow input[type=date]{max-width:100%;min-width:0;}
 .log-frow label{font-family:var(--font-m);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;color:var(--text3);min-width:64px;}
 .log-frow input,.log-frow select{font-family:var(--font-b);font-size:15px;padding:9px 11px;border:1px solid var(--border2);border-radius:8px;background:var(--bg2);color:var(--text);flex:1;min-width:120px;}
 .log-frow input:focus,.log-frow select:focus{outline:none;border-color:var(--gold2);}
