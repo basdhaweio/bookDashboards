@@ -351,6 +351,17 @@ async function main(){
     res('TBR universe groups box only their own series',ok&&loose===0,`${groups.length} group(s), ${loose} loose heading(s)`);
   });
 
+  await check('Proposed: cards are tinted for the reader they are for',async()=>{
+    const name='Proposed: cards are tinted for the reader they are for';
+    await go('logproposed','log');
+    const rows=(tget('Proposals')||[]).slice(1);
+    const want=rows.map(r=>{try{return (JSON.parse(r[3]||'{}')||{}).owner||'';}catch(e){return'';}});
+    const com=want.filter(o=>o==='butthead').length,gob=want.filter(o=>o==='goblin').length;
+    const cards=[...doc().querySelectorAll('#log-proposed-list .cb[data-owner]')];
+    const tcom=cards.filter(c=>c.classList.contains('own-com')).length,tgob=cards.filter(c=>c.classList.contains('own-gob')).length;
+    const legend=!!doc().getElementById('prop-legend');
+    res(name,cards.length===rows.length&&tcom===com&&tgob===gob&&(legend||!rows.length),`${rows.length} proposals: ${com} for Com / ${gob} for Shereen; tinted ${tcom} teal / ${tgob} lavender; legend ${legend}`);
+  });
   await check('TBR: a universe box hugs its cards',async()=>{
     const name='TBR: a universe box hugs its cards';
     await go('tbr','reading');

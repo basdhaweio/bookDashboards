@@ -154,8 +154,8 @@ button.tbr-link{background:none;border:none;padding:0;font:inherit;font-weight:i
 .tbr-num{font-family:var(--font-m);font-size:10px;color:var(--gold);margin-right:4px;}
 .tbr-card.tbr-wide{grid-column:1/-1;}
 /* Both shelves at once: teal = Com, lavender = Shereen (John, 2026-09-23) */
-.tbr-card.own-com{background:var(--teal-bg);border-color:#9dcdc4;}
-.tbr-card.own-gob{background:var(--purple-bg);border-color:#b8afd6;}
+.tbr-card.own-com,.cb.own-com{background:var(--teal-bg);border-color:#9dcdc4;}
+.tbr-card.own-gob,.cb.own-gob{background:var(--purple-bg);border-color:#b8afd6;}
 .tbr-legend{display:flex;gap:14px;flex-wrap:wrap;font-family:var(--font-m);font-size:10px;color:var(--text3);margin:-4px 0 10px;}
 .tbr-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px;border:1px solid;}
 .tbr-works{columns:2 220px;column-gap:16px;margin-top:6px;font-size:12px;}
@@ -5738,16 +5738,21 @@ const LOG=(()=>{
     const el=document.getElementById('log-proposed-list');
     const dec=propDecisions();
     const open=(G.proposals||[]);
-    el.innerHTML=open.map(p=>{
+    // Each card is tinted for the reader it is proposed for — Com teal,
+    // Shereen lavender — as the combined TBR is (John, 2026-09-27).
+    const owners=new Set(open.map(propOwner).filter(Boolean));
+    const legend=owners.size?`<div class="tbr-legend" id="prop-legend"><span><i style="background:var(--teal-bg);border-color:#9dcdc4"></i>${esc(OWNER_LABEL.butthead||'Com')}</span><span><i style="background:var(--purple-bg);border-color:#b8afd6"></i>${esc(OWNER_LABEL.goblin||'Shereen')}</span><span class="ms">each card is shaded for the reader it is proposed for</span></div>`:'';
+    el.innerHTML=legend+open.map(p=>{
       const d=dec.get(p.id);
       const decided=d==='approve'||d==='reject'; // a pending EDIT keeps the row actionable
       let pisbn='';try{pisbn=isbnNorm((JSON.parse(p.proposal)||{}).isbn);}catch(e){}
-      return`<div class="cb" style="margin-bottom:10px">
+      const po=propOwner(p),tint=po==='goblin'?' own-gob':po==='butthead'?' own-com':'';
+      return`<div class="cb${tint}" style="margin-bottom:10px" data-owner="${esc(po)}">
         <div class="log-item-hd" style="align-items:flex-start">
           ${thumbHTML('','',pisbn,40)}
           <div class="log-item-info">
             <div class="log-item-title">${esc((propEditCur(p)||{}).title||p.target)}${d?` <span class="log-badge-pend">${d==='approve'?'Add':d==='reject'?'Drop':'Edit'} pending</span>`:''}</div>
-            <div class="log-item-meta">${esc(p.kind)}${p.recommend&&p.recommend!=='review'?' · recommends '+esc(p.recommend):''}${propSummary(p)?' · '+esc(propSummary(p)):''}</div>
+            <div class="log-item-meta">${po?'for '+esc(OWNER_LABEL[po]||po)+' · ':''}${esc(p.kind)}${p.recommend&&p.recommend!=='review'?' · recommends '+esc(p.recommend):''}${propSummary(p)?' · '+esc(propSummary(p)):''}</div>
             ${p.note?`<div class="ms" style="margin-top:4px">${esc(p.note)}</div>`:''}
           </div>
           <div class="log-acts">${decided?'':`
@@ -5762,6 +5767,8 @@ const LOG=(()=>{
     if(tab)tab.textContent='Proposed'+(open.length?` (${open.length})`:'');
     refreshBadge();
   }
+  // The reader a proposal is for: the payload's owner (adds, sync reads), else none.
+  function propOwner(p){try{const j=JSON.parse(p.proposal);return (j&&j.owner)||'';}catch(e){return'';}}
   // The editable payload behind a proposal card, keyed like book_update's set.
   // Only add_book_from_inbox rows carry a parseable payload; anything else
   // returns null and the card stays Add/Drop-only.
