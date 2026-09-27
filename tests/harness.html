@@ -351,6 +351,19 @@ async function main(){
     res('TBR universe groups box only their own series',ok&&loose===0,`${groups.length} group(s), ${loose} loose heading(s)`);
   });
 
+  await check('TBR: a universe box hugs its cards',async()=>{
+    const name='TBR: a universe box hugs its cards';
+    await go('tbr','reading');
+    const groups=[...doc().querySelectorAll('#tab-tbr .tbr-group')].filter(g=>g.getBoundingClientRect().width>0);
+    if(!groups.length)throw new Error('no laid-out universe group on the TBR');
+    // measure a box whose cards all sit on one row; a wrapped box is as wide as the flow and says nothing
+    const rows=groups.map(g=>{const cs=[...g.querySelectorAll(':scope>.tbr-card')].map(c=>c.getBoundingClientRect());return{g,cs,oneRow:new Set(cs.map(c=>Math.round(c.top))).size===1};});
+    const pick=rows.find(r=>r.oneRow);
+    if(!pick){res(name,true,`${groups.length} box(es), none on a single row — nothing to measure`);return;}
+    const gr=pick.g.getBoundingClientRect(),extent=Math.max(...pick.cs.map(c=>c.right))-Math.min(...pick.cs.map(c=>c.left));
+    const slack=gr.width-extent; // padding 6+6, border 1+1 = 14
+    res(name,slack>=10&&slack<=24,`${pick.cs.length} cards span ${extent.toFixed(0)}px, box ${gr.width.toFixed(0)}px, slack ${slack.toFixed(0)}px (expect ~14)`);
+  });
   await check('TBR: the finish form stays inside its card',async()=>{
     const name='TBR: the finish form stays inside its card';
     await go('tbr','reading');
