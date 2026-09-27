@@ -76,6 +76,13 @@ async function main(){
   await check('overview renders',async()=>{
     res('overview renders',/TOTAL TRACKED/i.test(ptxt('overview')));
   });
+  await check('Both is the default reader and first in the toggle',async()=>{
+    const btns=[...doc().querySelectorAll('#owner-filter button')];
+    const first=btns[0]&&btns[0].dataset.o,active=(btns.find(b=>b.classList.contains('active'))||{}).dataset?.o,cur=w().eval('OWNER');
+    res('Both is the default reader and first in the toggle',first==='all'&&active==='all'&&cur==='all',`first ${first}, active ${active}, OWNER ${cur}`);
+  });
+  // the rest of the harness reads Com's numbers
+  w().setOwner('butthead');await new Promise(r=>setTimeout(r,600));
 
   const ind=tget('Butthead Individual');
   await check('tracked total matches the register',async()=>{
@@ -140,12 +147,14 @@ async function main(){
   });
 
   await check('Proposed count matches open proposals',async()=>{
+    w().setOwner('all');await new Promise(r=>setTimeout(r,400));
     await go('logproposed','log');
     const want=tget('Proposals').length-1;
     const label=doc().getElementById('log-proposed-tab')?.textContent||'';
     const got=norm((label.match(/\((\d+)\)/)||[])[1])||0;
     res('Proposed count matches open proposals',got===want||(want===0&&!/\(/.test(label)),
         `label "${label}" vs tab ${want} rows`);
+    w().setOwner('butthead');await new Promise(r=>setTimeout(r,400));
   });
 
   await check('bundle carries no stray ebook casings',async()=>{
@@ -354,13 +363,24 @@ async function main(){
   await check('Proposed: cards are tinted for the reader they are for',async()=>{
     const name='Proposed: cards are tinted for the reader they are for';
     await go('logproposed','log');
-    const rows=(tget('Proposals')||[]).slice(1);
+    const cur=w().eval('OWNER');
+    const rows=(tget('Proposals')||[]).slice(1).filter(r=>{try{return cur==='all'||((JSON.parse(r[3]||'{}')||{}).owner||'butthead')===cur;}catch(e){return cur==='all'||cur==='butthead';}});
     const want=rows.map(r=>{try{return (JSON.parse(r[3]||'{}')||{}).owner||'';}catch(e){return'';}});
     const com=want.filter(o=>o==='butthead').length,gob=want.filter(o=>o==='goblin').length;
     const cards=[...doc().querySelectorAll('#log-proposed-list .cb[data-owner]')];
     const tcom=cards.filter(c=>c.classList.contains('own-com')).length,tgob=cards.filter(c=>c.classList.contains('own-gob')).length;
     const legend=!!doc().getElementById('prop-legend');
-    res(name,cards.length===rows.length&&tcom===com&&tgob===gob&&(legend||!rows.length),`${rows.length} proposals: ${com} for Com / ${gob} for Shereen; tinted ${tcom} teal / ${tgob} lavender; legend ${legend}`);
+    res(name,cards.length===rows.length&&tcom===com&&tgob===gob&&(cur!=='all'?!legend:(legend||!rows.length)),`reader ${cur}: ${rows.length} proposals, ${com} for Com / ${gob} for Shereen; tinted ${tcom} teal / ${tgob} lavender; legend ${legend}`);
+  });
+  await check('Proposed: the reader filter narrows the list',async()=>{
+    const name='Proposed: the reader filter narrows the list';
+    const rows=(tget('Proposals')||[]).slice(1),own=r=>{try{return (JSON.parse(r[3]||'{}')||{}).owner||'butthead';}catch(e){return'butthead';}};
+    const nCom=rows.filter(r=>own(r)==='butthead').length,nGob=rows.filter(r=>own(r)==='goblin').length;
+    const shown=()=>doc().querySelectorAll('#log-proposed-list .cb[data-owner]').length;
+    w().setOwner('goblin');await go('logproposed','log');const sGob=shown();
+    w().setOwner('all');await go('logproposed','log');const sAll=shown();
+    w().setOwner('butthead');await go('logproposed','log');const sCom=shown();
+    res(name,sCom===nCom&&sGob===nGob&&sAll===rows.length,`Com ${sCom}/${nCom}, Shereen ${sGob}/${nGob}, Both ${sAll}/${rows.length}`);
   });
   await check('TBR: a universe box hugs its cards',async()=>{
     const name='TBR: a universe box hugs its cards';

@@ -496,9 +496,9 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
   </div>
   <div class="h-right">
     <div id="owner-filter" class="owner-filter">
-      <button data-o="butthead" class="active" onclick="setOwner('butthead')">Com</button>
+      <button data-o="all" class="active" onclick="setOwner('all')">Both</button>
+      <button data-o="butthead" onclick="setOwner('butthead')">Com</button>
       <button data-o="goblin" onclick="setOwner('goblin')">Shereen</button>
-      <button data-o="all" onclick="setOwner('all')">Both</button>
     </div>
     <div id="owner-note" style="font-family:var(--font-m);font-size:9px;color:var(--coral)"></div>
     <div class="status"><span class="dot"></span><span id="updateTime">Loading...</span></div>
@@ -623,6 +623,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
     </div>
     <div class="panel" id="tab-history">
       <div class="sl">Year-over-year — stacked area by media type</div>
+      <div class="ytog" id="hist-reader"></div>
       <div class="leg" id="hist-leg"></div>
       <div class="cb"><div style="height:340px"><canvas id="histLine" role="img" aria-label="Stacked area chart reading history"></canvas></div></div>
       <div class="sl">Reading velocity — books per month</div>
@@ -639,6 +640,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
     <div class="panel" id="tab-thisyear">
       <div class="sl">Year</div>
       <div class="ytog" id="year-tog"></div>
+      <div class="ytog" id="ty-reader"></div>
       <div class="mg" id="ty-m"></div>
       <div class="sl">Progress vs targets</div>
       <div class="cb" id="ty-targets"></div>
@@ -1177,11 +1179,11 @@ function parseYear(vals){
 // (targets and focus included), Shereen's from the bookdb|Reads tab.
 const YD_EMPTY={books:[],targets:{},focus:[]};
 function ydFor(year){
-  if(OWNER==='goblin'){const by=(G.readsBy||{}).goblin||{};return by[year]?{books:by[year],targets:{},focus:[]}:YD_EMPTY;}
+  if(soloOwner()==='goblin'){const by=(G.readsBy||{}).goblin||{};return by[year]?{books:by[year],targets:{},focus:[]}:YD_EMPTY;}
   return(typeof allYD!=='undefined'&&allYD[year])||YD_EMPTY;
 }
 function metricsFor(){
-  if(OWNER!=='goblin')return G.metrics||{};
+  if(soloOwner()!=='goblin')return G.metrics||{};
   const m={},by=(G.readsBy||{}).goblin||{};
   for(const y in by)for(const b of by[y]){const med=MEDIA.includes(b.media)?b.media:'Print';(m[med]=m[med]||{})[y]=(m[med][y]||0)+1;(m.Total=m.Total||{})[y]=(m.Total[y]||0)+1;}
   return m;
@@ -1722,7 +1724,7 @@ function tbrReadingNow(nk,owners,shelf){
   // collection matched on the copies layer carries its works instead
   // (all read = done). Rows are whose shelf they came from (migration 026:
   // Shereen's feed sits beside Com's) and match that owner's register.
-  owners=owners||[OWNER==='all'?'butthead':OWNER];
+  owners=owners||[soloOwner()];
   const all=G.allIndBooks||[];
   const find=(t,o)=>all.find(b=>(b.owner||'butthead')===o&&nk(b.title)===nk(t))||null;
   return(G.goodreads||[]).filter(r=>r.shelf===(shelf||'currently-reading')&&owners.includes(r.owner||'butthead'))
@@ -2134,15 +2136,15 @@ function planGuess(line){
   if(/doorstop|epic\b|huge|massive|1000\+?|brick|tome/.test(l))g.length='doorstop';else if(/\blong\b|\bbig\b|chunky|thick/.test(l))g.length='long';else if(/novella|\bshort\b|quick|slim|thin/.test(l))g.length='short';
   return g;
 }
-function planFindBook(q){const owner=OWNER==='all'?'butthead':OWNER;const cut=q.lastIndexOf(' — '),t=cut<0?q:q.slice(0,cut),s=cut<0?'':q.slice(cut+3);return(G.allIndBooks||[]).find(x=>(x.owner||'butthead')===owner&&x.title===t&&(s?x.series===s:(!x.series||x.series==='Standalones')))||null;}
+function planFindBook(q){const owner=soloOwner();const cut=q.lastIndexOf(' — '),t=cut<0?q:q.slice(0,cut),s=cut<0?'':q.slice(cut+3);return(G.allIndBooks||[]).find(x=>(x.owner||'butthead')===owner&&x.title===t&&(s?x.series===s:(!x.series||x.series==='Standalones')))||null;}
 function planTitles(owner){return(G.allIndBooks||[]).filter(x=>(x.owner||'butthead')===owner).map(x=>x.title+(x.series&&x.series!=='Standalones'?' — '+x.series:'')).sort((a,b)=>a.localeCompare(b));}
 function renderPlan(){
   const now=new Date(),cy=now.getFullYear();
-  const owner=OWNER==='all'?'butthead':OWNER;
+  const owner=soloOwner();
   const mine=(G.plan||[]).filter(p=>p.owner===owner);
   const years=[...new Set([cy,cy+1,...mine.map(p=>p.year)])].sort();
   if(!planYear||!years.includes(planYear))planYear=now.getMonth()>=8?cy+1:cy; // from September the plan is next year's
-  document.getElementById('plan-tog').innerHTML=years.map(y=>`<button class="${y===planYear?'active':''}" onclick="planYear=${y};renderPlan()">${y}</button>`).join('');
+  document.getElementById('plan-tog').innerHTML=years.map(y=>`<button class="${y===planYear?'active':''}" onclick="planYear=${y};renderPlan()">${y}</button>`).join('')+(OWNER==='all'?'<span class="ms" style="margin:0 4px 0 10px">for</span>'+readerPill():'');
   const yd=(typeof allYD!=='undefined'&&allYD[planYear])||{books:[],targets:{},focus:[]};
   // targets are Com's year-tab numbers; Shereen has none set yet
   const tg=owner==='butthead'?(yd.targets||{}):{},goal=(tg.Total&&tg.Total.total)||0;
@@ -2211,7 +2213,7 @@ function planEditRow(i){
   const s=(G._planSlots||[])[i],el=document.getElementById('plan-ed-'+i);if(!s||!el)return;
   if(el.style.display!=='none'){el.style.display='none';return;}
   el.style.display='';
-  const titles=planTitles(OWNER==='all'?'butthead':OWNER);
+  const titles=planTitles(soloOwner());
   el.innerHTML=`<div class="log-frow"><label>Label</label><input id="plan-e-label-${i}" value="${esc(s.label)}"></div>
     <div class="log-frow"><label>Media</label><select id="plan-e-media-${i}"><option value="">—</option>${MEDIA.map(m=>`<option${m===s.media?' selected':''}>${m}</option>`).join('')}</select></div>
     <div class="log-frow"><label>Genre</label><input id="plan-e-genre-${i}" list="plan-dl-genre" value="${esc(s.genre)}"></div>
@@ -2264,7 +2266,7 @@ function planPool(owner){
   return out;
 }
 let planPoolF={q:'',media:'',genre:'',shelf:true};
-function planPoolSet(k,v){if(k==='shelf')planPoolF.shelf=!planPoolF.shelf;else planPoolF[k]=planPoolF[k]===v?'':v;planPoolRender(OWNER==='all'?'butthead':OWNER);}
+function planPoolSet(k,v){if(k==='shelf')planPoolF.shelf=!planPoolF.shelf;else planPoolF[k]=planPoolF[k]===v?'':v;planPoolRender(soloOwner());}
 function planPoolRender(owner){
   const el=document.getElementById('plan-pool'),bar=document.getElementById('plan-pool-bar');if(!el||!bar)return;
   const f=planPoolF,all=planPool(owner).filter(b=>!f.shelf||b.owned),nq=f.q.toLowerCase();
@@ -2730,11 +2732,11 @@ function renderComingUp(){
   // Shereen's list (John, 2026-09-23): the Book Boxes sheet's rows marked
   // Ordered and not yet Received, by ETA (else the month charged), plus her
   // register's books with a date ahead — the same cards as Com's list.
-  const items=OWNER==='goblin'
-    ?(G.boxes||[]).filter(x=>x.open).map(x=>{const when=x.eta||x.date||'',m=when.match(/^(\d{4})-(\d{2})/);
-      return{title:x.title||[x.vendor,x.box,'box'].filter(Boolean).join(' '),author:x.author,series:'',genre:'',release:when,ordered:'Preordered',store:[x.vendor,x.box].filter(Boolean).join(' '),publisher:'',cover:'',isNew:false,src:'box',etaKnown:!!x.eta,
-        yr:m?+m[1]:9999,mo:m?+m[2]:99,moName:m?names[+m[2]-1]:'Date TBA',day:''};})
-    :bcBuildItems();
+  const boxItems=OWNER==='butthead'?[]:(G.boxes||[]).filter(x=>x.open).map(x=>{const when=x.eta||x.date||'',m=when.match(/^(\d{4})-(\d{2})/);
+      return{title:x.title||[x.vendor,x.box,'box'].filter(Boolean).join(' '),author:x.author,series:'',genre:'',release:when,ordered:'Preordered',store:[x.vendor,x.box].filter(Boolean).join(' '),publisher:'',cover:'',isNew:false,src:'box',owner:'goblin',etaKnown:!!x.eta,
+        yr:m?+m[1]:9999,mo:m?+m[2]:99,moName:m?names[+m[2]-1]:'Date TBA',day:''};});
+  // Com's list (Book Notification + orders) and Shereen's boxes: one or both, per the header.
+  const items=(OWNER==='goblin'?[]:bcBuildItems().map(it=>Object.assign({owner:'butthead'},it))).concat(boxItems);
   const seen=new Set(items.map(it=>bcKey(it.title)));
   (G.indBooks||[]).forEach(b=>{
     if(b.owned||b.read)return;
@@ -2744,7 +2746,7 @@ function renderComingUp(){
     if(m&&pd<=todayIso.slice(0,pd.length))return; // already out at its own precision
     const k=bcKey(b.title);if(seen.has(k))return;seen.add(k);
     const yr=tba?9999:+m[1],mo=tba?99:(m[2]?+m[2]:0);
-    items.push({title:b.title,author:b.author,series:b.series==='Standalones'?'':b.series,genre:b.type,release:tba?'TBA':pd,ordered:'',publisher:b.publisher,cover:'',src:'register',
+    items.push({owner:b.owner||'butthead',title:b.title,author:b.author,series:b.series==='Standalones'?'':b.series,genre:b.type,release:tba?'TBA':pd,ordered:'',publisher:b.publisher,cover:'',src:'register',
       yr,mo,moName:tba?'Date TBA':(mo?names[mo-1]:'Sometime'),day:m&&m[3]?String(+m[3]):''});
   });
   // Month buckets: ahead ascending, then Date TBA, then the last three
@@ -2783,7 +2785,7 @@ function renderComingUp(){
   el.innerHTML=[...ahead.map(group),...behind.map(group)].join('')||'<div class="ms">Nothing ahead on any list.</div>';
   // Covers strip: what is ahead, in release order; tracked titles resolve
   // through the register's identifiers, the rest get title tiles.
-  if(cuc)cuc.innerHTML=coverStrip(ahead.flatMap(k=>byMo[k]).map(it=>({title:it.title,owner:OWNER==='goblin'?'goblin':'butthead',sub:[it.series,it.author,it.release].filter(Boolean).join(' · ')})),60);
+  if(cuc)cuc.innerHTML=coverStrip(ahead.flatMap(k=>byMo[k]).map(it=>({title:it.title,owner:it.owner||soloOwner(),sub:[it.series,it.author,it.release].filter(Boolean).join(' · ')})),60);
 }
 
 // ── Order pending-change flags (shared by the Log panel and Book Mail tab) ──
@@ -2836,7 +2838,7 @@ function renderYearCovers(books){
   // supplies the series so a shared title (Annihilation) gets its own cover.
   const nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
   const yr=String(typeof tyYear!=='undefined'?tyYear:new Date().getFullYear());
-  const who=OWNER==='goblin'?'goblin':'butthead';
+  const who=soloOwner();
   const serOf=t=>{const c=(G.allIndBooks||[]).filter(x=>(x.owner||'butthead')===who&&nk(x.title)===nk(t));
     const pick=c.length===1?c[0]:c.find(x=>(x.readOn||'').startsWith(yr));return pick?pick.series:(c.length?' ':'');};
   el.innerHTML=keys.length?keys.map(k=>`<div class="ycrow"><div class="ycmo">${k?MONTHS[k-1]:'Undated'} <span class="ms">· ${rows[k].length}</span></div><div class="cstrip">${rows[k].sort((a,b)=>a.num-b.num).map(b=>coverTile(b.title,who,[b.genre,b.media].filter(Boolean).join(' · '),null,undefined,serOf(b.title))).join('')}</div></div>`).join('')
@@ -3142,14 +3144,21 @@ function renderSomeday(interested){
 let rendered=new Set(),curSec='tracking',curTab='overview',G={};
 
 // Owner filter — catalog is split by owner; 'all' shows both.
-let OWNER='butthead'; // default to Com's catalog (cleanup focus)
+let OWNER='all'; // Both first and by default; Com or Shereen narrows every tab (John, 2026-09-27)
+// Some tabs can only show one reader at a time — Plan, This Year, History
+// (per-reader targets and history). Under Both they show READER and offer
+// the pick inline; under Com or Shereen they follow the header.
+let READER='butthead';
+function soloOwner(){return OWNER==='all'?READER:OWNER;}
+function setReader(o){if(o===READER)return;READER=o;rendered.delete(curTab);renderTab(curTab);}
+function readerPill(){if(OWNER!=='all')return'';return['butthead','goblin'].map(o=>`<button class="${o===READER?'active':''}" data-r="${o}" onclick="setReader(this.dataset.r)">${esc(OWNER_LABEL[o]||o)}</button>`).join('');}
 const OWNER_LABEL={butthead:'Com',goblin:'Shereen',other:'Other'};
 function applyOwner(rerender){
   const pick=rows=>OWNER==='all'?rows:rows.filter(r=>(r.owner||'butthead')===OWNER);
   G.bookRows=pick(G.allBookRows||[]);
   G.indBooks=pick(G.allIndBooks||[]);
   G.books=calcBooks(G.bookRows);
-  if(rerender){rendered.clear();renderTab(curTab);}
+  if(rerender){if(typeof buildCollecting==='function')buildCollecting();rendered.clear();renderTab(curTab);}
 }
 function setOwner(o){
   if(o===OWNER)return;
@@ -3240,9 +3249,10 @@ function renderTabInner(id){
   else if(id==='rooms')renderRooms(bm);
   else if(id==='tbr')renderTBR();
   else if(id==='plan')renderPlan();
-  else if(id==='history')renderHistory(metricsFor());
+  else if(id==='history'){const hr=document.getElementById('hist-reader');if(hr)hr.innerHTML=readerPill();renderHistory(metricsFor());}
   else if(id==='thisyear'){
     if(!document.querySelector('#year-tog button'))document.getElementById('year-tog').innerHTML=YEARS.map(y=>`<button data-y="${y}" onclick="switchYear(${y})">${y}</button>`).join('');
+    const tr=document.getElementById('ty-reader');if(tr)tr.innerHTML=readerPill();
     renderThisYear(tyYear);
   }
   else if(id==='completion')renderCompletion(bm);
@@ -3295,7 +3305,7 @@ function buildCollecting(){
   G.collectingUniverses=new Set((BUNDLE.tabs['bookdb|Universes']||[]).slice(1)
     .filter(r=>((r[1]||'')+'').trim().toLowerCase()==='x')
     .map(r=>((r[0]||'')+'').trim()));
-  const all=G.allIndBooks||[];   // both owners, like the old catalog tabs
+  const all=(G.allIndBooks||[]).filter(b=>OWNER==='all'||(b.owner||'butthead')===OWNER); // the header's reader filter applies (2026-09-27)
   const of=u=>all.filter(b=>b.universe===u);
   const yearOf=b=>parseInt((b.pubDate||'').slice(0,4))||0;
 
@@ -4418,6 +4428,7 @@ function bcBurst(it){
 // = followed authors with nothing bought in three years and no NEED flag.
 function renderBnAuthors(){
   const mEl=document.getElementById('bn-m'),lEl=document.getElementById('bn-list');if(!mEl||!lEl)return;
+  if(OWNER==='goblin'){mEl.innerHTML='';lEl.innerHTML='<div class="ms">Book Notification follows Com\'s authors — pick Com or Both in the header.</div>';return;}
   const followed=new Set(((LOG.vocabFor&&LOG.vocabFor('bn_author'))||[]).map(a=>a.toLowerCase()));
   const pending=new Set(((LOG.pendingVocab&&LOG.pendingVocab('bn_author'))||[]).map(a=>a.toLowerCase()));
   pending.forEach(p=>followed.add(p));
@@ -5078,7 +5089,7 @@ const LOG=(()=>{
   // function works but it didn't stick to the Slot" (the slot he dropped
   // onto had no id yet, so the drop was silently ignored).
   async function planSet(year,action,ref,set){
-    const owner=OWNER==='all'?'butthead':OWNER;
+    const owner=soloOwner();
     const p={year,action,set:set||{}};
     if(action==='add')p.key='k'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
     else if(typeof ref==='number'){if(ref)p.id=ref;}
@@ -5452,9 +5463,10 @@ const LOG=(()=>{
   function orderRef(o){return{date:o.date,order:o.order,books:o.books,series:o.series,author:o.author};}
   function setOrderStyle(s){orderStyle=s;renderOrders();}
   function renderOrders(){
-    if(!orderStyle)orderStyle=OWNER==='goblin'?'bookboxes':'bookmail';
+    // Com's ledger is Book Mail, Shereen's is Book Boxes; Both keeps the switch.
+    if(OWNER==='butthead')orderStyle='bookmail';else if(OWNER==='goblin')orderStyle='bookboxes';else if(!orderStyle)orderStyle='bookmail';
     document.getElementById('log-setup-orders').innerHTML=hintCard();
-    const tog=`<div class="ytog" style="margin-bottom:1rem">
+    const tog=OWNER!=='all'?'':`<div class="ytog" style="margin-bottom:1rem">
       <button class="${orderStyle==='bookmail'?'active':''}" onclick="LOG.setOrderStyle('bookmail')">Book Mail · Com</button>
       <button class="${orderStyle==='bookboxes'?'active':''}" onclick="LOG.setOrderStyle('bookboxes')">Book Box · Shereen</button></div>`;
     if(orderStyle==='bookboxes'){
@@ -5737,11 +5749,13 @@ const LOG=(()=>{
     document.getElementById('log-setup-proposed').innerHTML=hintCard();
     const el=document.getElementById('log-proposed-list');
     const dec=propDecisions();
-    const open=(G.proposals||[]);
+    // The header's reader filter applies here too (John, 2026-09-27): Com or
+    // Shereen narrows the list to their proposals, Both shows every one.
+    const open=(G.proposals||[]).filter(p=>OWNER==='all'||(propOwner(p)||'butthead')===OWNER);
     // Each card is tinted for the reader it is proposed for — Com teal,
     // Shereen lavender — as the combined TBR is (John, 2026-09-27).
     const owners=new Set(open.map(propOwner).filter(Boolean));
-    const legend=owners.size?`<div class="tbr-legend" id="prop-legend"><span><i style="background:var(--teal-bg);border-color:#9dcdc4"></i>${esc(OWNER_LABEL.butthead||'Com')}</span><span><i style="background:var(--purple-bg);border-color:#b8afd6"></i>${esc(OWNER_LABEL.goblin||'Shereen')}</span><span class="ms">each card is shaded for the reader it is proposed for</span></div>`:'';
+    const legend=OWNER==='all'&&owners.size?`<div class="tbr-legend" id="prop-legend"><span><i style="background:var(--teal-bg);border-color:#9dcdc4"></i>${esc(OWNER_LABEL.butthead||'Com')}</span><span><i style="background:var(--purple-bg);border-color:#b8afd6"></i>${esc(OWNER_LABEL.goblin||'Shereen')}</span><span class="ms">each card is shaded for the reader it is proposed for</span></div>`:'';
     el.innerHTML=legend+open.map(p=>{
       const d=dec.get(p.id);
       const decided=d==='approve'||d==='reject'; // a pending EDIT keeps the row actionable
@@ -5991,7 +6005,7 @@ const LOG=(()=>{
     document.getElementById('log-setup-main').innerHTML=hintCard();
     const el=document.getElementById('log-pending-list');
     el.innerHTML='<div class="ms">Checking inbox…</div>';
-    const list=await fetchPending(true).catch(()=>sent());
+    const list=(await fetchPending(true).catch(()=>sent())).filter(ev=>OWNER==='all'||(ev.by||'butthead')===OWNER);
     el.innerHTML=list.map(ev=>`<div class="log-pend">
       <div class="log-pend-desc">${esc(describe(ev))}</div>
       <div class="log-pend-meta">${new Date(ev.at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})} · by ${esc(OWNER_LABEL[ev.by]||ev.by)}</div>
