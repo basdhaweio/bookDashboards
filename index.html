@@ -615,7 +615,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div class="tc"><div><div class="sl">By media <span class="ms">— read (solid) · planned (faint) · goal (red mark)</span></div><div class="cb" id="plan-media"></div></div><div><div class="sl">By genre</div><div class="cb" id="plan-genre"></div></div></div>
       <div class="sl">Slots <span class="ms">— drag ⋮⋮ to reorder</span></div>
       <div class="tbr-grid" id="plan-list"></div>
-      <div class="sl">Pick from your shelves <span class="ms">— the next volume of every series and every unread standalone, leaving out what is already on Read next or pinned to a plan; drag a card's ⋮⋮ onto a slot to pin it, or onto ＋ New slot; ＋ Slot does the same by tap</span></div>
+      <div class="sl">Pick from your shelves <span class="ms">— the next volume of every series and every unread standalone, leaving out what is already on Read next or pinned to a plan; for a later year, series under way this year (being read, on Read next, on the focus list, or in this year's plan) stay out unless you flip the chip; drag a card's ⋮⋮ onto a slot to pin it, or onto ＋ New slot; ＋ Slot does the same by tap</span></div>
       <div id="plan-pool-bar"></div>
       <div class="tbr-grid" id="plan-pool"></div>
       <div class="sl">Add a shape <span class="ms">— a slot with no book yet</span></div>
@@ -2251,8 +2251,25 @@ async function planMoveBefore(from,before){
 // one not started) and every unread standalone — the things a slot can
 // actually be filled with. Filtered by chips, not typed queries (John,
 // 2026-09-24: "visual, not a database entry").
+// Series already under way this year — being read (Goodreads), on Read
+// next, on this year's focus list, or pinned to this year's plan — stay
+// out of a later year's pool by default: next year's plan is for what is
+// not already in motion (John, 2026-09-27). A chip lets them back in.
+function planBusySeries(owner){
+  const cy=new Date().getFullYear(),nl=t=>(t||'').toLowerCase().replace(/^\s*(the|a|an)\s+/,'').replace(/[^a-z0-9]/g,''),nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const out=new Set(),add=x=>{if(x&&x!=='Standalones')out.add(nl(x));};
+  (G.queue||[]).filter(q=>(q.owner||'butthead')===owner).forEach(q=>add(q.series));
+  for(const[k,v]of LOG.pendingQueue()){if((v.owner||'butthead')!==owner||v.action==='remove')continue;add(k.slice(k.lastIndexOf('|')+1));}
+  try{tbrReadingNow(nk,[owner]).forEach(r=>{if(r.reg)add(r.reg.series);(r.works||[]).forEach(w=>add(w.series));});}catch(e){}
+  if(owner==='butthead')(((typeof allYD!=='undefined'&&allYD[cy])||{}).focus||[]).forEach(add);
+  for(const sl of planSlotsFor(owner,cy))if(sl.book)add(sl.series);
+  return out;
+}
 function planPool(owner){
   const books=(G.allIndBooks||[]).filter(b=>(b.owner||'butthead')===owner);
+  const cy=new Date().getFullYear(),nl=t=>(t||'').toLowerCase().replace(/^\s*(the|a|an)\s+/,'').replace(/[^a-z0-9]/g,'');
+  const skipBusy=planPoolF.busy&&planYear>cy,busy=skipBusy?planBusySeries(owner):new Set();
+  G._planBusyN=0;
   const seqN=b=>{const v=parseFloat(String(b.seq||'').replace(/[^0-9.]/g,''));return isNaN(v)?Infinity:v;};
   // Already on Read next or pinned to a plan: not offered again. A series
   // whose next volume is spoken for offers the one after it instead.
@@ -2260,13 +2277,13 @@ function planPool(owner){
   G._planTakenN=books.filter(b=>!b.read&&!free(b)).length;
   const by={};for(const b of books){if(!b.series||b.series==='Standalones')continue;const k=seriesKey(b);(by[k]=by[k]||[]).push(b);}
   const out=[];
-  for(const k in by){const l=by[k].sort((a,b)=>seqN(a)-seqN(b)||a.title.localeCompare(b.title));const rs=l.filter(b=>b.read).map(seqN).filter(x=>x!==Infinity);const maxRead=rs.length?Math.max(...rs):-Infinity;const unread=l.filter(b=>!b.read),open=unread.filter(free);const next=open.find(b=>seqN(b)>maxRead)||open[0];
+  for(const k in by){const l=by[k].sort((a,b)=>seqN(a)-seqN(b)||a.title.localeCompare(b.title));if(skipBusy&&busy.has(nl(l[0].series))){G._planBusyN++;continue;}const rs=l.filter(b=>b.read).map(seqN).filter(x=>x!==Infinity);const maxRead=rs.length?Math.max(...rs):-Infinity;const unread=l.filter(b=>!b.read),open=unread.filter(free);const next=open.find(b=>seqN(b)>maxRead)||open[0];
     if(next)out.push(Object.assign({},next,{why:l.some(b=>b.read)||open.length<unread.length?'next in series':'start a series',sread:l.filter(b=>b.read).length,stotal:l.length}));}
   for(const b of books)if((!b.series||b.series==='Standalones')&&!b.read&&free(b))out.push(Object.assign({},b,{why:'standalone'}));
   return out;
 }
-let planPoolF={q:'',media:'',genre:'',shelf:true};
-function planPoolSet(k,v){if(k==='shelf')planPoolF.shelf=!planPoolF.shelf;else planPoolF[k]=planPoolF[k]===v?'':v;planPoolRender(soloOwner());}
+let planPoolF={q:'',media:'',genre:'',shelf:true,busy:true};
+function planPoolSet(k,v){if(k==='shelf')planPoolF.shelf=!planPoolF.shelf;else if(k==='busy')planPoolF.busy=!planPoolF.busy;else planPoolF[k]=planPoolF[k]===v?'':v;planPoolRender(soloOwner());}
 function planPoolRender(owner){
   const el=document.getElementById('plan-pool'),bar=document.getElementById('plan-pool-bar');if(!el||!bar)return;
   const f=planPoolF,all=planPool(owner).filter(b=>!f.shelf||b.owned),nq=f.q.toLowerCase();
@@ -2277,9 +2294,10 @@ function planPoolRender(owner){
   const chip=(k,v,l,on)=>`<button class="pchip${on?' on':''}" data-k="${k}" data-v="${esc(v)}" onclick="planPoolSet(this.dataset.k,this.dataset.v)">${esc(l)}</button>`;
   bar.innerHTML=`<input value="${esc(f.q)}" placeholder="title, series or author" oninput="planPoolF.q=this.value;planPoolRender('${owner}');const i=document.querySelector('#plan-pool-bar input');i.focus();i.setSelectionRange(i.value.length,i.value.length)" style="font:inherit;font-size:12px;padding:4px 8px;border:1px solid var(--border2);border-radius:6px;min-width:180px">`
     +chip('shelf','',f.shelf?'on the shelf':'everything tracked',f.shelf)
+    +(planYear>new Date().getFullYear()?chip('busy','',f.busy?"not on this year's TBR":"this year's TBR too",f.busy):'')
     +MEDIA.filter(m=>mc[m]).map(m=>chip('media',m,m+' '+mc[m],f.media===m)).join('')
     +Object.entries(gc).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([g,n])=>chip('genre',g,g+' '+n,f.genre===g)).join('')
-    +`<span class="ms">${rows.length} of ${all.length}${G._planTakenN?` · ${G._planTakenN} already on Read next or pinned`:''}</span>`;
+    +`<span class="ms">${rows.length} of ${all.length}${G._planTakenN?` · ${G._planTakenN} already on Read next or pinned`:''}${G._planBusyN?` · ${G._planBusyN} series under way this year`:''}</span>`;
   G._planPool=rows.slice(0,48);
   el.innerHTML=(G._planPool.map((b,i)=>`<div class="tbr-card" data-pool="${i}"><span class="tbr-handle" title="drag onto a slot">⋮⋮</span><div class="tbr-cov">${coverTile(b.title,b.owner,'',null,40,b.series)}</div><div class="tbr-info"><div class="tbr-ser">${esc(b.title)}${b.seq?' <span class="ms">#'+esc(b.seq)+'</span>':''}</div><div class="tbr-prog">${b.series&&b.series!=='Standalones'?esc(b.series)+' · '+b.sread+'/'+b.stotal+' · ':''}${esc(b.author||'')}</div><div class="tbr-next">${[b.media,b.type].filter(Boolean).map(esc).join(' · ')} ${b.owned?'<span class="badge b-green">on the shelf</span>':'<span class="badge b-coral">not owned</span>'} <span class="ms">${esc(b.why)}</span></div><div class="tbr-acts"><button class="log-act" onclick="planPoolAdd(${i})">＋ Slot</button></div></div></div>`).join('')||'<div class="ms">Nothing matches — loosen the filters.</div>')
     +(rows.length>48?`<div class="ms">…and ${rows.length-48} more — narrow it down</div>`:'');

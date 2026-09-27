@@ -419,6 +419,19 @@ async function main(){
     res(name,hit.length===0&&(taken.size===0||/already on Read next or pinned/.test(note)),
       `${taken.size} spoken for (${q.length} queued, ${p.length} pinned); ${hit.length} still offered ${hit.slice(0,3).join(', ')}; bar says "${(note.match(/\d+ already[^<]*/)||[''])[0].trim()}"`);
   });
+  await check("Plan: next year's pool skips series under way this year",async()=>{
+    const name="Plan: next year's pool skips series under way this year";
+    await go('plan','reading');
+    const W=w(),cy=new Date().getFullYear();
+    if(W.eval('planYear')<=cy){res(name,true,'the plan year is the current one — nothing to skip');return;}
+    const yd=W.eval('typeof allYD!=="undefined"?allYD:null'),focus=((yd&&yd[cy])||{}).focus||[];
+    const q=(tget('Queue')||[]).slice(1).filter(r=>(r[2]||'butthead').trim()==='butthead').map(r=>(r[1]||'').trim()).filter(Boolean);
+    const nl=t=>(t||'').toLowerCase().replace(/^\s*(the|a|an)\s+/,'').replace(/[^a-z0-9]/g,'');
+    const busy=new Set([...focus,...q].map(nl));
+    const pool=W.planPool('butthead'),hit=pool.filter(b=>b.series&&b.series!=='Standalones'&&busy.has(nl(b.series))).map(b=>b.series);
+    const bar=doc().querySelector('#plan-pool-bar')?.textContent||'';
+    res(name,hit.length===0&&(busy.size===0||/under way this year/.test(bar)),`${busy.size} series busy this year (focus ${focus.length}, queued ${q.length}); ${hit.length} still offered ${hit.slice(0,3).join(', ')}`);
+  });
   await check('Plan: a slot dropped from the shelves takes a pin before jerry answers',async()=>{
     const name='Plan: a slot dropped from the shelves takes a pin before jerry answers';
     const W=w(),D=doc(),tick=ms=>new Promise(r=>setTimeout(r,ms));
