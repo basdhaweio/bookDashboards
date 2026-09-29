@@ -395,6 +395,17 @@ async function main(){
     const slack=gr.width-extent; // padding 6+6, border 1+1 = 14
     res(name,slack>=10&&slack<=24,`${pick.cs.length} cards span ${extent.toFixed(0)}px, box ${gr.width.toFixed(0)}px, slack ${slack.toFixed(0)}px (expect ~14)`);
   });
+  await check('TBR: Start a series leaves out series being read or queued',async()=>{
+    const name='TBR: Start a series leaves out series being read or queued';
+    await go('tbr','reading');
+    const W=w(),nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    const reading=W.eval("tbrReadingNow(t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,''),['butthead'])")||[];
+    const busy=new Set(reading.flatMap(r=>[...(r.reg?[r.reg]:[]),...(r.works||[])]).map(b=>nk(b.title)));
+    (tget('Queue')||[]).slice(1).filter(r=>(r[2]||'butthead').trim()==='butthead').forEach(r=>busy.add(nk(r[0])));
+    const fresh=W.eval('G._tbrFresh')||[];
+    const hit=fresh.filter(s=>s.books.some(b=>!b.read&&busy.has(nk(b.title)))).map(s=>s.name);
+    res(name,hit.length===0,`${fresh.length} series offered; ${busy.size} titles being read or queued; ${hit.length} overlap ${hit.slice(0,3).join(', ')}`);
+  });
   await check('TBR: the finish form stays inside its card',async()=>{
     const name='TBR: the finish form stays inside its card';
     await go('tbr','reading');

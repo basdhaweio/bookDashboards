@@ -2084,7 +2084,13 @@ function renderTBR(){
   // Start a series: owned, nothing read yet — pick one and its first
   // volume gets a card (John, 2026-09-23: "add new series from my shelf
   // that aren't in progress yet")
-  const fresh=series.filter(s=>s.read===0&&s.owned>0).map(s=>Object.assign(s,{label:both&&s.owner==='goblin'?s.name+' (Shereen)':s.name})).sort((a,b)=>a.label.localeCompare(b.label));
+  // A series with any unread book being read (a collection on the Goodreads
+  // shelf carries its works — Small Magic holds all three Shannara shorts)
+  // or queued lives under Reading now / Next up, not here (John, 2026-09-29:
+  // "Shannara shorts … represented twice").
+  const touched=s=>beingRead(s)||s.books.some(b=>!b.read&&(readingKeys.has(ok(b))||qmap.has(ok(b))));
+  const fresh=series.filter(s=>s.read===0&&s.owned>0&&!touched(s)).map(s=>Object.assign(s,{label:both&&s.owner==='goblin'?s.name+' (Shereen)':s.name})).sort((a,b)=>a.label.localeCompare(b.label));
+  G._tbrFresh=fresh;
   const pick=G._tbrStart?fresh.find(s=>s.label.toLowerCase()===G._tbrStart.toLowerCase()):null;
   const first=pick?(pick.books.find(b=>b.owned)||pick.books[0]):null;
   document.getElementById('tbr-start').innerHTML=`<div class="log-frow" style="grid-column:1/-1"><label>Series</label><input id="tbr-start-q" list="tbr-dl-start" value="${esc(G._tbrStart||'')}" placeholder="${fresh.length} series on the shelf with nothing read yet" onchange="tbrPickStart()"><datalist id="tbr-dl-start">${fresh.map(s=>`<option>${esc(s.label)}</option>`).join('')}</datalist></div>`
