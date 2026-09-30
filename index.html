@@ -1951,6 +1951,14 @@ function renderTBR(){
   // Next up list is spoken for: it shows under that section and nowhere
   // else (John, 2026-09-22 — no double listing).
   const beingRead=s=>!!(s.next&&(readingKeys.has(ok(s.next))||qmap.has(ok(s.next))));
+  // Spoken for elsewhere, so not picked here: any unread book being read
+  // (a collection on the Goodreads shelf carries its works) or on Next up,
+  // or a book pinned to a plan slot for a LATER year — the mirror of the
+  // Plan pool leaving out this year's TBR (John, 2026-09-29).
+  const cyNow=new Date().getFullYear(),planned=new Set();
+  owners.forEach(o=>{for(const sl of planSlotsFor(o,null))if(sl.book&&sl.year>cyNow&&sl.series&&sl.series!=='Standalones')planned.add(o+'|'+nl(sl.series));});
+  const plannedAhead=s=>planned.has((s.owner||'butthead')+'|'+nl(s.name));
+  const touched=s=>beingRead(s)||plannedAhead(s)||s.books.some(b=>!b.read&&(readingKeys.has(ok(b))||qmap.has(ok(b))));
   // Focus series: this year's list from the Reading History year tab (Com's).
   const focusNames=OWNER!=='goblin'?(((typeof allYD!=='undefined'&&allYD[cy])||{}).focus||[]):[];
   const focusRows=focusNames.map(n=>series.find(s=>s.owner==='butthead'&&nl(s.name)===nl(n))).filter(Boolean);
@@ -1961,7 +1969,7 @@ function renderTBR(){
   // next only — no double listing (John, 2026-09-22).
   const byPct=(a,b)=>b.pct-a.pct||(b.last||'').localeCompare(a.last||'')||a.name.localeCompare(b.name);
   const onShelfOrWay=s=>!s.next||s.next.owned||!!onOrder(s.next);
-  const prog=inProg.filter(s=>!focusSet.has(s)&&!beingRead(s)&&!s.gap&&(!s.next||rel(s.next)==='out')&&onShelfOrWay(s)).sort(byPct);
+  const prog=inProg.filter(s=>!focusSet.has(s)&&!touched(s)&&!s.gap&&(!s.next||rel(s.next)==='out')&&onShelfOrWay(s)).sort(byPct);
   // Unreleased volumes in any series with a book read: dated inside six
   // months = New book in series (with Book Notification's not-yet-adopted
   // announcements); TBA, year-only or further out = Waiting for. Titles
@@ -1977,14 +1985,14 @@ function renderTBR(){
   // under New book in series because Empyrean itself is read.
   const readUni=new Set(series.filter(s=>s.read>0&&s.universe).map(s=>s.owner+'|'+s.universe));
   const engaged=s=>s.read>0||!!(s.universe&&readUni.has(s.owner+'|'+s.universe));
-  const unrel=series.filter(engaged).flatMap(s=>s.books.filter(b=>!b.read&&rel(b)!=='out').map(b=>({b,s,state:rel(b)})));
+  const unrel=series.filter(s=>engaged(s)&&!touched(s)).flatMap(s=>s.books.filter(b=>!b.read&&rel(b)!=='out').map(b=>({b,s,state:rel(b)})));
   const byDate=(a,b)=>(a.date||'9999').localeCompare(b.date||'9999');
   const newBook=[...unrel.filter(x=>x.state==='soon').map(x=>Object.assign(x,{date:x.b.pubDate,src:'register'})),
     ...news.map(r=>({r,s:r.s,date:r.release||'',src:'bn'}))].sort(byDate);
   const waiting=unrel.filter(x=>x.state!=='soon').map(x=>Object.assign(x,{date:/^tba$/i.test(x.b.pubDate)?'':x.b.pubDate})).sort((a,b)=>byDate(a,b)||a.s.name.localeCompare(b.s.name));
   // To get: tracked, out, not on the shelf, not on order — "if I don't own
   // it and it's tracked then I need it" (John, 2026-09-22), so no flag.
-  const toGet=inProg.filter(s=>s.next&&!beingRead(s)&&(s.gap||(!s.next.owned&&!onOrder(s.next)&&rel(s.next)==='out'))).sort(byPct);
+  const toGet=inProg.filter(s=>s.next&&!touched(s)&&(s.gap||(!s.next.owned&&!onOrder(s.next)&&rel(s.next)==='out'))).sort(byPct);
   G._tbrBooks=[];const bidx=b=>{G._tbrBooks.push(b);return G._tbrBooks.length-1;};
   const chip=nx=>{if(pendRead.has(pk(nx)))return'<span class="badge b-teal">read · pending</span>';
     if(nx._gap)return`<span class="badge b-coral">#${nx._gap} missing from the register</span>`;
@@ -2035,7 +2043,7 @@ function renderTBR(){
   // Finished series don't belong on a to-read page (tracking and This Year
   // cover them), so the focus list shows only what still has volumes left
   // and isn't already under Reading now.
-  const focusLeft=focusRows.filter(s=>s.unread>0&&!beingRead(s));
+  const focusLeft=focusRows.filter(s=>s.unread>0&&!touched(s));
   document.getElementById('tbr-m').innerHTML=
     mH(queue.length,'Next up','your list')+
     mH(inProg.length,'Series in progress','read some, not all')+
@@ -2084,11 +2092,7 @@ function renderTBR(){
   // Start a series: owned, nothing read yet — pick one and its first
   // volume gets a card (John, 2026-09-23: "add new series from my shelf
   // that aren't in progress yet")
-  // A series with any unread book being read (a collection on the Goodreads
-  // shelf carries its works — Small Magic holds all three Shannara shorts)
-  // or queued lives under Reading now / Next up, not here (John, 2026-09-29:
-  // "Shannara shorts … represented twice").
-  const touched=s=>beingRead(s)||s.books.some(b=>!b.read&&(readingKeys.has(ok(b))||qmap.has(ok(b))));
+  // touched() above: being read, queued, or planned for a later year.
   const fresh=series.filter(s=>s.read===0&&s.owned>0&&!touched(s)).map(s=>Object.assign(s,{label:both&&s.owner==='goblin'?s.name+' (Shereen)':s.name})).sort((a,b)=>a.label.localeCompare(b.label));
   G._tbrFresh=fresh;
   const pick=G._tbrStart?fresh.find(s=>s.label.toLowerCase()===G._tbrStart.toLowerCase()):null;

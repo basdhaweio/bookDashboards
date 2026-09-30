@@ -196,15 +196,19 @@ async function main(){
     for(const r of ind.slice(1)){
       if((r[10]||'butthead')!=='butthead'||!r[1]||r[1]==='-'||r[1]==='Standalones')continue;
       const k=r[1]+'|'+(r[19]||'main');
-      const s=per[k]=per[k]||{r:0,u:0};
+      const s=per[k]=per[k]||{r:0,u:0,name:r[1]};
       if((r[7]||'').trim().toLowerCase()==='x')s.r++;else s.u++;
     }
-    const want=Object.values(per).filter(s=>s.r>0&&s.u>0).length;
+    // a series pinned to a plan slot for a later year lives in the Plan, not on the TBR (John, 2026-09-29)
+    const cyP=new Date().getFullYear(),nlP=t=>(t||'').toLowerCase().replace(/^\s*(the|a|an)\s+/,'').replace(/[^a-z0-9]/g,'');
+    const plannedAhead=new Set((tget('Plan')||[]).slice(1).filter(r=>(r[1]||'butthead').trim()==='butthead'&&+r[2]>cyP&&(r[8]||'').trim()&&(r[9]||'').trim()).map(r=>nlP(r[9])));
+    const inProg=Object.values(per).filter(s=>s.r>0&&s.u>0).length; // the metric counts the register as it is
+    const want=Object.values(per).filter(s=>s.r>0&&s.u>0&&!plannedAhead.has(nlP(s.name))).length;
     // every in-progress series surfaces somewhere: focus, in progress, or as
     // a book row under New book / Waiting for / Get these next
     const rows=new Set([...doc().querySelectorAll('#tab-tbr .tbr-card[data-inprog]')].map(e=>e.dataset.ser)).size;
     const shown=norm((ptxt('tbr').match(/([\d,]+)\s*Series in progress/i)||[])[1]);
-    res('TBR lists every series in progress',rows===want&&shown===want,`distinct series rows ${rows}, metric ${shown} vs register ${want}`);
+    res('TBR lists every series in progress',rows===want&&shown===inProg,`distinct series rows ${rows} vs ${want} expected on the TBR (${inProg} in progress, ${plannedAhead.size} pinned to a later year); metric ${shown}`);
   });
 
   await check('By Universe drill-down lists every book of the universe',async()=>{
@@ -405,6 +409,25 @@ async function main(){
     const fresh=W.eval('G._tbrFresh')||[];
     const hit=fresh.filter(s=>s.books.some(b=>!b.read&&busy.has(nk(b.title)))).map(s=>s.name);
     res(name,hit.length===0,`${fresh.length} series offered; ${busy.size} titles being read or queued; ${hit.length} overlap ${hit.slice(0,3).join(', ')}`);
+  });
+  await check('TBR: series pinned to a later year stay out of the pick lists',async()=>{
+    const name='TBR: series pinned to a later year stay out of the pick lists';
+    await go('tbr','reading');
+    const cy=new Date().getFullYear(),nl=t=>(t||'').toLowerCase().replace(/^\s*(the|a|an)\s+/,'').replace(/[^a-z0-9]/g,'');
+    const planned=new Set((tget('Plan')||[]).slice(1).filter(r=>(r[1]||'butthead').trim()==='butthead'&&+r[2]>cy&&(r[8]||'').trim()&&(r[9]||'').trim()&&r[9].trim()!=='Standalones').map(r=>nl(r[9])));
+    const ser=e=>nl(e.dataset.ser||e.querySelector('.tbr-ser')?.textContent||'');
+    const shown=[...doc().querySelectorAll('#tbr-prog .tbr-card, #tbr-get .tbr-card')].map(ser).concat((w().eval('G._tbrFresh')||[]).map(s=>nl(s.name)));
+    const hit=[...planned].filter(p=>shown.includes(p));
+    res(name,hit.length===0,`${planned.size} series pinned beyond ${cy}; ${hit.length} still offered ${hit.join(', ')}`);
+  });
+  await check('TBR: a queued series is not under New book or Waiting for',async()=>{
+    const name='TBR: a queued series is not under New book or Waiting for';
+    await go('tbr','reading');
+    const nl=t=>(t||'').toLowerCase().replace(/^\s*(the|a|an)\s+/,'').replace(/[^a-z0-9]/g,'');
+    const queued=new Set((tget('Queue')||[]).slice(1).filter(r=>(r[2]||'butthead').trim()==='butthead'&&(r[1]||'').trim()).map(r=>nl(r[1])));
+    const shown=[...doc().querySelectorAll('#tbr-new .tbr-card, #tbr-wait .tbr-card')].map(e=>nl(e.dataset.ser||e.querySelector('.tbr-ser')?.textContent||''));
+    const hit=[...queued].filter(q=>shown.includes(q));
+    res(name,hit.length===0,`${queued.size} queued series; ${hit.length} still under New book / Waiting for ${hit.join(', ')}`);
   });
   await check('TBR: the finish form stays inside its card',async()=>{
     const name='TBR: the finish form stays inside its card';
