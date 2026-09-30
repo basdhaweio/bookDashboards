@@ -1267,6 +1267,11 @@ function seriesLabel(b){
   const q=b.universe||(sur?sur.split(/\s+/).pop():'')||(b.collection==='dnd'?'D&D':b.collection);
   return b.series+' ('+q+')';
 }
+// The other reader's owned copy of the same title, so a card that says
+// "not owned" can add "Shereen has it" — the household has the book even
+// when this shelf does not (John, 2026-09-30: Lore Olympus is hers).
+function heldBy(b){const me=(b.owner||'butthead'),nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,''),k=nk(b.title);if(!k)return'';const o=(G.allIndBooks||[]).find(x=>(x.owner||'butthead')!==me&&x.owned&&nk(x.title)===k);return o?(o.owner||'butthead'):'';}
+function heldBadge(b){const o=heldBy(b);return o?` <span class="badge ${o==='goblin'?'b-purple':'b-teal'}">${esc(OWNER_LABEL[o]||o)} has it</span>`:'';}
 function seriesKey(b){return b.series+'|'+((G.seriesDupes&&G.seriesDupes[(b.owner||'butthead')+'|'+b.series])?(b.collection||'main'):'');}
 function buildSeriesDupes(){
   const m={};
@@ -2002,7 +2007,7 @@ function renderTBR(){
     const r=rel(nx);
     if(r==='tba')return'<span class="badge b-gray">not out yet · TBA</span>';
     if(r!=='out')return`<span class="badge b-teal">coming ${esc(nx.pubDate)}</span>`;
-    return'<span class="badge b-coral">not owned</span>';};
+    return'<span class="badge b-coral">not owned</span>'+heldBadge(nx);};
   // Actions: ✓ Read everywhere; ＋ Next up (or the queued badge) outside
   // the queue; ▲ ▼ ✕ inside it; Tombolo when it is out and not owned.
   const acts=(nx,qi)=>{const i=bidx(nx),k=pk(nx),pr=pendRead.has(k),q=qmap.get(k);
@@ -2191,7 +2196,7 @@ function renderPlan(){
       <div class="tbr-cov">${b?coverTile(b.title,b.owner,'',null,40,b.series):'<div class="ct ct-ph" style="width:40px;height:60px"><span>?</span></div>'}</div>
       <div class="tbr-info"><div class="tbr-ser">${isDone(s)?'✓ ':''}${esc(s.label||s.book||(b?b.title:''))}</div>
         <div class="tbr-prog">${[s.media,s.genre,s.length].filter(Boolean).map(esc).join(' · ')||'<span class="ms">no shape yet</span>'}${s.pending?' <span class="badge b-gold" title="saved — jerry answers within a minute or two; everything here works meanwhile">pending</span>':''}</div>
-        <div class="tbr-next">${b?`<strong>${esc(b.title)}</strong>${b.series&&b.series!=='Standalones'?' <span class="ms">'+esc(b.series)+(b.seq?' #'+esc(b.seq):'')+'</span>':''} ${b.read?'<span class="badge b-teal">read</span>':b.owned?'<span class="badge b-green">on the shelf</span>':'<span class="badge b-coral">not owned</span>'}`:'<span class="ms">no book pinned yet</span>'}${s.notes?`<div class="ms">${esc(s.notes)}</div>`:''}</div>
+        <div class="tbr-next">${b?`<strong>${esc(b.title)}</strong>${b.series&&b.series!=='Standalones'?' <span class="ms">'+esc(b.series)+(b.seq?' #'+esc(b.seq):'')+'</span>':''} ${b.read?'<span class="badge b-teal">read</span>':b.owned?'<span class="badge b-green">on the shelf</span>':'<span class="badge b-coral">not owned</span>'+heldBadge(b)}`:'<span class="ms">no book pinned yet</span>'}${s.notes?`<div class="ms">${esc(s.notes)}</div>`:''}</div>
         <div class="tbr-acts">${ref?`<button class="log-act" onclick="planToggleDone(${i})">${s.done?'↺ not done':'✓ Done'}</button><button class="log-act" onclick="planEditRow(${i})" title="edit the slot or pin a book">✎</button><button class="log-act" onclick="planRemove(${i})" title="drop the slot">✕</button>`:'<span class="ms">saving…</span>'}</div>
         <div id="plan-ed-${i}" style="display:none"></div>
       </div></div>`;}).join('')+`<div class="tbr-card plan-dropnew" id="plan-dropnew"><div class="tbr-info"><div class="tbr-ser">＋ New slot</div><div class="ms">drop a shelf card here, or use the form below</div></div></div>`;
@@ -2309,7 +2314,7 @@ function planPoolRender(owner){
     +Object.entries(gc).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([g,n])=>chip('genre',g,g+' '+n,f.genre===g)).join('')
     +`<span class="ms">${rows.length} of ${all.length}${G._planTakenN?` · ${G._planTakenN} already on Read next or pinned`:''}${G._planBusyN?` · ${G._planBusyN} series under way this year`:''}</span>`;
   G._planPool=rows.slice(0,48);
-  el.innerHTML=(G._planPool.map((b,i)=>`<div class="tbr-card" data-pool="${i}"><span class="tbr-handle" title="drag onto a slot">⋮⋮</span><div class="tbr-cov">${coverTile(b.title,b.owner,'',null,40,b.series)}</div><div class="tbr-info"><div class="tbr-ser">${esc(b.title)}${b.seq?' <span class="ms">#'+esc(b.seq)+'</span>':''}</div><div class="tbr-prog">${b.series&&b.series!=='Standalones'?esc(b.series)+' · '+b.sread+'/'+b.stotal+' · ':''}${esc(b.author||'')}</div><div class="tbr-next">${[b.media,b.type].filter(Boolean).map(esc).join(' · ')} ${b.owned?'<span class="badge b-green">on the shelf</span>':'<span class="badge b-coral">not owned</span>'} <span class="ms">${esc(b.why)}</span></div><div class="tbr-acts"><button class="log-act" onclick="planPoolAdd(${i})">＋ Slot</button></div></div></div>`).join('')||'<div class="ms">Nothing matches — loosen the filters.</div>')
+  el.innerHTML=(G._planPool.map((b,i)=>`<div class="tbr-card" data-pool="${i}"><span class="tbr-handle" title="drag onto a slot">⋮⋮</span><div class="tbr-cov">${coverTile(b.title,b.owner,'',null,40,b.series)}</div><div class="tbr-info"><div class="tbr-ser">${esc(b.title)}${b.seq?' <span class="ms">#'+esc(b.seq)+'</span>':''}</div><div class="tbr-prog">${b.series&&b.series!=='Standalones'?esc(b.series)+' · '+b.sread+'/'+b.stotal+' · ':''}${esc(b.author||'')}</div><div class="tbr-next">${[b.media,b.type].filter(Boolean).map(esc).join(' · ')} ${b.owned?'<span class="badge b-green">on the shelf</span>':'<span class="badge b-coral">not owned</span>'+heldBadge(b)} <span class="ms">${esc(b.why)}</span></div><div class="tbr-acts"><button class="log-act" onclick="planPoolAdd(${i})">＋ Slot</button></div></div></div>`).join('')||'<div class="ms">Nothing matches — loosen the filters.</div>')
     +(rows.length>48?`<div class="ms">…and ${rows.length-48} more — narrow it down</div>`:'');
   dndBind(el,{items:'.tbr-card[data-pool]',handle:'.tbr-handle',targets:'#plan-list .tbr-card[data-slot]:not([data-slot=""]),#plan-dropnew',onTarget:(from,t)=>planDropPool(from,t)});
 }

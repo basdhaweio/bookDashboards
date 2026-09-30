@@ -429,6 +429,21 @@ async function main(){
     const hit=[...queued].filter(q=>shown.includes(q));
     res(name,hit.length===0,`${queued.size} queued series; ${hit.length} still under New book / Waiting for ${hit.join(', ')}`);
   });
+  await check('A not-owned book the other reader owns says so',async()=>{
+    const name='A not-owned book the other reader owns says so';
+    const W=w(),nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    const rows=ind.slice(1),own=r=>(r[10]||'butthead').trim(),isX=v=>(v||'').trim().toLowerCase()==='x';
+    const hers=new Set(rows.filter(r=>own(r)==='goblin'&&isX(r[6])).map(r=>nk(r[0])));
+    const cands=rows.filter(r=>own(r)==='butthead'&&!isX(r[6])&&!isX(r[7])&&hers.has(nk(r[0]))).map(r=>nk(r[0]));
+    await go('plan','reading');W.eval('planPoolF.shelf=false');W.planPoolRender('butthead');await new Promise(r=>setTimeout(r,300));
+    const pool=W.eval("planPool('butthead')").filter(b=>cands.includes(nk(b.title)));
+    // the pool shows 48 cards and unowned books sort last: filter it to the first candidate's title
+    let shown=0;
+    if(pool.length){W.eval('planPoolF.q='+JSON.stringify(pool[0].title.slice(0,30)));W.planPoolRender('butthead');await new Promise(r=>setTimeout(r,300));
+      shown=[...doc().querySelectorAll('#plan-pool .tbr-card')].filter(c=>/has it/.test(c.textContent)).length;}
+    W.eval("planPoolF.q='';planPoolF.shelf=true");W.planPoolRender('butthead');
+    res(name,pool.length===0||shown>0,`${cands.length} of Com's unowned unread titles are on Shereen's shelf; ${pool.length} in the pool, ${shown} card(s) say "has it"`);
+  });
   await check('TBR: the finish form stays inside its card',async()=>{
     const name='TBR: the finish form stays inside its card';
     await go('tbr','reading');
