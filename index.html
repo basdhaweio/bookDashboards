@@ -1830,6 +1830,21 @@ function tbrAddFromGoodreads(ri){
   LOG.prefillAdd({title,series,seq,author:r.author,isbn:r.isbn13,owner:r.owner,status:'owned',
     note:'Prefilled from the Goodreads shelf — check series, genre and status, then Add'});
 }
+// …or the OTHER shelf owns it (Shereen reading Com's Crystal Shard): add it
+// to this shelf as borrowed — tracked, not owned — with the register's own
+// details, so both rows agree and the next sync matches it. The same
+// crosswalk for either reader (John, 2026-09-30).
+function tbrHeldRow(ri){
+  const r=(G._tbrGR||[])[ri];if(!r)return null;
+  const m=(r.title||'').match(/^(.*?)\s*\(([^()]*?)(?:,?\s*#\s*([\d.]+))?\)\s*$/),title=m?m[1].trim():(r.title||'');
+  const nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,''),k=nk(title);
+  return k?((G.allIndBooks||[]).find(b=>(b.owner||'butthead')!==(r.owner||'butthead')&&b.owned&&nk(b.title)===k)||null):null;
+}
+function tbrAddFromHousehold(ri){
+  const r=(G._tbrGR||[])[ri],b=tbrHeldRow(ri);if(!r||!b)return;
+  LOG.prefillAdd({title:b.title,series:b.series==='Standalones'?'':b.series,seq:b.seq,author:b.author,media:b.media,genre:b.type,universe:b.universe,isbn:r.isbn13,owner:r.owner,status:'wish',
+    note:`Prefilled from ${OWNER_LABEL[b.owner||'butthead']}'s copy — tracked, not owned. Check it, then Add`});
+}
 // …or it IS in the register under another title: pick that row and jerry
 // keeps the match (goodreads_link) across every later sync.
 function tbrLinkRow(ri){
@@ -2080,7 +2095,7 @@ function renderTBR(){
     // Not matched: add it to the register prefilled from Goodreads, or
     // name the register row it already is (goodreads_link).
     const miss=pendLinks.has(r.grId)?'<span class="badge b-gold">linked · pending</span>'
-      :`<button class="log-act gold" onclick="tbrAddFromGoodreads(${ri})" title="add it to the register, prefilled from Goodreads">＋ Add it</button><button class="log-act" onclick="tbrLinkRow(${ri})" title="it is already in the register under another title">🔗 It's in the register as…</button>`;
+      :`${(h=>h?`<span class="badge ${h.owner==='goblin'?'b-purple':'b-teal'}">${esc(OWNER_LABEL[h.owner||'butthead'])} has it</span><button class="log-act" onclick="tbrAddFromHousehold(${ri})" title="add it to this shelf as borrowed — tracked, not owned, with the register's own details">＋ Borrow it</button>`:'')(tbrHeldRow(ri))}<button class="log-act gold" onclick="tbrAddFromGoodreads(${ri})" title="add it to the register, prefilled from Goodreads">＋ Add it</button><button class="log-act" onclick="tbrLinkRow(${ri})" title="it is already in the register under another title">🔗 It's in the register as…</button>`;
     return`<div class="tbr-card${rCls(r)}" data-owner="${r.owner}"${serAttr(b)}><div class="tbr-cov">${b?cover(b):grTile(r)}</div><div class="tbr-info"><div class="tbr-ser">${esc(b?b.title:r.title)}</div><div class="tbr-prog">${esc(r.author)}${b?' · '+esc(b.series)+(b.seq?' #'+esc(b.seq):''):' · not in the register'}${r.added?' · since '+esc(r.added):''}</div><div class="tbr-acts">${b?(pr?'<span class="badge b-teal">read · pending</span>':`<button class="log-act" onclick="tbrReadRow(${i})">✓ Read</button>`):miss}</div>${b?`<div id="tbr-rr-${i}" style="display:none"></div>`:`<div id="tbr-lk-${ri}" style="display:none"></div>`}</div></div>`;}).join('');
   // (the Goodreads to-read shelf is mirrored on jerry but not shown here — John, 2026-09-25: "got folded into the TBR, please remove that")
   G._tbrGR=reading;
@@ -2298,12 +2313,14 @@ function planPool(owner){
   return out;
 }
 let planPoolF={q:'',media:'',genre:'',shelf:true,busy:true};
+const POOL_ORDER=['next in series','start a series','standalone'];
+const POOL_CAT={'next in series':'In progress — the next volume','start a series':'Start a series — nothing read yet','standalone':'Standalones'};
 function planPoolSet(k,v){if(k==='shelf')planPoolF.shelf=!planPoolF.shelf;else if(k==='busy')planPoolF.busy=!planPoolF.busy;else planPoolF[k]=planPoolF[k]===v?'':v;planPoolRender(soloOwner());}
 function planPoolRender(owner){
   const el=document.getElementById('plan-pool'),bar=document.getElementById('plan-pool-bar');if(!el||!bar)return;
   const f=planPoolF,all=planPool(owner).filter(b=>!f.shelf||b.owned),nq=f.q.toLowerCase();
   const rows=all.filter(b=>(!f.media||b.media===f.media)&&(!f.genre||b.type===f.genre)&&(!nq||(b.title+' '+b.series+' '+b.author).toLowerCase().includes(nq)))
-    .sort((a,b)=>(b.owned-a.owned)||((b.why==='next in series')-(a.why==='next in series'))||a.title.localeCompare(b.title));
+    .sort((a,b)=>POOL_ORDER.indexOf(a.why)-POOL_ORDER.indexOf(b.why)||(b.owned-a.owned)||a.title.localeCompare(b.title));
   const cnt=g=>all.reduce((m,b)=>{const k=g(b);if(k)m[k]=(m[k]||0)+1;return m;},{});
   const mc=cnt(b=>b.media),gc=cnt(b=>b.type);
   const chip=(k,v,l,on)=>`<button class="pchip${on?' on':''}" data-k="${k}" data-v="${esc(v)}" onclick="planPoolSet(this.dataset.k,this.dataset.v)">${esc(l)}</button>`;
@@ -2313,9 +2330,11 @@ function planPoolRender(owner){
     +MEDIA.filter(m=>mc[m]).map(m=>chip('media',m,m+' '+mc[m],f.media===m)).join('')
     +Object.entries(gc).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([g,n])=>chip('genre',g,g+' '+n,f.genre===g)).join('')
     +`<span class="ms">${rows.length} of ${all.length}${G._planTakenN?` · ${G._planTakenN} already on Read next or pinned`:''}${G._planBusyN?` · ${G._planBusyN} series under way this year`:''}</span>`;
-  G._planPool=rows.slice(0,48);
-  el.innerHTML=(G._planPool.map((b,i)=>`<div class="tbr-card" data-pool="${i}"><span class="tbr-handle" title="drag onto a slot">⋮⋮</span><div class="tbr-cov">${coverTile(b.title,b.owner,'',null,40,b.series)}</div><div class="tbr-info"><div class="tbr-ser">${esc(b.title)}${b.seq?' <span class="ms">#'+esc(b.seq)+'</span>':''}</div><div class="tbr-prog">${b.series&&b.series!=='Standalones'?esc(b.series)+' · '+b.sread+'/'+b.stotal+' · ':''}${esc(b.author||'')}</div><div class="tbr-next">${[b.media,b.type].filter(Boolean).map(esc).join(' · ')} ${b.owned?'<span class="badge b-green">on the shelf</span>':'<span class="badge b-coral">not owned</span>'+heldBadge(b)} <span class="ms">${esc(b.why)}</span></div><div class="tbr-acts"><button class="log-act" onclick="planPoolAdd(${i})">＋ Slot</button></div></div></div>`).join('')||'<div class="ms">Nothing matches — loosen the filters.</div>')
-    +(rows.length>48?`<div class="ms">…and ${rows.length-48} more — narrow it down</div>`:'');
+  G._planPool=POOL_ORDER.flatMap(w=>rows.filter(x=>x.why===w).slice(0,16)); // 16 per category so every heading shows
+  // The TBR's categories as headings, so the pool reads like the TBR (John, 2026-09-30)
+  let lastCat='';
+  el.innerHTML=(G._planPool.map((b,i)=>{const hdr=b.why!==lastCat?`<div class="tbr-uni">${esc(POOL_CAT[b.why]||b.why)} <span class="ms">· ${rows.filter(x=>x.why===b.why).length}</span></div>`:'';lastCat=b.why;return hdr+`<div class="tbr-card" data-pool="${i}"><span class="tbr-handle" title="drag onto a slot">⋮⋮</span><div class="tbr-cov">${coverTile(b.title,b.owner,'',null,40,b.series)}</div><div class="tbr-info"><div class="tbr-ser">${esc(b.title)}${b.seq?' <span class="ms">#'+esc(b.seq)+'</span>':''}</div><div class="tbr-prog">${b.series&&b.series!=='Standalones'?esc(b.series)+' · '+b.sread+'/'+b.stotal+' · ':''}${esc(b.author||'')}</div><div class="tbr-next">${[b.media,b.type].filter(Boolean).map(esc).join(' · ')} ${b.owned?'<span class="badge b-green">on the shelf</span>':'<span class="badge b-coral">not owned</span>'+heldBadge(b)} <span class="ms">${esc(b.why)}</span></div><div class="tbr-acts"><button class="log-act" onclick="planPoolAdd(${i})">＋ Slot</button></div></div></div>`;}).join('')||'<div class="ms">Nothing matches — loosen the filters.</div>')
+    +(rows.length>G._planPool.length?`<div class="ms">…and ${rows.length-G._planPool.length} more — narrow it down with the chips or the search box</div>`:'');
   dndBind(el,{items:'.tbr-card[data-pool]',handle:'.tbr-handle',targets:'#plan-list .tbr-card[data-slot]:not([data-slot=""]),#plan-dropnew',onTarget:(from,t)=>planDropPool(from,t)});
 }
 function planRef(b){return{title:b.title,series:b.series==='Standalones'?'':b.series,owner:b.owner||'butthead'};}

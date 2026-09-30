@@ -444,6 +444,28 @@ async function main(){
     W.eval("planPoolF.q='';planPoolF.shelf=true");W.planPoolRender('butthead');
     res(name,pool.length===0||shown>0,`${cands.length} of Com's unowned unread titles are on Shereen's shelf; ${pool.length} in the pool, ${shown} card(s) say "has it"`);
   });
+  await check('Plan: the pool is headed by the TBR categories',async()=>{
+    const name='Plan: the pool is headed by the TBR categories';
+    await go('plan','reading');
+    const heads=[...doc().querySelectorAll('#plan-pool .tbr-uni')].map(e=>e.textContent.trim().replace(/\s+/g,' '));
+    const cards=doc().querySelectorAll('#plan-pool .tbr-card[data-pool]').length,pool=(w().eval('G._planPool')||[]).length;
+    const first=doc().querySelector('#plan-pool').firstElementChild;
+    res(name,heads.length>=1&&cards===pool&&!!first&&first.classList.contains('tbr-uni'),`${heads.length} headings: ${heads.join(' | ').slice(0,120)}; ${cards} cards of ${pool}`);
+  });
+  await check("Reading now: an unmatched shelf item the other reader owns offers Borrow it",async()=>{
+    const name="Reading now: an unmatched shelf item the other reader owns offers Borrow it";
+    const W=w(),nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    const gr=tget('Goodreads')||[];
+    const owned={};for(const r of ind.slice(1)){if((r[6]||'').trim().toLowerCase()==='x'){const o=(r[10]||'butthead').trim();(owned[o]=owned[o]||new Set()).add(nk(r[0]));}}
+    const bare=t=>(t||'').replace(/\s*\([^()]*\)\s*$/,'').trim();
+    const cands=gr.slice(1).filter(r=>r[0]==='currently-reading'&&!(r[6]||'').trim()&&!(r[8]||'').trim()).filter(r=>{const o=(r[10]||'butthead').trim(),other=o==='goblin'?'butthead':'goblin';return (owned[other]||new Set()).has(nk(bare(r[1])));});
+    if(!cands.length){res(name,true,'no unmatched shelf item is owned by the other reader — nothing to show');return;}
+    const o=(cands[0][10]||'butthead').trim();W.setOwner(o);await go('tbr','reading');
+    const card=[...doc().querySelectorAll('#tbr-reading .tbr-card')].find(c=>nk(c.querySelector('.tbr-ser')?.textContent)===nk(bare(cands[0][1])));
+    const ok=!!card&&/has it/.test(card.textContent)&&!!card.querySelector('button[onclick^="tbrAddFromHousehold"]');
+    W.setOwner('butthead');
+    res(name,ok,`${cands.length} candidate(s); ${cands[0][1].slice(0,40)} on ${o}'s shelf: card ${!!card}, badge+button ${ok}`);
+  });
   await check('TBR: the finish form stays inside its card',async()=>{
     const name='TBR: the finish form stays inside its card';
     await go('tbr','reading');
