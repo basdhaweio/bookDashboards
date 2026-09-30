@@ -418,7 +418,8 @@ expected date, ISO) and `price` are optional. An order-level `author` is
 filled from the first line that names one when the payload sends none.
 `status` is `ordered` (default: placed, not shipped), `shipped` (already on
 its way — every line is marked shipped on `date`, with the optional
-order-level `tracking`) or `arrived` (in hand). `status:
+order-level `tracking`) or `arrived` (received — every line arrives on
+`arrived_on` when given, else on `date`). `status:
 "arrived"` is an in-store purchase: every line arrives on `date` at once.
 `books` is optional — jerry summarises it from the lines (`lines_summary`)
 and the dashboard sends the same text so pending chips key alike. `count` is

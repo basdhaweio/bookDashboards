@@ -4781,7 +4781,7 @@ const LOG=(()=>{
       case'plan_set':{const s=p.set||{};return`📝 Plan ${p.year} ${p.action||'add'}${p.id?' #'+p.id:''}: ${s.label||(s.book&&s.book.title)||Object.keys(s).join(', ')||''}`;}
       case'order_new':return p.list==='bookboxes'
         ?`🎁 Box: ${p.vendor}${p.box?' '+p.box:''} — ${p.title||'title TBA'}${p.want&&p.want!=='Yes'?' · want: '+p.want:''}`
-        :`🧾 New order ${p.order||''}${p.store?' at '+p.store:''} — ${p.books||'?'}${p.status==='shipped'?' · shipped':p.status==='arrived'?' · in hand':''}`;
+        :`🧾 New order ${p.order||''}${p.store?' at '+p.store:''} — ${p.books||'?'}${p.status==='shipped'?' · shipped':p.status==='arrived'?' · arrived '+(p.arrived_on||''):''}`;
       case'order_line_set':{const s=Object.entries(p.set||{}).map(([k,v])=>`${k}: ${v}`).join(', ');const r=p.ref||{},l=p.line||{};
         return`🧾 Order ${r.order||('#'+(r.id||'?'))} line ${l.id?'#'+l.id:l.position?l.position:(l.title||l.series||'')} → ${s}`;}
       case'order_update':{const s=Object.entries(p.set||{}).map(([k,v])=>v===true?k:`${k}: ${v}`).join(', ');
@@ -5717,8 +5717,9 @@ const LOG=(()=>{
       <div class="log-frow"><label>Paid?</label><select id="log-o-paid"><option>Paid</option><option>Unpaid</option></select></div>`:''}
       <div class="log-frow" style="align-items:flex-start"><label style="padding-top:6px">Books</label><div style="flex:1" id="log-o-lines">${orderLineRows()}</div></div>
       <div class="log-frow"><label></label><button class="log-act" onclick="LOG.orderLineAdd()">＋ another book</button><span class="ms">each book ships on its own · "Series 4-6" becomes one line per volume · ETA is the release or expected date</span></div>
-      <div class="log-frow"><label>Status</label><select id="log-o-status" onchange="LOG.orderStatus(this.value)"><option value="ordered"${orderForm.status!=='arrived'&&orderForm.status!=='shipped'?' selected':''}>Ordered — not shipped yet</option><option value="shipped"${orderForm.status==='shipped'?' selected':''}>Shipped — on its way</option><option value="arrived"${orderForm.status==='arrived'?' selected':''}>In hand — bought today</option></select></div>
+      <div class="log-frow"><label>Status</label><select id="log-o-status" onchange="LOG.orderStatus(this.value)"><option value="ordered"${orderForm.status!=='arrived'&&orderForm.status!=='shipped'?' selected':''}>Ordered — not shipped yet</option><option value="shipped"${orderForm.status==='shipped'?' selected':''}>Shipped — on its way</option><option value="arrived"${orderForm.status==='arrived'?' selected':''}>Arrived — received</option></select></div>
       <div class="log-frow" id="log-o-trkrow" style="${orderForm.status==='shipped'?'':'display:none'}"><label>Tracking</label><input id="log-o-trk" value="${esc(orderForm.tracking||'')}" placeholder="tracking # (optional) — one number for the whole shipment"></div>
+      <div class="log-frow" id="log-o-arrrow" style="${orderForm.status==='arrived'?'':'display:none'}"><label>Arrived on</label><input type="date" id="log-o-arrived" value="${esc(orderForm.arrivedOn||today())}"></div>
       <div class="log-frow"><label>Omnibus?</label><label class="ms"><input type="checkbox" id="log-o-omni" onchange="LOG.toggleRow('log-o-omnirow')"> one volume containing several works</label></div>
       <div id="log-o-omnirow" style="display:none">
         <div class="log-frow"><label>Contains</label><textarea id="log-o-contains" rows="3" placeholder="works inside, one per line (optional #seq)&#10;— arrival marks each one owned automatically" style="flex:1;font:inherit"></textarea></div>
@@ -5956,17 +5957,18 @@ const LOG=(()=>{
     if(ok){toast('Box edit logged');renderOrders();}
   }
   // The form's state survives a re-render (a store chip re-draws the form).
-  let orderForm={store:'',date:'',num:'',status:'ordered',tracking:'',lines:[{}]};
+  let orderForm={store:'',date:'',num:'',status:'ordered',tracking:'',arrivedOn:'',lines:[{}]};
   function orderFormRead(){
     const v=id=>{const e=document.getElementById(id);return e?e.value.trim():'';};
     if(document.getElementById('log-o-date'))orderForm.date=v('log-o-date');
     if(document.getElementById('log-o-num'))orderForm.num=v('log-o-num');
     if(document.getElementById('log-o-status'))orderForm.status=v('log-o-status');
     if(document.getElementById('log-o-trk'))orderForm.tracking=v('log-o-trk');
+    if(document.getElementById('log-o-arrived'))orderForm.arrivedOn=v('log-o-arrived');
     if(document.getElementById('log-o-lines'))orderForm.lines=orderLinesRead();
   }
   function orderStore(sname){orderFormRead();orderForm.store=(sname||'').trim();renderOrders();}
-  function orderStatus(st){orderForm.status=st;const r=document.getElementById('log-o-trkrow');if(r)r.style.display=st==='shipped'?'':'none';}
+  function orderStatus(st){orderForm.status=st;const r=document.getElementById('log-o-trkrow');if(r)r.style.display=st==='shipped'?'':'none';const a=document.getElementById('log-o-arrrow');if(a)a.style.display=st==='arrived'?'':'none';}
   function orderLineRows(){
     const mine=(G.allIndBooks||[]).filter(b=>(b.owner||'butthead')==='butthead');
     const titles=[...new Set(mine.map(b=>b.title).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
@@ -6007,6 +6009,7 @@ const LOG=(()=>{
     const num=/^TBB/i.test(orderForm.num)?'#'+orderForm.num.toUpperCase():orderForm.num;   // the ledger's #TBBSUB… form
     const p={list:'bookmail',date:orderForm.date||today(),order:num,store,type,sub,paid,lines,books:linesText(lines),author:(lines.find(l=>l.author)||{}).author||'',status:orderForm.status||'ordered'};
     if(p.status==='shipped'&&orderForm.tracking)p.tracking=orderForm.tracking;
+    if(p.status==='arrived')p.arrived_on=orderForm.arrivedOn||today();
     if(document.getElementById('log-o-omni')&&document.getElementById('log-o-omni').checked){
       const cl=v('log-o-contains').split('\n').map(x=>x.trim()).filter(Boolean);
       if(cl.length<2)return toast('An omnibus order needs its contained works, one per line',true);
@@ -6014,7 +6017,7 @@ const LOG=(()=>{
       p.contains=cl;
     }
     const ok=await submit('order_new',p,null,'butthead');
-    if(ok){toast(p.status==='arrived'?`Logged as in hand — ${lines.length} book${lines.length===1?'':'s'} marked owned when jerry catches up`:p.status==='shipped'?`Order logged as shipped — ${lines.length} line${lines.length===1?'':'s'}`:`Order logged — ${lines.length} line${lines.length===1?'':'s'}`);orderForm={store,date:'',num:'',status:'ordered',tracking:'',lines:[{}]};renderOrders();}
+    if(ok){toast(p.status==='arrived'?`Logged as arrived — ${lines.length} book${lines.length===1?'':'s'} marked owned when jerry catches up`:p.status==='shipped'?`Order logged as shipped — ${lines.length} line${lines.length===1?'':'s'}`:`Order logged — ${lines.length} line${lines.length===1?'':'s'}`);orderForm={store,date:'',num:'',status:'ordered',tracking:'',arrivedOn:'',lines:[{}]};renderOrders();}
   }
   // Book Club flyer → real orders: one bookmail order per checked title,
   // no order number, store as picked (Tombolo by default). Arrival then

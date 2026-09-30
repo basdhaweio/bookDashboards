@@ -543,11 +543,11 @@ async function main(){
       D.getElementById('log-o-num').value='TBBSUB848998';
       LOGi.orderLineAdd();await tick(200);
       const rows=D.querySelectorAll('#log-o-lines .log-line:not(.log-line-hd)');rows[1].querySelector('.ol-title').value='Harness Range 4-6';rows[1].querySelector('.ol-eta').value='2026-12-01';
-      D.getElementById('log-o-status').value='arrived';
+      D.getElementById('log-o-status').value='arrived';LOGi.orderStatus('arrived');D.getElementById('log-o-arrived').value='2026-09-29';
       await LOGi.doNewOrder();await tick(400);
       const ev=sentBodies.find(e=>e.type==='order_new'),p=(ev||{}).payload||{};
-      const ok=!!ev&&p.store==='Tombolo'&&p.status==='arrived'&&Array.isArray(p.lines)&&p.lines.length===4&&p.lines[0].author==='Le Guin, Ursula K.'&&p.author==='Le Guin, Ursula K.'&&p.order==='#TBBSUB848998'&&p.lines[1].series==='Harness Range'&&p.lines[1].seq==='4'&&p.lines[3].seq==='6'&&p.lines[1].eta==='2026-12-01'&&!('count' in p);
-      res(name,ok,`event ${!!ev}; store ${p.store}; order ${p.order}; author ${p.author}; status ${p.status}; ${(p.lines||[]).length} lines (${(p.lines||[]).map(l=>l.title||l.series+' #'+l.seq).join(', ').slice(0,90)})`);
+      const ok=!!ev&&p.store==='Tombolo'&&p.status==='arrived'&&Array.isArray(p.lines)&&p.lines.length===4&&p.lines[0].author==='Le Guin, Ursula K.'&&p.author==='Le Guin, Ursula K.'&&p.order==='#TBBSUB848998'&&p.lines[1].series==='Harness Range'&&p.lines[1].seq==='4'&&p.lines[3].seq==='6'&&p.lines[1].eta==='2026-12-01'&&p.arrived_on==='2026-09-29'&&!('count' in p);
+      res(name,ok,`event ${!!ev}; store ${p.store}; order ${p.order}; author ${p.author}; status ${p.status} on ${p.arrived_on}; ${(p.lines||[]).length} lines (${(p.lines||[]).map(l=>l.title||l.series+' #'+l.seq).join(', ').slice(0,90)})`);
     }finally{W.fetch=realFetch;if(LOGi)LOGi.forgetSetup();localStorage.removeItem('library-log-cfg');localStorage.removeItem('library-log-sent');}
   });
   await check('Orders: an open order with lines offers per-line Shipped and Arrived',async()=>{
