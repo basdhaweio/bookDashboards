@@ -29,12 +29,13 @@ import androidx.core.view.WindowInsetsCompat
 const val LIVE_HOST = "basdhaweio.github.io"
 const val LIVE_URL = "https://$LIVE_HOST/bookDashboards/"
 
-private const val BG = "#F6F2EA"
+private const val BG = "#FFFDF8"   // the page header's colour, so the status-bar band blends in
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var webView: WebView
     private var pageReady = false
+    private var bottomInsetCss = 0   // system-bar height in CSS px, handed to the page
     private var pendingCamera: PermissionRequest? = null
 
     private val cameraPermission = registerForActivityResult(
@@ -72,6 +73,7 @@ class MainActivity : ComponentActivity() {
 
                 override fun onPageFinished(view: WebView, url: String?) {
                     pageReady = url?.startsWith(LIVE_URL) == true
+                    if (pageReady) pushInset()
                 }
 
                 override fun onReceivedError(
@@ -110,8 +112,10 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // Target SDK 35 draws edge-to-edge: keep the page clear of the status
-        // bar / cutout and the gesture bar (same approach as weatherTerminal).
+        // Target SDK 35 draws edge-to-edge: pad the top for the status bar /
+        // cutout, but NOT the bottom — the page's own fixed menu bar pads
+        // itself by --app-inset-bottom (pushInset), so there is no empty band
+        // under the menu (John, 2026-09-30).
         val root = FrameLayout(this).apply {
             setBackgroundColor(Color.parseColor(BG))
             addView(
@@ -125,13 +129,17 @@ class MainActivity : ComponentActivity() {
         setContentView(root)
         val density = resources.displayMetrics.density
         val minTopPx = (24 * density).toInt()
-        val minBottomPx = (12 * density).toInt()
-        root.setPadding(0, minTopPx, 0, minBottomPx)
+        root.setPadding(0, minTopPx, 0, 0)
         ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
             val bars = insets.getInsets(
                 WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
             )
-            view.setPadding(bars.left, maxOf(bars.top, minTopPx), bars.right, maxOf(bars.bottom, minBottomPx))
+            view.setPadding(bars.left, maxOf(bars.top, minTopPx), bars.right, 0)
+            val css = (bars.bottom / density).toInt()
+            if (css != bottomInsetCss) {
+                bottomInsetCss = css
+                pushInset()
+            }
             insets
         }
 
@@ -173,6 +181,14 @@ class MainActivity : ComponentActivity() {
     private fun targetUrl(intent: Intent?): String {
         val data = intent?.data?.toString() ?: return LIVE_URL
         return if (data.startsWith(LIVE_URL)) data else LIVE_URL
+    }
+
+    // The page reads --app-inset-bottom for its fixed menu bar's padding.
+    private fun pushInset() {
+        if (!pageReady) return
+        webView.evaluateJavascript(
+            "document.documentElement.style.setProperty('--app-inset-bottom','${bottomInsetCss}px')", null
+        )
     }
 
     private fun hasCameraPermission() =

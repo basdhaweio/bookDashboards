@@ -13,7 +13,7 @@ android {
         targetSdk = 35
         // CI bumps the version on every build so new APKs install over old ones.
         versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
-        versionName = "1.1"
+        versionName = "1.2"
     }
 
     // Committed keystore (standard well-known debug credentials, same file as

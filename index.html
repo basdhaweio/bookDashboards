@@ -389,9 +389,11 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
      old scrolling row hid Log and Book Club off the right edge); sub-tabs
      still scroll sideways, with a fade at the edge so cut-off tabs read as
      "more". The body reserves room so nothing hides under the bar. */
-  body{padding-bottom:calc(58px + env(safe-area-inset-bottom));}
-  .sec-nav{position:fixed;left:0;right:0;bottom:0;z-index:60;padding:0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);border-bottom:none;border-top:1px solid var(--border);box-shadow:0 -2px 12px rgba(0,0,0,.08);}
-  .sec-nav button{flex:1 1 0;min-width:0;font-size:0.68rem;letter-spacing:0;padding:0.6rem 0.15rem 0.55rem;margin:0;border-bottom:none;border-top:3px solid transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  /* --app-inset-bottom: the Android shell's system-bar height, so the bar's own
+     padding (not an empty band below it) keeps the buttons clear of the gesture bar. */
+  body{padding-bottom:calc(46px + max(env(safe-area-inset-bottom),var(--app-inset-bottom,0px)));}
+  .sec-nav{position:fixed;left:0;right:0;bottom:0;z-index:60;padding:0 env(safe-area-inset-right) max(env(safe-area-inset-bottom),var(--app-inset-bottom,0px)) env(safe-area-inset-left);border-bottom:none;border-top:1px solid var(--border);box-shadow:0 -2px 12px rgba(0,0,0,.08);}
+  .sec-nav button{flex:1 1 0;min-width:0;font-size:0.66rem;letter-spacing:0;padding:0.42rem 0.15rem 0.38rem;margin:0;border-bottom:none;border-top:3px solid transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .sec-nav button.active{border-top-color:var(--gold2);}
   .sec-nav button.bc-btn{margin-left:0;}
   .sec-nav .bc-x{display:none;}
@@ -3264,9 +3266,20 @@ function switchTab(id,sec,fromSection){
 
 function switchYear(y){tyYear=y;rendered.delete('thisyear');renderTab('thisyear');rendered.add('thisyear');}
 
+// Tab moves push a history entry so the phone's back button (and the browser's)
+// walks back through tabs; an action hash (#scan…) or the bare first load is
+// replaced, never kept. popstate restores from the hash without pushing again.
+let navFromHistory=false;
 function updateHash(sec,tab){
-  try{history.replaceState(null,'',`#${sec}/${tab}`);}catch(e){}
+  const target=`#${sec}/${tab}`;
+  if(navFromHistory||location.hash===target)return;
+  const cur=(location.hash||'').replace('#','');
+  try{
+    if(!cur||HASH_ACTIONS[cur.split('/')[0]])history.replaceState(null,'',target);
+    else history.pushState(null,'',target);
+  }catch(e){}
 }
+window.addEventListener('popstate',()=>{navFromHistory=true;try{restoreFromHash();}finally{navFromHistory=false;}});
 // The tab bar sticks just under the masthead, whatever height it wraps to.
 (function(){const h=document.querySelector('header');const set=()=>document.documentElement.style.setProperty('--hdr-h',(h?h.offsetHeight:48)+'px');window.addEventListener('resize',set);window.addEventListener('load',set);set();})();
 
