@@ -133,7 +133,7 @@ async function main(){
   await check('Collecting FR overview matches the register',async()=>{
     await go('col-fr','collecting');
     await waitFor(()=>/Total tracked/.test(ptxt('col-fr')));
-    const fro=ind.slice(1).filter(r=>r[8]==='Forgotten Realms');
+    const fro=ind.slice(1).filter(r=>r[8]==='Forgotten Realms'&&(r[10]||'butthead').trim()==='butthead'); // Collecting follows the reader filter (Com here)
     const want={tracked:fro.length,read:fro.filter(r=>r[7]==='x').length,
                 owned:fro.filter(r=>r[6]==='x').length,need:fro.filter(r=>r[16]==='x').length};
     const t=ptxt('col-fr');
@@ -488,6 +488,34 @@ async function main(){
       const addBtn=cards.every(c=>c.querySelector('button[onclick^="LOG.webAdd"]'));
       res(name,cards.length===3&&both&&flagged&&addBtn,`${cards.length} cards (${titles.join(' | ').slice(0,90)}); merged card carries both sources ${both}; register title flagged ${flagged}`);
     }finally{W.fetch=realFetch;D.getElementById('log-q').value='';}
+  });
+  await check('Both readers: one reader queuing a shared series does not hide it from the other',async()=>{
+    const name='Both readers: one reader queuing a shared series does not hide it from the other';
+    const W=w(),tick=ms=>new Promise(r=>setTimeout(r,ms)),nl=t=>(t||'').toLowerCase().replace(/^\s*(the|a|an)\s+/,'').replace(/[^a-z0-9]/g,'');
+    const rows=ind.slice(1),own=r=>(r[10]||'butthead').trim(),isX=v=>(v||'').trim().toLowerCase()==='x';
+    // a series with an unread owned book on BOTH shelves; Shades of Magic if it is one
+    const per={};for(const r of rows){if(!r[1]||r[1]==='-'||r[1]==='Standalones'||isX(r[7])||!isX(r[6]))continue;(per[r[1]]=per[r[1]]||{}).__x=1;per[r[1]][own(r)]=per[r[1]][own(r)]||r[0];}
+    const shared=Object.keys(per).filter(k=>per[k].butthead&&per[k].goblin);
+    const ser=shared.includes('Shades of Magic')?'Shades of Magic':shared[0];
+    if(!ser){res(name,true,'no series is unread on both shelves — nothing to stage');return;}
+    const comBook=per[ser].butthead;
+    const LS='library-log-sent',before=localStorage.getItem(LS);
+    const key=W.eval('planBookKey')(comBook,ser);
+    const snap=async()=>{await go('tbr','reading');const fresh=W.eval('G._tbrFresh')||[];
+      return{hers:fresh.some(x=>x.owner==='goblin'&&nl(x.name)===nl(ser)),his:fresh.some(x=>(x.owner||'butthead')==='butthead'&&nl(x.name)===nl(ser)),
+        queued:[...doc().querySelectorAll('#tbr-queue .tbr-card')].some(c=>nl(c.dataset.ser)===nl(ser)&&(c.dataset.owner||'butthead')==='butthead'),
+        herPool:W.eval("planPool('goblin')").some(b=>nl(b.series)===nl(ser)),herSpoken:W.eval("planSpokenFor('goblin')").has(key),hisSpoken:W.eval("planSpokenFor('butthead')").has(key)};};
+    const ev={v:1,id:'harness-shared-q',at:new Date().toISOString(),by:'butthead',type:'queue_set',bundle_generated_at:null,payload:{book:{title:comBook,series:ser,owner:'butthead'},action:'add'}};
+    try{
+      W.setOwner('all');await tick(600);
+      const b0=await snap();
+      localStorage.setItem(LS,JSON.stringify([ev].concat(JSON.parse(before||'[]'))));
+      W.setOwner('butthead');await tick(300);W.setOwner('all');await tick(600); // re-render with the event in the pending list
+      const b1=await snap();
+      const hisChanged=b0.his&&!b1.his&&b1.queued&&b1.hisSpoken;
+      const hersSame=b0.hers===b1.hers&&b0.herPool===b1.herPool&&b0.herSpoken===b1.herSpoken;
+      res(name,hisChanged&&hersSame,`${ser}: Com queued '${comBook}' — his Start a series entry ${b0.his}→${b1.his}, Next up ${b1.queued}, spoken ${b1.hisSpoken}; hers unchanged ${hersSame} (offered ${b0.hers}→${b1.hers}, pool ${b0.herPool}→${b1.herPool}, spoken ${b0.herSpoken}→${b1.herSpoken})`);
+    }finally{if(before==null)localStorage.removeItem(LS);else localStorage.setItem(LS,before);W.setOwner('butthead');await tick(300);}
   });
   await check('TBR: the finish form stays inside its card',async()=>{
     const name='TBR: the finish form stays inside its card';
