@@ -1,0 +1,274 @@
+{
+ "generated_at": "2026-09-30T17:19:11+00:00",
+ "owner": "butthead",
+ "site": "https://basdhaweio.github.io/bookDashboards/",
+ "reading_now": [
+  {
+   "title": "The Song of Achilles",
+   "author": "Madeline Miller",
+   "since": "2026-09-12",
+   "cover": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1357177533l/13623848._SY475_.jpg",
+   "register": "Song of Achilles",
+   "series": ""
+  },
+  {
+   "title": "Fall of Light (The Kharkanas Trilogy, #2)",
+   "author": "Steven Erikson",
+   "since": "2026-08-12",
+   "cover": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1440183574l/19381626.jpg",
+   "register": "Fall of Light",
+   "series": "Kharkanas Trilogy"
+  },
+  {
+   "title": "Darkwalker on Moonshae (Forgotten Realms: The Moonshae Trilogy, #1)",
+   "author": "Douglas Niles",
+   "since": "2026-07-04",
+   "cover": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1304761003l/291628.jpg",
+   "register": "Darkwalker on Moonshae",
+   "series": "Moonshae Trilogy"
+  },
+  {
+   "title": "Die, Vol. 2: Split the Party",
+   "author": "Kieron Gillen",
+   "since": "2026-06-02",
+   "cover": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1575345987l/49426262._SX318_SY475_.jpg",
+   "register": "Die Vol 2",
+   "series": "Die"
+  },
+  {
+   "title": "The Nicomachean Ethics",
+   "author": "Aristotle",
+   "since": "2026-03-17",
+   "cover": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1520339295l/19068._SY475_.jpg",
+   "register": "Nicomachean Ethics",
+   "series": ""
+  },
+  {
+   "title": "We: Understanding the Psychology of Romantic Love",
+   "author": "Robert A. Johnson",
+   "since": "2026-02-28",
+   "cover": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1348178893l/110050.jpg",
+   "register": "",
+   "series": ""
+  },
+  {
+   "title": "The Language-Lover's Lexipedia: An A-Z of Linguistic Curiosities",
+   "author": "Joshua Blackburn",
+   "since": "2026-02-28",
+   "cover": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1753186232l/224004756._SY475_.jpg",
+   "register": "Language-Lover's Lexipedia",
+   "series": ""
+  },
+  {
+   "title": "Bedside Companion to Folklore & Magic",
+   "author": "Jane McMorland Hunter",
+   "since": "2026-01-03",
+   "cover": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1742611534l/230170279._SY475_.jpg",
+   "register": "",
+   "series": ""
+  },
+  {
+   "title": "Celtic Weird: Tales of Wicked Folklore and Dark Mythology",
+   "author": "Johnny Mains",
+   "since": "2025-04-21",
+   "cover": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1670582678l/64665323._SX318_.jpg",
+   "register": "Celtic Weird",
+   "series": ""
+  },
+  {
+   "title": "Initiation (Sex Wizards, #1)",
+   "author": "Alethea Faust",
+   "since": "2024-03-16",
+   "cover": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1634761591l/59339420._SY475_.jpg",
+   "register": "Initiation",
+   "series": "Sex Wizards"
+  },
+  {
+   "title": "Small Magic: Short Fiction, 1977-2020",
+   "author": "Terry Brooks",
+   "since": "2022-10-26",
+   "cover": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1593376718l/51115113.jpg",
+   "register": "",
+   "series": ""
+  },
+  {
+   "title": "The Collected Stories of Frank Herbert",
+   "author": "Frank Herbert",
+   "since": "2021-10-21",
+   "cover": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1396820909l/20518903.jpg",
+   "register": "The Collected Stories of Frank Herbert",
+   "series": ""
+  }
+ ],
+ "next_up": [
+  {
+   "title": "Persepolis Rising",
+   "series": "Expanse",
+   "seq": "7",
+   "owned": true
+  },
+  {
+   "title": "Spy x Family Vol 16",
+   "series": "Spy x Family",
+   "seq": "16",
+   "owned": true
+  },
+  {
+   "title": "Engines of Reason",
+   "series": "Elder Race",
+   "seq": "2",
+   "owned": true
+  },
+  {
+   "title": "Iron Gold",
+   "series": "Red Rising",
+   "seq": "4",
+   "owned": true
+  },
+  {
+   "title": "Royal Assassin",
+   "series": "The Farseer Trilogy",
+   "seq": "2",
+   "owned": true
+  },
+  {
+   "title": "Spawn Origins Vol 5",
+   "series": "Spawn Origins",
+   "seq": "5",
+   "owned": true
+  }
+ ],
+ "orders": {
+  "open": 26,
+  "shipped": 0,
+  "lines": [
+   {
+    "id": 101,
+    "order_id": 165,
+    "title": "The Sun Eater #6",
+    "store": "The Broken Binding",
+    "status": "ordered",
+    "eta": "",
+    "tracking": "",
+    "ordered": "2026-08-03"
+   },
+   {
+    "id": 102,
+    "order_id": 165,
+    "title": "The Sun Eater #7",
+    "store": "The Broken Binding",
+    "status": "ordered",
+    "eta": "",
+    "tracking": "",
+    "ordered": "2026-08-03"
+   },
+   {
+    "id": 103,
+    "order_id": 170,
+    "title": "Malazan Book of the Fallen #7",
+    "store": "The Broken Binding",
+    "status": "ordered",
+    "eta": "",
+    "tracking": "",
+    "ordered": "2026-08-04"
+   },
+   {
+    "id": 104,
+    "order_id": 170,
+    "title": "Malazan Book of the Fallen #8",
+    "store": "The Broken Binding",
+    "status": "ordered",
+    "eta": "",
+    "tracking": "",
+    "ordered": "2026-08-04"
+   },
+   {
+    "id": 105,
+    "order_id": 170,
+    "title": "Malazan Book of the Fallen #9",
+    "store": "The Broken Binding",
+    "status": "ordered",
+    "eta": "",
+    "tracking": "",
+    "ordered": "2026-08-04"
+   },
+   {
+    "id": 106,
+    "order_id": 182,
+    "title": "The Echoes Saga #1",
+    "store": "The Broken Binding",
+    "status": "ordered",
+    "eta": "",
+    "tracking": "",
+    "ordered": "2026-08-16"
+   },
+   {
+    "id": 107,
+    "order_id": 182,
+    "title": "The Echoes Saga #2",
+    "store": "The Broken Binding",
+    "status": "ordered",
+    "eta": "",
+    "tracking": "",
+    "ordered": "2026-08-16"
+   },
+   {
+    "id": 108,
+    "order_id": 182,
+    "title": "The Echoes Saga #3",
+    "store": "The Broken Binding",
+    "status": "ordered",
+    "eta": "",
+    "tracking": "",
+    "ordered": "2026-08-16"
+   }
+  ]
+ },
+ "year": {
+  "year": 2026,
+  "read": 54,
+  "target": 155,
+  "pace": 116,
+  "last_year_by_now": 115,
+  "last_year_total": 153,
+  "this_month": 0,
+  "bought": 142
+ },
+ "proposals": {
+  "open": 13
+ },
+ "charts": [
+  {
+   "id": "progress",
+   "title": "Reading progress 2026",
+   "light": "https://basdhaweio.github.io/bookDashboards/data/widget/progress.png",
+   "dark": "https://basdhaweio.github.io/bookDashboards/data/widget/progress-dark.png"
+  },
+  {
+   "id": "history",
+   "title": "Books read per year",
+   "light": "https://basdhaweio.github.io/bookDashboards/data/widget/history.png",
+   "dark": "https://basdhaweio.github.io/bookDashboards/data/widget/history-dark.png"
+  },
+  {
+   "id": "months",
+   "title": "Reads by month · 2026 vs 2025",
+   "light": "https://basdhaweio.github.io/bookDashboards/data/widget/months.png",
+   "dark": "https://basdhaweio.github.io/bookDashboards/data/widget/months-dark.png"
+  },
+  {
+   "id": "buying",
+   "title": "Bought in 2026 · arriving",
+   "light": "https://basdhaweio.github.io/bookDashboards/data/widget/buying.png",
+   "dark": "https://basdhaweio.github.io/bookDashboards/data/widget/buying-dark.png"
+  }
+ ],
+ "links": {
+  "scan": "https://basdhaweio.github.io/bookDashboards/#scan",
+  "add": "https://basdhaweio.github.io/bookDashboards/#add",
+  "order": "https://basdhaweio.github.io/bookDashboards/#order",
+  "tbr": "https://basdhaweio.github.io/bookDashboards/#tbr",
+  "orders": "https://basdhaweio.github.io/bookDashboards/#log/logorders",
+  "proposed": "https://basdhaweio.github.io/bookDashboards/#log/logproposed"
+ }
+}
