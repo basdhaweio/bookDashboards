@@ -524,8 +524,8 @@ async function main(){
     await go('logorders','log');
     const tog=[...doc().querySelectorAll('#log-orderform .ytog button')].find(b=>b.textContent.includes('Com'));if(tog)tog.click();await new Promise(r=>setTimeout(r,200));
     const chips=[...doc().querySelectorAll('#log-orderform .pchip')].map(b=>b.textContent.trim());
-    const lines=doc().querySelectorAll('#log-o-lines .log-line:not(.log-line-hd)').length,inHand=!!doc().querySelector('#log-o-status option[value="arrived"]'),hdr=[...doc().querySelectorAll('#log-o-lines .log-line-hd span')].map(x=>x.textContent).join('|'),author=!!doc().querySelector('#log-o-lines .ol-author');
-    res(name,chips.includes('The Broken Binding')&&chips.includes('Barnes & Noble')&&chips.includes('Tombolo')&&lines>=1&&inHand&&author&&/Title\|Author\|Series\|Vol\|Copies/.test(hdr),`chips ${chips.slice(0,4).join(' | ')}; ${lines} line row(s); columns ${hdr}; in-hand option ${inHand}`);
+    const lines=doc().querySelectorAll('#log-o-lines .log-line:not(.log-line-hd)').length,inHand=!!doc().querySelector('#log-o-status option[value="arrived"]')&&!!doc().querySelector('#log-o-status option[value="shipped"]')&&!!doc().querySelector('#log-o-status option[value="ordered"]'),hdr=[...doc().querySelectorAll('#log-o-lines .log-line-hd span')].map(x=>x.textContent).join('|'),author=!!doc().querySelector('#log-o-lines .ol-author');
+    res(name,chips.includes('The Broken Binding')&&chips.includes('Barnes & Noble')&&chips.includes('Tombolo')&&lines>=1&&inHand&&author&&/Title\|Author\|Series\|Vol\|Copies/.test(hdr),`chips ${chips.slice(0,4).join(' | ')}; ${lines} line row(s); columns ${hdr}; statuses ordered/shipped/in-hand ${inHand}`);
   });
   await check('Orders: an in-hand Tombolo order submits its books as lines',async()=>{
     const name='Orders: an in-hand Tombolo order submits its books as lines';
