@@ -570,6 +570,17 @@ async function main(){
     if(!hit){res(name,true,`${ol.length} ordered line(s) with series+number; none of their series is on the TBR right now`);return;}
     res(name,/on order/.test(hit.card.textContent),`${hit.ser}: card says ${/on order/.test(hit.card.textContent)?'on order':'nothing about the order'}`);
   });
+  await check('Widget links: #add, #order/<id> and #tbr land on the work',async()=>{
+    const name='Widget links: #add, #order/<id> and #tbr land on the work';
+    const W=w(),D=doc(),tick=ms=>new Promise(r=>setTimeout(r,ms));
+    W.runHashAction('add');await tick(150);
+    const onBooks=W.eval('curSec')==='log'&&W.eval('curTab')==='logbook';
+    const open=(D.getElementById('log-orders-open')||{})._open||[];
+    W.runHashAction('tbr');await tick(150);const onTbr=W.eval('curSec')==='reading'&&W.eval('curTab')==='tbr';
+    let ordOk=true,ordNote='no open orders to deep-link';
+    if(open.length){const o=open[0];W.runHashAction('order/'+o.id);await tick(200);const exp=D.querySelector('#log-orders-open .log-exp.open');ordOk=W.eval('curTab')==='logorders'&&!!exp&&exp.id==='log-oexp-open0';ordNote=`order ${o.id} card ${exp?'expanded':'NOT expanded'}`;}
+    res(name,onBooks&&onTbr&&ordOk,`#add → ${W.eval('curSec')}/logbook ${onBooks}; #tbr ${onTbr}; ${ordNote}; scan button ${D.getElementById('log-scanbtn').style.display===''?'shown':'hidden'}`);
+  });
   await check('TBR: the finish form stays inside its card',async()=>{
     const name='TBR: the finish form stays inside its card';
     await go('tbr','reading');

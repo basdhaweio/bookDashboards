@@ -3265,8 +3265,26 @@ function updateHash(sec,tab){
 // The tab bar sticks just under the masthead, whatever height it wraps to.
 (function(){const h=document.querySelector('header');const set=()=>document.documentElement.style.setProperty('--hdr-h',(h?h.offsetHeight:48)+'px');window.addEventListener('resize',set);window.addEventListener('load',set);set();})();
 
+// Action links for the phone widget (docs/WIDGET.md): #scan opens the ISBN
+// camera, #add the Books search, #order the new-order form, #order/<id> that
+// order's card, #tbr (or #read) the TBR. Each lands on the tab and does the
+// one thing, then the hash settles to the ordinary sec/tab form.
+const HASH_ACTIONS={
+  scan:['log','logbook',()=>LOG.scanIsbn()],
+  add:['log','logbook',()=>{const q=document.getElementById('log-q');if(q){q.focus();q.scrollIntoView({block:'center'});}}],
+  order:['log','logorders',arg=>{if(arg&&/^\d+$/.test(arg))return LOG.openOrder(+arg);const f=document.getElementById('log-orderform');if(f)f.scrollIntoView({block:'start'});}],
+  tbr:['reading','tbr',null],read:['reading','tbr',null],
+};
+function runHashAction(hash){
+  const[act,arg]=hash.split('/');const a=HASH_ACTIONS[act];if(!a)return false;
+  switchSection(a[0],a[1]);
+  if(a[2])setTimeout(()=>{try{a[2](arg);}catch(e){console.error('hash action '+act,e);}},60);
+  return true;
+}
+window.addEventListener('hashchange',()=>{const h=(location.hash||'').replace('#','');if(HASH_ACTIONS[h.split('/')[0]])runHashAction(h);});
 function restoreFromHash(){
   const hash=(location.hash||'').replace('#','');
+  if(runHashAction(hash))return;
   const[sec,tab]=hash.split('/');
   const validSecs=new Set(['tracking','reading','buying','collecting','bookclub','log']);
   const validTabs=new Set(['overview','bytype','genre','universe','rooms','tbr','plan','history','thisyear','completion','byseries','toread','comingup','bookmail','toacquire','someday','libgrowth','buythisyear','col-fr','col-dl','col-sr','flyer','bnauthors','logbook','logorders','logpending','logproposed','logmeta']);
@@ -4836,7 +4854,7 @@ const LOG=(()=>{
   function renderBook(){
     document.getElementById('log-setup-book').innerHTML=hintCard();
     const sb=document.getElementById('log-scanbtn');
-    if(sb&&'BarcodeDetector' in window)sb.style.display='';
+    if(sb&&navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)sb.style.display='';
     const n=(G.indBooks||[]).filter(b=>needsData(b).length).length;
     document.getElementById('log-needs-bar').innerHTML=n
       ?`<button class="log-ghost" style="margin-bottom:0.8rem;border-color:var(--coral);color:var(--coral)" onclick="LOG.showNeedsData()">⚠ ${n} book${n===1?'':'s'} missing genre, media, author, or a real title — review</button>`
@@ -5536,26 +5554,45 @@ const LOG=(()=>{
   // Camera scan: BarcodeDetector is Chrome/Android territory — the 📷 button
   // only appears where the API exists (renderBook toggles it), so iPhones
   // simply never see it.
-  let scanStream=null,scanTimer=null;
+  // Firefox (John's phone browser) has no BarcodeDetector: ZXing is fetched
+  // on first use and decodes the same video stream (docs/WIDGET.md).
+  let scanStream=null,scanTimer=null,zxReader=null;
+  function loadZXing(){
+    if(window.ZXing)return Promise.resolve(window.ZXing);
+    return new Promise((ok,bad)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js';
+      sc.onload=()=>window.ZXing?ok(window.ZXing):bad(new Error('barcode library did not initialise'));sc.onerror=()=>bad(new Error('barcode library failed to load'));document.head.appendChild(sc);});
+  }
+  const isbnHit=t=>/^97[89]\d{10}$/.test(t||'');
   async function scanIsbn(){
-    let det;
-    try{det=new BarcodeDetector({formats:['ean_13']});}catch(e){return toast('No barcode support in this browser',true);}
+    let det=null,ZX=null;
+    if('BarcodeDetector' in window){try{det=new BarcodeDetector({formats:['ean_13']});}catch(e){det=null;}}
+    if(!det){try{ZX=await loadZXing();}catch(e){return toast('No barcode support in this browser ('+e.message+')',true);}}
     const wrap=document.getElementById('log-scanwrap');
     wrap.style.display='block';
     wrap.innerHTML='<video id="log-scanvid" playsinline muted style="width:100%;max-width:340px;border-radius:8px;display:block;margin-bottom:6px"></video><button class="log-act" onclick="LOG.stopScan()">✕ Stop scanning</button>';
     try{scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});}
     catch(e){wrap.style.display='none';wrap.innerHTML='';return toast('Camera unavailable: '+e.message,true);}
     const v=document.getElementById('log-scanvid');
+    const found=code=>{document.getElementById('log-isbn').value=code;stopScan();isbnLookup();};
+    if(!det){
+      try{
+        const hints=new Map([[ZX.DecodeHintType.POSSIBLE_FORMATS,[ZX.BarcodeFormat.EAN_13]]]);
+        zxReader=new ZX.BrowserMultiFormatReader(hints,300);
+        await zxReader.decodeFromStream(scanStream,v,(res)=>{if(res&&isbnHit(res.getText()))found(res.getText());});
+      }catch(e){stopScan();return toast('Scanner failed: '+e.message,true);}
+      return;
+    }
     v.srcObject=scanStream;await v.play();
     scanTimer=setInterval(async()=>{
       try{
-        const c=(await det.detect(v)).find(x=>/^97[89]\d{10}$/.test(x.rawValue));
-        if(c){document.getElementById('log-isbn').value=c.rawValue;stopScan();isbnLookup();}
+        const c=(await det.detect(v)).find(x=>isbnHit(x.rawValue));
+        if(c)found(c.rawValue);
       }catch(e){}
     },300);
   }
   function stopScan(){
     clearInterval(scanTimer);scanTimer=null;
+    if(zxReader){try{zxReader.reset();}catch(e){}zxReader=null;}
     if(scanStream){scanStream.getTracks().forEach(t=>t.stop());scanStream=null;}
     const w=document.getElementById('log-scanwrap');
     if(w){w.style.display='none';w.innerHTML='';}
@@ -5807,6 +5844,12 @@ const LOG=(()=>{
     el.classList.add('open');
   }
   function toggleRow(id){const e=document.getElementById(id);if(e)e.style.display=e.style.display==='none'?'':'none';}
+  function openOrder(orderId){
+    const el=document.getElementById('log-orders-open');const i=((el&&el._open)||[]).findIndex(o=>o.id===orderId);
+    if(i<0)return toast('That order is no longer open',true);
+    const row=document.getElementById('log-oexp-open'+i);if(row&&!row.classList.contains('open'))expandOrder(i,'open');
+    if(row)row.scrollIntoView({block:'center'});
+  }
   // order_line_set events still in flight overlay the bundle's lines.
   function pendingLineSets(){const seen=new Set();return[...(pendCache||[]),...sent().filter(e=>!BUNDLE||e.at>BUNDLE.generated_at)].filter(e=>e.type==='order_line_set'&&!seen.has(e.id)&&seen.add(e.id));}
   function linesWithPending(o){
@@ -6265,7 +6308,7 @@ const LOG=(()=>{
     toggleOrderHistory,findInRegister,storeFromOrderNo,logFlyerOrders,trackSeriesFromIsbn,submitTrackSeries,
     finishBook,setNeed,pendingBooks,today,queueSet,pendingQueue,acquireBook,setPubDate,
     renderPeople,doAuthorMerge,doAuthorRename,doAuthorAlias,addCreditRow,saveCredits,
-    pendingLinks,linkGoodreads,prefillAdd,doScanUpcoming,planSet,pendingPlan,webAdd,orderStore,orderLineAdd,orderLineDel,doLineSet,doLinesShipAll,lineShipPrompt};
+    pendingLinks,linkGoodreads,prefillAdd,doScanUpcoming,planSet,pendingPlan,webAdd,orderStore,orderLineAdd,orderLineDel,doLineSet,doLinesShipAll,lineShipPrompt,openOrder};
 })();
 
 async function init(){
