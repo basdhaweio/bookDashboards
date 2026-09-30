@@ -15,6 +15,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.Worker
 import androidx.work.WorkerParameters
+import androidx.work.workDataOf
 import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
@@ -33,6 +34,14 @@ class WidgetWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params)
         val mgr = AppWidgetManager.getInstance(ctx)
         val ids = mgr.getAppWidgetIds(ComponentName(ctx, LibraryWidget::class.java))
         if (ids.isEmpty()) return Result.success()
+
+        // Every redraw makes the launcher re-inflate the widget (a visible
+        // flash). Unless a tap asked for it, never redraw more than once per
+        // 20 s — that breaks any update→redraw→update loop a launcher sets up.
+        val force = inputData.getBoolean(KEY_FORCE, false)
+        val last = Prefs.lastRun(ctx)
+        val now = System.currentTimeMillis()
+        if (!force && now - last < 20_000L) return Result.success()
 
         // Offline keeps the last good JSON and chart instead of blanking the widget.
         var offline = false
@@ -56,8 +65,12 @@ class WidgetWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params)
             if (cache.exists()) BitmapFactory.decodeFile(cache.path) else null
         }
 
+        // Offline with something already on screen: leave it alone and try later.
+        if (offline && last > 0L && !force) return Result.retry()
+
         val views = buildViews(ctx, data, bitmap, chart, offline)
         for (id in ids) mgr.updateAppWidget(id, views)
+        Prefs.setLastRun(ctx, now)
         return if (!offline) Result.success() else Result.retry()
     }
 
@@ -181,11 +194,15 @@ class WidgetWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params)
             "buying" to "Bought · arriving",
         )
 
-        fun enqueue(context: Context) {
+        const val KEY_FORCE = "force"
+
+        fun enqueue(context: Context, force: Boolean = false) {
             WorkManager.getInstance(context).enqueueUniqueWork(
                 "library-widget",
                 ExistingWorkPolicy.REPLACE,
-                OneTimeWorkRequestBuilder<WidgetWorker>().build()
+                OneTimeWorkRequestBuilder<WidgetWorker>()
+                    .setInputData(workDataOf(KEY_FORCE to force))
+                    .build()
             )
         }
     }
