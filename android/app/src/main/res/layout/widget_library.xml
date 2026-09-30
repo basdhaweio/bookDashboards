@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- RemoteViews layout: only LinearLayout / TextView / ImageView, no custom
+     views. Colours come from values/colors.xml and values-night/colors.xml so
+     the widget follows the system theme; the chart PNG is picked to match. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_bg"
+    android:paddingStart="12dp"
+    android:paddingEnd="12dp"
+    android:paddingTop="10dp"
+    android:paddingBottom="8dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <TextView android:id="@+id/btn_scan" style="@style/WidgetButton" android:layout_marginEnd="6dp" android:text="@string/btn_scan" />
+        <TextView android:id="@+id/btn_add" style="@style/WidgetButton" android:layout_marginEnd="6dp" android:text="@string/btn_add" />
+        <TextView android:id="@+id/btn_order" style="@style/WidgetButton" android:layout_marginEnd="6dp" android:text="@string/btn_order" />
+        <TextView android:id="@+id/btn_read" style="@style/WidgetButton" android:text="@string/btn_read" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/reading"
+        style="@style/WidgetLine"
+        android:layout_marginTop="8dp"
+        android:textStyle="bold"
+        android:text="@string/placeholder_reading" />
+
+    <TextView
+        android:id="@+id/year"
+        style="@style/WidgetLine"
+        android:textColor="@color/widget_muted"
+        android:text="@string/placeholder_year" />
+
+    <TextView android:id="@+id/order1" style="@style/WidgetLine" android:layout_marginTop="4dp" android:text="" />
+    <TextView android:id="@+id/order2" style="@style/WidgetLine" android:text="" />
+    <TextView android:id="@+id/order3" style="@style/WidgetLine" android:text="" />
+
+    <ImageView
+        android:id="@+id/chart"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="6dp"
+        android:scaleType="fitStart"
+        android:adjustViewBounds="true"
+        android:contentDescription="@string/chart" />
+
+    <TextView
+        android:id="@+id/status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:textSize="10sp"
+        android:textColor="@color/widget_muted"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:text="@string/placeholder_status" />
+</LinearLayout>

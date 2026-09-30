@@ -42,6 +42,21 @@ Everything is public, like the bundle it is drawn from.
 honoured when the app is already open (a `hashchange` listener), then settles
 to the ordinary `#section/tab` form.
 
+## The app (recommended) — `android/`
+
+A native Android app with a real home-screen widget, built by GitHub Actions
+(`.github/workflows/android-build.yml`) on every push to `android/` and kept at
+a fixed URL:
+
+**https://github.com/basdhaweio/bookDashboards/releases/download/android-latest/library.apk**
+
+Open that on the phone, allow installs from the browser once, install, then
+long-press the home screen → Widgets → **Library**. The widget shows the four
+buttons, reading now, the year line, three order lines (tap → the order card),
+the chart (tap → next chart) and a status line (tap → refresh); it follows the
+system light/dark theme and refreshes every 30 minutes. Details in
+`android/README.md`. The KWGT route below still works if you prefer it.
+
 ## KWGT recipe
 
 Install **KWGT Kustom Widget Maker** from the Play Store (the Pro key, a few

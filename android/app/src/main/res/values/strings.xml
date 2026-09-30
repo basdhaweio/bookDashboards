@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Library</string>
+    <string name="widget_label">Library</string>
+    <string name="widget_description">Reading progress, what\'s on order, and quick Scan / Add / Order / Read.</string>
+    <string name="chart">Chart</string>
+    <string name="btn_scan">📷 Scan</string>
+    <string name="btn_add">＋ Add</string>
+    <string name="btn_order">🧾 Order</string>
+    <string name="btn_read">📖 Read</string>
+    <string name="placeholder_reading">Reading: …</string>
+    <string name="placeholder_year">Loading the library…</string>
+    <string name="placeholder_status">tap to refresh</string>
+</resources>

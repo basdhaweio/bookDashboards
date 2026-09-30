@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- the dashboard's palette (index.html :root); night values in values-night -->
+    <color name="library_bg">#F6F2EA</color>
+    <color name="library_teal">#2F8F8A</color>
+    <color name="widget_bg">#F2F6F2EA</color>
+    <color name="widget_text">#3B3733</color>
+    <color name="widget_muted">#8A837A</color>
+    <color name="widget_btn">#2F8F8A</color>
+    <color name="widget_btn_text">#FFFFFF</color>
+</resources>
