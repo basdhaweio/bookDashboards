@@ -55,8 +55,10 @@ async function check(name,fn){
 async function main(){
   // A previous run may have died half way: start clean, and load a fresh copy of the app (no cached build).
   localStorage.removeItem('library-log-cfg');localStorage.removeItem('library-log-sent');
-  fr.src='/index.html?v='+Date.now();
-  const raw=await(await fetch('/data/bookdb.json',{cache:'no-store'})).text();
+  // Relative to /tests/ so the harness runs from the dev server root AND from the
+  // published site under /bookDashboards/.
+  fr.src=new URL('../index.html?v='+Date.now(),location.href).href;
+  const raw=await(await fetch(new URL('../data/bookdb.json',location.href).href,{cache:'no-store'})).text();
   const d=JSON.parse(raw);
   const tabs=d.tabs;
   const tget=suf=>{const hit=Object.entries(tabs).find(([k])=>k.endsWith('|'+suf));return hit&&hit[1];};
