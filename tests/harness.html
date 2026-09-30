@@ -517,6 +517,57 @@ async function main(){
       res(name,hisChanged&&hersSame,`${ser}: Com queued '${comBook}' — his Start a series entry ${b0.his}→${b1.his}, Next up ${b1.queued}, spoken ${b1.hisSpoken}; hers unchanged ${hersSame} (offered ${b0.hers}→${b1.hers}, pool ${b0.herPool}→${b1.herPool}, spoken ${b0.herSpoken}→${b1.herSpoken})`);
     }finally{if(before==null)localStorage.removeItem(LS);else localStorage.setItem(LS,before);W.setOwner('butthead');await tick(300);}
   });
+  await check('Orders: the form offers store chips, book lines and an in-hand status',async()=>{
+    const name='Orders: the form offers store chips, book lines and an in-hand status';
+    await go('logorders','log');
+    const tog=[...doc().querySelectorAll('#log-orderform .ytog button')].find(b=>b.textContent.includes('Com'));if(tog)tog.click();await new Promise(r=>setTimeout(r,200));
+    const chips=[...doc().querySelectorAll('#log-orderform .pchip')].map(b=>b.textContent.trim());
+    const lines=doc().querySelectorAll('#log-o-lines .log-line').length,inHand=!!doc().querySelector('#log-o-status option[value="arrived"]');
+    res(name,chips.includes('The Broken Binding')&&chips.includes('Barnes & Noble')&&chips.includes('Tombolo')&&lines>=1&&inHand,`chips ${chips.slice(0,4).join(' | ')}; ${lines} line row(s); in-hand option ${inHand}`);
+  });
+  await check('Orders: an in-hand Tombolo order submits its books as lines',async()=>{
+    const name='Orders: an in-hand Tombolo order submits its books as lines';
+    const W=w(),D=doc(),tick=ms=>new Promise(r=>setTimeout(r,ms));
+    const sentBodies=[],realFetch=W.fetch;let LOGi=null;
+    W.fetch=async(url,opts={})=>{const u=String(url);if(!u.includes('api.github.com'))return realFetch(url,opts);
+      if((opts.method||'GET')==='PUT'){try{sentBodies.push(JSON.parse(decodeURIComponent(escape(atob(JSON.parse(opts.body).content)))));}catch(e){sentBodies.push({err:String(e)});}return new W.Response('{"content":{}}',{status:201,headers:{'Content-Type':'application/json'}});}
+      return new W.Response(u.includes('/contents/inbox')?'[]':'{}',{status:200,headers:{'Content-Type':'application/json'}});};
+    try{
+      LOGi=W.eval('LOG');await LOGi.saveSetup({closest:()=>({querySelector:sel=>({value:sel.includes('repo')?'harness/stub':'harness-stand-in'})})});await tick(300);
+      await go('logorders','log');LOGi.orderStore('Tombolo');await tick(200);
+      const known=(W.eval('G.indBooks')||[])[0];
+      D.querySelector('#log-o-lines .log-line .ol-title').value=known?known.title:'Harness Book';
+      LOGi.orderLineAdd();await tick(200);
+      const rows=D.querySelectorAll('#log-o-lines .log-line');rows[1].querySelector('.ol-title').value='Harness Range 4-6';rows[1].querySelector('.ol-eta').value='2026-12-01';
+      D.getElementById('log-o-status').value='arrived';
+      await LOGi.doNewOrder();await tick(400);
+      const ev=sentBodies.find(e=>e.type==='order_new'),p=(ev||{}).payload||{};
+      const ok=!!ev&&p.store==='Tombolo'&&p.status==='arrived'&&Array.isArray(p.lines)&&p.lines.length===4&&p.lines[1].series==='Harness Range'&&p.lines[1].seq==='4'&&p.lines[3].seq==='6'&&p.lines[1].eta==='2026-12-01'&&!('count' in p);
+      res(name,ok,`event ${!!ev}; store ${p.store}; status ${p.status}; ${(p.lines||[]).length} lines (${(p.lines||[]).map(l=>l.title||l.series+' #'+l.seq).join(', ').slice(0,90)})`);
+    }finally{W.fetch=realFetch;if(LOGi)LOGi.forgetSetup();localStorage.removeItem('library-log-cfg');localStorage.removeItem('library-log-sent');}
+  });
+  await check('Orders: an open order with lines offers per-line Shipped and Arrived',async()=>{
+    const name='Orders: an open order with lines offers per-line Shipped and Arrived';
+    const W=w(),D=doc();
+    await go('logorders','log');
+    const open=D.getElementById('log-orders-open')._open||[];
+    const i=open.findIndex(o=>o.lines&&o.lines.some(l=>l.status==='ordered'));
+    if(i<0){res(name,true,'no open order with an ordered line — nothing to expand');return;}
+    W.eval('LOG').expandOrder(i,'open');await new Promise(r=>setTimeout(r,200));
+    const exp=D.getElementById('log-oexp-open'+i);
+    const arrived=[...exp.querySelectorAll('button')].filter(b=>/status:'arrived'/.test(b.getAttribute('onclick')||'')).length,shipped=[...exp.querySelectorAll('button')].filter(b=>/^LOG\.lineShipPrompt/.test(b.getAttribute('onclick')||'')).length;
+    res(name,arrived>=1&&shipped>=1,`order ${open[i].order||open[i].books}: ${open[i].lines.length} line(s); ${arrived} Arrived, ${shipped} Shipped button(s)`);
+  });
+  await check('TBR: a book on an open order line shows on order',async()=>{
+    const name='TBR: a book on an open order line shows on order';
+    const nl=t=>(t||'').toLowerCase().replace(/^\s*(the|a|an)\s+/,'').replace(/[^a-z0-9]/g,'');
+    const ol=(tget('Order Lines')||[]).slice(1).filter(r=>(r[13]||'')==='ordered'&&(r[7]||'').trim()&&(r[8]||'').trim());
+    await go('tbr','reading');
+    const cards=[...doc().querySelectorAll('#tab-tbr .tbr-card')];
+    const hit=ol.map(r=>({ser:r[7].trim(),card:cards.find(c=>nl(c.dataset.ser)===nl(r[7]))})).find(x=>x.card);
+    if(!hit){res(name,true,`${ol.length} ordered line(s) with series+number; none of their series is on the TBR right now`);return;}
+    res(name,/on order/.test(hit.card.textContent),`${hit.ser}: card says ${/on order/.test(hit.card.textContent)?'on order':'nothing about the order'}`);
+  });
   await check('TBR: the finish form stays inside its card',async()=>{
     const name='TBR: the finish form stays inside its card';
     await go('tbr','reading');

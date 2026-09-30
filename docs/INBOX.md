@@ -398,6 +398,31 @@ number derives The Broken Binding; the Book Club flyer's order form logs one
 number. The store rides onto the acquisition when the order arrives and is
 updatable via `order_update` `set.store`.
 
+**Lines (migration 029, 2026-09-30).** The book is the unit that ships and
+arrives; the order is the receipt that groups them. Orders from Tombolo or
+Barnes & Noble may have no order number and no tracking, and every shop ships
+lines separately, so the dashboard's Book Mail form now sends `lines` and the
+order-level fields are derived from them:
+```json
+{"list": "bookmail", "date": "2026-09-30", "order": "", "store": "Tombolo",
+ "type": "One-Time", "sub": "", "paid": "Paid", "status": "ordered",
+ "books": "Ashes of Man; Sun Eater #7",
+ "lines": [{"title": "Ashes of Man", "series": "", "seq": "", "qty": 1, "eta": "2026-11-03", "price": "24.99"},
+           {"title": "", "series": "Sun Eater", "seq": "7", "qty": 1, "eta": "", "price": ""}]}
+```
+Each line names a book by exact `title`, or by `series` + `seq` (the form
+expands a title typed as `Series 4-6` into one line per volume). `qty`,
+`eta` (release or expected date, ISO) and `price` are optional. `status:
+"arrived"` is an in-store purchase: every line arrives on `date` at once.
+`books` is optional — jerry summarises it from the lines (`lines_summary`)
+and the dashboard sends the same text so pending chips key alike. `count` is
+the sum of line quantities. Arrival of a line marks its register book owned
+with a dated acquisition (exact match only), else parks an
+`add_book_from_inbox` proposal carrying the acquisition. An order with
+`contains` (omnibus) is one line — the volume — and its arrival takes the
+omnibus path below instead of matching the volume's title. Orders without
+`lines` keep the legacy text path.
+
 `list: "bookboxes"` — Shereen's model: one row per book in a subscription-box
 lifecycle, matching her Book Boxes sheet (`by` is `goblin`). `title` may be
 empty — she pre-logs boxes before titles are announced. `want` is
@@ -423,7 +448,30 @@ Expected `set` keys for `bookboxes` once wired: `received` (date or "Yes"),
 Only keys present in `set` change. Values follow the sheet's vocabulary:
 `paid` is `Paid`/`Unpaid`, `delivered` is `Fulfilled`/`Unfulfilled`, `fulfil`
 is the arrival date. `delivered: "Fulfilled"` + a `fulfil` date is the UI's
-"Arrived today" action.
+"Arrived today" action. `ref.id` (the order's bundle `Id`, col 15 of Book
+Mail Orders) is preferred when present; the strings remain as a fallback.
+On an order with lines, `delivered: "Fulfilled"` settles every open line as
+arrived on `fulfil` (the UI's "All arrived") and `"Cancelled"` cancels the
+open lines; arrived lines stay arrived.
+
+### `order_line_set` (migration 029)
+One line of a Book Mail order changes state. `ref` names the order (`id`, or
+the legacy `date`/`order`/`books`), `line` the line (`id` from the
+`bookdb|Order Lines` tab, or `position`, or `title`+`series`+`seq`):
+```json
+{"ref": {"id": 184, "date": "2026-09-01", "order": "#TBBSUB826849", "books": "The Echoes Saga 4-6"},
+ "line": {"id": 97},
+ "set": {"status": "shipped", "tracking": "1Z…"}}
+```
+`set.status` is `ordered` | `shipped` | `arrived` | `cancelled`; `shipped_on`
+and `arrived_on` default to today when the status changes without them.
+Other keys: `tracking`, `eta`, `price`, `qty`, `title`, `series`, `seq`,
+`notes`. `arrived` runs the same arrival as an order-level Fulfilled for that
+one book (owned + dated acquisition, or an add proposal); on an omnibus order
+the contained works are owned once the whole order is in. The order's
+Delivered / Arrived / Tracking / Count follow its lines
+(`refresh_order_status`). The dashboard emits one event per line — "All
+shipped" with a tracking number is N events, one per open line.
 
 ## Consumer contract
 

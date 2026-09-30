@@ -340,6 +340,9 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
 .log-exp{display:none;border-top:1px solid var(--border);background:var(--bg3);padding:12px 13px;}
 .log-exp.open{display:block;}
 .log-frow{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+.log-line{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:3px 0;}
+.log-line input{font:inherit;font-size:12px;padding:4px 6px;border:1px solid var(--border2);border-radius:6px;min-width:0;}
+.log-line .ol-title{flex:1 1 220px;}.log-line .ol-series{flex:1 1 150px;}.log-line .ol-seq{width:52px;}.log-line .ol-qty{width:56px;}.log-line .ol-price{width:70px;}
 /* a long confirm label (Log it — read “…”) wraps inside a 250px card instead of running past its edge (John, 2026-09-27) */
 .log-frow .log-act{white-space:normal;max-width:100%;}
 .log-frow input[type=date]{max-width:100%;min-width:0;}
@@ -1218,7 +1221,7 @@ function parseOrders(vals){
   const orders=[];
   for(let i=1;i<vals.length;i++){
     const r=vals[i];if(!r[0]&&!r[2])continue;
-    orders.push({date:(r[0]||'').trim(),order:(r[1]||'').trim(),books:(r[2]||'').trim(),series:(r[3]||'').trim(),author:(r[4]||'').trim(),paid:(r[5]||'').trim(),delivered:(r[6]||'').trim(),tracking:(r[7]||'').trim(),fulfil:(r[8]||'').trim(),type:(r[9]||'').trim(),sub:(r[10]||'').trim(),count:n(r[12]),contains:(r[13]||'').trim(),store:(r[14]||'').trim()});
+    orders.push({date:(r[0]||'').trim(),order:(r[1]||'').trim(),books:(r[2]||'').trim(),series:(r[3]||'').trim(),author:(r[4]||'').trim(),paid:(r[5]||'').trim(),delivered:(r[6]||'').trim(),tracking:(r[7]||'').trim(),fulfil:(r[8]||'').trim(),type:(r[9]||'').trim(),sub:(r[10]||'').trim(),count:n(r[12]),contains:(r[13]||'').trim(),store:(r[14]||'').trim(),id:n(r[15]),lines:[]});
   }
   return orders;
 }
@@ -1940,7 +1943,12 @@ function renderTBR(){
   // sheet's rows marked Ordered and not yet Received (John, 2026-09-23).
   // Returns {store, eta} or null; the book decides whose list to ask.
   const openBoxes=(G.boxes||[]).filter(x=>x.open);
+  // Open order lines first (the book is what ships): by title, or by series +
+  // number; lines still in flight to the inbox count too.
+  const openLines=[...(G.orderLines||[]).filter(l=>l.status==='ordered'||l.status==='shipped'),...(G.pendLines||[]).map(l=>Object.assign({status:'ordered',pending:true},l))];
+  const lineFor=b=>openLines.find(l=>(l.title&&nl(l.title)===nl(b.title))||(l.series&&l.seq&&nl(l.series)===nl(b.series)&&parseFloat(l.seq)===parseFloat(b.seq)));
   const onOrder=b=>{const k=nl(b.title);if(!k)return null;
+    if(own(b)!=='goblin'){const l=lineFor(b);if(l)return{store:l.store||'',eta:l.eta||'',status:l.status,pending:!!l.pending};}
     if(own(b)==='goblin'){const x=openBoxes.find(x=>x.title&&(nl(x.title)===k||(k.length>=8&&nl(x.title).includes(k))));return x?{store:[x.vendor,x.box].filter(Boolean).join(' '),eta:x.eta||''}:null;}
     const o=open.find(o=>nl(o.books).includes(k)||(o.contains||'').split('\n').some(l=>nl(l.replace(/\s+#\S+$/,''))===k));return o?{store:o.store||'',eta:''}:null;};
   const inProg=series.filter(s=>s.inProg);
@@ -2017,7 +2025,7 @@ function renderTBR(){
   const chip=nx=>{if(pendRead.has(pk(nx)))return'<span class="badge b-teal">read · pending</span>';
     if(nx._gap)return`<span class="badge b-coral">#${nx._gap} missing from the register</span>`;
     const o=onOrder(nx);
-    if(o)return`<span class="badge b-gold">on order${o.store?' · '+esc(o.store):''}${o.eta?' · ETA '+esc(o.eta):''}</span>`;
+    if(o)return`<span class="badge b-gold">on order${o.store?' · '+esc(o.store):''}${o.status==='shipped'?' · shipped':''}${o.eta?' · ETA '+esc(o.eta):''}${o.pending?' · pending':''}</span>`;
     if(nx.owned)return'<span class="badge b-green">on the shelf</span>';
     const r=rel(nx);
     if(r==='tba')return'<span class="badge b-gray">not out yet · TBA</span>';
@@ -4448,13 +4456,15 @@ function bcBuildItems(){
   // Open orders name the book: the register's (with the shop and date) and
   // the ones still queued in the inbox (logged from this flyer minutes ago).
   const openOrders=(G.orders||[]).filter(o=>o.delivered!=='Fulfilled'&&o.delivered!=='Cancelled').map(o=>({k:nl(o.books),store:o.store||'',date:o.date||'',pending:false}));
+  (G.orderLines||[]).filter(l=>l.title&&(l.status==='ordered'||l.status==='shipped')).forEach(l=>openOrders.push({k:nl(l.title),store:l.store||'',date:l.date||'',pending:false,eta:l.eta||''}));
+  (G.pendLines||[]).filter(l=>l.title).forEach(l=>openOrders.push({k:nl(l.title),store:l.store||'',date:l.date||'',pending:true,eta:l.eta||''}));
   if(G.pendOrd&&G.pendOrd.mail)for(const[k,sets]of G.pendOrd.mail)if(sets.__new)openOrders.push({k:nl(k.split('|')[1]),store:'',date:'',pending:true});
   items.forEach(it=>{
     const k=nl(it.title),who=sn(it.author),owners=owned.get(k);
     const had=!!owners&&(!who.size||owners.some(o=>!o.size||[...who].some(w=>o.has(w))));
     if(had){it.ordered='Have';it.isNew=false;return;}
     const oo=k&&it.ordered!=='Have'&&openOrders.find(t=>t.k&&t.k.includes(k));
-    if(oo){it.ordered='Preordered';it.store=oo.store;it.orderDate=oo.date;it.pendingOrder=oo.pending;}
+    if(oo){it.ordered='Preordered';it.store=oo.store;it.orderDate=oo.date;it.pendingOrder=oo.pending;if(oo.eta&&!it.release)it.release=oo.eta;}
   });
   // Release calendars read forward. ISO dates carry their year; a month-only
   // date (the Interested sheet) is this year when the month is upcoming or
@@ -4736,6 +4746,8 @@ const LOG=(()=>{
       case'order_new':return p.list==='bookboxes'
         ?`🎁 Box: ${p.vendor}${p.box?' '+p.box:''} — ${p.title||'title TBA'}${p.want&&p.want!=='Yes'?' · want: '+p.want:''}`
         :`🧾 New order ${p.order||''}${p.store?' at '+p.store:''} — ${p.books||'?'}`;
+      case'order_line_set':{const s=Object.entries(p.set||{}).map(([k,v])=>`${k}: ${v}`).join(', ');const r=p.ref||{},l=p.line||{};
+        return`🧾 Order ${r.order||('#'+(r.id||'?'))} line ${l.id?'#'+l.id:l.position?l.position:(l.title||l.series||'')} → ${s}`;}
       case'order_update':{const s=Object.entries(p.set||{}).map(([k,v])=>v===true?k:`${k}: ${v}`).join(', ');
         return p.list==='bookboxes'
           ?`🎁 ${(p.ref&&p.ref.vendor)||''}${p.ref&&p.ref.box?' '+p.ref.box:''} — ${(p.ref&&p.ref.title)||'TBA'} → ${s}`
@@ -4760,6 +4772,8 @@ const LOG=(()=>{
       tgt.set(k,sets);
     });
     G.pendOrd=m;
+    // Lines on a new order that jerry has not applied yet (TBR / Coming Up chips).
+    G.pendLines=[];(list||[]).forEach(ev=>{const p=ev.payload||{};if(ev.type==='order_new'&&p.list!=='bookboxes'&&Array.isArray(p.lines))p.lines.forEach(l=>G.pendLines.push({title:l.title||'',series:l.series||'',seq:l.seq||'',store:p.store||'',date:p.date||'',eta:l.eta||''}));});
   }
 
   async function refreshBadge(){
@@ -5632,18 +5646,23 @@ const LOG=(()=>{
       document.getElementById('log-orders-done').innerHTML=(aheadB.length?`<div class="ms" style="margin:6px 0">Pencilled in, not ordered yet · ${aheadB.length}</div>`+aheadB.map(b=>brow(b,-1,false)).join(''):'')+`<div class="ms" style="margin:10px 0 6px">Received · last 5</div>`+(doneB.map(b=>brow(b,-1,false)).join('')||'<div class="ms">—</div>');
       refreshBadge();return;
     }
+    // The store chooses the form: The Broken Binding keeps its order number,
+    // subscription type and paid flag; Barnes & Noble and Tombolo need only a
+    // date and the books. Each book is a line that ships on its own; a title
+    // typed as "Series 4-6" becomes one line per volume (John, 2026-09-30).
+    const stores=storeOptions();if(!stores.includes('Barnes & Noble'))stores.splice(1,0,'Barnes & Noble');
+    const st=orderForm.store,isTBB=st==='The Broken Binding';
     document.getElementById('log-orderform').innerHTML=tog+`
       <div class="cb">
-      <div class="log-frow"><label>Date</label><input type="date" id="log-o-date" value="${today()}"></div>
-      <div class="log-frow"><label>Order #</label><input id="log-o-num" placeholder="#TBBSUB…" oninput="LOG.storeFromOrderNo(this.value)"></div>
-      <div class="log-frow"><label>Store</label>${storeSelect('log-o-store','')}</div>
-      <div class="log-frow"><label>Books</label><input id="log-o-books" placeholder="e.g. The Sun Eater 1-3"></div>
-      <div class="log-frow"><label>Series</label><input id="log-o-series"></div>
-      <div class="log-frow"><label>Author</label><input id="log-o-author"></div>
-      <div class="log-frow"><label>Count</label><input type="number" id="log-o-count" value="1" inputmode="numeric" style="max-width:90px"></div>
-      <div class="log-frow"><label>Type</label><select id="log-o-type"><option>One-Time</option><option value="Sub">Subscription</option></select></div>
+      <div class="log-frow"><label>Store</label><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">${stores.map(x=>`<button class="pchip${x===st?' on':''}" data-s="${esc(x)}" onclick="LOG.orderStore(this.dataset.s)">${esc(x)}</button>`).join('')}<input id="log-o-store-other" placeholder="another shop…" value="${st&&!stores.includes(st)?esc(st):''}" style="max-width:150px;font:inherit;font-size:12px;padding:4px 6px;border:1px solid var(--border2);border-radius:6px" onchange="LOG.orderStore(this.value)"></div></div>
+      <div class="log-frow"><label>Date</label><input type="date" id="log-o-date" value="${esc(orderForm.date||today())}"></div>
+      <div class="log-frow"><label>Order #</label><input id="log-o-num" value="${esc(orderForm.num||'')}" placeholder="${isTBB?'#TBBSUB…':'optional'}" onchange="LOG.storeFromOrderNo(this.value)"></div>
+      ${isTBB?`<div class="log-frow"><label>Type</label><select id="log-o-type"><option>One-Time</option><option value="Sub">Subscription</option></select></div>
       <div class="log-frow"><label>Sub</label><input id="log-o-sub" list="log-sub-kinds" placeholder="SF&amp;F, Fantasy, …"><datalist id="log-sub-kinds"><option>SF&amp;F</option><option>Fantasy</option><option>Sci-fi</option><option>N/A</option></datalist></div>
-      <div class="log-frow"><label>Paid?</label><select id="log-o-paid"><option>Paid</option><option>Unpaid</option></select></div>
+      <div class="log-frow"><label>Paid?</label><select id="log-o-paid"><option>Paid</option><option>Unpaid</option></select></div>`:''}
+      <div class="log-frow" style="align-items:flex-start"><label style="padding-top:6px">Books</label><div style="flex:1" id="log-o-lines">${orderLineRows()}</div></div>
+      <div class="log-frow"><label></label><button class="log-act" onclick="LOG.orderLineAdd()">＋ another book</button><span class="ms">each book ships on its own · "Series 4-6" becomes one line per volume · ETA is the release or expected date</span></div>
+      <div class="log-frow"><label>Status</label><select id="log-o-status"><option value="ordered"${orderForm.status!=='arrived'?' selected':''}>Ordered — on its way</option><option value="arrived"${orderForm.status==='arrived'?' selected':''}>In hand — bought today</option></select></div>
       <div class="log-frow"><label>Omnibus?</label><label class="ms"><input type="checkbox" id="log-o-omni" onchange="LOG.toggleRow('log-o-omnirow')"> one volume containing several works</label></div>
       <div id="log-o-omnirow" style="display:none">
         <div class="log-frow"><label>Contains</label><textarea id="log-o-contains" rows="3" placeholder="works inside, one per line (optional #seq)&#10;— arrival marks each one owned automatically" style="flex:1;font:inherit"></textarea></div>
@@ -5660,13 +5679,22 @@ const LOG=(()=>{
     // (John, 2026-09-22).
     const hist=(G.orders||[]).filter(o=>!isOpen(o)).slice().reverse();
     const done=histAll?hist:hist.slice(0,5);
+    // With lines the badge counts arrivals; legacy orders keep the old states.
+    const mailBadge=o=>{const L=o.lines||[],live=L.filter(l=>l.status!=='cancelled'),arr=live.filter(l=>l.status==='arrived').length,shp=live.filter(l=>l.status==='shipped').length;
+      if(o.delivered==='Cancelled')return'<span class="badge b-gray">Cancelled</span>';
+      if(o.delivered==='Fulfilled')return'<span class="badge b-green">Fulfilled</span>';
+      if(o.paid==='Unpaid')return'<span class="badge b-coral">Unpaid</span>';
+      if(live.length&&arr)return`<span class="badge b-teal">${arr} of ${live.length} in</span>`;
+      if(live.length&&shp)return`<span class="badge b-teal">${shp===live.length?'Shipped':shp+' of '+live.length+' shipped'}</span>`;
+      if(live.length)return`<span class="badge b-gold">Ordered${live.length>1?' · '+live.length+' books':''}</span>`;
+      return o.tracking?'<span class="badge b-teal">Shipped</span>':'<span class="badge b-gold">Unfulfilled</span>';};
     const row=(o,i,list)=>`<div class="log-item">
       <div class="log-item-hd" style="cursor:pointer" onclick="LOG.expandOrder(${i},'${list}')">
         <div class="log-item-info">
           <div class="log-item-title" data-okey="${esc(ordKeyMail(o))}">${esc(o.books||(o.sub&&o.sub!=='N/A'?o.sub+' credit — title TBD':'TBD'))}</div>
           <div class="log-item-meta">${esc(o.date)}${o.type==='Sub'?' · '+esc(o.sub&&o.sub!=='N/A'?o.sub+' subscription':'subscription'):''} · ${esc(o.order||'no #')}${o.store?' · '+esc(o.store):''}${o.series?' · '+esc(o.series):''}${o.contains?` · <span style="color:var(--purple)">omnibus of ${o.contains.split('\n').filter(Boolean).length}</span>`:''}</div>
         </div>
-        <span class="badge ${o.delivered==='Cancelled'?'b-gray':o.paid==='Unpaid'?'b-coral':o.delivered==='Fulfilled'?'b-green':o.tracking?'b-teal':'b-gold'}">${o.delivered==='Cancelled'?'Cancelled':o.delivered==='Fulfilled'?'Fulfilled':o.paid==='Unpaid'?'Unpaid':o.tracking?'Shipped':'Unfulfilled'}</span>
+        ${mailBadge(o)}
       </div>
       <div class="log-exp" id="log-oexp-${list}${i}"></div></div>`;
     document.getElementById('log-orders-open').innerHTML=open.map((o,i)=>row(o,i,'open')).join('')||'<div class="ms">No open orders.</div>';
@@ -5684,7 +5712,7 @@ const LOG=(()=>{
   function storeSelect(id,cur){return`<select id="${id}"><option value="">—</option>${storeOptions().map(v=>`<option${v===cur?' selected':''}>${esc(v)}</option>`).join('')}</select>`;}
   // A #TBB… order number means The Broken Binding — fill the store when it
   // is still blank, never overwrite a choice.
-  function storeFromOrderNo(v){const s=document.getElementById('log-o-store');if(s&&!s.value&&/^#TBB/i.test((v||'').trim()))s.value='The Broken Binding';}
+  function storeFromOrderNo(v){if(!orderForm.store&&/^#TBB/i.test((v||'').trim()))orderStore('The Broken Binding');}
   // Jump to the Book tab with this title in the search box: the row's Got
   // it › Edition is where a hardback or special edition gets recorded.
   function findInRegister(t){
@@ -5735,6 +5763,34 @@ const LOG=(()=>{
       ${books}${edit}`;
       el.classList.add('open');return;
     }
+    if(o.lines&&o.lines.length){
+      // Lines (migration 029): each book ships and arrives on its own. Order-level
+      // All arrived / All shipped sweep whatever is still open; Cancel closes the open lines.
+      const L=linesWithPending(o),td=today(),anyOrdered=L.some(l=>l.status==='ordered'&&!l.pending);
+      const lineRow=l=>`<div class="log-frow" style="align-items:center"><label></label><div style="flex:1;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <span>${esc(l.title||(l.series?l.series+(l.seq?' #'+l.seq:''):'?'))}${l.qty>1?' ×'+l.qty:''}${l.eta?` <span class="ms">· due ${esc(l.eta)}</span>`:''}${l.title?`<span class="ms">${regTag(l.title)}</span>`:''}</span>
+        <span class="badge ${l.status==='arrived'?'b-green':l.status==='shipped'?'b-teal':l.status==='cancelled'?'b-gray':'b-gold'}">${esc(l.status)}${l.status==='shipped'&&l.tracking?' · '+esc(l.tracking):''}${l.status==='arrived'&&l.arrivedOn?' '+esc(l.arrivedOn):''}${l.pending?' · pending':''}</span>
+        ${(l.status==='ordered'||l.status==='shipped')&&!l.pending?`<button class="log-act" onclick="LOG.doLineSet(${i},${l.id},{status:'arrived',arrived_on:'${td}'})">Arrived today</button>`:''}
+        ${l.status==='ordered'&&!l.pending?`<button class="log-act" onclick="LOG.lineShipPrompt(${i},${l.id})">Shipped</button>`:''}
+        ${(l.status==='ordered'||l.status==='shipped')&&!l.pending?`<button class="log-act" style="border-color:var(--coral);color:var(--coral)" title="cancel this line" onclick="if(confirm('Cancel this line?'))LOG.doLineSet(${i},${l.id},{status:'cancelled'})">✕</button>`:''}
+        <span id="log-ol-${l.id}"></span></div></div>`;
+      el.innerHTML=`
+      <div class="log-frow"><label>Update</label>
+        ${o.paid==='Unpaid'?`<button class="log-act" onclick="LOG.doOrderUpdate(${i},{paid:'Paid'})">Mark paid</button>`:''}
+        <button class="log-act" onclick="LOG.toggleRow('log-o-arr-${tag}')">All arrived</button>
+        ${anyOrdered?`<button class="log-act" onclick="LOG.toggleRow('log-o-shp-${tag}')">All shipped</button>`:''}
+        <button class="log-act" onclick="LOG.toggleRow('log-o-edit-${tag}')">Edit details</button>
+        <button class="log-act" style="border-color:var(--coral);color:var(--coral)" onclick="if(confirm('Cancel the whole order? Open lines close; arrived ones stay.'))LOG.doOrderUpdate(${i},{delivered:'Cancelled'})">Cancel order</button>
+      </div>
+      <div class="log-frow" id="log-o-arr-${tag}" style="display:none"><label>On</label>
+        <input type="date" id="log-o-arrd-${tag}" value="${td}">
+        <button class="log-act primary" onclick="LOG.doOrderUpdate(${i},{delivered:'Fulfilled',fulfil:document.getElementById('log-o-arrd-${tag}').value})">Confirm — every open line arrived</button></div>
+      <div class="log-frow" id="log-o-shp-${tag}" style="display:none"><label>Tracking</label>
+        <input id="log-o-shpt-${tag}" placeholder="tracking # (optional)">
+        <button class="log-act primary" onclick="LOG.doLinesShipAll(${i},document.getElementById('log-o-shpt-${tag}').value.trim())">Confirm — every ordered line shipped</button></div>
+      ${L.map(lineRow).join('')}${edit}`;
+      el.classList.add('open');return;
+    }
     el.innerHTML=`
       <div class="log-frow"><label>Update</label>
         ${o.paid==='Unpaid'?`<button class="log-act" onclick="LOG.doOrderUpdate(${i},{paid:'Paid'})">Mark paid</button>`:''}
@@ -5751,6 +5807,31 @@ const LOG=(()=>{
     el.classList.add('open');
   }
   function toggleRow(id){const e=document.getElementById(id);if(e)e.style.display=e.style.display==='none'?'':'none';}
+  // order_line_set events still in flight overlay the bundle's lines.
+  function pendingLineSets(){const seen=new Set();return[...(pendCache||[]),...sent().filter(e=>!BUNDLE||e.at>BUNDLE.generated_at)].filter(e=>e.type==='order_line_set'&&!seen.has(e.id)&&seen.add(e.id));}
+  function linesWithPending(o){
+    const L=(o.lines||[]).map(l=>Object.assign({},l));
+    for(const ev of pendingLineSets()){const p=ev.payload||{};if(!p.ref||+p.ref.id!==o.id)continue;const l=L.find(x=>x.id===+((p.line||{}).id));if(!l)continue;
+      const st=p.set||{};if(st.status)l.status=st.status;if(st.tracking)l.tracking=st.tracking;if(st.arrived_on)l.arrivedOn=st.arrived_on;l.pending=true;}
+    return L;
+  }
+  async function doLineSet(i,lineId,set,quiet){
+    const o=orderAt(i,'open');if(!o)return false;
+    const ok=await submit('order_line_set',{ref:Object.assign({id:o.id},orderRef(o)),line:{id:lineId},set},null,'butthead');
+    if(ok&&!quiet){toast(set.status==='arrived'?'Arrival logged — the book is marked owned when jerry catches up':set.status==='shipped'?'Shipped':set.status==='cancelled'?'Line cancelled':'Line updated');renderOrders();}
+    return ok;
+  }
+  async function doLinesShipAll(i,tracking){
+    const o=orderAt(i,'open');if(!o)return;
+    const open=linesWithPending(o).filter(l=>l.status==='ordered'&&!l.pending);let n=0;
+    for(const l of open){if(await doLineSet(i,l.id,Object.assign({status:'shipped'},tracking?{tracking}:{}),true))n++;else break;}
+    toast(`${n} line${n===1?'':'s'} marked shipped`);renderOrders();
+  }
+  function lineShipPrompt(i,lineId){
+    const slot=document.getElementById('log-ol-'+lineId);if(!slot)return;
+    slot.innerHTML=`<input id="log-olt-${lineId}" placeholder="tracking # (optional)" style="font:inherit;font-size:12px;padding:4px 6px;border:1px solid var(--border2);border-radius:6px"><button class="log-act primary" onclick="LOG.doLineSet(${i},${lineId},Object.assign({status:'shipped'},document.getElementById('log-olt-${lineId}').value.trim()?{tracking:document.getElementById('log-olt-${lineId}').value.trim()}:{}))">Confirm shipped</button>`;
+    const inp=document.getElementById('log-olt-'+lineId);if(inp)inp.focus();
+  }
   async function doOrderUpdate(i,set,allowEmptyTracking,list){
     const o=orderAt(i,list||'open');if(!o)return;
     // the Save button must not wipe tracking via an empty input; the
@@ -5812,21 +5893,58 @@ const LOG=(()=>{
     const ok=await submit('order_update',{list:'bookboxes',ref:boxRef(b),set},null,'goblin');
     if(ok){toast('Box edit logged');renderOrders();}
   }
+  // The form's state survives a re-render (a store chip re-draws the form).
+  let orderForm={store:'',date:'',num:'',status:'ordered',lines:[{}]};
+  function orderFormRead(){
+    const v=id=>{const e=document.getElementById(id);return e?e.value.trim():'';};
+    if(document.getElementById('log-o-date'))orderForm.date=v('log-o-date');
+    if(document.getElementById('log-o-num'))orderForm.num=v('log-o-num');
+    if(document.getElementById('log-o-status'))orderForm.status=v('log-o-status');
+    if(document.getElementById('log-o-lines'))orderForm.lines=orderLinesRead();
+  }
+  function orderStore(sname){orderFormRead();orderForm.store=(sname||'').trim();renderOrders();}
+  function orderLineRows(){
+    const mine=(G.allIndBooks||[]).filter(b=>(b.owner||'butthead')==='butthead');
+    const titles=[...new Set(mine.map(b=>b.title).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+    const sers=[...new Set(mine.map(b=>b.series).filter(x=>x&&x!=='Standalones'))].sort((a,b)=>a.localeCompare(b));
+    const L=orderForm.lines.length?orderForm.lines:[{}];
+    return`<datalist id="log-dl-otitles">${titles.map(t=>`<option>${esc(t)}</option>`).join('')}</datalist><datalist id="log-dl-oseries">${sers.map(t=>`<option>${esc(t)}</option>`).join('')}</datalist>`
+      +L.map((l,i)=>`<div class="log-line" data-i="${i}"><input class="ol-title" list="log-dl-otitles" placeholder="title — or series + # →" value="${esc(l.title||'')}"><input class="ol-series" list="log-dl-oseries" placeholder="series" value="${esc(l.series||'')}"><input class="ol-seq" placeholder="#" value="${esc(l.seq||'')}"><input class="ol-qty" type="number" min="1" title="copies" value="${esc(String(l.qty||1))}"><input class="ol-eta" type="date" title="release / expected" value="${esc(l.eta||'')}"><input class="ol-price" placeholder="price" value="${esc(l.price||'')}">${L.length>1?`<button class="log-act" onclick="LOG.orderLineDel(${i})" title="remove this line">✕</button>`:''}</div>`).join('');
+  }
+  function orderLinesRead(){
+    return[...document.querySelectorAll('#log-o-lines .log-line')].map(r=>{const g=c=>{const e=r.querySelector('.'+c);return e?e.value.trim():'';};
+      return{title:g('ol-title'),series:g('ol-series'),seq:g('ol-seq'),qty:+g('ol-qty')||1,eta:g('ol-eta'),price:g('ol-price')};});
+  }
+  function orderLineAdd(){orderFormRead();orderForm.lines.push({});renderOrders();const rows=document.querySelectorAll('#log-o-lines .log-line');const last=rows[rows.length-1];if(last)last.querySelector('.ol-title').focus();}
+  function orderLineDel(i){orderFormRead();orderForm.lines.splice(i,1);if(!orderForm.lines.length)orderForm.lines.push({});renderOrders();}
+  // "Series 4-6" typed as a title is one line per volume; the range keeps the line's ETA and price.
+  function expandLines(lines){
+    const out=[];
+    for(const l of lines){
+      const m=(l.title||'').match(/^(.*?)\s+(\d+)\s*[-–]\s*(\d+)$/);
+      if(m&&!l.series&&+m[3]>=+m[2]&&+m[3]-+m[2]<=12){for(let k=+m[2];k<=+m[3];k++)out.push({title:'',series:m[1].trim(),seq:String(k),qty:1,eta:l.eta||'',price:l.price||''});}
+      else out.push(l);
+    }
+    return out;
+  }
+  const linesText=lines=>lines.map(l=>l.title||(l.series&&l.seq?l.series+' #'+l.seq:l.series)).filter(Boolean).join('; ');
   async function doNewOrder(){
-    const v=id=>document.getElementById(id).value.trim();
-    // Subscription credits are pre-logged before a title is assigned — allow
-    // blank Books when the order is a sub with its kind named.
-    if(!v('log-o-books')&&!(v('log-o-type')==='Sub'&&v('log-o-sub')))return toast('Books required (or mark it a Sub and name which)',true);
-    const p={list:'bookmail',date:v('log-o-date'),order:v('log-o-num'),books:v('log-o-books'),
-      series:v('log-o-series'),author:v('log-o-author'),count:+v('log-o-count')||1,
-      type:v('log-o-type'),sub:v('log-o-sub'),paid:v('log-o-paid'),store:v('log-o-store')};
-    if(document.getElementById('log-o-omni').checked){
-      const lines=v('log-o-contains').split('\n').map(s=>s.trim()).filter(Boolean);
-      if(lines.length<2)return toast('An omnibus order needs its contained works, one per line',true);
-      p.contains=lines;p.count=lines.length;
+    orderFormRead();
+    const v=id=>{const e=document.getElementById(id);return e?e.value.trim():'';};
+    const store=orderForm.store;if(!store)return toast('Pick the store first',true);
+    const isTBB=store==='The Broken Binding',type=isTBB?v('log-o-type'):'One-Time',sub=isTBB?v('log-o-sub'):'',paid=isTBB?v('log-o-paid'):'Paid';
+    const lines=expandLines(orderForm.lines.filter(l=>l.title||l.series));
+    if(!lines.length&&!(type==='Sub'&&sub))return toast('Name at least one book (or mark a subscription credit and its kind)',true);
+    // books mirrors what jerry stores (lines_summary) so pending chips key the same
+    const p={list:'bookmail',date:orderForm.date||today(),order:orderForm.num,store,type,sub,paid,lines,books:linesText(lines),status:orderForm.status||'ordered'};
+    if(document.getElementById('log-o-omni')&&document.getElementById('log-o-omni').checked){
+      const cl=v('log-o-contains').split('\n').map(x=>x.trim()).filter(Boolean);
+      if(cl.length<2)return toast('An omnibus order needs its contained works, one per line',true);
+      if(lines.length!==1)return toast('An omnibus is one volume — one line, with its works under Contains',true);
+      p.contains=cl;
     }
     const ok=await submit('order_new',p,null,'butthead');
-    if(ok){toast('Order logged'+(p.contains?' (omnibus of '+p.contains.length+')':''));renderOrders();}
+    if(ok){toast(p.status==='arrived'?`Logged as in hand — ${lines.length} book${lines.length===1?'':'s'} marked owned when jerry catches up`:`Order logged — ${lines.length} line${lines.length===1?'':'s'}`);orderForm={store,date:'',num:'',status:'ordered',lines:[{}]};renderOrders();}
   }
   // Book Club flyer → real orders: one bookmail order per checked title,
   // no order number, store as picked (Tombolo by default). Arrival then
@@ -5835,7 +5953,7 @@ const LOG=(()=>{
   async function logFlyerOrders(items,store,paid){
     let n=0;
     for(const it of items){
-      const p={list:'bookmail',date:today(),order:'',books:it.title,series:it.series||'',author:it.author||'',count:1,type:'One-Time',sub:'',paid:paid||'Unpaid',store:store||'Tombolo'};
+      const p={list:'bookmail',date:today(),order:'',books:it.title,series:it.series||'',author:it.author||'',count:1,type:'One-Time',sub:'',paid:paid||'Unpaid',store:store||'Tombolo',lines:[{title:it.title,series:it.series||'',qty:1}]};
       if(await submit('order_new',p,null,'butthead'))n++;else break;
     }
     if(n)toast(`${n} order${n===1?'':'s'} logged at ${store||'Tombolo'}`);
@@ -6147,7 +6265,7 @@ const LOG=(()=>{
     toggleOrderHistory,findInRegister,storeFromOrderNo,logFlyerOrders,trackSeriesFromIsbn,submitTrackSeries,
     finishBook,setNeed,pendingBooks,today,queueSet,pendingQueue,acquireBook,setPubDate,
     renderPeople,doAuthorMerge,doAuthorRename,doAuthorAlias,addCreditRow,saveCredits,
-    pendingLinks,linkGoodreads,prefillAdd,doScanUpcoming,planSet,pendingPlan,webAdd};
+    pendingLinks,linkGoodreads,prefillAdd,doScanUpcoming,planSet,pendingPlan,webAdd,orderStore,orderLineAdd,orderLineDel,doLineSet,doLinesShipAll,lineShipPrompt};
 })();
 
 async function init(){
@@ -6252,6 +6370,11 @@ async function init(){
       list.push({num:list.length+1,date:m?(+m[2])+'/'+(+m[3]):'',iso:(r[2]||'').trim(),title:(r[3]||'').trim(),series:(r[4]||'').trim(),genre:(r[5]||'').trim(),media:(r[6]||'').trim(),pages:n(r[7])});});
     G.interested=parseInterested(intV);
     G.orders=parseOrders(ordV);
+    // Order lines (migration 029): the book is the unit that ships and arrives;
+    // the order groups them. Orders from Tombolo or Barnes & Noble may have no
+    // number and no tracking, and any store ships lines separately (John, 2026-09-30).
+    G.orderLines=(BUNDLE.tabs['bookdb|Order Lines']||[]).slice(1).map(r=>({id:+r[0],orderId:+r[1],date:(r[2]||'').trim(),orderNo:(r[3]||'').trim(),store:(r[4]||'').trim(),position:+r[5]||0,title:(r[6]||'').trim(),series:(r[7]||'').trim(),seq:(r[8]||'').trim(),bookId:+r[9]||0,qty:+r[10]||1,price:(r[11]||'').trim(),eta:(r[12]||'').trim(),status:(r[13]||'ordered').trim(),shippedOn:(r[14]||'').trim(),tracking:(r[15]||'').trim(),arrivedOn:(r[16]||'').trim(),notes:(r[17]||'').trim()})).filter(l=>l.id);
+    {const byOrder={};G.orderLines.forEach(l=>(byOrder[l.orderId]=byOrder[l.orderId]||[]).push(l));(G.orders||[]).forEach(o=>{o.lines=byOrder[o.id]||[];});}
     G.growthMetrics=parseGrowthMetrics(growthMetricsV);
     G.growthYear=parseGrowthYear(growthYearV);
     buildCollecting();
