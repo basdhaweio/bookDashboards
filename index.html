@@ -951,7 +951,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
     <div class="panel active" id="tab-logbook">
       <div id="log-setup-book"></div>
       <div class="sl">Finished, acquired, or fixing up a book</div>
-      <input id="log-q" class="log-search" type="search" placeholder="Search title, series, or author…" autocomplete="off" oninput="LOG.search()">
+      <input id="log-q" class="log-search" type="search" placeholder="Search title, series, or author — the register first, then Open Library and Google Books…" autocomplete="off" oninput="LOG.search()">
       <div class="log-frow" style="margin:6px 0 2px;gap:6px;align-items:center">
         <input id="log-isbn" inputmode="numeric" placeholder="ISBN — do I have this?" autocomplete="off" style="max-width:220px" onkeydown="if(event.key==='Enter')LOG.isbnLookup()">
         <button class="log-ghost" onclick="LOG.isbnLookup()">🔎 ISBN</button>
@@ -4932,7 +4932,83 @@ const LOG=(()=>{
     const br=document.getElementById('log-br-q');if(br)br.value='';
     const hits=(G.indBooks||[]).filter(b=>
       b.title.toLowerCase().includes(q)||b.series.toLowerCase().includes(q)||b.author.toLowerCase().includes(q)).slice(0,30);
-    renderHits(hits,'<div class="ms" style="padding:8px 2px">No matches. Use “Add a book” below if it\'s new.</div>');
+    renderHits(hits,'<div class="ms" style="padding:8px 2px">No matches in the register.</div>');
+    // …and elsewhere: Open Library and Google Books answer the same words
+    // live, merged by ISBN, so a new book is a pick from a list rather than
+    // a form to fill (John, 2026-09-30). Debounced; nothing leaves the page
+    // until typing pauses.
+    document.getElementById('log-results').insertAdjacentHTML('beforeend','<div id="log-web"></div>');
+    scheduleWeb((document.getElementById('log-q').value||'').trim());
+  }
+  let webT=null,webSeq=0,webItems=[];const webCache={};
+  function scheduleWeb(q){
+    clearTimeout(webT);
+    const box=document.getElementById('log-web');if(!box)return;
+    if(q.length<4){box.innerHTML='';return;}
+    box.innerHTML='<div class="ms" style="padding:8px 2px">Elsewhere — Open Library · Google Books: looking…</div>';
+    webT=setTimeout(()=>webSearch(q),600);
+  }
+  const _nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const _sur=n=>{const w=(n||'').trim().split(/\s+/);return (w[w.length-1]||'').toLowerCase();};
+  async function webSearch(q){
+    const my=++webSeq,box=document.getElementById('log-web');if(!box)return;
+    let items=webCache[q];
+    if(!items){
+      const to=(p,ms)=>Promise.race([p,new Promise(r=>setTimeout(()=>r(null),ms))]);
+      const enc=encodeURIComponent(q);
+      // Open Library: a title search first (precise), the general search
+      // only when that finds nothing (an author, a series). Google Books'
+      // anonymous pool runs out most days (HTTP 429) — it helps when it can.
+      const fields='&limit=8&fields=key,title,subtitle,author_name,first_publish_year,isbn,cover_i,publisher';
+      const olGet=u=>to(fetch(u).then(async r=>r.ok?((await r.json()).docs||[]):[]).catch(()=>[]),7000);
+      const ol=olGet('https://openlibrary.org/search.json?title='+enc+fields).then(async d=>(d&&d.length)?d:await olGet('https://openlibrary.org/search.json?q='+enc+fields));
+      // a name in the box (no digits, two or three words) is also tried as an author, after the title matches
+      const byAuthor=/^[^\d]+$/.test(q)&&q.split(/\s+/).length<=3?olGet('https://openlibrary.org/search.json?author='+enc+'&sort=editions'+fields.replace('limit=8','limit=6')):Promise.resolve([]);
+      let gbNote='';
+      const gb=to(fetch('https://www.googleapis.com/books/v1/volumes?country=US&printType=books&maxResults=8&q='+enc)
+        .then(async r=>{if(r.ok)return (await r.json()).items||[];gbNote=r.status===429?'Google Books is over its daily quota — Open Library only':'Google Books answered '+r.status;return[];}).catch(()=>{gbNote='Google Books did not answer';return[];}),7000);
+      const [od0,oa,gi]=await Promise.all([ol,byAuthor,gb]);
+      if(my!==webSeq)return;
+      const od=(od0||[]).concat((oa||[]).filter(a=>!(od0||[]).some(d=>d.key===a.key)));
+      webCache[q+'|note']=gbNote;
+      const fromGB=(gi||[]).map(v=>{const vi=v.volumeInfo||{},ids=(vi.industryIdentifiers||[]);
+        return{title:vi.title||'',subtitle:vi.subtitle||'',author:[...new Set(vi.authors||[])].join(', '),year:(vi.publishedDate||'').slice(0,4),publisher:vi.publisher||'',
+          isbns:ids.filter(x=>/ISBN/.test(x.type)).map(x=>x.identifier.replace(/[^0-9Xx]/g,'')),cover:((vi.imageLinks||{}).thumbnail||'').replace(/^http:/,'https:'),src:['Google Books']};});
+      const fromOL=(od||[]).map(d=>({title:d.title||'',subtitle:d.subtitle||'',author:[...new Set(d.author_name||[])].join(', '),year:d.first_publish_year?String(d.first_publish_year):'',publisher:(d.publisher||[])[0]||'',
+        isbns:(d.isbn||[]).slice(0,40),cover:d.cover_i?'https://covers.openlibrary.org/b/id/'+d.cover_i+'-M.jpg':'',src:['Open Library']}));
+      // merge: a shared ISBN, or the same title by the same surname, is one book
+      const same=(a,b)=>a.isbns.some(i=>b.isbns.includes(i))||(_nk(a.title)===_nk(b.title)&&(!a.author||!b.author||_sur(a.author)===_sur(b.author)));
+      items=fromGB.map(g=>{const o=fromOL.find(x=>same(g,x));if(o){o._used=true;return Object.assign({},g,{isbns:[...new Set([...g.isbns,...o.isbns])],cover:g.cover||o.cover,year:g.year||o.year,publisher:g.publisher||o.publisher,src:['Google Books','Open Library']});}return g;})
+        .concat(fromOL.filter(x=>!x._used)).filter(x=>x.title);
+      items.sort((a,b)=>b.src.length-a.src.length);
+      // one card per book: a second edition of the same title and author folds in
+      const seen=[];items=items.filter(x=>{const dup=seen.find(y=>same(x,y));if(dup){dup.isbns=[...new Set([...dup.isbns,...x.isbns])];return false;}seen.push(x);return true;}).slice(0,12);
+      webCache[q]=items;
+    }
+    if(my!==webSeq)return;
+    webItems=items;
+    const owner=OWNER==='all'?'butthead':OWNER;
+    const status=b=>{const k=_nk(b.title),rows=(G.allIndBooks||[]).filter(x=>_nk(x.title)===k);
+      const mine=rows.find(x=>(x.owner||'butthead')===owner),other=rows.find(x=>(x.owner||'butthead')!==owner&&x.owned);
+      if(mine)return`<span class="badge ${mine.read?'b-teal':mine.owned?'b-green':'b-gray'}">in the register${mine.read?' · read':mine.owned?' · on the shelf':' · tracked'}</span>`;
+      return other?`<span class="badge ${(other.owner||'butthead')==='goblin'?'b-purple':'b-teal'}">${esc(OWNER_LABEL[other.owner||'butthead'])} has it</span>`:'';};
+    const note=webCache[q+'|note']||'';
+    box.innerHTML=`<div class="ms" style="padding:10px 2px 4px">Elsewhere — Open Library · Google Books${items.length?'':': nothing found'}${note?' <span style="color:var(--text3)">· '+esc(note)+'</span>':''}</div>`
+      +items.map((b,i)=>`<div class="log-item log-web-item"><div class="log-item-hd">${b.cover?`<img src="${esc(b.cover)}" alt="" referrerpolicy="no-referrer" style="width:44px;height:66px;object-fit:cover;border-radius:4px;flex-shrink:0">`:thumbHTML('','',b.isbns[0]||'',44)}
+        <div class="log-item-info"><div class="log-item-title">${esc(b.title)}${b.subtitle?` <span class="ms">${esc(b.subtitle)}</span>`:''}</div>
+        <div class="log-item-meta">${[b.author,b.year,b.publisher].filter(Boolean).map(esc).join(' · ')} · <span class="ms">${b.src.join(' + ')}${b.isbns.length?' · '+b.isbns.length+' ISBN'+(b.isbns.length===1?'':'s'):''}</span> ${status(b)}</div></div>
+        <div class="log-acts"><button class="log-act primary" onclick="LOG.webAdd(${i})" title="prefill the add form from this listing — check series and status, then Add">＋ Add</button></div></div></div>`).join('');
+  }
+  // The listing → the add form, like the ISBN and Goodreads paths: the
+  // "(Series, #n)" suffix Google Books sometimes carries becomes series and
+  // number; the first ISBN rides along so the next sync matches it.
+  function webAdd(i){
+    const b=webItems[i];if(!b)return;
+    const m=(b.title||'').match(/^(.*?)\s*\(([^()]*?)(?:,?\s*#\s*([\d.]+))?\)\s*$/),tagged=!!(m&&m[3]);
+    const title=tagged?m[1].trim():b.title,series=tagged?m[2].replace(/,\s*$/,'').trim():'',seq=tagged?m[3]:'';
+    const isbn=b.isbns.find(x=>x.length===13)||b.isbns[0]||'';
+    prefillAdd({title,series,seq,author:b.author,isbn,owner:OWNER==='all'?'butthead':OWNER,
+      note:`Prefilled from ${b.src.join(' + ')} — check series, genre and status, then Add`});
   }
   function showNeedsData(){
     document.getElementById('log-q').value='';
@@ -6071,7 +6147,7 @@ const LOG=(()=>{
     toggleOrderHistory,findInRegister,storeFromOrderNo,logFlyerOrders,trackSeriesFromIsbn,submitTrackSeries,
     finishBook,setNeed,pendingBooks,today,queueSet,pendingQueue,acquireBook,setPubDate,
     renderPeople,doAuthorMerge,doAuthorRename,doAuthorAlias,addCreditRow,saveCredits,
-    pendingLinks,linkGoodreads,prefillAdd,doScanUpcoming,planSet,pendingPlan};
+    pendingLinks,linkGoodreads,prefillAdd,doScanUpcoming,planSet,pendingPlan,webAdd};
 })();
 
 async function init(){

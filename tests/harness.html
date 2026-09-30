@@ -466,6 +466,29 @@ async function main(){
     W.setOwner('butthead');
     res(name,ok,`${cands.length} candidate(s); ${cands[0][1].slice(0,40)} on ${o}'s shelf: card ${!!card}, badge+button ${ok}`);
   });
+  await check('Books: a title search asks Open Library and Google Books and merges them',async()=>{
+    const name='Books: a title search asks Open Library and Google Books and merges them';
+    const W=w(),D=doc(),tick=ms=>new Promise(r=>setTimeout(r,ms));
+    const known=(W.eval('G.indBooks')||[])[0];
+    const realFetch=W.fetch;
+    // stand-ins for the two services: one book in both (shared ISBN), one only in Google Books, one only in Open Library (a register title)
+    const gb={items:[{volumeInfo:{title:'Harness Book Alpha',authors:['Ada Tester'],publishedDate:'2021-03-01',publisher:'Stub House',industryIdentifiers:[{type:'ISBN_13',identifier:'9780000000017'}],imageLinks:{thumbnail:'http://books.google.com/x.jpg'}}},
+      {volumeInfo:{title:'Harness Book Beta (Beta Cycle, #2)',authors:['Bo Tester'],publishedDate:'2019',industryIdentifiers:[{type:'ISBN_10',identifier:'0000000027'}]}}]};
+    const ol={docs:[{title:'Harness Book Alpha',author_name:['Ada Tester'],first_publish_year:2021,isbn:['9780000000017','0000000019'],cover_i:12345},
+      {title:known?known.title:'Harness Book Gamma',author_name:[known?(known.author||'').split(',')[0]:'Cy Tester'],first_publish_year:1999,isbn:['9780000000031']}]};
+    W.fetch=async(url,opts)=>{const u=String(url);if(u.includes('openlibrary.org/search.json'))return new W.Response(JSON.stringify(ol),{status:200,headers:{'Content-Type':'application/json'}});
+      if(u.includes('googleapis.com/books'))return new W.Response(JSON.stringify(gb),{status:200,headers:{'Content-Type':'application/json'}});return realFetch(url,opts);};
+    try{
+      await go('logbook','log');
+      D.getElementById('log-q').value='harness book';W.eval('LOG').search();await tick(1200);
+      const cards=[...D.querySelectorAll('#log-web .log-web-item')];
+      const titles=cards.map(c=>c.querySelector('.log-item-title').textContent.trim());
+      const merged=cards.find(c=>/Harness Book Alpha/.test(c.textContent)),both=!!merged&&/Google Books \+ Open Library/.test(merged.textContent)&&/2 ISBNs/.test(merged.textContent);
+      const flagged=known?cards.some(c=>c.textContent.includes(known.title)&&/in the register/.test(c.textContent)):true;
+      const addBtn=cards.every(c=>c.querySelector('button[onclick^="LOG.webAdd"]'));
+      res(name,cards.length===3&&both&&flagged&&addBtn,`${cards.length} cards (${titles.join(' | ').slice(0,90)}); merged card carries both sources ${both}; register title flagged ${flagged}`);
+    }finally{W.fetch=realFetch;D.getElementById('log-q').value='';}
+  });
   await check('TBR: the finish form stays inside its card',async()=>{
     const name='TBR: the finish form stays inside its card';
     await go('tbr','reading');
