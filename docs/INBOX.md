@@ -407,12 +407,15 @@ order-level fields are derived from them:
 {"list": "bookmail", "date": "2026-09-30", "order": "", "store": "Tombolo",
  "type": "One-Time", "sub": "", "paid": "Paid", "status": "ordered",
  "books": "Ashes of Man; Sun Eater #7",
- "lines": [{"title": "Ashes of Man", "series": "", "seq": "", "qty": 1, "eta": "2026-11-03", "price": "24.99"},
+ "lines": [{"title": "Ashes of Man", "author": "Ruocchio, Christopher", "series": "", "seq": "", "qty": 1, "eta": "2026-11-03", "price": "24.99"},
            {"title": "", "series": "Sun Eater", "seq": "7", "qty": 1, "eta": "", "price": ""}]}
 ```
 Each line names a book by exact `title`, or by `series` + `seq` (the form
-expands a title typed as `Series 4-6` into one line per volume). `qty`,
-`eta` (release or expected date, ISO) and `price` are optional. `status:
+expands a title typed as `Series 4-6` into one line per volume). `author`
+(migration 030; tells same-titled register books apart and rides onto the
+add proposal when an unknown title arrives), `qty`, `eta` (release or
+expected date, ISO) and `price` are optional. An order-level `author` is
+filled from the first line that names one when the payload sends none. `status:
 "arrived"` is an in-store purchase: every line arrives on `date` at once.
 `books` is optional — jerry summarises it from the lines (`lines_summary`)
 and the dashboard sends the same text so pending chips key alike. `count` is
@@ -465,8 +468,8 @@ the legacy `date`/`order`/`books`), `line` the line (`id` from the
 ```
 `set.status` is `ordered` | `shipped` | `arrived` | `cancelled`; `shipped_on`
 and `arrived_on` default to today when the status changes without them.
-Other keys: `tracking`, `eta`, `price`, `qty`, `title`, `series`, `seq`,
-`notes`. `arrived` runs the same arrival as an order-level Fulfilled for that
+Other keys: `tracking`, `eta`, `price`, `qty`, `title`, `author`, `series`,
+`seq`, `notes`. `arrived` runs the same arrival as an order-level Fulfilled for that
 one book (owned + dated acquisition, or an add proposal); on an omnibus order
 the contained works are owned once the whole order is in. The order's
 Delivered / Arrived / Tracking / Count follow its lines

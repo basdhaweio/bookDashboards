@@ -524,8 +524,8 @@ async function main(){
     await go('logorders','log');
     const tog=[...doc().querySelectorAll('#log-orderform .ytog button')].find(b=>b.textContent.includes('Com'));if(tog)tog.click();await new Promise(r=>setTimeout(r,200));
     const chips=[...doc().querySelectorAll('#log-orderform .pchip')].map(b=>b.textContent.trim());
-    const lines=doc().querySelectorAll('#log-o-lines .log-line').length,inHand=!!doc().querySelector('#log-o-status option[value="arrived"]');
-    res(name,chips.includes('The Broken Binding')&&chips.includes('Barnes & Noble')&&chips.includes('Tombolo')&&lines>=1&&inHand,`chips ${chips.slice(0,4).join(' | ')}; ${lines} line row(s); in-hand option ${inHand}`);
+    const lines=doc().querySelectorAll('#log-o-lines .log-line:not(.log-line-hd)').length,inHand=!!doc().querySelector('#log-o-status option[value="arrived"]'),hdr=[...doc().querySelectorAll('#log-o-lines .log-line-hd span')].map(x=>x.textContent).join('|'),author=!!doc().querySelector('#log-o-lines .ol-author');
+    res(name,chips.includes('The Broken Binding')&&chips.includes('Barnes & Noble')&&chips.includes('Tombolo')&&lines>=1&&inHand&&author&&/Title\|Author\|Series\|Vol\|Copies/.test(hdr),`chips ${chips.slice(0,4).join(' | ')}; ${lines} line row(s); columns ${hdr}; in-hand option ${inHand}`);
   });
   await check('Orders: an in-hand Tombolo order submits its books as lines',async()=>{
     const name='Orders: an in-hand Tombolo order submits its books as lines';
@@ -538,14 +538,16 @@ async function main(){
       LOGi=W.eval('LOG');await LOGi.saveSetup({closest:()=>({querySelector:sel=>({value:sel.includes('repo')?'harness/stub':'harness-stand-in'})})});await tick(300);
       await go('logorders','log');LOGi.orderStore('Tombolo');await tick(200);
       const known=(W.eval('G.indBooks')||[])[0];
-      D.querySelector('#log-o-lines .log-line .ol-title').value=known?known.title:'Harness Book';
+      D.querySelector('#log-o-lines .log-line:not(.log-line-hd) .ol-title').value=known?known.title:'Harness Book';
+      D.querySelector('#log-o-lines .log-line:not(.log-line-hd) .ol-author').value='Le Guin, Ursula K.';
+      D.getElementById('log-o-num').value='TBBSUB848998';
       LOGi.orderLineAdd();await tick(200);
-      const rows=D.querySelectorAll('#log-o-lines .log-line');rows[1].querySelector('.ol-title').value='Harness Range 4-6';rows[1].querySelector('.ol-eta').value='2026-12-01';
+      const rows=D.querySelectorAll('#log-o-lines .log-line:not(.log-line-hd)');rows[1].querySelector('.ol-title').value='Harness Range 4-6';rows[1].querySelector('.ol-eta').value='2026-12-01';
       D.getElementById('log-o-status').value='arrived';
       await LOGi.doNewOrder();await tick(400);
       const ev=sentBodies.find(e=>e.type==='order_new'),p=(ev||{}).payload||{};
-      const ok=!!ev&&p.store==='Tombolo'&&p.status==='arrived'&&Array.isArray(p.lines)&&p.lines.length===4&&p.lines[1].series==='Harness Range'&&p.lines[1].seq==='4'&&p.lines[3].seq==='6'&&p.lines[1].eta==='2026-12-01'&&!('count' in p);
-      res(name,ok,`event ${!!ev}; store ${p.store}; status ${p.status}; ${(p.lines||[]).length} lines (${(p.lines||[]).map(l=>l.title||l.series+' #'+l.seq).join(', ').slice(0,90)})`);
+      const ok=!!ev&&p.store==='Tombolo'&&p.status==='arrived'&&Array.isArray(p.lines)&&p.lines.length===4&&p.lines[0].author==='Le Guin, Ursula K.'&&p.author==='Le Guin, Ursula K.'&&p.order==='#TBBSUB848998'&&p.lines[1].series==='Harness Range'&&p.lines[1].seq==='4'&&p.lines[3].seq==='6'&&p.lines[1].eta==='2026-12-01'&&!('count' in p);
+      res(name,ok,`event ${!!ev}; store ${p.store}; order ${p.order}; author ${p.author}; status ${p.status}; ${(p.lines||[]).length} lines (${(p.lines||[]).map(l=>l.title||l.series+' #'+l.seq).join(', ').slice(0,90)})`);
     }finally{W.fetch=realFetch;if(LOGi)LOGi.forgetSetup();localStorage.removeItem('library-log-cfg');localStorage.removeItem('library-log-sent');}
   });
   await check('Orders: an open order with lines offers per-line Shipped and Arrived',async()=>{

@@ -342,7 +342,12 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
 .log-frow{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
 .log-line{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:3px 0;}
 .log-line input{font:inherit;font-size:12px;padding:4px 6px;border:1px solid var(--border2);border-radius:6px;min-width:0;}
-.log-line .ol-title{flex:1 1 220px;}.log-line .ol-series{flex:1 1 150px;}.log-line .ol-seq{width:52px;}.log-line .ol-qty{width:56px;}.log-line .ol-price{width:70px;}
+.log-line .ol-title{flex:2 1 200px;}.log-line .ol-author{flex:1 1 140px;}.log-line .ol-series{flex:1 1 140px;}.log-line .ol-seq{flex:0 0 58px;width:58px;}.log-line .ol-qty{flex:0 0 92px;width:92px;}.log-line .ol-eta{flex:0 0 150px;width:150px;}.log-line .ol-price{flex:0 0 72px;width:72px;}
+.log-line select{font:inherit;font-size:12px;padding:4px 4px;border:1px solid var(--border2);border-radius:6px;background:var(--bg2);}
+.log-line.log-line-hd{margin-bottom:0;}.log-line.log-line-hd span{font-family:var(--font-m);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);padding:0 6px;}
+.log-line .ol-del{flex:0 0 auto;}.log-line.log-line-hd .ol-del{width:46px;}
+/* below ~1150px the line wraps onto two rows, so the header would mislabel — the placeholders carry the names there */
+@media(max-width:1150px){.log-line.log-line-hd{display:none;}}
 /* a long confirm label (Log it — read “…”) wraps inside a 250px card instead of running past its edge (John, 2026-09-27) */
 .log-frow .log-act{white-space:normal;max-width:100%;}
 .log-frow input[type=date]{max-width:100%;min-width:0;}
@@ -5749,7 +5754,7 @@ const LOG=(()=>{
   function storeSelect(id,cur){return`<select id="${id}"><option value="">—</option>${storeOptions().map(v=>`<option${v===cur?' selected':''}>${esc(v)}</option>`).join('')}</select>`;}
   // A #TBB… order number means The Broken Binding — fill the store when it
   // is still blank, never overwrite a choice.
-  function storeFromOrderNo(v){if(!orderForm.store&&/^#TBB/i.test((v||'').trim()))orderStore('The Broken Binding');}
+  function storeFromOrderNo(v){if(!orderForm.store&&/^#?TBB/i.test((v||'').trim()))orderStore('The Broken Binding');}
   // Jump to the Book tab with this title in the search box: the row's Got
   // it › Edition is where a hardback or special edition gets recorded.
   function findInRegister(t){
@@ -5805,7 +5810,7 @@ const LOG=(()=>{
       // All arrived / All shipped sweep whatever is still open; Cancel closes the open lines.
       const L=linesWithPending(o),td=today(),anyOrdered=L.some(l=>l.status==='ordered'&&!l.pending);
       const lineRow=l=>`<div class="log-frow" style="align-items:center"><label></label><div style="flex:1;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-        <span>${esc(l.title||(l.series?l.series+(l.seq?' #'+l.seq:''):'?'))}${l.qty>1?' ×'+l.qty:''}${l.eta?` <span class="ms">· due ${esc(l.eta)}</span>`:''}${l.title?`<span class="ms">${regTag(l.title)}</span>`:''}</span>
+        <span>${esc(l.title||(l.series?l.series+(l.seq?' #'+l.seq:''):'?'))}${l.author?` <span class="ms">· ${esc(l.author)}</span>`:''}${l.qty>1?' ×'+l.qty:''}${l.eta?` <span class="ms">· due ${esc(l.eta)}</span>`:''}${l.title?`<span class="ms">${regTag(l.title)}</span>`:''}</span>
         <span class="badge ${l.status==='arrived'?'b-green':l.status==='shipped'?'b-teal':l.status==='cancelled'?'b-gray':'b-gold'}">${esc(l.status)}${l.status==='shipped'&&l.tracking?' · '+esc(l.tracking):''}${l.status==='arrived'&&l.arrivedOn?' '+esc(l.arrivedOn):''}${l.pending?' · pending':''}</span>
         ${(l.status==='ordered'||l.status==='shipped')&&!l.pending?`<button class="log-act" onclick="LOG.doLineSet(${i},${l.id},{status:'arrived',arrived_on:'${td}'})">Arrived today</button>`:''}
         ${l.status==='ordered'&&!l.pending?`<button class="log-act" onclick="LOG.lineShipPrompt(${i},${l.id})">Shipped</button>`:''}
@@ -5952,11 +5957,15 @@ const LOG=(()=>{
     const sers=[...new Set(mine.map(b=>b.series).filter(x=>x&&x!=='Standalones'))].sort((a,b)=>a.localeCompare(b));
     const L=orderForm.lines.length?orderForm.lines:[{}];
     return`<datalist id="log-dl-otitles">${titles.map(t=>`<option>${esc(t)}</option>`).join('')}</datalist><datalist id="log-dl-oseries">${sers.map(t=>`<option>${esc(t)}</option>`).join('')}</datalist>`
-      +L.map((l,i)=>`<div class="log-line" data-i="${i}"><input class="ol-title" list="log-dl-otitles" placeholder="title — or series + # →" value="${esc(l.title||'')}"><input class="ol-series" list="log-dl-oseries" placeholder="series" value="${esc(l.series||'')}"><input class="ol-seq" placeholder="#" value="${esc(l.seq||'')}"><input class="ol-qty" type="number" min="1" title="copies" value="${esc(String(l.qty||1))}"><input class="ol-eta" type="date" title="release / expected" value="${esc(l.eta||'')}"><input class="ol-price" placeholder="price" value="${esc(l.price||'')}">${L.length>1?`<button class="log-act" onclick="LOG.orderLineDel(${i})" title="remove this line">✕</button>`:''}</div>`).join('');
+      +`<datalist id="log-dl-oauthors">${(G.authors||[]).map(a=>`<option>${esc(a.name)}</option>`).join('')}</datalist>`
+      // A header row names the columns (John: "the # and the number are confusing");
+      // the same width classes keep it aligned with the inputs below.
+      +`<div class="log-line log-line-hd"><span class="ol-title">Title</span><span class="ol-author">Author</span><span class="ol-series">Series</span><span class="ol-seq">Vol</span><span class="ol-qty">Copies</span><span class="ol-eta">ETA / release</span><span class="ol-price">Price</span>${L.length>1?'<span class="ol-del"></span>':''}</div>`
+      +L.map((l,i)=>`<div class="log-line" data-i="${i}"><input class="ol-title" list="log-dl-otitles" placeholder="title (or series + vol)" value="${esc(l.title||'')}"><input class="ol-author" list="log-dl-oauthors" placeholder="author" value="${esc(l.author||'')}"><input class="ol-series" list="log-dl-oseries" placeholder="series" value="${esc(l.series||'')}"><input class="ol-seq" placeholder="vol #" title="volume number in the series" value="${esc(l.seq||'')}"><select class="ol-qty" title="copies">${[1,2,3,4,5].map(n=>`<option value="${n}"${(+l.qty||1)===n?' selected':''}>${n} ${n===1?'copy':'copies'}</option>`).join('')}</select><input class="ol-eta" type="date" title="release / expected date" value="${esc(l.eta||'')}"><input class="ol-price" placeholder="price" value="${esc(l.price||'')}">${L.length>1?`<button class="log-act ol-del" onclick="LOG.orderLineDel(${i})" title="remove this line">✕</button>`:''}</div>`).join('');
   }
   function orderLinesRead(){
-    return[...document.querySelectorAll('#log-o-lines .log-line')].map(r=>{const g=c=>{const e=r.querySelector('.'+c);return e?e.value.trim():'';};
-      return{title:g('ol-title'),series:g('ol-series'),seq:g('ol-seq'),qty:+g('ol-qty')||1,eta:g('ol-eta'),price:g('ol-price')};});
+    return[...document.querySelectorAll('#log-o-lines .log-line:not(.log-line-hd)')].map(r=>{const g=c=>{const e=r.querySelector('.'+c);return e?e.value.trim():'';};
+      return{title:g('ol-title'),author:g('ol-author'),series:g('ol-series'),seq:g('ol-seq'),qty:+g('ol-qty')||1,eta:g('ol-eta'),price:g('ol-price')};});
   }
   function orderLineAdd(){orderFormRead();orderForm.lines.push({});renderOrders();const rows=document.querySelectorAll('#log-o-lines .log-line');const last=rows[rows.length-1];if(last)last.querySelector('.ol-title').focus();}
   function orderLineDel(i){orderFormRead();orderForm.lines.splice(i,1);if(!orderForm.lines.length)orderForm.lines.push({});renderOrders();}
@@ -5965,7 +5974,7 @@ const LOG=(()=>{
     const out=[];
     for(const l of lines){
       const m=(l.title||'').match(/^(.*?)\s+(\d+)\s*[-–]\s*(\d+)$/);
-      if(m&&!l.series&&+m[3]>=+m[2]&&+m[3]-+m[2]<=12){for(let k=+m[2];k<=+m[3];k++)out.push({title:'',series:m[1].trim(),seq:String(k),qty:1,eta:l.eta||'',price:l.price||''});}
+      if(m&&!l.series&&+m[3]>=+m[2]&&+m[3]-+m[2]<=12){for(let k=+m[2];k<=+m[3];k++)out.push({title:'',author:l.author||'',series:m[1].trim(),seq:String(k),qty:1,eta:l.eta||'',price:l.price||''});}
       else out.push(l);
     }
     return out;
@@ -5979,7 +5988,8 @@ const LOG=(()=>{
     const lines=expandLines(orderForm.lines.filter(l=>l.title||l.series));
     if(!lines.length&&!(type==='Sub'&&sub))return toast('Name at least one book (or mark a subscription credit and its kind)',true);
     // books mirrors what jerry stores (lines_summary) so pending chips key the same
-    const p={list:'bookmail',date:orderForm.date||today(),order:orderForm.num,store,type,sub,paid,lines,books:linesText(lines),status:orderForm.status||'ordered'};
+    const num=/^TBB/i.test(orderForm.num)?'#'+orderForm.num.toUpperCase():orderForm.num;   // the ledger's #TBBSUB… form
+    const p={list:'bookmail',date:orderForm.date||today(),order:num,store,type,sub,paid,lines,books:linesText(lines),author:(lines.find(l=>l.author)||{}).author||'',status:orderForm.status||'ordered'};
     if(document.getElementById('log-o-omni')&&document.getElementById('log-o-omni').checked){
       const cl=v('log-o-contains').split('\n').map(x=>x.trim()).filter(Boolean);
       if(cl.length<2)return toast('An omnibus order needs its contained works, one per line',true);
@@ -6416,7 +6426,7 @@ async function init(){
     // Order lines (migration 029): the book is the unit that ships and arrives;
     // the order groups them. Orders from Tombolo or Barnes & Noble may have no
     // number and no tracking, and any store ships lines separately (John, 2026-09-30).
-    G.orderLines=(BUNDLE.tabs['bookdb|Order Lines']||[]).slice(1).map(r=>({id:+r[0],orderId:+r[1],date:(r[2]||'').trim(),orderNo:(r[3]||'').trim(),store:(r[4]||'').trim(),position:+r[5]||0,title:(r[6]||'').trim(),series:(r[7]||'').trim(),seq:(r[8]||'').trim(),bookId:+r[9]||0,qty:+r[10]||1,price:(r[11]||'').trim(),eta:(r[12]||'').trim(),status:(r[13]||'ordered').trim(),shippedOn:(r[14]||'').trim(),tracking:(r[15]||'').trim(),arrivedOn:(r[16]||'').trim(),notes:(r[17]||'').trim()})).filter(l=>l.id);
+    G.orderLines=(BUNDLE.tabs['bookdb|Order Lines']||[]).slice(1).map(r=>({id:+r[0],orderId:+r[1],date:(r[2]||'').trim(),orderNo:(r[3]||'').trim(),store:(r[4]||'').trim(),position:+r[5]||0,title:(r[6]||'').trim(),series:(r[7]||'').trim(),seq:(r[8]||'').trim(),bookId:+r[9]||0,qty:+r[10]||1,price:(r[11]||'').trim(),eta:(r[12]||'').trim(),status:(r[13]||'ordered').trim(),shippedOn:(r[14]||'').trim(),tracking:(r[15]||'').trim(),arrivedOn:(r[16]||'').trim(),notes:(r[17]||'').trim(),author:(r[18]||'').trim()})).filter(l=>l.id);
     {const byOrder={};G.orderLines.forEach(l=>(byOrder[l.orderId]=byOrder[l.orderId]||[]).push(l));(G.orders||[]).forEach(o=>{o.lines=byOrder[o.id]||[];});}
     G.growthMetrics=parseGrowthMetrics(growthMetricsV);
     G.growthYear=parseGrowthYear(growthYearV);
