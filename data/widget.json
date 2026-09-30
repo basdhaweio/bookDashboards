@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-09-30T17:19:11+00:00",
+ "generated_at": "2026-09-30T17:21:24+00:00",
  "owner": "butthead",
  "site": "https://basdhaweio.github.io/bookDashboards/",
  "reading_now": [
@@ -140,8 +140,18 @@
  ],
  "orders": {
   "open": 26,
-  "shipped": 0,
+  "shipped": 1,
   "lines": [
+   {
+    "id": 82,
+    "order_id": 62,
+    "title": "Upon the Forge of Battle",
+    "store": "The Broken Binding",
+    "status": "shipped",
+    "eta": "",
+    "tracking": "LT513240581GB",
+    "ordered": "June 9, 2026"
+   },
    {
     "id": 101,
     "order_id": 165,
@@ -206,16 +216,6 @@
     "id": 107,
     "order_id": 182,
     "title": "The Echoes Saga #2",
-    "store": "The Broken Binding",
-    "status": "ordered",
-    "eta": "",
-    "tracking": "",
-    "ordered": "2026-08-16"
-   },
-   {
-    "id": 108,
-    "order_id": 182,
-    "title": "The Echoes Saga #3",
     "store": "The Broken Binding",
     "status": "ordered",
     "eta": "",
