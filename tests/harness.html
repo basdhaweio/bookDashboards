@@ -594,6 +594,21 @@ async function main(){
     W.setOwner('butthead');await new Promise(r=>setTimeout(r,300));
     res(name,Array.isArray(aliases)&&idx&&typeof idx==='object'&&matched!==false,`${aliases.length} alias(es); Bands of Mourning card ${card?(matched?'matched (✓ Read offered)':'still unmatched'):'not on the shelf right now'}`);
   });
+  await check('Plan: this year\'s plan is the Next up list',async()=>{
+    const name='Plan: this year\'s plan is the Next up list';
+    const W=w(),D=doc();
+    await go('plan','reading');
+    const cy=new Date().getFullYear();
+    W.eval('planYear='+cy+';renderPlan()');await new Promise(r=>setTimeout(r,300));
+    const cards=[...D.querySelectorAll('#plan-list .tbr-card[data-plan="q"]')];
+    const queued=W.eval('queueListFor(soloOwner())');
+    const titles=cards.map(c=>(c.querySelector('.tbr-next strong')||{}).textContent),qt=queued.map(q=>q.b.title);
+    const same=titles.length===qt.length&&titles.every((t,i)=>t===qt[i]);
+    const shapeForm=!!D.getElementById('plan-n-label'),note=/Next up/.test(D.getElementById('plan-list').textContent);
+    W.eval('planYear='+(cy+1)+';renderPlan()');await new Promise(r=>setTimeout(r,300));
+    const nextYearSlots=D.querySelectorAll('#plan-list .tbr-card[data-plan]:not([data-plan="q"])').length,nextYearForm=!!D.getElementById('plan-n-label');
+    res(name,same&&!shapeForm&&note&&nextYearForm,`${cy}: ${cards.length} cards = ${qt.length} queued (${same}), shape form hidden ${!shapeForm}; ${cy+1}: ${nextYearSlots} plan slots, shape form ${nextYearForm}`);
+  });
   await check('Widget links: #add, #order/<id> and #tbr land on the work',async()=>{
     const name='Widget links: #add, #order/<id> and #tbr land on the work';
     const W=w(),D=doc(),tick=ms=>new Promise(r=>setTimeout(r,ms));

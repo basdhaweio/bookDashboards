@@ -2187,6 +2187,40 @@ function planGuess(line){
 }
 function planFindBook(q){const owner=soloOwner();const cut=q.lastIndexOf(' — '),t=cut<0?q:q.slice(0,cut),s=cut<0?'':q.slice(cut+3);return(G.allIndBooks||[]).find(x=>(x.owner||'butthead')===owner&&x.title===t&&(s?x.series===s:(!x.series||x.series==='Standalones')))||null;}
 function planTitles(owner){return(G.allIndBooks||[]).filter(x=>(x.owner||'butthead')===owner).map(x=>x.title+(x.series&&x.series!=='Standalones'?' — '+x.series:'')).sort((a,b)=>a.localeCompare(b));}
+// This year's Plan IS the Next up list (John, 2026-10-01: "for this year's
+// Plan, it should be the same as Next Up TBR") — one source of truth. The
+// queue renders as the year's slots; add / remove / reorder here send
+// queue_set, exactly as the TBR's Next up does. Later years keep plan slots.
+function planIsQueue(){return planYear===new Date().getFullYear();}
+function queueListFor(owner){
+  const nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,''),nl=t=>(t||'').toLowerCase().replace(/^\s*(the|a|an)\s+/,'').replace(/[^a-z0-9]/g,'');
+  const books=(G.allIndBooks||[]).filter(x=>(x.owner||'butthead')===owner);
+  const key=b=>nk(b.title)+'|'+nk(!b.series||b.series==='Standalones'?'':b.series);
+  const m=new Map();
+  (G.queue||[]).filter(q=>(q.owner||'butthead')===owner).forEach(q=>{const b=books.find(x=>nk(x.title)===nk(q.title)&&(!q.series||nl(x.series)===nl(q.series)));if(b)m.set(key(b),{b,pos:q.pos,pending:false});});
+  let qmax=0;for(const v of m.values())qmax=Math.max(qmax,v.pos||0);
+  for(const[k,v]of LOG.pendingQueue()){
+    if((v.owner||'butthead')!==owner)continue;
+    const i=k.lastIndexOf('|'),t=k.slice(0,i),ser=k.slice(i+1);
+    const b=books.find(x=>x.title===t&&(ser?(x.series||'')===ser:(!x.series||x.series==='Standalones')));if(!b)continue;
+    const kk=key(b);
+    if(v.action==='remove'){m.delete(kk);continue;}
+    const cur=m.get(kk),pos=v.position!=null&&v.position!==''?+v.position:(cur?cur.pos:++qmax);
+    m.set(kk,{b,pos,pending:true});
+  }
+  return[...m.values()].sort((a,b)=>a.pos-b.pos||a.b.title.localeCompare(b.b.title));
+}
+function queueAsSlots(owner){
+  return queueListFor(owner).map(q=>({id:0,key:'',owner,year:new Date().getFullYear(),label:'',media:q.b.media||'',genre:q.b.type||'',length:'',book:q.b.title,series:q.b.series&&q.b.series!=='Standalones'?q.b.series:'',done:false,notes:'',bookRead:!!q.b.read,pos:q.pos,pending:q.pending,queue:true,_b:q.b}));
+}
+async function planQueueRemove(i){const s=(G._planSlots||[])[i];if(!s||!s._b)return;if(!confirm(`Take “${s.book}” off Next up?`))return;if(await LOG.queueSet(s._b,'remove'))renderPlan();}
+async function planQueueMoveBefore(from,before){
+  const L=G._planSlots||[],it=L[from];if(!it||!it._b)return;
+  const rest=L.filter((_,j)=>j!==from),idx=before>from?before-1:before;
+  const prev=rest[idx-1]||null,next=rest[idx]||null;
+  const pos=!prev&&!next?1:!prev?next.pos-1:!next?prev.pos+1:(prev.pos+next.pos)/2;
+  if(await LOG.queueSet(it._b,'move',pos))renderPlan();
+}
 function renderPlan(){
   const now=new Date(),cy=now.getFullYear();
   const owner=soloOwner();
@@ -2199,11 +2233,12 @@ function renderPlan(){
   const tg=owner==='butthead'?(yd.targets||{}):{},goal=(tg.Total&&tg.Total.total)||0;
   const readBooks=owner==='butthead'?(yd.books||[]):((((G.readsBy||{}).goblin||{})[planYear])||[]); // Shereen's reads come from the Reads tab
   // slots: bundle rows + pending plan_set events (adds appear, updates and removes apply)
-  const slots=planSlotsFor(owner,planYear).sort((a,b)=>a.pos-b.pos||a.id-b.id);
+  const asQueue=planIsQueue();
+  const slots=asQueue?queueAsSlots(owner):planSlotsFor(owner,planYear).sort((a,b)=>a.pos-b.pos||a.id-b.id);
   const isDone=s=>s.done||s.bookRead;
   const done=slots.filter(isDone).length,planned=slots.length,read=readBooks.length;
   const left=goal?goal-read-(planned-done):null;
-  document.getElementById('plan-m').innerHTML=mH(planned,'Slots planned',String(planYear))+mH(done,'Done','pinned book read, or ticked','t')+mH(goal||'—','Goal',goal?"the year's targets":'no targets set for '+planYear)+(planYear<=cy?mH(read,'Read so far',String(planYear)):'')+(goal?mH((left>0?'':'+')+Math.abs(left),left>0?'Still to plan':'Over the goal',left>0?'goal − read − open slots':'more planned than the goal needs',left>0?'c':'t'):'');
+  document.getElementById('plan-m').innerHTML=mH(planned,asQueue?'On Next up':'Slots planned',String(planYear))+mH(done,'Done','pinned book read, or ticked','t')+mH(goal||'—','Goal',goal?"the year's targets":'no targets set for '+planYear)+(planYear<=cy?mH(read,'Read so far',String(planYear)):'')+(goal?mH((left>0?'':'+')+Math.abs(left),left>0?'Still to plan':'Over the goal',left>0?'goal − read − open slots':'more planned than the goal needs',left>0?'c':'t'):'');
   const cnt=(arr,f)=>arr.reduce((m,x)=>{const k=f(x);if(k)m[k]=(m[k]||0)+1;return m;},{});
   const mediaOf=b=>/^ebook$/i.test(b.media||'')?'eBook':b.media;
   const pm=cnt(slots,s=>s.media),rm=cnt(readBooks,mediaOf);
@@ -2224,22 +2259,24 @@ function renderPlan(){
     +(genres.length>showG.length?`<button class="log-act" style="margin-top:6px" onclick="G._planAllGenres=true;renderPlan()">${genres.length-showG.length} more genres</button>`:'');
   G._planSlots=slots;
   document.getElementById('plan-list').innerHTML=slots.map((s,i)=>{const b=s.book?(G.allIndBooks||[]).find(x=>(x.owner||'butthead')===owner&&x.title===s.book&&(s.series?x.series===s.series:true)):null;
-    const ref=s.id||s.key||'';
-    return`<div class="tbr-card${isDone(s)?' plan-done':''}${s.pending?' plan-pending':''}" data-plan="${s.id}" data-slot="${esc(String(ref))}" data-i="${i}">
-      ${ref?'<span class="tbr-handle" title="drag to reorder">⋮⋮</span>':''}
+    const ref=s.queue?('q'+i):(s.id||s.key||'');
+    return`<div class="tbr-card${isDone(s)?' plan-done':''}${s.pending?' plan-pending':''}" data-plan="${s.queue?'q':s.id}" data-slot="${esc(String(ref))}" data-i="${i}">
+      ${ref&&!(s.queue&&s.pending)?'<span class="tbr-handle" title="drag to reorder">⋮⋮</span>':''}
       <div class="tbr-cov">${b?coverTile(b.title,b.owner,'',null,40,b.series):'<div class="ct ct-ph" style="width:40px;height:60px"><span>?</span></div>'}</div>
       <div class="tbr-info"><div class="tbr-ser">${isDone(s)?'✓ ':''}${esc(s.label||s.book||(b?b.title:''))}</div>
         <div class="tbr-prog">${[s.media,s.genre,s.length].filter(Boolean).map(esc).join(' · ')||'<span class="ms">no shape yet</span>'}${s.pending?' <span class="badge b-gold" title="saved — jerry answers within a minute or two; everything here works meanwhile">pending</span>':''}</div>
         <div class="tbr-next">${b?`<strong>${esc(b.title)}</strong>${b.series&&b.series!=='Standalones'?' <span class="ms">'+esc(b.series)+(b.seq?' #'+esc(b.seq):'')+'</span>':''} ${b.read?'<span class="badge b-teal">read</span>':b.owned?'<span class="badge b-green">on the shelf</span>':'<span class="badge b-coral">not owned</span>'+heldBadge(b)}`:'<span class="ms">no book pinned yet</span>'}${s.notes?`<div class="ms">${esc(s.notes)}</div>`:''}</div>
-        <div class="tbr-acts">${ref?`<button class="log-act" onclick="planToggleDone(${i})">${s.done?'↺ not done':'✓ Done'}</button><button class="log-act" onclick="planEditRow(${i})" title="edit the slot or pin a book">✎</button><button class="log-act" onclick="planRemove(${i})" title="drop the slot">✕</button>`:'<span class="ms">saving…</span>'}</div>
+        <div class="tbr-acts">${s.queue?(s.pending?'<span class="ms">saving…</span>':`<span class="badge b-teal">Next up #${i+1}</span><button class="log-act" onclick="planQueueRemove(${i})" title="take it off Next up">✕</button>`):ref?`<button class="log-act" onclick="planToggleDone(${i})">${s.done?'↺ not done':'✓ Done'}</button><button class="log-act" onclick="planEditRow(${i})" title="edit the slot or pin a book">✎</button><button class="log-act" onclick="planRemove(${i})" title="drop the slot">✕</button>`:'<span class="ms">saving…</span>'}</div>
         <div id="plan-ed-${i}" style="display:none"></div>
-      </div></div>`;}).join('')+`<div class="tbr-card plan-dropnew" id="plan-dropnew"><div class="tbr-info"><div class="tbr-ser">＋ New slot</div><div class="ms">drop a shelf card here, or use the form below</div></div></div>`;
-  if(!slots.length)document.getElementById('plan-list').insertAdjacentHTML('afterbegin','<div class="ms">No slots yet — drag from the shelves below, add a few shapes, or paste your Keep list.</div>');
-  dndBind(document.getElementById('plan-list'),{items:'.tbr-card[data-plan]',handle:'.tbr-handle',onMove:(f,b)=>planMoveBefore(f,b)});
+      </div></div>`;}).join('')+`<div class="tbr-card plan-dropnew" id="plan-dropnew"><div class="tbr-info"><div class="tbr-ser">${asQueue?'＋ Add to Next up':'＋ New slot'}</div><div class="ms">${asQueue?'drop a shelf card here — it joins the end of the list':'drop a shelf card here, or use the form below'}</div></div></div>`;
+  if(!slots.length)document.getElementById('plan-list').insertAdjacentHTML('afterbegin',asQueue?'<div class="ms">Nothing on Next up yet — drag from the shelves below.</div>':'<div class="ms">No slots yet — drag from the shelves below, add a few shapes, or paste your Keep list.</div>');
+  if(asQueue)document.getElementById('plan-list').insertAdjacentHTML('afterbegin','<div class="ms" style="margin-bottom:8px">This year\'s plan is your <strong>Next up</strong> list — the same one as Reading › TBR. Drag to reorder, ✕ to take a book off, drop from the shelves to add.</div>');
+  dndBind(document.getElementById('plan-list'),{items:'.tbr-card[data-plan]',handle:'.tbr-handle',onMove:(f,b)=>asQueue?planQueueMoveBefore(f,b):planMoveBefore(f,b)});
   planPoolRender(owner);
   // One line for a shape-only slot (a book you mean to read, in words);
   // pinning a book is a drag from the shelves, so the old six-field form
   // went (John, 2026-09-25). The Keep paste box stays behind a link.
+  if(asQueue){document.getElementById('plan-add').innerHTML='<div class="ms">Shapes (“a long sci-fi”, “a cozy fantasy novella”) belong to a later year\'s plan — this year is the Next up list of actual books.</div>';return;}
   document.getElementById('plan-add').innerHTML=`
     <div class="log-frow"><label>Shape</label><input id="plan-n-label" placeholder="long, hard sci-fi · cozy fantasy novella · a manga run I own" onkeydown="if(event.key==='Enter')planAdd()"><button class="log-act primary" onclick="planAdd()">＋ Add to ${planYear}</button></div>
     <div class="ms">Media, genre and length are read from the words (sci-fi, cozy fantasy, novella, manga, audio…) — fix any slot with ✎. To pin a book, drag one up from the shelves. <button class="log-act" onclick="const t=document.getElementById('plan-n-bulkwrap');t.style.display=t.style.display==='none'?'':'none'">Paste a list…</button></div>
@@ -2357,10 +2394,12 @@ function planPoolRender(owner){
   dndBind(el,{items:'.tbr-card[data-pool]',handle:'.tbr-handle',targets:'#plan-list .tbr-card[data-slot]:not([data-slot=""]),#plan-dropnew',onTarget:(from,t)=>planDropPool(from,t)});
 }
 function planRef(b){return{title:b.title,series:b.series==='Standalones'?'':b.series,owner:b.owner||'butthead'};}
-async function planPoolAdd(i){const b=(G._planPool||[])[i];if(!b)return;if(await LOG.planSet(planYear,'add',null,{media:b.media||'',genre:b.type||'',book:planRef(b)})){toast(`Slot for “${b.title}” added`);renderPlan();}}
+async function planPoolAdd(i){const b=(G._planPool||[])[i];if(!b)return;
+  if(planIsQueue()){const L=queueListFor(soloOwner()),pos=L.length?L[L.length-1].pos+1:1;if(await LOG.queueSet(b,'add',pos)){toast(`“${b.title}” added to Next up`);renderPlan();}return;}
+  if(await LOG.planSet(planYear,'add',null,{media:b.media||'',genre:b.type||'',book:planRef(b)})){toast(`Slot for “${b.title}” added`);renderPlan();}}
 async function planDropPool(from,t){
   const b=(G._planPool||[])[from];if(!b||!t)return;
-  if(t.id==='plan-dropnew')return planPoolAdd(from);
+  if(t.id==='plan-dropnew'||planIsQueue())return planPoolAdd(from);   // this year: every drop is an add to Next up
   const s=(G._planSlots||[])[+t.dataset.i],ref=s&&(s.id||s.key);if(!ref)return toast('That slot is still saving — try again in a moment',true);
   // A slot that was only ever the book it held takes the new title; a shape keeps its words.
   const set={book:planRef(b)};if(s.label&&s.label===s.book)set.label='';
