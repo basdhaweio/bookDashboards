@@ -3270,8 +3270,10 @@ function switchYear(y){tyYear=y;rendered.delete('thisyear');renderTab('thisyear'
 // walks back through tabs; an action hash (#scan…) or the bare first load is
 // replaced, never kept. popstate restores from the hash without pushing again.
 let navFromHistory=false;
+const LS_LAST_TAB='library-last-tab';
 function updateHash(sec,tab){
   const target=`#${sec}/${tab}`;
+  try{localStorage.setItem(LS_LAST_TAB,target);}catch(e){}   // "open back up to the page I was on" (John, 2026-10-01)
   if(navFromHistory||location.hash===target)return;
   const cur=(location.hash||'').replace('#','');
   try{
@@ -3301,8 +3303,10 @@ function runHashAction(hash){
 }
 window.addEventListener('hashchange',()=>{const h=(location.hash||'').replace('#','');if(HASH_ACTIONS[h.split('/')[0]])runHashAction(h);});
 function restoreFromHash(){
-  const hash=(location.hash||'').replace('#','');
+  let hash=(location.hash||'').replace('#','');
   if(runHashAction(hash))return;
+  // No hash (the app icon, a bare bookmark): pick up where the last visit left off.
+  if(!hash){try{hash=(localStorage.getItem(LS_LAST_TAB)||'').replace('#','');}catch(e){}}
   const[sec,tab]=hash.split('/');
   const validSecs=new Set(['tracking','reading','buying','collecting','bookclub','log']);
   const validTabs=new Set(['overview','bytype','genre','universe','rooms','tbr','plan','history','thisyear','completion','byseries','toread','comingup','bookmail','toacquire','someday','libgrowth','buythisyear','col-fr','col-dl','col-sr','flyer','bnauthors','logbook','logorders','logpending','logproposed','logmeta']);
@@ -4991,6 +4995,14 @@ const LOG=(()=>{
     scheduleWeb((document.getElementById('log-q').value||'').trim());
   }
   let webT=null,webSeq=0,webItems=[];const webCache={};
+  // After an action (edit, finished, got it, add) the search box empties so
+  // the next lookup starts clean — the toast is the confirmation (John, 2026-10-01).
+  function clearSearch(){
+    clearTimeout(webT);webSeq++;
+    const q=document.getElementById('log-q');if(q)q.value='';
+    const r=document.getElementById('log-results');if(r)r.innerHTML='';
+    const i=document.getElementById('log-isbn');if(i)i.value='';
+  }
   function scheduleWeb(q){
     clearTimeout(webT);
     const box=document.getElementById('log-web');if(!box)return;
@@ -5225,7 +5237,7 @@ const LOG=(()=>{
     if(!Object.keys(set).length)return toast('Nothing changed',true);
     const bad=vetVocab(set);if(bad)return toast(bad,true);
     const ok=await submit('book_update',{book:bookRef(b),set},b);
-    if(ok){toast('Edit logged for “'+b.title+'”');search();}
+    if(ok){toast('Edit logged for “'+b.title+'”');clearSearch();}
   }
   // 'Standalones' is a synthetic bundle label for series-less books (no real
   // series carries that name) — jerry matches on the true, empty series.
@@ -5315,7 +5327,7 @@ const LOG=(()=>{
     const b=(document.getElementById('log-results')._hits||[])[i];if(!b)return;
     const ok=await submit('finished',{book:bookRef(b),date:document.getElementById('log-f-date').value,
       pages:+document.getElementById('log-f-pages').value||null},b);
-    if(ok){toast('Logged: finished “'+b.title+'”');search();}
+    if(ok){toast('Logged: finished “'+b.title+'”');clearSearch();}
   }
   async function doAcquired(i){
     const b=(document.getElementById('log-results')._hits||[])[i];if(!b)return;
@@ -5336,7 +5348,7 @@ const LOG=(()=>{
     }
     const bad=vetVocab(p);if(bad)return toast(bad,true);
     const ok=await submit('acquired',p,b);
-    if(ok){toast('Logged: got “'+b.title+'”'+(p.omnibus_title?' via “'+p.omnibus_title+'”':'')+(p.edition?' — '+(p.edition.format||'edition')+(p.edition.edition?' · '+p.edition.edition:'')+(p.edition.replaces?', old copy retired':''):''));search();}
+    if(ok){toast('Logged: got “'+b.title+'”'+(p.omnibus_title?' via “'+p.omnibus_title+'”':'')+(p.edition?' — '+(p.edition.format||'edition')+(p.edition.edition?' · '+p.edition.edition:'')+(p.edition.replaces?', old copy retired':''):''));clearSearch();}
   }
   // Copies on the shelf for one work (single-work editions and the omnibus
   // volumes it sits in), with Let go — sold, donated, swapped out.
@@ -5649,7 +5661,7 @@ const LOG=(()=>{
     }
     const bad=vetVocab(p);if(bad)return toast(bad,true);
     const ok=await submit('add_book',p,{owner:p.owner});
-    if(ok){toast('Added “'+title+'” to inbox');isbnPrefill='';toggleAdd();}
+    if(ok){toast('Added “'+title+'” to inbox');isbnPrefill='';toggleAdd();clearSearch();}
   }
 
   // ── Orders ──
@@ -6338,7 +6350,7 @@ const LOG=(()=>{
     toggleOrderHistory,findInRegister,storeFromOrderNo,logFlyerOrders,trackSeriesFromIsbn,submitTrackSeries,
     finishBook,setNeed,pendingBooks,today,queueSet,pendingQueue,acquireBook,setPubDate,
     renderPeople,doAuthorMerge,doAuthorRename,doAuthorAlias,addCreditRow,saveCredits,
-    pendingLinks,linkGoodreads,prefillAdd,doScanUpcoming,planSet,pendingPlan,webAdd,orderStore,orderStatus,orderLineAdd,orderLineDel,doLineSet,doLinesShipAll,lineShipPrompt,openOrder};
+    pendingLinks,linkGoodreads,prefillAdd,doScanUpcoming,planSet,pendingPlan,webAdd,clearSearch,orderStore,orderStatus,orderLineAdd,orderLineDel,doLineSet,doLinesShipAll,lineShipPrompt,openOrder};
 })();
 
 async function init(){

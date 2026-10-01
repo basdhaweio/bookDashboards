@@ -54,7 +54,7 @@ async function check(name,fn){
 
 async function main(){
   // A previous run may have died half way: start clean, and load a fresh copy of the app (no cached build).
-  localStorage.removeItem('library-log-cfg');localStorage.removeItem('library-log-sent');
+  localStorage.removeItem('library-log-cfg');localStorage.removeItem('library-log-sent');localStorage.removeItem('library-last-tab');
   // Relative to /tests/ so the harness runs from the dev server root AND from the
   // published site under /bookDashboards/.
   fr.src=new URL('../index.html?v='+Date.now(),location.href).href;
@@ -571,6 +571,18 @@ async function main(){
     const hit=ol.map(r=>({ser:r[7].trim(),card:cards.find(c=>nl(c.dataset.ser)===nl(r[7]))})).find(x=>x.card);
     if(!hit){res(name,true,`${ol.length} ordered line(s) with series+number; none of their series is on the TBR right now`);return;}
     res(name,/on order/.test(hit.card.textContent),`${hit.ser}: card says ${/on order/.test(hit.card.textContent)?'on order':'nothing about the order'}`);
+  });
+  await check('Books: a processed action clears the search box; a bare load reopens the last tab',async()=>{
+    const name='Books: a processed action clears the search box; a bare load reopens the last tab';
+    const W=w(),D=doc(),LOGi=W.eval('LOG');
+    await go('logbook','log');
+    D.getElementById('log-q').value='mistborn';LOGi.search();await new Promise(r=>setTimeout(r,200));
+    const hadHits=D.querySelectorAll('#log-results .log-item').length;
+    LOGi.clearSearch();
+    const cleared=D.getElementById('log-q').value===''&&D.getElementById('log-results').innerHTML==='';
+    await go('tbr','reading');
+    const remembered=localStorage.getItem('library-last-tab');
+    res(name,cleared&&remembered==='#reading/tbr',`${hadHits} hits before; cleared ${cleared}; remembered ${remembered}`);
   });
   await check('Widget links: #add, #order/<id> and #tbr land on the work',async()=>{
     const name='Widget links: #add, #order/<id> and #tbr land on the work';
