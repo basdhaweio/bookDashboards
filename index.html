@@ -1280,7 +1280,9 @@ function seriesLabel(b){
 // The other reader's owned copy of the same title, so a card that says
 // "not owned" can add "Shereen has it" — the household has the book even
 // when this shelf does not (John, 2026-09-30: Lore Olympus is hers).
-function heldBy(b){const me=(b.owner||'butthead'),nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,''),k=nk(b.title);if(!k)return'';const o=(G.allIndBooks||[]).find(x=>(x.owner||'butthead')!==me&&x.owned&&nk(x.title)===k);return o?(o.owner||'butthead'):'';}
+// A title's register spelling for an owner when it is a known alias, else itself.
+function aliasTitle(t,owner){const k=(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');return(G.aliasIndex&&G.aliasIndex[k+'|'+(owner||'butthead')])||t;}
+function heldBy(b){const me=(b.owner||'butthead'),nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,''),k=nk(b.title);if(!k)return'';const o=(G.allIndBooks||[]).find(x=>(x.owner||'butthead')!==me&&x.owned&&(nk(x.title)===k||nk(aliasTitle(b.title,x.owner||'butthead'))===nk(x.title)));return o?(o.owner||'butthead'):'';}
 function heldBadge(b){const o=heldBy(b);return o?` <span class="badge ${o==='goblin'?'b-purple':'b-teal'}">${esc(OWNER_LABEL[o]||o)} has it</span>`:'';}
 function seriesKey(b){return b.series+'|'+((G.seriesDupes&&G.seriesDupes[(b.owner||'butthead')+'|'+b.series])?(b.collection||'main'):'');}
 function buildSeriesDupes(){
@@ -1741,7 +1743,7 @@ function tbrReadingNow(nk,owners,shelf){
   // Shereen's feed sits beside Com's) and match that owner's register.
   owners=owners||[soloOwner()];
   const all=G.allIndBooks||[];
-  const find=(t,o)=>all.find(b=>(b.owner||'butthead')===o&&nk(b.title)===nk(t))||null;
+  const find=(t,o)=>all.find(b=>(b.owner||'butthead')===o&&nk(b.title)===nk(t))||all.find(b=>(b.owner||'butthead')===o&&nk(b.title)===nk(aliasTitle(t,o)))||null;
   return(G.goodreads||[]).filter(r=>r.shelf===(shelf||'currently-reading')&&owners.includes(r.owner||'butthead'))
     .map(r=>{const o=r.owner||'butthead';return Object.assign({},r,{owner:o,reg:r.book?find(r.book,o):null,works:(r.contains||[]).map(t=>find(t,o)).filter(Boolean)});})
     .filter(r=>!(r.reg&&r.reg.read)&&!(r.works.length&&r.works.every(w=>w.read)));
@@ -1848,7 +1850,7 @@ function tbrHeldRow(ri){
   const r=(G._tbrGR||[])[ri];if(!r)return null;
   const m=(r.title||'').match(/^(.*?)\s*\(([^()]*?)(?:,?\s*#\s*([\d.]+))?\)\s*$/),title=m?m[1].trim():(r.title||'');
   const nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,''),k=nk(title);
-  return k?((G.allIndBooks||[]).find(b=>(b.owner||'butthead')!==(r.owner||'butthead')&&b.owned&&nk(b.title)===k)||null):null;
+  return k?((G.allIndBooks||[]).find(b=>(b.owner||'butthead')!==(r.owner||'butthead')&&b.owned&&(nk(b.title)===k||nk(b.title)===nk(aliasTitle(title,b.owner||'butthead'))))||null):null;
 }
 function tbrAddFromHousehold(ri){
   const r=(G._tbrGR||[])[ri],b=tbrHeldRow(ri);if(!r||!b)return;
@@ -4984,8 +4986,9 @@ const LOG=(()=>{
     const q=(document.getElementById('log-q').value||'').trim().toLowerCase();
     if(q.length<2){document.getElementById('log-results').innerHTML='<div class="ms" style="padding:8px 2px">Type at least two letters — matches come from the current owner filter ('+(OWNER_LABEL[OWNER]||'Both')+').</div>';return;}
     const br=document.getElementById('log-br-q');if(br)br.value='';
+    const als=b=>(G.aliasesOf&&G.aliasesOf[(b.owner||'butthead')+'|'+b.title.toLowerCase().replace(/[^a-z0-9]/g,'')])||[];
     const hits=(G.indBooks||[]).filter(b=>
-      b.title.toLowerCase().includes(q)||b.series.toLowerCase().includes(q)||b.author.toLowerCase().includes(q)).slice(0,30);
+      b.title.toLowerCase().includes(q)||b.series.toLowerCase().includes(q)||b.author.toLowerCase().includes(q)||als(b).some(a=>a.toLowerCase().includes(q))).slice(0,30);
     renderHits(hits,'<div class="ms" style="padding:8px 2px">No matches in the register.</div>');
     // …and elsewhere: Open Library and Google Books answer the same words
     // live, merged by ISBN, so a new book is a pick from a list rather than
@@ -6415,6 +6418,10 @@ async function init(){
     (BUNDLE.tabs['bookdb|Book Authors']||[]).slice(1).forEach(r=>{const k=(r[0]||'').toLowerCase().replace(/[^a-z0-9]/g,'')+'|'+((r[1]||'butthead').trim());(G.bookAuthors[k]=G.bookAuthors[k]||[]).push({pos:n(r[2]),name:(r[3]||'').trim(),role:(r[4]||'author').trim(),credited:(r[5]||'').trim()});});
     Object.values(G.bookAuthors).forEach(l=>l.sort((a,b)=>a.pos-b.pos));
     // Next up queue (bookdb|Queue): Title|Series|Owner|Position|AddedOn.
+    // Title aliases (migration 031): other spellings of register books, learned
+    // from hand links. aliasIndex: nk(alias)+'|'+owner -> register title.
+    G.titleAliases=(BUNDLE.tabs['bookdb|Book Titles']||[]).slice(1).map(r=>({title:(r[0]||'').trim(),alias:(r[1]||'').trim(),owner:(r[2]||'butthead').trim(),kind:(r[3]||'').trim()})).filter(a=>a.title&&a.alias);
+    G.aliasIndex={};G.aliasesOf={};G.titleAliases.forEach(a=>{const k=a.alias.toLowerCase().replace(/[^a-z0-9]/g,'');G.aliasIndex[k+'|'+a.owner]=a.title;(G.aliasesOf[a.owner+'|'+a.title.toLowerCase().replace(/[^a-z0-9]/g,'')]=G.aliasesOf[a.owner+'|'+a.title.toLowerCase().replace(/[^a-z0-9]/g,'')]||[]).push(a.alias);});
     G.queue=(BUNDLE.tabs['bookdb|Queue']||[]).slice(1).map(r=>({title:(r[0]||'').trim(),series:(r[1]||'').trim(),owner:(r[2]||'butthead').trim(),pos:parseFloat(r[3])||0,added:(r[4]||'').trim()})).filter(q=>q.title);
     // ISBNs tab: identifiers (owned-edition first) + best stored cover URL.
     // isbnMap answers "do I have this exact edition?"; bookIsbn drives the

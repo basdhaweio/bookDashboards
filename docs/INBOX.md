@@ -310,6 +310,23 @@ ladder on every later sync, so the match survives re-syncs.
 ```
 `action` is `link` (default) or `unlink`. `gr_title` is display-only.
 
+**Title aliases (migration 031, 2026-10-01).** A hand link also records the
+Goodreads title (without its `(Series, #n)` suffix) as an alias of the
+register book in `book_titles`; the nightly matcher tries aliases before its
+title ladder and the dashboard's Reading-now matching, household lookup and
+Books search use them (`bookdb|Book Titles`: Title | Alias | Owner | Kind).
+
+**Auto-borrow (John's standing rule, 2026-10-01).** A currently-reading
+shelf item that is not in the reader's register but IS an owned book in the
+other reader's register gets the reader their own tracked-not-owned row —
+what the TBR's "＋ Borrow it" button did by hand — via an already-approved
+`add_book_from_inbox` proposal (`recommend = 'auto-borrow'`, note names the
+copy's owner) that `apply_fixes` creates with the normal series/universe/
+author handling; the shelf item is linked to the new row at once. A Borrow
+proposal that was ever dropped is never re-raised. The register models works
+per person and physical copies separately, so this is the true record: she
+read the work; the copy is his.
+
 ### `meta_add`
 Add a value to a picklist vocabulary (the Metadata tab). Applies to
 `meta_vocab` on jerry; the published bundle's `bookdb|Meta Vocab` tab is the

@@ -584,6 +584,16 @@ async function main(){
     const remembered=localStorage.getItem('library-last-tab');
     res(name,cleared&&remembered==='#reading/tbr',`${hadHits} hits before; cleared ${cleared}; remembered ${remembered}`);
   });
+  await check('TBR: a borrowed row shows as matched; title aliases parse',async()=>{
+    const name='TBR: a borrowed row shows as matched; title aliases parse';
+    const W=w(),D=doc();
+    const aliases=W.eval('G.titleAliases'),idx=W.eval('G.aliasIndex');
+    await go('tbr','reading');W.setOwner('goblin');await new Promise(r=>setTimeout(r,500));
+    const card=[...D.querySelectorAll('#tab-tbr .tbr-card')].find(c=>/bands of mourning/i.test(c.innerText));
+    const matched=card?!/not in the register/.test(card.innerText)&&/✓ Read|read · pending/.test(card.innerText):null;
+    W.setOwner('butthead');await new Promise(r=>setTimeout(r,300));
+    res(name,Array.isArray(aliases)&&idx&&typeof idx==='object'&&matched!==false,`${aliases.length} alias(es); Bands of Mourning card ${card?(matched?'matched (✓ Read offered)':'still unmatched'):'not on the shelf right now'}`);
+  });
   await check('Widget links: #add, #order/<id> and #tbr land on the work',async()=>{
     const name='Widget links: #add, #order/<id> and #tbr land on the work';
     const W=w(),D=doc(),tick=ms=>new Promise(r=>setTimeout(r,ms));
