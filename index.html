@@ -401,6 +401,8 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
   .tab-nav::-webkit-scrollbar{display:none;}
   .tab-nav::after{content:'';position:sticky;right:0;flex:none;width:34px;margin-left:-34px;background:linear-gradient(90deg,rgba(0,0,0,0),var(--bg3) 70%);pointer-events:none;}
   .tab-nav button{padding:0.7rem 0.75rem;flex:none;}
+  /* the fade overlay is 34px wide: let the last tab scroll clear of it (John, 2026-10-01: "clips the right-most heading") */
+  .tab-nav button:last-of-type{margin-right:40px;}
 
   .panel{padding:1.4rem 0.9rem 2.5rem;}
   .cb{padding:1rem 0.85rem;border-radius:8px;}
