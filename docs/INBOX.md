@@ -102,6 +102,14 @@ layer just knows one more object. `add_book` accepts the same `edition`
 object (without `replaces`) for a new work that arrives as a specific
 edition; the copy is recorded alongside the work on approval.
 
+**First acquisition wins (John, 2026-10-01).** Every path that marks a book
+owned — Got it, an order line arriving, an omnibus arrival, the legacy order
+path — goes through `mark_owned`: the book's `acquired_on` is its *first*
+acquisition. A second copy arriving later adds its own `acquisitions` row and
+copy but never moves the book's date; an earlier acquisition recorded later
+does move it back. Date corrections via `book_update` `set.acquired_on`
+still set it outright.
+
 ### `copy_let_go`
 Retire a physical copy — sold, donated, swapped out — without touching the
 work's owned status (that stays John-asserted through `acquired`).
