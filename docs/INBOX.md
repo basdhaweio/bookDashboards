@@ -312,6 +312,21 @@ slow (minutes) so it never rides along with `all`. Optional `owner`
 (`butthead` | `goblin` | `all`, default `all`). It also runs weekly
 (Wednesday 04:30, `install_scan_cron.sh`).
 
+### `read_update` (2026-10-04)
+One read event's own facts — today just `media`, how the book was read that
+time (`reads.media_read`), which can differ from the register's media:
+Women of Troy owned in print, read as audio. The This Year table's Media
+badge is tappable and sends this; the change shows as pending until the
+next bundle.
+```json
+{"book": {"title": "The Women of Troy", "series": "Women of Troy", "owner": "butthead"},
+ "date": "2026-08-18", "year": 2026, "set": {"media": "Audio"}}
+```
+`book` is the usual exact reference; `date` (YYYY-MM-DD) or `year` picks
+the read when the reader has several of that book — one must match or the
+event parks. `media` is canonicalised (`audio` → `Audio`) and must be one of
+Print, eBook, Audio, Manga, Graphic Novel, Comics, Short Stories.
+
 ### `goodreads_link`
 A hand match for a currently-reading shelf row the sync could not place —
 the TBR card's "It's in the register as…" action (2026-09-23, migration 026).

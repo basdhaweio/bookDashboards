@@ -2528,7 +2528,23 @@ function renderThisYear(year){
     }).join('')+'</div>';
   }else{fsEl.innerHTML='<div class="ms" style="color:var(--text3);margin-bottom:1.5rem">No focus series data.</div>';}
   const bBadge={Print:'b-gold',Audio:'b-teal',Manga:'b-purple',Comics:'b-green',eBook:'b-teal','Graphic Novel':'b-coral','Short Stories':'b-coral'};
-  document.getElementById('ty-books').innerHTML=books.map(b=>`<tr><td class="nr" style="color:var(--text3);font-family:var(--font-m)">${b.num}</td><td class="nr" style="color:var(--text3);font-family:var(--font-m)">${b.date}</td><td>${b.title}</td><td>${b.genre}</td><td><span class="badge ${bBadge[b.media]||'b-gray'}">${b.media}</span></td><td class="nr" style="font-family:var(--font-m);color:var(--text3)">${b.pages>0?fmt(b.pages):'—'}</td></tr>`).join('');
+  // The Media badge is tappable: a read's own media (audio of a book owned
+  // in print) is edited right here through a read_update event; a change
+  // in flight shows as pending until jerry's bundle carries it (John, 2026-10-04).
+  const pendMedia=LOG.pendingReadMedia(soloOwner());
+  const nkT=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  document.getElementById('ty-books').innerHTML=books.map((b,i)=>{const pm=pendMedia.get(nkT(b.title)+'|'+year),media=pm||b.media;
+    return`<tr><td class="nr" style="color:var(--text3);font-family:var(--font-m)">${b.num}</td><td class="nr" style="color:var(--text3);font-family:var(--font-m)">${b.date}</td><td>${esc(b.title)}</td><td>${esc(b.genre)}</td><td><span class="badge ${bBadge[media]||'b-gray'} ty-media" data-i="${i}" title="tap to change how this one was read" style="cursor:pointer" onclick="tyMediaEdit(this)">${esc(media)}</span>${pm?' <span class="ms">pending</span>':''}</td><td class="nr" style="font-family:var(--font-m);color:var(--text3)">${b.pages>0?fmt(b.pages):'—'}</td></tr>`;}).join('');
+  G._tyBooks=books;G._tyYear=year;
+}
+function tyMediaEdit(el){
+  const i=+el.dataset.i,b=(G._tyBooks||[])[i];if(!b)return;
+  const cur=el.textContent.trim();
+  const sel=document.createElement('select');sel.className='ty-media-sel';sel.style.cssText='font:inherit;font-size:12px;padding:2px 4px;border:1px solid var(--border2);border-radius:6px;background:var(--bg2)';
+  sel.innerHTML=MEDIA.map(m=>`<option${m===cur?' selected':''}>${esc(m)}</option>`).join('');
+  sel.onchange=async()=>{const ok=await LOG.setReadMedia(b,G._tyYear,sel.value);if(ok)renderThisYear(G._tyYear);};
+  sel.onblur=()=>{if(sel.parentNode)sel.replaceWith(el);};
+  el.replaceWith(sel);sel.focus();
 }
 // Per person, from the register's own credits (Book Authors tab) over the
 // books the header shows: a co-written series no longer hands every
@@ -4829,6 +4845,7 @@ const LOG=(()=>{
       case'order_new':return p.list==='bookboxes'
         ?`🎁 Box: ${p.vendor}${p.box?' '+p.box:''} — ${p.title||'title TBA'}${p.want&&p.want!=='Yes'?' · want: '+p.want:''}`
         :`🧾 New order ${p.order||''}${p.store?' at '+p.store:''} — ${p.books||'?'}${p.status==='shipped'?' · shipped':p.status==='arrived'?' · arrived '+(p.arrived_on||''):''}`;
+      case'read_update':return`📖 “${b.title}” read as ${(p.set||{}).media||'?'}${p.date?' · '+p.date:p.year?' · '+p.year:''}`;
       case'order_line_set':{const s=Object.entries(p.set||{}).map(([k,v])=>`${k}: ${v}`).join(', ');const r=p.ref||{},l=p.line||{};
         return`🧾 Order ${r.order||('#'+(r.id||'?'))} line ${l.id?'#'+l.id:l.position?l.position:(l.title||l.series||'')} → ${s}`;}
       case'order_update':{const s=Object.entries(p.set||{}).map(([k,v])=>v===true?k:`${k}: ${v}`).join(', ');
@@ -5306,6 +5323,27 @@ const LOG=(()=>{
   function queueSet(b,action,position){const p={book:bookRef(b),action};if(position!=null)p.position=position;return submit('queue_set',p,b);}
   // Latest pending queue_set per book (title|series), oldest first so a
   // later move overrides an earlier add.
+  // read_update events in flight: nk(title)|year -> media, for the This Year table
+  function pendingReadMedia(owner){
+    const m=new Map(),seen=new Set(),nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    [...(pendCache||[]),...sent().filter(e=>!BUNDLE||e.at>BUNDLE.generated_at)]
+      .filter(e=>e.type==='read_update'&&!seen.has(e.id)&&seen.add(e.id)&&(e.by||'butthead')===owner)
+      .sort((a,b)=>a.at<b.at?-1:1)
+      .forEach(ev=>{const p=ev.payload||{},b=p.book||{};if(b.title&&p.set&&p.set.media)m.set(nk(b.title)+'|'+(p.year||(p.date||'').slice(0,4)),p.set.media);});
+    return m;
+  }
+  // Media of one read (This Year table): the register row by title, the read by its date (or year)
+  async function setReadMedia(row,year,media){
+    const owner=soloOwner(),nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    const b=(G.allIndBooks||[]).find(x=>(x.owner||'butthead')===owner&&nk(x.title)===nk(row.title));
+    if(!b)return toast('That read is not matched to a register book — fix the title on the Books tab first',true),false;
+    const m=(row.date||'').match(/^(\d{1,2})\/(\d{1,2})$/);
+    const date=row.iso||(m?`${year}-${String(+m[1]).padStart(2,'0')}-${String(+m[2]).padStart(2,'0')}`:'');
+    const p={book:bookRef(b),year,set:{media}};if(date)p.date=date;
+    const ok=await submit('read_update',p,b,owner);
+    if(ok)toast(`${b.title}: read as ${media} — on the table after jerry syncs`);
+    return ok;
+  }
   function pendingQueue(){
     const m=new Map(),seen=new Set();
     [...(pendCache||[]),...sent().filter(e=>!BUNDLE||e.at>BUNDLE.generated_at)]
@@ -6394,7 +6432,7 @@ const LOG=(()=>{
     toggleOrderHistory,findInRegister,storeFromOrderNo,logFlyerOrders,trackSeriesFromIsbn,submitTrackSeries,
     finishBook,setNeed,pendingBooks,today,queueSet,pendingQueue,acquireBook,setPubDate,
     renderPeople,doAuthorMerge,doAuthorRename,doAuthorAlias,addCreditRow,saveCredits,
-    pendingLinks,linkGoodreads,prefillAdd,doScanUpcoming,planSet,pendingPlan,webAdd,clearSearch,orderStore,orderStatus,orderLineAdd,orderLineDel,doLineSet,doLinesShipAll,lineShipPrompt,openOrder};
+    pendingLinks,linkGoodreads,prefillAdd,doScanUpcoming,planSet,pendingPlan,webAdd,clearSearch,setReadMedia,pendingReadMedia,orderStore,orderStatus,orderLineAdd,orderLineDel,doLineSet,doLinesShipAll,lineShipPrompt,openOrder};
 })();
 
 async function init(){

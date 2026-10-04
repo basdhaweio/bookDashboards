@@ -609,6 +609,25 @@ async function main(){
     const nextYearSlots=D.querySelectorAll('#plan-list .tbr-card[data-plan]:not([data-plan="q"])').length,nextYearForm=!!D.getElementById('plan-n-label');
     res(name,same&&!shapeForm&&note&&nextYearForm,`${cy}: ${cards.length} cards = ${qt.length} queued (${same}), shape form hidden ${!shapeForm}; ${cy+1}: ${nextYearSlots} plan slots, shape form ${nextYearForm}`);
   });
+  await check('This Year: the Media badge edits the read through a read_update event',async()=>{
+    const name='This Year: the Media badge edits the read through a read_update event';
+    const W=w(),D=doc(),tick=ms=>new Promise(r=>setTimeout(r,ms));
+    const sentBodies=[],realFetch=W.fetch;let LOGi=null;
+    W.fetch=async(url,opts={})=>{const u=String(url);if(!u.includes('api.github.com'))return realFetch(url,opts);
+      if((opts.method||'GET')==='PUT'){try{sentBodies.push(JSON.parse(decodeURIComponent(escape(atob(JSON.parse(opts.body).content)))));}catch(e){sentBodies.push({err:String(e)});}return new W.Response('{"content":{}}',{status:201,headers:{'Content-Type':'application/json'}});}
+      return new W.Response(u.includes('/contents/inbox')?'[]':'{}',{status:200,headers:{'Content-Type':'application/json'}});};
+    try{
+      LOGi=W.eval('LOG');await LOGi.saveSetup({closest:()=>({querySelector:sel=>({value:sel.includes('repo')?'harness/stub':'harness-stand-in'})})});await tick(300);
+      await go('thisyear','reading');
+      const badge=D.querySelector('#ty-books .ty-media');if(!badge){res(name,true,'no reads on the table this year');return;}
+      const row=W.eval('G._tyBooks')[+badge.dataset.i];
+      badge.click();await tick(100);const sel=D.querySelector('#ty-books .ty-media-sel');
+      const want=sel.value==='Audio'?'Print':'Audio';sel.value=want;sel.dispatchEvent(new W.Event('change'));await tick(500);
+      const ev=sentBodies.find(e=>e.type==='read_update'),p=(ev||{}).payload||{};
+      const pend=D.querySelector('#ty-books .ty-media').parentNode.textContent.includes('pending');
+      res(name,!!ev&&p.set&&p.set.media===want&&!!(p.date||p.year)&&!!(p.book&&p.book.title),`event ${!!ev}; ${p.book&&p.book.title} → ${p.set&&p.set.media} on ${p.date||p.year}; pending shown ${pend}`);
+    }finally{W.fetch=realFetch;if(LOGi)LOGi.forgetSetup();localStorage.removeItem('library-log-cfg');localStorage.removeItem('library-log-sent');}
+  });
   await check('Widget links: #add, #order/<id> and #tbr land on the work',async()=>{
     const name='Widget links: #add, #order/<id> and #tbr land on the work';
     const W=w(),D=doc(),tick=ms=>new Promise(r=>setTimeout(r,ms));
