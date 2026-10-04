@@ -1,8 +1,16 @@
 {
- "generated_at": "2026-10-03T07:50:18+00:00",
+ "generated_at": "2026-10-04T07:00:18+00:00",
  "owner": "butthead",
  "site": "https://basdhaweio.github.io/bookDashboards/",
  "reading_now": [
+  {
+   "title": "Die, Vol. 3: The Great Game",
+   "author": "Kieron Gillen",
+   "since": "2026-10-03",
+   "cover": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1600744154l/54215779.jpg",
+   "register": "Die Vol 3",
+   "series": "Die"
+  },
   {
    "title": "The Song of Achilles",
    "author": "Madeline Miller",
@@ -26,14 +34,6 @@
    "cover": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1304761003l/291628.jpg",
    "register": "Darkwalker on Moonshae",
    "series": "Moonshae Trilogy"
-  },
-  {
-   "title": "Die, Vol. 2: Split the Party",
-   "author": "Kieron Gillen",
-   "since": "2026-06-02",
-   "cover": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1575345987l/49426262._SX318_SY475_.jpg",
-   "register": "Die Vol 2",
-   "series": "Die"
   },
   {
    "title": "The Nicomachean Ethics",
@@ -228,14 +228,14 @@
   "year": 2026,
   "read": 54,
   "target": 155,
-  "pace": 117,
+  "pace": 118,
   "last_year_by_now": 115,
   "last_year_total": 153,
   "this_month": 0,
   "bought": 143
  },
  "proposals": {
-  "open": 13
+  "open": 14
  },
  "charts": [
   {
