@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-10-04T07:50:19+00:00",
+ "generated_at": "2026-10-04T15:20:31+00:00",
  "owner": "butthead",
  "site": "https://basdhaweio.github.io/bookDashboards/",
  "reading_now": [
@@ -10,14 +10,6 @@
    "cover": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1600744154l/54215779.jpg",
    "register": "Die Vol 3",
    "series": "Die"
-  },
-  {
-   "title": "The Song of Achilles",
-   "author": "Madeline Miller",
-   "since": "2026-09-12",
-   "cover": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1357177533l/13623848._SY475_.jpg",
-   "register": "Song of Achilles",
-   "series": ""
   },
   {
    "title": "Fall of Light (The Kharkanas Trilogy, #2)",
@@ -235,7 +227,7 @@
   "bought": 143
  },
  "proposals": {
-  "open": 14
+  "open": 15
  },
  "charts": [
   {
