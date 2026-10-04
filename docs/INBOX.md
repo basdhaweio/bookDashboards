@@ -280,7 +280,16 @@ is optional but strongly recommended — it filters both lookups.
 ### `sync_request`
 Ask jerry to pull an external source now. Results arrive as PROPOSALS on the
 Proposed tab — a sync never writes the register directly (Goodreads burned it
-once; the 2026-07-24 rule stands).
+once; the 2026-07-24 rule stands) — with two standing exceptions John granted
+later: **auto-borrow** (2026-10-01, see `goodreads_link` below) and
+**Goodreads finishes** (2026-10-04): a read-shelf item that the matcher pins
+to exactly one *unread* register book of the shelf's owner is logged
+directly — a `reads` row with `source = 'goodreads'`, the book marked read
+with Goodreads' finish date, or the shelving year alone when Goodreads gave
+no day — and the Goodreads spelling becomes a title alias. Ambiguous or
+unknown titles still propose (`add_book_from_inbox`); a collection on the
+copies layer is left for hand review. Before this the sync matched by exact
+title only and skipped undated items, so finishes never reached This Year.
 ```json
 {"source": "goodreads"}
 ```
