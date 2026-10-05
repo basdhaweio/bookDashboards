@@ -1149,10 +1149,29 @@ function age(){return(new Date()-DOB)/(365.25*864e5);}
 // on jerry, not from the Google Sheets API.
 let BUNDLE=null;
 async function loadBundle(){
-  const r=await fetch('data/bookdb.json?v='+Date.now());
+  const r=await fetch('data/bookdb.json?v='+Date.now(),{cache:'no-store'});
   if(!r.ok)throw new Error(`bundle ${r.status}: ${r.statusText}`);
+  bundleTag=r.headers.get('etag')||r.headers.get('last-modified')||'';
   BUNDLE=await r.json();
 }
+// The phone app (and a pinned tab) keeps one page open for days, so the
+// bundle it loaded goes stale while jerry publishes behind it — "this year
+// at a glance is missing the things I finished this weekend" (John,
+// 2026-10-04). On coming back to the foreground, if the published bundle is
+// newer than the one loaded, reload in place (the hash keeps the tab).
+let bundleCheckAt=0,bundleTag='';
+async function bundleFreshCheck(){
+  if(document.visibilityState!=='visible'||!BUNDLE||!bundleTag||Date.now()-bundleCheckAt<120000)return;
+  bundleCheckAt=Date.now();
+  try{
+    const r=await fetch('data/bookdb.json?v='+Date.now(),{method:'HEAD',cache:'no-store'});   // headers only: the ETag changes with every publish
+    if(!r.ok)return;
+    const tag=r.headers.get('etag')||r.headers.get('last-modified')||'';
+    if(tag&&tag!==bundleTag){toast('Newer data published — refreshing');setTimeout(()=>location.reload(),600);}
+  }catch(e){}
+}
+document.addEventListener('visibilitychange',bundleFreshCheck);
+window.addEventListener('focus',bundleFreshCheck);
 async function fr(sid,range){
   const tab=range.split('!')[0].replace(/^'/,'').replace(/'$/,'');
   return (BUNDLE.tabs[sid+'|'+tab])||[];
