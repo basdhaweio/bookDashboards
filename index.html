@@ -1375,9 +1375,20 @@ function pageStatsFor(){
   owners.forEach(o=>{const cs=ps[o]||{};Object.values(cs).forEach(c=>{for(const k in agg)agg[k]+=c[k]||0;});});
   return agg;
 }
+// Replacement value for insurance (migration 032): list prices Google Books
+// knows for the owned books, totalled per owner — the one place a price
+// appears on the dashboard (John, 2026-10-04: list prices, "if for nothing
+// else than insurance"; never per book).
+function valuationTile(){
+  const rows=(G.valuation||[]).filter(v=>OWNER==='all'||v.owner===OWNER);
+  if(!rows.length)return'';
+  const total=rows.reduce((m,v)=>m+v.total,0),priced=rows.reduce((m,v)=>m+v.priced,0),owned=rows.reduce((m,v)=>m+v.owned,0);
+  if(!priced)return mH('—','Replacement value','list prices not fetched yet');
+  return mH('$'+fmt(Math.round(total)),'Replacement value',`list prices · ${fmt(priced)} of ${fmt(owned)} owned books priced${rows[0].asOf?' · '+esc(rows[0].asOf):''}`);
+}
 function renderOverview(bm,yd2026){
   const pg=pageStatsFor();
-  document.getElementById('ov-m').innerHTML=mH(fmt(bm.tracked),'Total tracked')+mH(fmt(bm.read),'Total read',pct(bm.read,bm.tracked)+' of tracked','t')+mH(fmt(bm.owned),'Total owned')+mH(fmt(bm.shelf),'On shelf','owned unread','c')+mH(fmt(bm.needBuy),'Need to buy')+mH(fmt(bm.readNotOwned),'Read not owned','delta where read > owned')+mH(fmt(pg.ownedPages),'Pages owned',`${fmt(pg.ownedWith)} of ${fmt(pg.ownedBooks)} books w/ data`)+mH(fmt(pg.readPages),'Pages read',`all-time · ${fmt(pg.readWith)} of ${fmt(pg.readBooks)} w/ data`,'t');
+  document.getElementById('ov-m').innerHTML=mH(fmt(bm.tracked),'Total tracked')+mH(fmt(bm.read),'Total read',pct(bm.read,bm.tracked)+' of tracked','t')+mH(fmt(bm.owned),'Total owned')+mH(fmt(bm.shelf),'On shelf','owned unread','c')+mH(fmt(bm.needBuy),'Need to buy')+mH(fmt(bm.readNotOwned),'Read not owned','delta where read > owned')+mH(fmt(pg.ownedPages),'Pages owned',`${fmt(pg.ownedWith)} of ${fmt(pg.ownedBooks)} books w/ data`)+mH(fmt(pg.readPages),'Pages read',`all-time · ${fmt(pg.readWith)} of ${fmt(pg.readBooks)} w/ data`,'t')+valuationTile();
   document.getElementById('ov-c').innerHTML=mH(pct(bm.read,bm.tracked),'Read / tracked','','t')+mH(pct(bm.read,bm.owned),'Read / owned','','t')+mH(pct(bm.owned,bm.tracked),'Owned / tracked')+mH(pct(bm.owned-bm.read,bm.tracked-bm.read),'Owned unread / unread');
   const{books,focus}=yd2026;
   const mcByMedia2026={};
@@ -6520,6 +6531,7 @@ async function init(){
     // from hand links. aliasIndex: nk(alias)+'|'+owner -> register title.
     G.titleAliases=(BUNDLE.tabs['bookdb|Book Titles']||[]).slice(1).map(r=>({title:(r[0]||'').trim(),alias:(r[1]||'').trim(),owner:(r[2]||'butthead').trim(),kind:(r[3]||'').trim()})).filter(a=>a.title&&a.alias);
     G.aliasIndex={};G.aliasesOf={};G.titleAliases.forEach(a=>{const k=a.alias.toLowerCase().replace(/[^a-z0-9]/g,'');G.aliasIndex[k+'|'+a.owner]=a.title;(G.aliasesOf[a.owner+'|'+a.title.toLowerCase().replace(/[^a-z0-9]/g,'')]=G.aliasesOf[a.owner+'|'+a.title.toLowerCase().replace(/[^a-z0-9]/g,'')]||[]).push(a.alias);});
+    G.valuation=(BUNDLE.tabs['bookdb|Valuation']||[]).slice(1).map(r=>({owner:(r[0]||'butthead').trim(),owned:n(r[1]),priced:n(r[2]),total:parseFloat(r[3])||0,noOffer:n(r[4]),asOf:(r[5]||'').trim()}));
     G.queue=(BUNDLE.tabs['bookdb|Queue']||[]).slice(1).map(r=>({title:(r[0]||'').trim(),series:(r[1]||'').trim(),owner:(r[2]||'butthead').trim(),pos:parseFloat(r[3])||0,added:(r[4]||'').trim()})).filter(q=>q.title);
     // ISBNs tab: identifiers (owned-edition first) + best stored cover URL.
     // isbnMap answers "do I have this exact edition?"; bookIsbn drives the
