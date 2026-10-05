@@ -341,6 +341,10 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
 .log-exp.open{display:block;}
 .log-frow{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
 .log-line{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:3px 0;}
+.sheet td.ed{cursor:pointer;}.sheet td.ed:hover{background:var(--bg3);}.sheet td .pend{color:var(--gold2);font-family:var(--font-m);font-size:10px;margin-left:4px;}
+.sheet td input,.sheet td select{font:inherit;font-size:12px;padding:3px 5px;border:1px solid var(--border2);border-radius:6px;background:var(--bg2);min-width:60px;max-width:260px;}
+.sheet td.tick{text-align:center;}.sheet .tick-on{color:var(--teal);font-weight:600;}.sheet .tick-off{color:var(--text3);}
+.sheet .sheet-inline{display:flex;gap:4px;align-items:center;flex-wrap:wrap;}
 .log-line input{font:inherit;font-size:12px;padding:4px 6px;border:1px solid var(--border2);border-radius:6px;min-width:0;}
 .log-line .ol-title{flex:2 1 200px;}.log-line .ol-author{flex:1 1 140px;}.log-line .ol-series{flex:1 1 140px;}.log-line .ol-seq{flex:0 0 58px;width:58px;}.log-line .ol-qty{flex:0 0 92px;width:92px;}.log-line .ol-eta{flex:0 0 150px;width:150px;}.log-line .ol-price{flex:0 0 72px;width:72px;}
 .log-line select{font:inherit;font-size:12px;padding:4px 4px;border:1px solid var(--border2);border-radius:6px;background:var(--bg2);}
@@ -959,6 +963,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <button id="log-pending-tab" onclick="switchTab('logpending','log')">Pending</button>
       <button id="log-proposed-tab" onclick="switchTab('logproposed','log')">Proposed</button>
       <button onclick="switchTab('logmeta','log')">Metadata</button>
+      <button onclick="switchTab('logsheet','log')">Sheet</button>
     </div>
     <div class="panel active" id="tab-logbook">
       <div id="log-setup-book"></div>
@@ -1016,6 +1021,13 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
         <input type="file" id="log-libib-file" accept=".csv,text/csv" style="display:none" onchange="LOG.importLibib(this)">
       </div>
       <div id="log-proposed-list"></div>
+    </div>
+    <div class="panel" id="tab-logsheet">
+      <div id="log-setup-sheet"></div>
+      <div class="sl">The register as a sheet <span class="ms" style="font-weight:normal">· tap a cell to change it; ticks and dates write the same events as the Books tab</span></div>
+      <div id="log-sheet-bar" style="margin-bottom:10px"></div>
+      <div class="tw sheet"><table><thead><tr><th>Title</th><th>Series</th><th class="nr">#</th><th>Author</th><th>Media</th><th>Genre</th><th>Owned</th><th>Read</th><th>Read on</th><th>Acquired</th><th>Need</th><th>Notes</th></tr></thead><tbody id="log-sheet"></tbody></table></div>
+      <div id="log-sheet-more" style="margin-top:8px"></div>
     </div>
     <div class="panel" id="tab-logmeta">
       <div id="log-setup-meta"></div>
@@ -3349,7 +3361,7 @@ function switchTab(id,sec,fromSection){
   curTab=id;
   // Log tabs reflect live inbox state — always re-render on visit (no charts, cheap)
   if(!rendered.has(id)){renderTab(id);rendered.add(id);}
-  else if(id==='logbook'||id==='logorders'||id==='logpending'||id==='logproposed'||id==='logmeta')renderTab(id);
+  else if(id==='logbook'||id==='logorders'||id==='logpending'||id==='logproposed'||id==='logmeta'||id==='logsheet')renderTab(id);
   if(!fromSection){curSec=sec;updateHash(sec,id);}
 }
 
@@ -3398,7 +3410,7 @@ function restoreFromHash(){
   if(!hash){try{hash=(localStorage.getItem(LS_LAST_TAB)||'').replace('#','');}catch(e){}}
   const[sec,tab]=hash.split('/');
   const validSecs=new Set(['tracking','reading','buying','collecting','bookclub','log']);
-  const validTabs=new Set(['overview','bytype','genre','universe','rooms','tbr','plan','history','thisyear','completion','byseries','toread','comingup','bookmail','toacquire','someday','libgrowth','buythisyear','col-fr','col-dl','col-sr','flyer','bnauthors','logbook','logorders','logpending','logproposed','logmeta']);
+  const validTabs=new Set(['overview','bytype','genre','universe','rooms','tbr','plan','history','thisyear','completion','byseries','toread','comingup','bookmail','toacquire','someday','libgrowth','buythisyear','col-fr','col-dl','col-sr','flyer','bnauthors','logbook','logorders','logpending','logproposed','logmeta','logsheet']);
   const validFRTabs=new Set(['fr-overview','fr-series','fr-completion']);
   const validDLTabs=new Set(['dl-overview','dl-series','dl-completion']);
   const validSRTabs=new Set(['sr-overview','sr-publisher','sr-completion']);
@@ -3459,6 +3471,7 @@ function renderTabInner(id){
   else if(id==='logorders')LOG.renderOrders();
   else if(id==='logpending')LOG.renderPending();
   else if(id==='logproposed')LOG.renderProposed();
+  else if(id==='logsheet')LOG.renderSheet();
   else if(id==='logmeta')LOG.renderMeta();
   else if(id==='col-fr'){switchFRTab('fr-overview');}
   else if(id==='col-dl'){switchDLTab('dl-overview');}
@@ -5430,6 +5443,87 @@ const LOG=(()=>{
     const ok=await submit('sync_request',{source:'upcoming',owner:OWNER==='all'?'all':OWNER},null,'butthead');
     if(ok)toast('Scan requested — Google Books and Wikidata are asked about every series with a book read; finds land here as proposals within a few minutes');
   }
+  // ── Sheet: the register as an editable table (John, 2026-10-04: "table
+  // views are very familiar to Shereen — might be a way to move off her
+  // spreadsheet"). Every cell writes the same event the Books tab would:
+  // text fields -> book_update, Read/Owned ticks -> finished / acquired
+  // (with a date), Need -> book_update need. In-flight edits overlay the
+  // row with a 'pending' mark until jerry's bundle carries them.
+  let sheetF={q:'',status:'',media:'',n:60};
+  const SHEET_STATUS=[['','All'],['owned','Owned'],['shelf','On shelf (unread)'],['read','Read'],['unowned','Not owned'],['need','Need']];
+  function pendingBookSets(){
+    const m=new Map(),seen=new Set();
+    [...(pendCache||[]),...sent().filter(e=>!BUNDLE||e.at>BUNDLE.generated_at)]
+      .filter(e=>!seen.has(e.id)&&seen.add(e.id)).sort((a,b)=>a.at<b.at?-1:1)
+      .forEach(ev=>{const p=ev.payload||{},b=p.book;if(!b)return;const k=b.title+'|'+(b.series||'')+'|'+(b.owner||ev.by||'butthead');
+        const cur=m.get(k)||{};
+        if(ev.type==='book_update')Object.assign(cur,p.set||{});
+        else if(ev.type==='finished'){cur.read=true;if(p.date)cur.read_on=p.date;}
+        else if(ev.type==='acquired'){cur.owned=true;if(p.date)cur.acquired_on=p.date;}
+        else return;
+        m.set(k,cur);});
+    return m;
+  }
+  function sheetRows(){
+    const owner=soloOwner(),q=sheetF.q.toLowerCase();
+    return(G.allIndBooks||[]).filter(b=>(b.owner||'butthead')===owner)
+      .filter(b=>!q||(b.title+' '+b.series+' '+b.author).toLowerCase().includes(q))
+      .filter(b=>!sheetF.media||b.media===sheetF.media)
+      .filter(b=>{switch(sheetF.status){case'owned':return b.owned;case'shelf':return b.owned&&!b.read;case'read':return b.read;case'unowned':return!b.owned;case'need':return b.need;default:return true;}})
+      .sort((a,b)=>a.title.localeCompare(b.title));
+  }
+  function renderSheet(){
+    document.getElementById('log-setup-sheet').innerHTML=hintCard();
+    const all=sheetRows(),rows=all.slice(0,sheetF.n),pend=pendingBookSets();
+    const medias=[...new Set((G.allIndBooks||[]).filter(b=>(b.owner||'butthead')===soloOwner()).map(b=>b.media).filter(Boolean))].sort();
+    document.getElementById('log-sheet-bar').innerHTML=`<div class="log-frow" style="margin-bottom:6px"><input id="log-sheet-q" class="log-search" style="margin:0;max-width:420px;font-size:14px;padding:8px 12px" placeholder="filter by title, series or author" value="${esc(sheetF.q)}" oninput="LOG.sheetFilter('q',this.value)">${OWNER==='all'?readerPill():''}<span class="ms">${fmt(all.length)} book${all.length===1?'':'s'}</span><button class="log-act" onclick="LOG.sheetNewBook()">＋ New book</button></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${SHEET_STATUS.map(([v,l])=>`<button class="pchip${sheetF.status===v?' on':''}" data-v="${v}" onclick="LOG.sheetFilter('status',this.dataset.v)">${l}</button>`).join('')}<span class="ms" style="margin:0 4px">·</span>${medias.map(m=>`<button class="pchip${sheetF.media===m?' on':''}" data-v="${esc(m)}" onclick="LOG.sheetFilter('media',this.dataset.v)">${esc(m)}</button>`).join('')}</div>`;
+    const pk=b=>b.title+'|'+realSeries(b)+'|'+(b.owner||'butthead');
+    const cell=(b,i,f,val,cls)=>{const ps=pend.get(pk(b))||{},pv=f in ps?ps[f]:undefined;const shown=pv!==undefined?String(pv):val;
+      return`<td class="ed ${cls||''}" data-i="${i}" data-f="${f}" onclick="LOG.sheetEdit(this)">${esc(shown||'')}${pv!==undefined?'<span class="pend">pending</span>':''}</td>`;};
+    const tick=(b,i,f)=>{const ps=pend.get(pk(b))||{},on=f in ps?!!ps[f]:(f==='read'?b.read:f==='owned'?b.owned:b.need),pending=f in ps;
+      const act=f==='need'?`LOG.sheetNeed(${i})`:on?'':`LOG.sheetTick(this,${i},'${f}')`;
+      return`<td class="tick${act?' ed':''}" data-i="${i}" data-f="${f}"${act?` onclick="${act}"`:''}><span class="${on?'tick-on':'tick-off'}">${on?'✓':'·'}</span>${pending?'<span class="pend">pending</span>':''}</td>`;};
+    document.getElementById('log-sheet').innerHTML=rows.map((b,i)=>`<tr data-i="${i}">${cell(b,i,'title',b.title)}${cell(b,i,'series',realSeries(b))}${cell(b,i,'seq',b.seq||'','nr')}${cell(b,i,'author',b.author)}${cell(b,i,'media',b.media||'')}${cell(b,i,'genre',b.type||'')}${tick(b,i,'owned')}${tick(b,i,'read')}${cell(b,i,'read_on',b.readOn||'')}${cell(b,i,'acquired_on',b.acquiredOn||'')}${tick(b,i,'need')}${cell(b,i,'notes',b.notes||'')}</tr>`).join('')
+      ||'<tr><td colspan="12" class="ms">Nothing matches.</td></tr>';
+    document.getElementById('log-sheet')._rows=rows;
+    document.getElementById('log-sheet-more').innerHTML=all.length>rows.length?`<button class="log-act" onclick="LOG.sheetFilter('n',${sheetF.n+120})">Show ${Math.min(120,all.length-rows.length)} more of ${fmt(all.length-rows.length)}</button>`:'';
+  }
+  function sheetFilter(k,v){if(k==='n')sheetF.n=+v;else{sheetF[k]=sheetF[k]===v&&k!=='q'?'':v;if(k!=='n')sheetF.n=60;}const keep=k==='q'?document.getElementById('log-sheet-q'):null;const pos=keep?keep.selectionStart:0;renderSheet();if(keep){const q=document.getElementById('log-sheet-q');q.focus();q.setSelectionRange(pos,pos);}}
+  function sheetNewBook(){switchTab('logbook','log');const f=document.getElementById('log-addform');if(f&&f.style.display==='none')toggleAdd();window.scrollTo({top:0});}
+  // A cell becomes its input; Enter or leaving it saves when the value changed.
+  function sheetEdit(td){
+    if(td.querySelector('input,select'))return;
+    const i=+td.dataset.i,f=td.dataset.f,b=(document.getElementById('log-sheet')._rows||[])[i];if(!b)return;
+    const cur=bookEditCur(b)[f]||'';
+    let el;
+    if(f==='media'){el=document.createElement('select');el.innerHTML='<option value=""></option>'+vocabFor('media').map(v=>`<option${v===cur?' selected':''}>${esc(v)}</option>`).join('');}
+    else{el=document.createElement('input');el.value=cur;if(f==='read_on'||f==='acquired_on')el.type='date';if(f==='genre'){el.setAttribute('list','log-dl-genre');}}
+    const done=async(save)=>{if(!el.parentNode)return;const v=el.value.trim();el.replaceWith(td.firstChild||document.createTextNode(''));td.innerHTML=esc(cur);
+      if(!save||v===cur)return;
+      const set={};set[f]=v;const bad=vetVocab(set);if(bad)return toast(bad,true);
+      if((f==='read_on'||f==='acquired_on')&&v&&!/^\d{4}-\d{2}-\d{2}$/.test(v))return toast('Dates are YYYY-MM-DD',true);
+      const ok=await submit('book_update',{book:bookRef(b),set},b,soloOwner());
+      if(ok){toast(`“${b.title}”: ${f.replace('_',' ')} → ${v||'(blank)'}`);renderSheet();}};
+    el.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();done(true);}else if(e.key==='Escape')done(false);};
+    el.onchange=()=>{if(el.tagName==='SELECT')done(true);};
+    el.onblur=()=>setTimeout(()=>done(true),120);
+    td.innerHTML=(f==='genre'?`<datalist id="log-dl-genre">${vocabFor('genre').map(v=>`<option>${esc(v)}</option>`).join('')}</datalist>`:'');td.appendChild(el);el.focus();
+  }
+  // Read / Owned ticks ask for the date (and the shop, for Owned) inline, then send finished / acquired.
+  function sheetTick(td,i,f){
+    if(td.querySelector('input'))return;
+    const b=(document.getElementById('log-sheet')._rows||[])[i];if(!b)return;
+    td.innerHTML=`<span class="sheet-inline"><input type="date" value="${today()}" style="max-width:150px">${f==='owned'?`<input list="log-dl-source" placeholder="shop" style="max-width:120px"><datalist id="log-dl-source">${vocabFor('source').map(v=>`<option>${esc(v)}</option>`).join('')}</datalist>`:''}<button class="log-act primary" onclick="LOG.sheetTickGo(this,${i},'${f}')">✓</button><button class="log-act" onclick="LOG.renderSheet()">✕</button></span>`;
+    td.onclick=null;
+  }
+  async function sheetTickGo(btn,i,f){
+    const b=(document.getElementById('log-sheet')._rows||[])[i];if(!b)return;
+    const wrap=btn.parentNode,date=wrap.querySelector('input[type=date]').value,shop=(wrap.querySelector('input[list]')||{}).value||'';
+    const ok=f==='read'?await finishBook(b,date):await acquireBook(b,date,shop);
+    if(ok){toast(f==='read'?`Logged: finished “${b.title}”`:`Logged: got “${b.title}”`);renderSheet();}
+  }
+  async function sheetNeed(i){const b=(document.getElementById('log-sheet')._rows||[])[i];if(!b)return;if(await setNeed(b,!b.need)){toast(`“${b.title}”: need ${!b.need?'on':'off'}`);renderSheet();}}
   function pendingBooks(type){
     const ks=new Set();
     [...(pendCache||[]),...sent().filter(e=>!BUNDLE||e.at>BUNDLE.generated_at)].forEach(ev=>{const b=ev.payload&&ev.payload.book;if(b&&ev.type===type)ks.add(b.title+'|'+(b.series||''));});
@@ -6462,7 +6556,7 @@ const LOG=(()=>{
     toggleOrderHistory,findInRegister,storeFromOrderNo,logFlyerOrders,trackSeriesFromIsbn,submitTrackSeries,
     finishBook,setNeed,pendingBooks,today,queueSet,pendingQueue,acquireBook,setPubDate,
     renderPeople,doAuthorMerge,doAuthorRename,doAuthorAlias,addCreditRow,saveCredits,
-    pendingLinks,linkGoodreads,prefillAdd,doScanUpcoming,planSet,pendingPlan,webAdd,clearSearch,setReadMedia,pendingReadMedia,orderStore,orderStatus,orderLineAdd,orderLineDel,doLineSet,doLinesShipAll,lineShipPrompt,openOrder};
+    pendingLinks,linkGoodreads,prefillAdd,doScanUpcoming,planSet,pendingPlan,webAdd,clearSearch,setReadMedia,pendingReadMedia,renderSheet,sheetFilter,sheetEdit,sheetTick,sheetTickGo,sheetNeed,sheetNewBook,orderStore,orderStatus,orderLineAdd,orderLineDel,doLineSet,doLinesShipAll,lineShipPrompt,openOrder};
 })();
 
 async function init(){

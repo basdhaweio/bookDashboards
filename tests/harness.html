@@ -628,6 +628,25 @@ async function main(){
       res(name,!!ev&&p.set&&p.set.media===want&&!!(p.date||p.year)&&!!(p.book&&p.book.title),`event ${!!ev}; ${p.book&&p.book.title} → ${p.set&&p.set.media} on ${p.date||p.year}; pending shown ${pend}`);
     }finally{W.fetch=realFetch;if(LOGi)LOGi.forgetSetup();localStorage.removeItem('library-log-cfg');localStorage.removeItem('library-log-sent');}
   });
+  await check('Log › Sheet: the register renders as an editable table and a cell edit sends book_update',async()=>{
+    const name='Log › Sheet: the register renders as an editable table and a cell edit sends book_update';
+    const W=w(),D=doc(),tick=ms=>new Promise(r=>setTimeout(r,ms));
+    const sentBodies=[],realFetch=W.fetch;let LOGi=null;
+    W.fetch=async(url,opts={})=>{const u=String(url);if(!u.includes('api.github.com'))return realFetch(url,opts);
+      if((opts.method||'GET')==='PUT'){try{sentBodies.push(JSON.parse(decodeURIComponent(escape(atob(JSON.parse(opts.body).content)))));}catch(e){sentBodies.push({err:String(e)});}return new W.Response('{"content":{}}',{status:201,headers:{'Content-Type':'application/json'}});}
+      return new W.Response(u.includes('/contents/inbox')?'[]':'{}',{status:200,headers:{'Content-Type':'application/json'}});};
+    try{
+      LOGi=W.eval('LOG');await LOGi.saveSetup({closest:()=>({querySelector:sel=>({value:sel.includes('repo')?'harness/stub':'harness-stand-in'})})});await tick(300);
+      await go('logsheet','log');
+      const rows=D.querySelectorAll('#log-sheet tr[data-i]').length;
+      LOGi.sheetFilter('q','the');await tick(150);const filtered=D.querySelectorAll('#log-sheet tr[data-i]').length;
+      const td=D.querySelector('#log-sheet tr[data-i] td[data-f="notes"]');const title=D.querySelector('#log-sheet tr[data-i] td[data-f="title"]').textContent;
+      td.click();await tick(100);const inp=td.querySelector('input');inp.value='harness note';inp.dispatchEvent(new W.KeyboardEvent('keydown',{key:'Enter'}));await tick(500);
+      const ev=sentBodies.find(e=>e.type==='book_update'),p=(ev||{}).payload||{};
+      const pend=D.querySelector('#log-sheet tr[data-i] td[data-f="notes"]').textContent.includes('pending');
+      res(name,rows>0&&filtered>0&&!!ev&&p.set&&p.set.notes==='harness note'&&p.book&&p.book.title===title,`${rows} rows, ${filtered} after filter; event ${!!ev} for “${p.book&&p.book.title}” set ${JSON.stringify(p.set)}; pending shown ${pend}`);
+    }finally{W.fetch=realFetch;if(LOGi)LOGi.forgetSetup();localStorage.removeItem('library-log-cfg');localStorage.removeItem('library-log-sent');}
+  });
   await check('Widget links: #add, #order/<id> and #tbr land on the work',async()=>{
     const name='Widget links: #add, #order/<id> and #tbr land on the work';
     const W=w(),D=doc(),tick=ms=>new Promise(r=>setTimeout(r,ms));
