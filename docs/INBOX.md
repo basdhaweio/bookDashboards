@@ -475,7 +475,10 @@ order-level `tracking`) or `arrived` (received — every line arrives on
 and the dashboard sends the same text so pending chips key alike. `count` is
 the sum of line quantities. Arrival of a line marks its register book owned
 with a dated acquisition (exact match only), else parks an
-`add_book_from_inbox` proposal carrying the acquisition. An order with
+`add_book_from_inbox` proposal carrying the acquisition. An acquisition means
+the book is in hand — an open pre-order is an order record only; when the
+arrival day is unknown the order date stands in, never a release date (John,
+2026-10-06). An order with
 `contains` (omnibus) is one line — the volume — and its arrival takes the
 omnibus path below instead of matching the volume's title. Orders without
 `lines` keep the legacy text path.

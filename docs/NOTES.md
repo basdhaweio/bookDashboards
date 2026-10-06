@@ -15,21 +15,21 @@ publish.
   isn't on the shelf, clear Owned via the Books tab ✎.
   *(2026-09-02: John will check once the books are out of moving transit.)*
 
-- **Tombolo order history — five lines for John (2026-10-06).** All 34
-  Tombolo orders (Mar 2025 → Sep 2026, 130 lines) were read from the
-  account's Previous Orders pages and logged, dated, in Buying › Book Orders.
-  Still open for John in Log › Orders: *Kaiju No. 8 Vol 15* (ordered Sep 23,
-  in hand?), *Legacies of Betrayal* (out Oct 6, in hand?), *Songs of the
-  Dead* ordered twice (#16137206 May 12 and #16710498 Jun 9 — second copy or
-  re-placed? the second stays ordered), *Red Rising Deluxe Slipcase* ×2 (one
-  copy recorded for Com; the other for Shereen? her row #15157 is unowned),
-  *Moss'd in Space* (out 2026-06-30) is still ordered too.
+- **Tombolo order history — what is still open (2026-10-06).** All 34
+  Tombolo orders (Mar 2025 → Sep 2026, 130 lines) are in Buying › Book
+  Orders with their dates. John settled the rest: Kaiju No. 8 Vol 15 is in
+  hand (register row #15139, renamed to the series' spelling), the second
+  Songs of the Dead order (#16710498) was cancelled, one of the two Red
+  Rising slipcases was given away. Still ordered: *Legacies of Betrayal*
+  (due in on Oct 6 — tap Arrived in Log › Orders when it is picked up) and
+  *Moss'd in Space* (out 2026-06-30, no word yet).
 
-- **Tombolo arrivals are undated.** The orders page gives order dates, not
-  pickup dates, so the 60-odd acquisitions created from the history carry
-  no date or year (first-acquisition rule untouched). If John wants them
-  dated by rule — order date for in-stock books, release date for
-  pre-orders — say so and they get dated in one pass.
+- **Acquisition dating rule (John, 2026-10-06).** An acquisition means the
+  book is in hand; an open pre-order gets an order record only. When the day
+  a book came home is not known, its ORDER date stands in — the 84
+  acquisitions the Tombolo import created are dated that way, and the books
+  whose date they filled say `acquired_date_src = order-date`. Release dates
+  are never substituted.
 
 - **Spawn Origins numbering (settled 2026-10-06).** The register's Spawn
   Origins Vol N follow Wikipedia's *Spawn (character) › Collected editions*
