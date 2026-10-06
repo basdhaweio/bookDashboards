@@ -801,6 +801,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
         </div>
         <div style="height:280px"><canvas id="lgYoYChart" role="img" aria-label="Year over year library growth bar chart"></canvas></div>
       </div>
+      <div id="lg-valuation"></div>
       <div class="sl">Historical data</div>
       <div class="tw"><table><thead><tr><th>Year</th><th class="nr">Planned</th><th class="nr">Read</th><th class="nr">Owned</th><th class="nr">+Planned</th><th class="nr">+Read</th><th class="nr">+Bought</th></tr></thead><tbody id="lg-table"></tbody></table></div>
     </div>
@@ -1456,8 +1457,20 @@ function valuationTile(){
   const total=rows.reduce((m,v)=>m+v.total,0),priced=rows.reduce((m,v)=>m+v.priced,0),owned=rows.reduce((m,v)=>m+v.owned,0),est=rows.reduce((m,v)=>m+v.estimate,0);
   // Until real list prices exist (Tombolo / Powell's / B&N), the figure is a
   // category estimate and says so (John, 2026-10-06: "just label it as an estimate").
-  if(!priced)return mH('≈ $'+fmt(Math.round(est)),'Replacement value (estimate)',`${fmt(owned)} owned books × typical list price by media — ${esc(rows.map(v=>v.basis).filter(Boolean).join(' · '))}`);
-  return mH('$'+fmt(Math.round(total)),'Replacement value',`list prices · ${fmt(priced)} of ${fmt(owned)} owned books priced${rows[0].asOf?' · '+esc(rows[0].asOf):''}`);
+  // One short tile; the working is a card further down the tab (John,
+  // 2026-10-06: "the detail of all the different sub-text … is way too much").
+  if(priced<owned*0.5)return mH('≈ $'+fmt(Math.round(est)),'Replacement value','estimate · see below');
+  return mH('$'+fmt(Math.round(total)),'Replacement value',`list prices · ${fmt(priced)} of ${fmt(owned)} priced`);
+}
+// The card behind the tile: how the estimate is built, and how far the real
+// list prices (Tombolo's catalogue, nightly) have got.
+function valuationCard(){
+  const rows=(G.valuation||[]).filter(v=>OWNER==='all'||v.owner===OWNER);if(!rows.length)return'';
+  const est=rows.reduce((m,v)=>m+v.estimate,0),total=rows.reduce((m,v)=>m+v.total,0),priced=rows.reduce((m,v)=>m+v.priced,0),owned=rows.reduce((m,v)=>m+v.owned,0),noOffer=rows.reduce((m,v)=>m+v.noOffer,0);
+  const basis=rows.map(v=>`<div><strong>${esc(OWNER_LABEL[v.owner]||v.owner)}</strong> · ≈ $${fmt(Math.round(v.estimate))} — ${esc(v.basis)}</div>`).join('');
+  return`<div class="cb" style="margin-top:1rem"><div class="cbt">Replacement value — how it is worked out</div>
+    <div class="ms" style="margin-bottom:6px">Estimate: owned books × a typical US list price per media (the numbers live in jerry's publish job and are yours to tune).</div>${basis}
+    <div class="ms" style="margin-top:8px">Actual list prices come from Tombolo Books' catalogue by ISBN, a few hundred a night: <strong>${fmt(priced)}</strong> of ${fmt(owned)} owned books priced so far${priced?` ($${fmt(Math.round(total))})`:''}${noOffer?`, ${fmt(noOffer)} not in their catalogue`:''}${rows[0].asOf?` · as of ${esc(rows[0].asOf)}`:''}. The tile switches to the real total once half the shelf is priced; books without an ISBN (${fmt(Math.max(0,owned-priced-noOffer-rows.reduce((m,v)=>m+(v.unchecked||0),0)))}+) stay on the estimate.</div></div>`;
 }
 function renderOverview(bm,yd2026){
   const pg=pageStatsFor();
@@ -3182,6 +3195,7 @@ function renderLibGrowth(growthMetrics,bm){
   // Metrics summary
   const latest=rows[rows.length-1]||{};
   const prev=rows[rows.length-2]||{};
+  const lgCard=document.getElementById('lg-valuation');if(lgCard)lgCard.innerHTML=valuationCard();
   document.getElementById('lg-m').innerHTML=
     mH(fmt(curPlanned),'Currently tracked','live · matches Overview','p')+
     mH(fmt(curOwned),'Currently owned','live from library')+valuationTile()+
