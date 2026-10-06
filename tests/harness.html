@@ -647,6 +647,19 @@ async function main(){
       res(name,rows>0&&filtered>0&&!!ev&&p.set&&p.set.notes==='harness note'&&p.book&&p.book.title===title,`${rows} rows, ${filtered} after filter; event ${!!ev} for “${p.book&&p.book.title}” set ${JSON.stringify(p.set)}; pending shown ${pend}`);
     }finally{W.fetch=realFetch;if(LOGi)LOGi.forgetSetup();localStorage.removeItem('library-log-cfg');localStorage.removeItem('library-log-sent');}
   });
+  await check('Collecting › Awards: Hugo rosters render with register status and track actions',async()=>{
+    const name='Collecting › Awards: Hugo rosters render with register status and track actions';
+    const W=w(),D=doc(),tick=ms=>new Promise(r=>setTimeout(r,ms));
+    const tab=tget('Awards');if(!tab||tab.length<2){res(name,true,'no Awards tab in this bundle yet');return;}
+    await go('col-awards','collecting');
+    const novels=D.querySelectorAll('#aw-list .log-item').length,expect=tab.slice(1).filter(r=>r[1]==='novel').length;
+    const winners=D.querySelectorAll('#aw-list .badge.b-gold').length,read=D.querySelectorAll('#aw-list .badge.b-teal').length;
+    const trackBooks=D.querySelectorAll('#aw-list button[onclick^="awTrackBook"]').length,trackSeries=D.querySelectorAll('#aw-list button[onclick^="LOG.awardTrackSeries"]').length;
+    W.awFilter('cat','novella');await tick(150);const novellas=D.querySelectorAll('#aw-list .log-item').length;
+    W.awFilter('cat','series');await tick(150);const series=D.querySelectorAll('#aw-list .log-item').length;
+    W.awFilter('cat','novel');await tick(100);
+    res(name,novels===expect&&novels>300&&novellas>250&&series>40&&winners>50&&read>0&&trackBooks>0&&trackSeries>0,`${novels} novels (${expect} in bundle), ${novellas} novellas, ${series} series; ${winners} winner badges, ${read} read, ${trackBooks} Track-book + ${trackSeries} Track-series buttons`);
+  });
   await check('Widget links: #add, #order/<id> and #tbr land on the work',async()=>{
     const name='Widget links: #add, #order/<id> and #tbr land on the work';
     const W=w(),D=doc(),tick=ms=>new Promise(r=>setTimeout(r,ms));

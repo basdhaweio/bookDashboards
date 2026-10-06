@@ -826,6 +826,13 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <button class="active" onclick="switchTab('col-fr','collecting')">Forgotten Realms</button>
       <button onclick="switchTab('col-dl','collecting')">Dragonlance</button>
       <button onclick="switchTab('col-sr','collecting')">Shadowrun</button>
+      <button onclick="switchTab('col-awards','collecting')">Awards</button>
+    </div>
+    <div class="panel" id="tab-col-awards">
+      <div class="sl">Hugo Awards — winners and finalists <span class="ms" style="font-weight:normal">· from Wikidata, refreshed weekly · a source of what to track or read</span></div>
+      <div id="aw-bar" style="margin-bottom:10px"></div>
+      <div class="mg" id="aw-m"></div>
+      <div id="aw-list"></div>
     </div>
 
     <!-- FR sub-tabs rendered inside a container -->
@@ -1386,6 +1393,57 @@ function pageStatsFor(){
   const agg={ownedBooks:0,ownedWith:0,ownedPages:0,readBooks:0,readWith:0,readPages:0};
   owners.forEach(o=>{const cs=ps[o]||{};Object.values(cs).forEach(c=>{for(const k in agg)agg[k]+=c[k]||0;});});
   return agg;
+}
+// ── Collecting › Awards: the Hugo rosters as a "what to track / read"
+// source (John, 2026-10-06 — he used to keep the Best Novel list by hand;
+// the recurring chore was "this nominee is book N of a series: how many are
+// there and do we have them"). Wikidata answers the series question; the
+// register answers "which we have"; Track hands a series to track_series
+// (proposals on the Proposed tab) or a standalone to the Books add form.
+let awF={cat:'novel',winners:false,missing:false,q:''};
+const AW_CATS=[['novel','Best Novel'],['novella','Best Novella'],['series','Best Series']];
+function awSeriesStats(name,owner){
+  const nl=t=>(t||'').toLowerCase().replace(/^\s*(the|a|an)\s+/,'').replace(/\s+(series|saga|trilogy)$/,'').replace(/[^a-z0-9]/g,'');
+  const k=nl(name);if(!k)return null;
+  const rows=(G.allIndBooks||[]).filter(b=>(!owner||(b.owner||'butthead')===owner)&&nl(b.series)===k);
+  if(!rows.length)return null;
+  return{total:rows.length,read:rows.filter(b=>b.read).length,owned:rows.filter(b=>b.owned).length,owner:rows[0].owner||'butthead'};
+}
+function awFilter(k,v){if(k==='q')awF.q=v;else if(k==='cat')awF.cat=v;else awF[k]=!awF[k];const keep=k==='q';const el=keep?document.getElementById('aw-q'):null;const pos=el?el.selectionStart:0;renderAwards();if(keep){const q=document.getElementById('aw-q');if(q){q.focus();q.setSelectionRange(pos,pos);}}}
+function renderAwards(){
+  const bar=document.getElementById('aw-bar'),list=document.getElementById('aw-list'),m=document.getElementById('aw-m');if(!bar)return;
+  const all=(G.awards||[]).filter(a=>a.cat===awF.cat),q=awF.q.toLowerCase();
+  const have=a=>!!a.bookTitle||(a.cat==='series'&&!!a.regSeries);
+  const rows=all.filter(a=>!awF.winners||a.result==='winner').filter(a=>!awF.missing||!have(a))
+    .filter(a=>!q||(a.title+' '+a.author+' '+a.seriesName).toLowerCase().includes(q))
+    .sort((a,b)=>b.year-a.year||(b.result==='winner')-(a.result==='winner')||a.title.localeCompare(b.title));
+  bar.innerHTML=`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">${AW_CATS.map(([v,l])=>`<button class="pchip${awF.cat===v?' on':''}" data-v="${v}" onclick="awFilter('cat',this.dataset.v)">${l}</button>`).join('')}<span class="ms" style="margin:0 4px">·</span><button class="pchip${awF.winners?' on':''}" onclick="awFilter('winners')">🏆 Winners only</button><button class="pchip${awF.missing?' on':''}" onclick="awFilter('missing')">Not in the register</button></div>
+    <input id="aw-q" class="log-search" style="margin:0;max-width:420px;font-size:14px;padding:8px 12px" placeholder="title, author or series" value="${esc(awF.q)}" oninput="awFilter('q',this.value)">`;
+  const inReg=all.filter(have).length,read=all.filter(a=>a.bookRead).length,winners=all.filter(a=>a.result==='winner'),wRead=winners.filter(a=>a.bookRead).length;
+  m.innerHTML=mH(fmt(all.length),AW_CATS.find(c=>c[0]===awF.cat)[1],`${all.length?all[all.length-1].year:''}–${all.length?all[0].year:''}`)+mH(fmt(inReg),'In the register',awF.cat==='series'?'series we track':'books we have or track','t')+(awF.cat!=='series'?mH(fmt(read),'Read',`${wRead} of ${winners.length} winners`,'t'):'')+mH(fmt(all.length-inReg),'Not in the register','candidates to track','c');
+  let lastYear=null;
+  list.innerHTML=rows.map((a,i)=>{
+    const hdr=a.year!==lastYear?`<div class="tbr-uni" style="position:static;margin:14px 0 6px">${a.year}</div>`:'';lastYear=a.year;
+    const who=o=>OWNER_LABEL[o]||o;
+    let status='';
+    if(a.bookTitle)status=a.bookRead?`<span class="badge b-teal">✓ read · ${who(a.bookOwner)}</span>`:a.bookOwned?`<span class="badge b-green">on the shelf · ${who(a.bookOwner)}</span>`:`<span class="badge b-gray">tracked · ${who(a.bookOwner)}</span>`;
+    const st=(a.regSeries&&awSeriesStats(a.regSeries,a.regOwner||''))||(a.seriesName&&awSeriesStats(a.seriesName,''))||null;
+    let series='';
+    if(a.cat==='series')series=`<span class="ms">${a.seriesTotal?a.seriesTotal+' works on Wikidata':''}${st?` · register: ${st.read} read, ${st.owned} owned of ${st.total} (${who(st.owner)})`:''}</span>`;
+    else if(a.seriesName)series=`<span class="ms">${esc(a.seriesName)}${a.seriesPos?' #'+esc(a.seriesPos):''}${a.seriesTotal?' · '+a.seriesTotal+' on Wikidata':''}${st?` · register: ${st.read} read, ${st.owned} owned of ${st.total} (${who(st.owner)})`:''}</span>`;
+    else if(st)series=`<span class="ms">${esc(a.regSeries)} · register: ${st.read} read, ${st.owned} owned of ${st.total}</span>`;
+    if(a.cat==='series'&&st)status=`<span class="badge ${st.read?'b-teal':st.owned?'b-green':'b-gray'}">${st.read?st.read+' read':st.owned?st.owned+' owned':'tracked'} · ${who(st.owner)}</span>`;
+    const sName=a.cat==='series'?a.title:(a.regSeries||a.seriesName);
+    const trackSeries=sName&&!(st&&st.total>=(a.seriesTotal||1))?(LOG.trackQueued(sName)?'<span class="badge b-gold">series queued</span>':`<button class="log-act" data-s="${esc(sName)}" data-a="${esc(a.author)}" onclick="LOG.awardTrackSeries(this.dataset.s,this.dataset.a)" title="ask jerry for every book of the series — proposals, nothing enters the register without you">🔍 Track series</button>`):'';
+    const trackBook=a.cat!=='series'&&!a.bookTitle?`<button class="log-act" data-i="${i}" onclick="awTrackBook(${i})" title="add it to the register as tracked — the Books form opens prefilled">＋ Track book</button>`:'';
+    return`${hdr}<div class="log-item"><div class="log-item-hd"><div class="log-item-info"><div class="log-item-title">${a.result==='winner'?'🏆 ':''}${esc(a.title)} <span class="ms" style="font-weight:normal">${esc(a.author)}${a.pubYear?' · '+esc(a.pubYear):''}</span></div><div class="log-item-meta">${series}</div></div><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end">${a.result==='winner'?'<span class="badge b-gold">winner</span>':'<span class="badge b-gray">finalist</span>'}${status}${trackSeries}${trackBook}</div></div></div>`;
+  }).join('')||'<div class="ms">Nothing matches.</div>';
+  G._awRows=rows;
+}
+function awTrackBook(i){
+  const a=(G._awRows||[])[i];if(!a)return;
+  LOG.prefillAdd({title:a.title,author:a.author,series:a.regSeries||a.seriesName||'',seq:a.seriesPos||'',owner:soloOwner(),status:'wish',
+    note:`Hugo ${a.year} ${a.result} (Best ${a.cat[0].toUpperCase()+a.cat.slice(1)}) — prefilled from Wikidata; check series, genre and media, then Add (tracked, not owned)`});
 }
 // Replacement value for insurance (migration 032): list prices Google Books
 // knows for the owned books, totalled per owner — the one place a price
@@ -3413,7 +3471,7 @@ function restoreFromHash(){
   if(!hash){try{hash=(localStorage.getItem(LS_LAST_TAB)||'').replace('#','');}catch(e){}}
   const[sec,tab]=hash.split('/');
   const validSecs=new Set(['tracking','reading','buying','collecting','bookclub','log']);
-  const validTabs=new Set(['overview','bytype','genre','universe','rooms','tbr','plan','history','thisyear','completion','byseries','toread','comingup','bookmail','toacquire','someday','libgrowth','buythisyear','col-fr','col-dl','col-sr','flyer','bnauthors','logbook','logorders','logpending','logproposed','logmeta','logsheet']);
+  const validTabs=new Set(['overview','bytype','genre','universe','rooms','tbr','plan','history','thisyear','completion','byseries','toread','comingup','bookmail','toacquire','someday','libgrowth','buythisyear','col-fr','col-dl','col-sr','flyer','bnauthors','logbook','logorders','logpending','logproposed','logmeta','logsheet','col-awards']);
   const validFRTabs=new Set(['fr-overview','fr-series','fr-completion']);
   const validDLTabs=new Set(['dl-overview','dl-series','dl-completion']);
   const validSRTabs=new Set(['sr-overview','sr-publisher','sr-completion']);
@@ -3476,6 +3534,7 @@ function renderTabInner(id){
   else if(id==='logproposed')LOG.renderProposed();
   else if(id==='logsheet')LOG.renderSheet();
   else if(id==='logmeta')LOG.renderMeta();
+  else if(id==='col-awards')renderAwards();
   else if(id==='col-fr'){switchFRTab('fr-overview');}
   else if(id==='col-dl'){switchDLTab('dl-overview');}
   else if(id==='col-sr'){switchSRTab('sr-overview');}
@@ -5527,6 +5586,15 @@ const LOG=(()=>{
     if(ok){toast(f==='read'?`Logged: finished “${b.title}”`:`Logged: got “${b.title}”`);renderSheet();}
   }
   async function sheetNeed(i){const b=(document.getElementById('log-sheet')._rows||[])[i];if(!b)return;if(await setNeed(b,!b.need)){toast(`“${b.title}”: need ${!b.need?'on':'off'}`);renderSheet();}}
+  // Awards tab: is a track_series request already in flight for this series?
+  function trackQueued(series){const k=(series||'').toLowerCase();return[...(pendCache||[]),...sent().filter(e=>!BUNDLE||e.at>BUNDLE.generated_at)].some(ev=>ev.type==='track_series'&&((ev.payload||{}).series||'').toLowerCase()===k);}
+  async function awardTrackSeries(series,author){
+    if(!series)return;
+    if(trackQueued(series))return toast('Already queued — proposals appear on the Proposed tab within ~15 min');
+    if(!confirm(`Find every book of “${series}”${author?' by '+author:''}? Each one found lands on the Proposed tab to Add or Drop — nothing enters the register without you.`))return;
+    const ok=await submit('track_series',{series,author:author||''},null,soloOwner());
+    if(ok){toast('Tracking request sent — proposals appear on the Proposed tab within ~15 min');renderAwards();}
+  }
   function pendingBooks(type){
     const ks=new Set();
     [...(pendCache||[]),...sent().filter(e=>!BUNDLE||e.at>BUNDLE.generated_at)].forEach(ev=>{const b=ev.payload&&ev.payload.book;if(b&&ev.type===type)ks.add(b.title+'|'+(b.series||''));});
@@ -6559,7 +6627,7 @@ const LOG=(()=>{
     toggleOrderHistory,findInRegister,storeFromOrderNo,logFlyerOrders,trackSeriesFromIsbn,submitTrackSeries,
     finishBook,setNeed,pendingBooks,today,queueSet,pendingQueue,acquireBook,setPubDate,
     renderPeople,doAuthorMerge,doAuthorRename,doAuthorAlias,addCreditRow,saveCredits,
-    pendingLinks,linkGoodreads,prefillAdd,doScanUpcoming,planSet,pendingPlan,webAdd,clearSearch,setReadMedia,pendingReadMedia,renderSheet,sheetFilter,sheetEdit,sheetTick,sheetTickGo,sheetNeed,sheetNewBook,orderStore,orderStatus,orderLineAdd,orderLineDel,doLineSet,doLinesShipAll,lineShipPrompt,openOrder};
+    pendingLinks,linkGoodreads,prefillAdd,doScanUpcoming,planSet,pendingPlan,webAdd,clearSearch,setReadMedia,pendingReadMedia,trackQueued,awardTrackSeries,renderSheet,sheetFilter,sheetEdit,sheetTick,sheetTickGo,sheetNeed,sheetNewBook,orderStore,orderStatus,orderLineAdd,orderLineDel,doLineSet,doLinesShipAll,lineShipPrompt,openOrder};
 })();
 
 async function init(){
@@ -6628,6 +6696,7 @@ async function init(){
     // from hand links. aliasIndex: nk(alias)+'|'+owner -> register title.
     G.titleAliases=(BUNDLE.tabs['bookdb|Book Titles']||[]).slice(1).map(r=>({title:(r[0]||'').trim(),alias:(r[1]||'').trim(),owner:(r[2]||'butthead').trim(),kind:(r[3]||'').trim()})).filter(a=>a.title&&a.alias);
     G.aliasIndex={};G.aliasesOf={};G.titleAliases.forEach(a=>{const k=a.alias.toLowerCase().replace(/[^a-z0-9]/g,'');G.aliasIndex[k+'|'+a.owner]=a.title;(G.aliasesOf[a.owner+'|'+a.title.toLowerCase().replace(/[^a-z0-9]/g,'')]=G.aliasesOf[a.owner+'|'+a.title.toLowerCase().replace(/[^a-z0-9]/g,'')]||[]).push(a.alias);});
+    G.awards=(BUNDLE.tabs['bookdb|Awards']||[]).slice(1).map(r=>({award:(r[0]||'').trim(),cat:(r[1]||'').trim(),year:+r[2]||0,result:(r[3]||'').trim(),title:(r[4]||'').trim(),author:(r[5]||'').trim(),pubYear:(r[6]||'').trim(),seriesName:(r[7]||'').trim(),seriesPos:(r[8]||'').trim(),seriesTotal:+r[9]||0,qid:(r[10]||'').trim(),seriesQid:(r[11]||'').trim(),bookTitle:(r[12]||'').trim(),bookOwner:(r[13]||'').trim(),bookRead:(r[14]||'').trim()==='x',bookOwned:(r[15]||'').trim()==='x',regSeries:(r[16]||'').trim(),regOwner:(r[17]||'').trim()})).filter(a=>a.title);
     G.valuation=(BUNDLE.tabs['bookdb|Valuation']||[]).slice(1).map(r=>({owner:(r[0]||'butthead').trim(),owned:n(r[1]),priced:n(r[2]),total:parseFloat(r[3])||0,noOffer:n(r[4]),asOf:(r[5]||'').trim(),estimate:parseFloat(r[6])||0,basis:(r[7]||'').trim()}));
     G.queue=(BUNDLE.tabs['bookdb|Queue']||[]).slice(1).map(r=>({title:(r[0]||'').trim(),series:(r[1]||'').trim(),owner:(r[2]||'butthead').trim(),pos:parseFloat(r[3])||0,added:(r[4]||'').trim()})).filter(q=>q.title);
     // ISBNs tab: identifiers (owned-edition first) + best stored cover URL.
