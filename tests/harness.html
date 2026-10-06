@@ -660,6 +660,23 @@ async function main(){
     W.awFilter('cat','novel');await tick(100);
     res(name,novels===expect&&novels>300&&novellas>250&&series>40&&winners>50&&read>0&&trackBooks>0&&trackSeries>0,`${novels} novels (${expect} in bundle), ${novellas} novellas, ${series} series; ${winners} winner badges, ${read} read, ${trackBooks} Track-book + ${trackSeries} Track-series buttons`);
   });
+  await check('Coming Up and the flyer show an open order line nobody listed',async()=>{
+    const name='Coming Up and the flyer show an open order line nobody listed';
+    const W=w(),D=doc();
+    const G=W.eval('G'),stub={id:987654321,orderId:0,date:'',orderNo:'#HARNESS',store:'Harness Books',position:1,title:'Harness Preorder Novel',series:'',seq:'',bookId:0,qty:1,price:'19.99',eta:'2099-03-09',status:'ordered',shippedOn:'',tracking:'',arrivedOn:'',notes:'',author:'Harness Author'};
+    G.orderLines.push(stub);
+    try{
+      await go('comingup','buying');
+      const card=[...D.querySelectorAll('#upcoming-list > div > div > div')].find(c=>/Harness Preorder Novel/.test(c.textContent));
+      const cuOk=!!card&&/Ordered · Harness Books/.test(card.textContent)&&/Book Orders/.test(card.textContent)&&/Mar 9 2099/.test(card.textContent);
+      await go('flyer','bookclub');
+      const fc=[...D.querySelectorAll('#bc-months .bc-card')].find(c=>/Harness Preorder Novel/.test(c.textContent));
+      const flOk=!!fc&&/ORDERED/.test(fc.textContent)&&/on order at Harness Books/.test(fc.textContent);
+      const formOk=![...D.querySelectorAll('#bc-form-rows .bc-form-row')].some(r=>/Harness Preorder Novel/.test(r.textContent));
+      const foot=D.getElementById('bc-foot').textContent;
+      res(name,cuOk&&flOk&&formOk&&/on order/.test(foot),`Coming Up card ${card?'found':'missing'} (${cuOk}); flyer card ${fc?'found':'missing'} (${flOk}); kept out of the order form ${formOk}; footer: ${foot.slice(0,140)}`);
+    }finally{const i=G.orderLines.indexOf(stub);if(i>=0)G.orderLines.splice(i,1);W.switchTab('comingup','buying');W.switchTab('flyer','bookclub');}
+  });
   await check('Widget links: #add, #order/<id> and #tbr land on the work',async()=>{
     const name='Widget links: #add, #order/<id> and #tbr land on the work';
     const W=w(),D=doc(),tick=ms=>new Promise(r=>setTimeout(r,ms));

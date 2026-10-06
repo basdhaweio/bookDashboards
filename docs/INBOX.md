@@ -434,7 +434,8 @@ A `finished` event on the book removes it from the queue.
 Two shapes, discriminated by `list`.
 
 `list: "bookmail"` — Com's model: one row per order, appended to Book Mail
-Orders (`by` is `butthead`):
+Orders (`by` is `butthead`; the Buying tab reads **Book Orders** since
+2026-10-06 — the list name and the bundle tab keep theirs):
 ```json
 {"list": "bookmail", "date": "2026-07-26", "order": "#TBBSUB123456",
  "books": "The Sun Eater 1-3", "series": "Sun Eater",

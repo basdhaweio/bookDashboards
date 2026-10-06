@@ -744,7 +744,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <button class="active" onclick="switchTab('libgrowth','buying')">Library Growth</button>
       <button onclick="switchTab('buythisyear','buying')">This Year</button>
       <button onclick="switchTab('comingup','buying')">Coming Up</button>
-      <button onclick="switchTab('bookmail','buying')">Book Mail</button>
+      <button onclick="switchTab('bookmail','buying')">Book Orders</button>
       <button onclick="switchTab('toacquire','buying')">To Acquire</button>
       <button onclick="switchTab('someday','buying')">Someday</button>
     </div>
@@ -754,7 +754,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div id="sd-list"></div>
     </div>
     <div class="panel" id="tab-comingup">
-      <div class="sl">Upcoming releases — Interested list, Book Notification, and tracked books with a date ahead</div><div id="cu-covers"></div><div id="upcoming-list"></div>
+      <div class="sl">Upcoming releases — Interested list, Book Notification, open orders, and tracked books with a date ahead</div><div id="cu-covers"></div><div id="upcoming-list"></div>
     </div>
     <div class="panel" id="tab-bookmail">
       <div class="sl">Order overview</div><div class="mg" id="tbb-m"></div>
@@ -2961,8 +2961,9 @@ function toggleAcc(aid){
   if(head)head.classList.toggle('open',!isOpen);
 }
 
-// Buying › Coming Up: every release ahead from three sources — the
-// Interested list, Book Notification's feed, and register books tracked
+// Buying › Coming Up: every release ahead from four sources — the
+// Interested list, Book Notification's feed, open order lines (Book
+// Orders, 2026-10-06), and register books tracked
 // with a future or TBA date — one card per title, HAVE/ORDERED derived from
 // the register and open orders (John, 2026-09-22: the sheet-only list was
 // missing releases and its Ordered column had gone stale). Months are
@@ -2979,16 +2980,19 @@ function renderComingUp(){
         yr:m?+m[1]:9999,mo:m?+m[2]:99,moName:m?names[+m[2]-1]:'Date TBA',day:''};});
   // Com's list (Book Notification + orders) and Shereen's boxes: one or both, per the header.
   const items=(OWNER==='goblin'?[]:bcBuildItems().map(it=>Object.assign({owner:'butthead'},it))).concat(boxItems);
-  const seen=new Set(items.map(it=>bcKey(it.title)));
+  const seen=new Set(items.map(it=>bcKey(it.title))),openL=bcOpenLines();
   (G.indBooks||[]).forEach(b=>{
     if(b.owned||b.read)return;
     const pd=(b.pubDate||'').trim(),tba=/^tba$/i.test(pd);
     const m=pd.match(/^(\d{4})(?:-(\d{2}))?(?:-(\d{2}))?$/);
     if(!tba&&!m)return;
-    if(m&&pd<=todayIso.slice(0,pd.length))return; // already out at its own precision
+    // a tracked book on an open order shows Ordered — and stays listed
+    // while it is out but not in hand (Still waiting), like a box
+    const ol=bcOpenLineFor(b,openL);
+    if(m&&pd<=todayIso.slice(0,pd.length)&&!ol)return; // already out at its own precision
     const k=bcKey(b.title);if(seen.has(k))return;seen.add(k);
     const yr=tba?9999:+m[1],mo=tba?99:(m[2]?+m[2]:0);
-    items.push({owner:b.owner||'butthead',title:b.title,author:b.author,series:b.series==='Standalones'?'':b.series,genre:b.type,release:tba?'TBA':pd,ordered:'',publisher:b.publisher,cover:'',src:'register',
+    items.push({owner:b.owner||'butthead',title:b.title,author:b.author,series:b.series==='Standalones'?'':b.series,genre:b.type,release:tba?'TBA':pd,ordered:ol?'Preordered':'',store:ol?ol.store||'':'',pendingOrder:!!(ol&&ol.pending),publisher:b.publisher,cover:'',src:'register',
       yr,mo,moName:tba?'Date TBA':(mo?names[mo-1]:'Sometime'),day:m&&m[3]?String(+m[3]):''});
   });
   // Month buckets: ahead ascending, then Date TBA, then the last three
@@ -2998,14 +3002,16 @@ function renderComingUp(){
   const past=it=>keyOf(it)<curKey;
   const cutoff=(()=>{const d=new Date(cy,cm-1-3,1);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;})();
   // A box charged months ago and still not received is exactly what
-  // Shereen wants to see, so box rows never age out.
-  const kept=items.filter(it=>it.src==='box'||!past(it)||keyOf(it)>=cutoff);
+  // Shereen wants to see, so box rows never age out — nor does anything
+  // still on order: an ordered book that is out and not in hand is the
+  // thing to chase (John, 2026-10-06).
+  const kept=items.filter(it=>it.src==='box'||it.ordered==='Preordered'||!past(it)||keyOf(it)>=cutoff);
   const byMo={},label={};
   kept.forEach(it=>{const k=keyOf(it);(byMo[k]=byMo[k]||[]).push(it);
-    if(!label[k])label[k]=it.moName==='Date TBA'?'Date TBA':(past(it)?(it.src==='box'?'Still waiting · ':'Out now · '):'')+(it.mo?it.moName:'Sometime')+(it.yr!==cy&&it.yr!==9999?' '+it.yr:'');});
+    if(!label[k])label[k]=it.moName==='Date TBA'?'Date TBA':(past(it)?((it.src==='box'||it.ordered==='Preordered')?'Still waiting · ':'Out now · '):'')+(it.mo?it.moName:'Sometime')+(it.yr!==cy&&it.yr!==9999?' '+it.yr:'');});
   const ahead=Object.keys(byMo).filter(k=>k>=curKey).sort(),behind=Object.keys(byMo).filter(k=>k<curKey).sort().reverse();
   const state=it=>it.ordered==='Have'?['b-green','Have it']:it.ordered==='Preordered'?['b-gold','Ordered'+(it.store?' · '+esc(it.store):'')]:it.ordered==='Scheduled'?['b-teal','On the way']:['b-coral','Not ordered'];
-  const srcBadge=it=>it.src==='bn'?'<span class="badge b-purple" style="font-size:9px">Book Notification</span>':it.src==='register'?'<span class="badge b-gray" style="font-size:9px">tracked</span>':it.src==='box'?'<span class="badge b-purple" style="font-size:9px">Book Box</span>':'<span class="badge b-gray" style="font-size:9px">Interested</span>';
+  const srcBadge=it=>it.src==='bn'?'<span class="badge b-purple" style="font-size:9px">Book Notification</span>':it.src==='register'?'<span class="badge b-gray" style="font-size:9px">tracked</span>':it.src==='box'?'<span class="badge b-purple" style="font-size:9px">Book Box</span>':it.src==='order'?'<span class="badge b-gray" style="font-size:9px">Book Orders</span>':'<span class="badge b-gray" style="font-size:9px">Interested</span>';
   const card=it=>{const[bc,txt]=state(it);
     const tint=it.ordered==='Have'?'background:#f8f8f6;border-color:#d8d6ce;opacity:0.65':it.ordered==='Preordered'?'background:#fffdf0;border-color:#e8d88a;border-width:1.5px':it.ordered==='Scheduled'?'background:#fff;border-color:var(--border)':'background:#fff8f7;border-color:#e8b0a8;border-width:1.5px';
     const when=it.moName==='Date TBA'?'TBA':(it.mo?it.moName.slice(0,3):'')+(it.day?' '+it.day:'')+(it.yr!==cy&&it.yr!==9999?' '+it.yr:'');
@@ -4643,6 +4649,17 @@ function bcRelParts(rel){
   if(!isNaN(d)&&/\d/.test(rel))return{mo:d.getMonth()+1,moName:names[d.getMonth()],day:String(d.getDate())};
   return{mo:99,moName:'Date TBA',day:''};
 }
+// The open order lines (ordered or shipped, plus the ones still queued in
+// the inbox) and the one that names a book: by exact title, else by series
+// + number. Buying › Book Orders is the ledger; the flyer and Coming Up ask
+// it so a pre-order nobody listed still shows as ORDERED (John, 2026-10-06).
+function bcOpenLines(){
+  return[...(G.orderLines||[]).filter(l=>l.status==='ordered'||l.status==='shipped'),...(G.pendLines||[]).map(l=>Object.assign({status:'ordered',pending:true},l))];
+}
+function bcOpenLineFor(b,lines){
+  const k=bcKey(b.title||'');
+  return(lines||bcOpenLines()).find(l=>(k&&l.title&&bcKey(l.title)===k)||(l.series&&l.seq&&b.series&&b.seq&&bcKey(l.series)===bcKey(b.series)&&parseFloat(l.seq)===parseFloat(b.seq)))||null;
+}
 function bcBuildItems(){
   const items=[],seen=new Map();
   for(const u of G.interested.up){
@@ -4659,6 +4676,22 @@ function bcBuildItems(){
     if(dup){if(/^\d{4}-\d{2}-\d{2}/.test(b.release||''))dup.release=b.release;if(b.cover&&!dup.cover)dup.cover=b.cover;continue;}
     items.push({title:b.title,author:b.author,series:b.series,genre:b.genre,release:b.release,ordered:'',publisher:'',isbn:b.isbn,notes:b.notes,cover:b.cover||'',isNew:true,src:'bn'});
   }
+  // Open order lines are the third source (John, 2026-10-06: the Tombolo
+  // pre-orders were on no list at all). A line whose title is already on
+  // the flyer only flags that card below; any other open line gets its own
+  // card, ORDERED at its shop, dated by the line's ETA — the release date
+  // for a pre-order — else by a tracked register row of the same title.
+  // Register lookups use bcKey here: `nl` is declared further down.
+  {const reg=t=>{const k=bcKey(t);return(G.indBooks||[]).find(x=>!x.owned&&bcKey(x.title)===k)||null;};
+   // every card so far, not just `seen` (the Interested rows): Book
+   // Notification's cards are in `items` only
+   const have=new Set(items.map(it=>bcKey(it.title)));
+   for(const l of bcOpenLines()){
+     if(!l.title)continue;
+     const k=bcKey(l.title);if(have.has(k))continue;have.add(k);
+     const b=reg(l.title);
+     const it={title:l.title,author:l.author||(b&&b.author)||'',series:l.series||(b&&b.series!=='Standalones'?b.series:'')||'',genre:(b&&b.type)||'',release:l.eta||(b&&b.pubDate)||'',ordered:'Preordered',store:l.store||'',pendingOrder:!!l.pending,publisher:(b&&b.publisher)||'',isbn:'',notes:'',cover:'',isNew:false,src:'order'};
+     seen.set(k,it);items.push(it);}}
   // HAVE IT / ORDERED come from the register and the open orders, not only
   // the sheet's Ordered column: a book either owner owns is had, and a title
   // sitting in an unfulfilled Book Mail order is on the way. Titles compare
@@ -4804,7 +4837,7 @@ function renderBookClub(){
     </div>`).join('')||'<div style="font-size:12px;padding:8px 0">Nothing to order — you\'re all caught up!</div>';
   document.getElementById('bc-form-rows')._orderable=orderable;
   bcTally();
-  document.getElementById('bc-foot').textContent='The Library Book Club · sources: Interested sheet'+(G.bookClub&&G.bookClub.length?' + Book Notification ('+G.bookClub.length+' titles)':'')+' · covers via Open Library';
+  document.getElementById('bc-foot').textContent='The Library Book Club · sources: Interested sheet'+(G.bookClub&&G.bookClub.length?' + Book Notification ('+G.bookClub.length+' titles)':'')+((n=>n?' + '+n+' on order (Book Orders)':'')(all.filter(it=>it.src==='order').length))+' · covers via Open Library';
   bcFetchCovers();
 }
 function bcGetChecked(){try{return JSON.parse(localStorage.getItem('bcOrder')||'{}');}catch(e){return{};}}
@@ -5967,7 +6000,7 @@ const LOG=(()=>{
     if(OWNER==='butthead')orderStyle='bookmail';else if(OWNER==='goblin')orderStyle='bookboxes';else if(!orderStyle)orderStyle='bookmail';
     document.getElementById('log-setup-orders').innerHTML=hintCard();
     const tog=OWNER!=='all'?'':`<div class="ytog" style="margin-bottom:1rem">
-      <button class="${orderStyle==='bookmail'?'active':''}" onclick="LOG.setOrderStyle('bookmail')">Book Mail · Com</button>
+      <button class="${orderStyle==='bookmail'?'active':''}" onclick="LOG.setOrderStyle('bookmail')">Book Orders · Com</button>
       <button class="${orderStyle==='bookboxes'?'active':''}" onclick="LOG.setOrderStyle('bookboxes')">Book Box · Shereen</button></div>`;
     if(orderStyle==='bookboxes'){
       document.getElementById('log-orderform').innerHTML=tog+`
