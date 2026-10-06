@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-10-06T15:11:58+00:00",
+ "generated_at": "2026-10-06T16:22:40+00:00",
  "owner": "butthead",
  "site": "https://basdhaweio.github.io/bookDashboards/",
  "reading_now": [
@@ -139,9 +139,19 @@
   }
  ],
  "orders": {
-  "open": 35,
+  "open": 45,
   "shipped": 0,
   "lines": [
+   {
+    "id": 511,
+    "order_id": 541,
+    "title": "Songs of the Dead",
+    "store": "Tombolo",
+    "status": "ordered",
+    "eta": "2026-06-16",
+    "tracking": "",
+    "ordered": "2026-06-09"
+   },
    {
     "id": 254,
     "order_id": 471,
@@ -150,7 +160,57 @@
     "status": "ordered",
     "eta": "2026-06-30",
     "tracking": "",
-    "ordered": ""
+    "ordered": "2026-09-30"
+   },
+   {
+    "id": 512,
+    "order_id": 542,
+    "title": "Legacies of Betrayal",
+    "store": "Tombolo",
+    "status": "ordered",
+    "eta": "2026-10-06",
+    "tracking": "",
+    "ordered": "2026-05-13"
+   },
+   {
+    "id": 495,
+    "order_id": 536,
+    "title": "An Echo of Things to Come (Deluxe Hardcover Edition)",
+    "store": "Tombolo",
+    "status": "ordered",
+    "eta": "2026-10-20",
+    "tracking": "",
+    "ordered": "2026-09-29"
+   },
+   {
+    "id": 496,
+    "order_id": 536,
+    "title": "Ender's Tribe",
+    "store": "Tombolo",
+    "status": "ordered",
+    "eta": "2026-10-20",
+    "tracking": "",
+    "ordered": "2026-09-29"
+   },
+   {
+    "id": 498,
+    "order_id": 536,
+    "title": "The Light of All That Falls (Deluxe Hardcover Edition)",
+    "store": "Tombolo",
+    "status": "ordered",
+    "eta": "2026-10-20",
+    "tracking": "",
+    "ordered": "2026-09-29"
+   },
+   {
+    "id": 499,
+    "order_id": 536,
+    "title": "The Shadow of What Was Lost (Deluxe Hardcover Edition)",
+    "store": "Tombolo",
+    "status": "ordered",
+    "eta": "2026-10-20",
+    "tracking": "",
+    "ordered": "2026-09-29"
    },
    {
     "id": 252,
@@ -160,67 +220,7 @@
     "status": "ordered",
     "eta": "2026-11-03",
     "tracking": "",
-    "ordered": ""
-   },
-   {
-    "id": 251,
-    "order_id": 471,
-    "title": "The Blade That Remains",
-    "store": "Tombolo",
-    "status": "ordered",
-    "eta": "2027-04-06",
-    "tracking": "",
-    "ordered": ""
-   },
-   {
-    "id": 253,
-    "order_id": 471,
-    "title": "Moss Effect",
-    "store": "Tombolo",
-    "status": "ordered",
-    "eta": "2027-05-04",
-    "tracking": "",
-    "ordered": ""
-   },
-   {
-    "id": 101,
-    "order_id": 165,
-    "title": "The Sun Eater #6",
-    "store": "The Broken Binding",
-    "status": "ordered",
-    "eta": "",
-    "tracking": "",
-    "ordered": "2026-08-03"
-   },
-   {
-    "id": 102,
-    "order_id": 165,
-    "title": "The Sun Eater #7",
-    "store": "The Broken Binding",
-    "status": "ordered",
-    "eta": "",
-    "tracking": "",
-    "ordered": "2026-08-03"
-   },
-   {
-    "id": 103,
-    "order_id": 170,
-    "title": "Malazan Book of the Fallen #7",
-    "store": "The Broken Binding",
-    "status": "ordered",
-    "eta": "",
-    "tracking": "",
-    "ordered": "2026-08-04"
-   },
-   {
-    "id": 104,
-    "order_id": 170,
-    "title": "Malazan Book of the Fallen #8",
-    "store": "The Broken Binding",
-    "status": "ordered",
-    "eta": "",
-    "tracking": "",
-    "ordered": "2026-08-04"
+    "ordered": "2026-09-30"
    }
   ]
  },
@@ -235,7 +235,7 @@
   "bought": 145
  },
  "proposals": {
-  "open": 10
+  "open": 20
  },
  "charts": [
   {
