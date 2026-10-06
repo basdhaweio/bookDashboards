@@ -1390,7 +1390,8 @@ function pageStatsFor(){
 // Replacement value for insurance (migration 032): list prices Google Books
 // knows for the owned books, totalled per owner — the one place a price
 // appears on the dashboard (John, 2026-10-04: list prices, "if for nothing
-// else than insurance"; never per book).
+// else than insurance"; never per book). Lives on Buying › Library Growth,
+// not the front Overview (John, 2026-10-06: "not a metric I want front and center").
 function valuationTile(){
   const rows=(G.valuation||[]).filter(v=>OWNER==='all'||v.owner===OWNER);
   if(!rows.length)return'';
@@ -1400,7 +1401,7 @@ function valuationTile(){
 }
 function renderOverview(bm,yd2026){
   const pg=pageStatsFor();
-  document.getElementById('ov-m').innerHTML=mH(fmt(bm.tracked),'Total tracked')+mH(fmt(bm.read),'Total read',pct(bm.read,bm.tracked)+' of tracked','t')+mH(fmt(bm.owned),'Total owned')+mH(fmt(bm.shelf),'On shelf','owned unread','c')+mH(fmt(bm.needBuy),'Need to buy')+mH(fmt(bm.readNotOwned),'Read not owned','delta where read > owned')+mH(fmt(pg.ownedPages),'Pages owned',`${fmt(pg.ownedWith)} of ${fmt(pg.ownedBooks)} books w/ data`)+mH(fmt(pg.readPages),'Pages read',`all-time · ${fmt(pg.readWith)} of ${fmt(pg.readBooks)} w/ data`,'t')+valuationTile();
+  document.getElementById('ov-m').innerHTML=mH(fmt(bm.tracked),'Total tracked')+mH(fmt(bm.read),'Total read',pct(bm.read,bm.tracked)+' of tracked','t')+mH(fmt(bm.owned),'Total owned')+mH(fmt(bm.shelf),'On shelf','owned unread','c')+mH(fmt(bm.needBuy),'Need to buy')+mH(fmt(bm.readNotOwned),'Read not owned','delta where read > owned')+mH(fmt(pg.ownedPages),'Pages owned',`${fmt(pg.ownedWith)} of ${fmt(pg.ownedBooks)} books w/ data`)+mH(fmt(pg.readPages),'Pages read',`all-time · ${fmt(pg.readWith)} of ${fmt(pg.readBooks)} w/ data`,'t');
   document.getElementById('ov-c').innerHTML=mH(pct(bm.read,bm.tracked),'Read / tracked','','t')+mH(pct(bm.read,bm.owned),'Read / owned','','t')+mH(pct(bm.owned,bm.tracked),'Owned / tracked')+mH(pct(bm.owned-bm.read,bm.tracked-bm.read),'Owned unread / unread');
   const{books,focus}=yd2026;
   const mcByMedia2026={};
@@ -3123,7 +3124,7 @@ function renderLibGrowth(growthMetrics,bm){
   const prev=rows[rows.length-2]||{};
   document.getElementById('lg-m').innerHTML=
     mH(fmt(curPlanned),'Currently tracked','live · matches Overview','p')+
-    mH(fmt(curOwned),'Currently owned','live from library')+
+    mH(fmt(curOwned),'Currently owned','live from library')+valuationTile()+
     mH(fmt(curRead),'Currently read','live from library','t')+
     mH(fmt(latest.yoyBought||0),'Bought last year',String(latest.year||''))+
     mH(fmt(latest.yoyRead||0),'Read last year',String(latest.year||''))+
