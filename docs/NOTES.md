@@ -31,17 +31,18 @@ publish.
   dated by rule — order date for in-stock books, release date for
   pre-orders — say so and they get dated in one pass.
 
-- **Spawn Origins Deluxe Hardcover Volume 8 (Tombolo order #14199519, Jun
-  2025) — which register row?** Image's deluxe Vol 8 collects SPAWN #176-200
-  (680 pp). The register tracks Spawn Origins Vol 1-16; if those are the
-  paperback collections they stop around issue #100, so none holds these
-  issues. The line is arrived and unlinked until John points at a row (or
-  says it is a new book). The other deluxe editions are resolved: the Pink
-  Ranger Deluxe is a copy holding MMPR: Pink + The Return; the Recharged
-  Deluxe holds Recharged Vol 1-3 (MMPR #101-110); the Image Die hardcover
-  holds Die Vol 1-4 (DIE #1-20). Darkest Hour Deluxe (#15272, John's read
-  item) carries MMPR #111-122, the issues of Recharged Vol 4-6 — left as
-  John set it on 2026-10-04.
+- **Spawn Origins numbering (settled 2026-10-06).** The register's Spawn
+  Origins Vol N follow Wikipedia's *Spawn (character) › Collected editions*
+  hardcover list — Spawn: Origins Collection, Book N (Book 1 = #1-12 …
+  Book 16 = #189-200, Book 17 = #201-212), not the paperbacks and not the
+  Deluxe Editions, which cut the run 25 issues at a time. The Tombolo Deluxe
+  Volume 8 (SPAWN #176-200) is therefore a copy holding Vol 15 and Vol 16
+  whole plus #176 from Vol 14; Vol 15/16 carry that in their notes. The
+  other deluxe editions from the history are resolved the same way: the Pink
+  Ranger Deluxe holds MMPR: Pink + The Return; the Recharged Deluxe holds
+  Recharged Vol 1-3 (MMPR #101-110); the Image Die hardcover holds Die Vol
+  1-4 (DIE #1-20). Darkest Hour Deluxe (#15272, John's read item) carries
+  MMPR #111-122, the issues of Recharged Vol 4-6 — left as John set it.
 
 - **Register spellings fixed from Tombolo's catalogue (2026-10-06):**
   "Pretenders to the Trhone of God" → Throne, "Batman 89 Echos" → Echoes,
