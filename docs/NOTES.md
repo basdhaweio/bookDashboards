@@ -23,9 +23,7 @@ publish.
   Dead* ordered twice (#16137206 May 12 and #16710498 Jun 9 — second copy or
   re-placed? the second stays ordered), *Red Rising Deluxe Slipcase* ×2 (one
   copy recorded for Com; the other for Shereen? her row #15157 is unowned),
-  *Die* (Image hardcover, 2022, $59.99 — which Die volumes does it collect?
-  the line is arrived and unlinked). *Moss'd in Space* (out 2026-06-30) is
-  still ordered too.
+  *Moss'd in Space* (out 2026-06-30) is still ordered too.
 
 - **Tombolo arrivals are undated.** The orders page gives order dates, not
   pickup dates, so the 60-odd acquisitions created from the history carry
@@ -33,12 +31,17 @@ publish.
   dated by rule — order date for in-stock books, release date for
   pre-orders — say so and they get dated in one pass.
 
-- **Ten add proposals from the Tombolo history** sit on the Proposed tab:
-  Edna St Vincent Millay (Pocket Poets), Stand Alone Complex Vol 1–5 (Yu
-  Kinutani), The Whisper that Replaced God Part II, Mighty Morphin Power
-  Rangers: The Pink Ranger Deluxe Edition and Recharged Deluxe Edition,
-  Spawn Origins Deluxe Hardcover Volume 8. Approve to add them owned
-  (Tombolo), or reject.
+- **Spawn Origins Deluxe Hardcover Volume 8 (Tombolo order #14199519, Jun
+  2025) — which register row?** Image's deluxe Vol 8 collects SPAWN #176-200
+  (680 pp). The register tracks Spawn Origins Vol 1-16; if those are the
+  paperback collections they stop around issue #100, so none holds these
+  issues. The line is arrived and unlinked until John points at a row (or
+  says it is a new book). The other deluxe editions are resolved: the Pink
+  Ranger Deluxe is a copy holding MMPR: Pink + The Return; the Recharged
+  Deluxe holds Recharged Vol 1-3 (MMPR #101-110); the Image Die hardcover
+  holds Die Vol 1-4 (DIE #1-20). Darkest Hour Deluxe (#15272, John's read
+  item) carries MMPR #111-122, the issues of Recharged Vol 4-6 — left as
+  John set it on 2026-10-04.
 
 - **Register spellings fixed from Tombolo's catalogue (2026-10-06):**
   "Pretenders to the Trhone of God" → Throne, "Batman 89 Echos" → Echoes,
