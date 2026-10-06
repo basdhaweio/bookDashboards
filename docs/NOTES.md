@@ -15,24 +15,36 @@ publish.
   isn't on the shelf, clear Owned via the Books tab ✎.
   *(2026-09-02: John will check once the books are out of moving transit.)*
 
-- **Tombolo orders #14567211 and #17708327 — dates.** Logged 2026-10-06 from
-  Tombolo's order-history exports (one order per file), which carry no order
-  date: both orders are undated in Buying › Book Orders, and the six
-  acquisitions of the arrived one (#14567211, the August-2025 releases) are
-  undated too. John: the dates are on Tombolo's "Previous Orders" page —
-  Log › Orders ✎ on each order, or tell Claude and the acquisitions get
-  dated as well.
+- **Tombolo order history — five lines for John (2026-10-06).** All 34
+  Tombolo orders (Mar 2025 → Sep 2026, 130 lines) were read from the
+  account's Previous Orders pages and logged, dated, in Buying › Book Orders.
+  Still open for John in Log › Orders: *Kaiju No. 8 Vol 15* (ordered Sep 23,
+  in hand?), *Legacies of Betrayal* (out Oct 6, in hand?), *Songs of the
+  Dead* ordered twice (#16137206 May 12 and #16710498 Jun 9 — second copy or
+  re-placed? the second stays ordered), *Red Rising Deluxe Slipcase* ×2 (one
+  copy recorded for Com; the other for Shereen? her row #15157 is unowned),
+  *Die* (Image hardcover, 2022, $59.99 — which Die volumes does it collect?
+  the line is arrived and unlinked). *Moss'd in Space* (out 2026-06-30) is
+  still ordered too.
 
-- **Moss'd in Space (Rebecca Thorne) — in hand?** On Tombolo order
-  #17708327 with three pre-orders, out since 2026-06-30, still *ordered*. If
-  it arrived, mark the line Arrived in Log › Orders: the arrival creates the
-  register row owned. The order is John's, so that row lands under Com even
-  though the other Rebecca Thorne books are Shereen's — flip the owner if it
-  is hers.
+- **Tombolo arrivals are undated.** The orders page gives order dates, not
+  pickup dates, so the 60-odd acquisitions created from the history carry
+  no date or year (first-acquisition rule untouched). If John wants them
+  dated by rule — order date for in-stock books, release date for
+  pre-orders — say so and they get dated in one pass.
 
-- **The 2026 Old Farmer's Almanac** rode on order #14567211 and is not a
-  register book; its line is arrived and unlinked on purpose. Say so if it
-  should be in the register after all.
+- **Ten add proposals from the Tombolo history** sit on the Proposed tab:
+  Edna St Vincent Millay (Pocket Poets), Stand Alone Complex Vol 1–5 (Yu
+  Kinutani), The Whisper that Replaced God Part II, Mighty Morphin Power
+  Rangers: The Pink Ranger Deluxe Edition and Recharged Deluxe Edition,
+  Spawn Origins Deluxe Hardcover Volume 8. Approve to add them owned
+  (Tombolo), or reject.
+
+- **Register spellings fixed from Tombolo's catalogue (2026-10-06):**
+  "Pretenders to the Trhone of God" → Throne, "Batman 89 Echos" → Echoes,
+  "In the Shadows of their Dying" → Shadow; old spellings kept as title
+  aliases. Also seen: Shereen's "Lore Olympus: Volume Eleven" row (#15126)
+  breaks the "Lore Olympus Vol N" naming of the rest of the series.
 
 - **Book Orders — duplicate Sun Eater order.** Two active unfulfilled orders
   both say "The Sun Eater 6-7": #TBBSUB751375 (July 1, 2026, order id 64) and
