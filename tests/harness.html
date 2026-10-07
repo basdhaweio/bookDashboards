@@ -677,6 +677,20 @@ async function main(){
       res(name,cuOk&&flOk&&formOk&&/on order/.test(foot),`Coming Up card ${card?'found':'missing'} (${cuOk}); flyer card ${fc?'found':'missing'} (${flOk}); kept out of the order form ${formOk}; footer: ${foot.slice(0,140)}`);
     }finally{const i=G.orderLines.indexOf(stub);if(i>=0)G.orderLines.splice(i,1);W.switchTab('comingup','buying');W.switchTab('flyer','bookclub');}
   });
+  await check('Book Orders: a partly arrived order lists only its open lines',async()=>{
+    const name='Book Orders: a partly arrived order lists only its open lines';
+    const W=w(),D=doc();
+    const G=W.eval('G');
+    const stub={id:998877,date:'2026-01-02',order:'#HARNESS-PART',books:'Harness Arrived Book; Harness Open Book',series:'',author:'Harness Author',paid:'Paid',delivered:'Unfulfilled',tracking:'',fulfil:'',type:'One-Time',sub:'',count:2,contains:'',store:'Harness Books',
+      lines:[{id:1,orderId:998877,title:'Harness Arrived Book',series:'',seq:'',status:'arrived',eta:''},{id:2,orderId:998877,title:'Harness Open Book',series:'',seq:'',status:'ordered',eta:'2099-02-03'}]};
+    G.orders.push(stub);
+    try{
+      await go('bookmail','buying');
+      const card=[...D.querySelectorAll('#tbb-orders .or')].find(c=>/#HARNESS-PART/.test(c.textContent));
+      const ok=!!card&&/Harness Open Book/.test(card.textContent)&&!/Harness Arrived Book/.test(card.textContent)&&/1 of 2 arrived/.test(card.textContent)&&/Partly arrived/.test(card.textContent)&&/due 2099-02-03/.test(card.textContent);
+      res(name,ok,card?card.textContent.replace(/\s+/g,' ').trim().slice(0,160):'card not found');
+    }finally{const i=G.orders.indexOf(stub);if(i>=0)G.orders.splice(i,1);W.renderBookMail(G.orders);}
+  });
   await check('Widget links: #add, #order/<id> and #tbr land on the work',async()=>{
     const name='Widget links: #add, #order/<id> and #tbr land on the work';
     const W=w(),D=doc(),tick=ms=>new Promise(r=>setTimeout(r,ms));
