@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-10-07T17:07:25+00:00",
+ "generated_at": "2026-10-07T17:50:37+00:00",
  "owner": "butthead",
  "site": "https://basdhaweio.github.io/bookDashboards/",
  "reading_now": [
@@ -139,9 +139,19 @@
   }
  ],
  "orders": {
-  "open": 41,
+  "open": 42,
   "shipped": 0,
   "lines": [
+   {
+    "id": 569,
+    "order_id": 558,
+    "title": "War Bodies",
+    "store": "Tombolo",
+    "status": "ordered",
+    "eta": "2025-12-01",
+    "tracking": "",
+    "ordered": "2025-08-26"
+   },
    {
     "id": 512,
     "order_id": 542,
@@ -211,16 +221,6 @@
     "eta": "2026-11-10",
     "tracking": "",
     "ordered": "2026-09-29"
-   },
-   {
-    "id": 251,
-    "order_id": 471,
-    "title": "The Blade That Remains",
-    "store": "Tombolo",
-    "status": "ordered",
-    "eta": "2027-04-06",
-    "tracking": "",
-    "ordered": "2026-09-30"
    }
   ]
  },
