@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-10-07T13:43:46+00:00",
+ "generated_at": "2026-10-07T15:03:50+00:00",
  "owner": "butthead",
  "site": "https://basdhaweio.github.io/bookDashboards/",
  "reading_now": [
@@ -139,43 +139,13 @@
   }
  ],
  "orders": {
-  "open": 43,
+  "open": 40,
   "shipped": 0,
   "lines": [
-   {
-    "id": 254,
-    "order_id": 471,
-    "title": "Moss'd in Space",
-    "store": "Tombolo",
-    "status": "ordered",
-    "eta": "2026-06-30",
-    "tracking": "",
-    "ordered": "2026-09-30"
-   },
-   {
-    "id": 512,
-    "order_id": 542,
-    "title": "Legacies of Betrayal",
-    "store": "Tombolo",
-    "status": "ordered",
-    "eta": "2026-10-06",
-    "tracking": "",
-    "ordered": "2026-05-13"
-   },
    {
     "id": 495,
     "order_id": 536,
     "title": "An Echo of Things to Come (Deluxe Hardcover Edition)",
-    "store": "Tombolo",
-    "status": "ordered",
-    "eta": "2026-10-20",
-    "tracking": "",
-    "ordered": "2026-09-29"
-   },
-   {
-    "id": 496,
-    "order_id": 536,
-    "title": "Ender's Tribe",
     "store": "Tombolo",
     "status": "ordered",
     "eta": "2026-10-20",
@@ -221,6 +191,36 @@
     "eta": "2026-11-10",
     "tracking": "",
     "ordered": "2026-09-02"
+   },
+   {
+    "id": 497,
+    "order_id": 536,
+    "title": "The First War",
+    "store": "Tombolo",
+    "status": "ordered",
+    "eta": "2026-11-10",
+    "tracking": "",
+    "ordered": "2026-09-29"
+   },
+   {
+    "id": 251,
+    "order_id": 471,
+    "title": "The Blade That Remains",
+    "store": "Tombolo",
+    "status": "ordered",
+    "eta": "2027-04-06",
+    "tracking": "",
+    "ordered": "2026-09-30"
+   },
+   {
+    "id": 506,
+    "order_id": 539,
+    "title": "I Need My Space",
+    "store": "Tombolo",
+    "status": "ordered",
+    "eta": "2027-04-20",
+    "tracking": "",
+    "ordered": "2026-07-22"
    }
   ]
  },
@@ -232,7 +232,7 @@
   "last_year_by_now": 115,
   "last_year_total": 154,
   "this_month": 2,
-  "bought": 152
+  "bought": 155
  },
  "proposals": {
   "open": 11
