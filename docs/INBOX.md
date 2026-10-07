@@ -477,8 +477,9 @@ the sum of line quantities. Arrival of a line marks its register book owned
 with a dated acquisition (exact match only), else parks an
 `add_book_from_inbox` proposal carrying the acquisition. An acquisition means
 the book is in hand — an open pre-order is an order record only; when the
-arrival day is unknown the order date stands in, never a release date (John,
-2026-10-06). An order with
+arrival day is unknown the order date stands in for a book that was in print
+when ordered, while a pre-ordered book stays undated (its order date predates
+the book); never a release date (John, 2026-10-06/07). An order with
 `contains` (omnibus) is one line — the volume — and its arrival takes the
 omnibus path below instead of matching the volume's title. Orders without
 `lines` keep the legacy text path.

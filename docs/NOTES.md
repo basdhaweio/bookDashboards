@@ -32,12 +32,16 @@ publish.
   Forge of Battle* (#15130), already arrived 2026-09-30 through TBB order
   #TBBSUB730074 — nothing to do unless John meant another book.
 
-- **Acquisition dating rule (John, 2026-10-06).** An acquisition means the
+- **Acquisition dating rule (John, 2026-10-06/07).** An acquisition means the
   book is in hand; an open pre-order gets an order record only. When the day
-  a book came home is not known, its ORDER date stands in — the 84
-  acquisitions the Tombolo import created are dated that way, and the books
-  whose date they filled say `acquired_date_src = order-date`. Release dates
-  are never substituted.
+  a book came home is not known, its ORDER date stands in — but only for a
+  book that was in print when ordered. A pre-order's order date is months
+  before the book existed, so pre-ordered books keep an UNDATED acquisition
+  (owned, no date) unless John names the pickup day. The Tombolo import's
+  acquisitions follow this (61 dated 2025, 10 dated 2026, 21 undated
+  pre-orders); books whose date it filled say `acquired_date_src =
+  order-date`. Release dates are never substituted. Legacies of Betrayal
+  (Witness Trilogy #3, Malazan) is back to an open order — not in hand yet.
 
 - **Spawn Origins numbering (settled 2026-10-06).** The register's Spawn
   Origins Vol N follow Wikipedia's *Spawn (character) › Collected editions*
