@@ -15,14 +15,22 @@ publish.
   isn't on the shelf, clear Owned via the Books tab ✎.
   *(2026-09-02: John will check once the books are out of moving transit.)*
 
-- **Tombolo order history — what is still open (2026-10-06).** All 34
-  Tombolo orders (Mar 2025 → Sep 2026, 130 lines) are in Buying › Book
-  Orders with their dates. John settled the rest: Kaiju No. 8 Vol 15 is in
-  hand (register row #15139, renamed to the series' spelling), the second
-  Songs of the Dead order (#16710498) was cancelled, one of the two Red
-  Rising slipcases was given away. Still ordered: *Legacies of Betrayal*
-  (due in on Oct 6 — tap Arrived in Log › Orders when it is picked up) and
-  *Moss'd in Space* (out 2026-06-30, no word yet).
+- **Vinland Saga — the register counts Japanese volumes (2026-10-07).** The
+  register has Vinland Saga Vol 1-28, all owned. John buys Kodansha's
+  English two-in-one hardcovers (Tombolo lines "Vinland Saga 7, 8, 9, 12,
+  13"), of which there are 14 (Vol 14 out 2025-05-27) with Vol 15, the final
+  one, due 2026-10-13. So volumes 16-28 never existed in that edition and Vol
+  15 cannot be owned yet. Proposed: keep Vol 1-15 as the hardcover run (Vol
+  15 tracked, pub 2026-10-13, not owned; notes saying HC Vol N = tankobon
+  2N-1 and 2N), retire rows 16-28, and confirm with John which of 1-14 are on
+  the shelf (the Aug-2025 order filled gaps 7-9 and 12-13). Waiting on him.
+
+- **Tombolo history, settled 2026-10-07:** Moss'd in Space (#15281, dated by
+  the order-date rule), Ender's Tribe (#15282, universe Ender, series not
+  set) and Legacies of Betrayal (#15283, Witness Trilogy #3) are in hand and
+  linked to their lines. The "new Anthony Ryan book from TBB" is *Upon the
+  Forge of Battle* (#15130), already arrived 2026-09-30 through TBB order
+  #TBBSUB730074 — nothing to do unless John meant another book.
 
 - **Acquisition dating rule (John, 2026-10-06).** An acquisition means the
   book is in hand; an open pre-order gets an order record only. When the day
