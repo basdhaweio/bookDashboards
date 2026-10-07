@@ -15,15 +15,15 @@ publish.
   isn't on the shelf, clear Owned via the Books tab ✎.
   *(2026-09-02: John will check once the books are out of moving transit.)*
 
-- **Vinland Saga numbering (settled 2026-10-07).** The register's Vinland
-  Saga Vol 1-28 are the tankobon numbers, by design — never renumber them
-  (John). Kodansha's two-in-one hardcovers collect two tankobon each (HC 7 =
-  Vol 13+14 … HC 14 = 27+28; HC 15, due 2026-10-13, is the last and holds
-  Vol 29 — not owned). The history import had linked Tombolo's hardcover
-  numbers 7/8/9/12/13 to tankobon rows of the same number; undone, and each
-  hardcover is now a copy holding its two tankobon (copies 293-297), with
-  acquisitions on those rows dated by the order-date rule and the $22.99
-  list price on each hardcover's first work.
+- **Vinland Saga (settled 2026-10-07).** The register's Vinland Saga Vol
+  1-29 are the tankobon numbers, by design — never renumber them (John).
+  Kodansha's two-in-one hardcovers are omnibus copies "Vinland Saga N"
+  holding tankobon 2N-1 and 2N, filed like the Gantz omnibuses: hardcovers
+  1-14 are recorded (the five from Tombolo order #14587773 dated 2025-08-13,
+  the other nine undated); hardcover 15, due 2026-10-13, holds Vol 29, which
+  is tracked but not owned so it shows on Coming Up. The series row carries
+  the convention in its notes. (The history import had briefly linked the
+  Tombolo hardcover numbers to tankobon rows of the same number; undone.)
 
 - **Tombolo history, settled 2026-10-07:** Moss'd in Space (#15281, dated by
   the order-date rule), Ender's Tribe (#15282, universe Ender, series not
