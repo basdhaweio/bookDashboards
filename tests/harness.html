@@ -232,16 +232,40 @@ async function main(){
     res('Coming Up merges its three sources without duplicates',cards.length>0&&dups===0,`${cards.length} cards, ${dups} duplicate titles`);
   });
 
-  await check('Browse by author lists people, not co-author strings',async()=>{
+  await check('Register: an author search lists people with their series, not co-author strings',async()=>{
+    const name='Register: an author search lists people with their series, not co-author strings';
+    const W=w(),D=doc();
+    await go('register','tracking');
+    W.openRegister('Erikson');await new Promise(r=>setTimeout(r,300));
+    const peopleBox=[...D.querySelectorAll('#rg-out .rg-people')][0];
+    const people=peopleBox?[...peopleBox.querySelectorAll('.uv-row .uv-t')].map(e=>e.textContent.split('·')[0].trim()):[];
+    const joined=people.filter(o=>/\s(and|&)\s/i.test(o)||/,\s*\S+\s+\S+/.test(o));
+    const seriesBtns=peopleBox?peopleBox.querySelectorAll('.uv-acts button').length:0;
+    res(name,people.length>0&&joined.length===0&&seriesBtns>0,`${people.length} people (${people.slice(0,3).join(' | ')}), ${joined.length} joined; ${seriesBtns} series buttons`);
+  });
+  await check('Register: a series or title search shows the whole series with its actions',async()=>{
+    const name='Register: a series or title search shows the whole series with its actions';
+    const W=w(),D=doc();
+    const ind=tget('Butthead Individual');const hd=ind[0];
+    const expect=ind.slice(1).filter(r=>r[hd.indexOf('Series')]==='Witness Trilogy'&&r[hd.indexOf('Owner')]==='butthead').length;
+    await go('register','tracking');
+    W.openRegister('Witness Trilogy');await new Promise(r=>setTimeout(r,300));
+    const blk=[...D.querySelectorAll('#rg-out .rg-ser')].find(b=>/^Witness Trilogy/.test(b.textContent.trim()));
+    const rows=blk?blk.querySelectorAll('.uv-row').length:0;
+    const got=blk?blk.querySelectorAll('button[onclick^="uvAct"]').length:0,look=blk?blk.querySelectorAll('button[onclick^="LOG.awardTrackSeries"]').length:0;
+    W.openRegister('Legacies of Betrayal');await new Promise(r=>setTimeout(r,300));
+    const byTitle=!![...D.querySelectorAll('#rg-out .rg-ser')].find(b=>/^Witness Trilogy/.test(b.textContent.trim()));
+    res(name,expect>0&&rows===expect&&got>0&&look===1&&byTitle,`${rows} rows vs ${expect} in the bundle; ${got} action buttons; ${look} look-for-volumes button; title search lands on the series ${byTitle}`);
+  });
+  await check('Log › Books: a register hit links to its series in Register',async()=>{
+    const name='Log › Books: a register hit links to its series in Register';
+    const W=w(),D=doc();
     await go('logbook','log');
-    const sel=doc().getElementById('log-br-mode');
-    sel.value='author';sel.dispatchEvent(new (w().Event)('change',{bubbles:true}));
-    await new Promise(r=>setTimeout(r,300));
-    const opts=[...doc().querySelectorAll('#log-dl-br option')].map(o=>o.textContent);
-    const joined=opts.filter(o=>/\s(and|&)\s/i.test(o)||/,\s*\S+\s+\S+/.test(o));
-    const authorsTab=tget('Authors');
-    res('Browse by author lists people, not co-author strings',opts.length>100&&joined.length===0&&(!authorsTab||authorsTab.length>100),
-        `${opts.length} people, ${joined.length} joined strings; Authors tab ${authorsTab?authorsTab.length-1:'absent'}`);
+    const q=D.getElementById('log-q');q.value='No Life Forsaken';W.eval('LOG').search();await new Promise(r=>setTimeout(r,500));
+    const link=[...D.querySelectorAll('#log-results .log-item-meta .tbr-link')].find(b=>b.dataset.s==='Witness Trilogy');
+    if(link)link.click();await new Promise(r=>setTimeout(r,300));
+    const landed=W.eval('curTab')==='register'&&(D.getElementById('rg-q')||{}).value==='Witness Trilogy';
+    res(name,!!link&&landed,`series link ${link?'found':'missing'}; landed on Register with the series ${landed}; browse controls gone ${!D.getElementById('log-br-mode')}`);
   });
 
   await check('✎ panel carries a credits editor fed by the Book Authors tab',async()=>{

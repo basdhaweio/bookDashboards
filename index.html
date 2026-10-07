@@ -532,6 +532,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <button onclick="switchTab('bytype','tracking')">By Type</button>
       <button onclick="switchTab('genre','tracking')">By Genre</button>
       <button onclick="switchTab('universe','tracking')">By Universe</button>
+      <button onclick="switchTab('register','tracking')">Register</button>
       <button onclick="switchTab('rooms','tracking')">Rooms</button>
     </div>
     <div class="panel active" id="tab-overview">
@@ -580,6 +581,14 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
         <div id="uv-manga-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;margin-bottom:1rem;"></div>
         <div class="cb"><div id="uv-manga-wrap" style="height:240px"><canvas id="uvMangaChart" role="img" aria-label="Manga universes bar"></canvas></div></div>
       </div>
+    </div>
+    <div class="panel" id="tab-register">
+      <div class="sl">Register lookup — what the register holds for a title, author or series</div>
+      <div class="cb" style="margin-bottom:1rem">
+        <input id="rg-q" class="log-search" type="search" placeholder="Title, author or series — the register only…" autocomplete="off" oninput="rgSearch()">
+        <div class="ms" style="margin-top:6px">Three letters start it. A series opens like a universe page: every volume in order with its read · owned · need · unpublished dots and the same one-tap actions. Looking for a book that isn't here? <button class="log-ghost" onclick="rgOutside()">Search outside in Log › Books</button></div>
+      </div>
+      <div id="rg-out"></div>
     </div>
     <div class="panel" id="tab-rooms">
       <div class="sl">Books by room</div>
@@ -983,16 +992,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
         <button class="log-ghost" id="log-scanbtn" style="display:none" onclick="LOG.scanIsbn()">📷 Scan</button>
       </div>
       <div id="log-scanwrap" style="display:none;margin:6px 0"></div>
-      <div class="log-frow" style="margin:6px 0 2px;gap:6px;align-items:center">
-        <select id="log-br-mode" onchange="LOG.brMode()" style="max-width:110px">
-          <option value="author">Author</option>
-          <option value="series">Series</option>
-          <option value="universe">Universe</option>
-        </select>
-        <input id="log-br-q" list="log-dl-br" placeholder="browse everything by…" autocomplete="off" oninput="LOG.browse()">
-        <datalist id="log-dl-br"></datalist>
-        <label class="ms" style="white-space:nowrap"><input type="checkbox" id="log-br-need" onchange="LOG.browse()"> need only</label>
-      </div>
+      <div class="ms" style="margin:4px 0 2px">Browsing a series or an author moved to <button class="tbr-link" onclick="switchSection('tracking','register')">Tracking › Register</button>; a register hit's series name below opens it there.</div>
       <div id="log-needs-bar"></div>
       <div id="log-results"></div>
       <div style="margin-top:1.2rem">
@@ -1553,11 +1553,8 @@ function uvOpen(name,filter){
   const books=(G.indBooks||[]).filter(b=>b.universe===name);
   el.style.display='';
   if(!books.length){el.innerHTML=`<div class="cb" style="margin-bottom:1.5rem"><div class="ms">No individual books carry the universe “${esc(name)}” — only series rows do.</div><button class="log-act" onclick="uvClose()">✕ Close</button></div>`;return;}
-  const todayIso=LOG.today();
-  const pR=LOG.pendingBooks('finished'),pA=LOG.pendingBooks('acquired'),pU=LOG.pendingBooks('book_update');
-  const pk=b=>b.title+'|'+(!b.series||b.series==='Standalones'?'':b.series);
-  const unpub=b=>tbrRel(b.pubDate,todayIso,todayIso)!=='out';
-  const seqN=b=>{const v=parseFloat(String(b.seq||'').replace(/[^0-9.]/g,''));return isNaN(v)?Infinity:v;};
+  G._uvHost='universe';
+  const ctx=uvCtx(),{unpub,seqN}=ctx;
   // With the header on Both, each reader's copy of a series is its own
   // group (Old Kingdom · Com / Old Kingdom · Shereen), never one mixed count
   // (John, 2026-09-23: both shelves hold some of the same series).
@@ -1573,16 +1570,8 @@ function uvOpen(name,filter){
   const sers=Object.keys(by).sort((a,b)=>isStand(a)-isStand(b)||(!span[a])-(!span[b])||((span[a]||[0])[0]-(span[b]||[0])[0])||a.localeCompare(b));
   const n={tracked:books.length,read:books.filter(b=>b.read).length,owned:books.filter(b=>b.owned).length,need:books.filter(b=>b.need).length,unpub:books.filter(unpub).length,unread:books.filter(b=>!b.read).length,unowned:books.filter(b=>!b.owned).length};
   const show=b=>uvFilter==='all'||(uvFilter==='unread'&&!b.read)||(uvFilter==='unowned'&&!b.owned)||(uvFilter==='need'&&b.need)||(uvFilter==='unpub'&&unpub(b));
-  G._uvBooks=[];const bidx=b=>{G._uvBooks.push(b);return G._uvBooks.length-1;};
-  const row=b=>{const i=bidx(b),k=pk(b),pr=pR.has(k),pa=pA.has(k),pu=pU.has(k),up=unpub(b);
-    const dots=`<span class="uv-dots"><span class="uv-dot${b.read?' on-read':''}" title="read"></span><span class="uv-dot${b.owned?' on-own':''}" title="owned"></span><span class="uv-dot${b.need?' on-need':''}" title="need"></span><span class="uv-dot${up?' on-unpub':''}" title="unpublished"></span></span>`;
-    const chips=[pr?'<span class="badge b-teal">read · pending</span>':'',pa?'<span class="badge b-gold">got it · pending</span>':'',pu?'<span class="badge b-gray">edit · pending</span>':'',
-      up?`<span class="badge b-gray">${/^tba$/i.test(b.pubDate)?'TBA':'📅 '+esc(b.pubDate)}</span>`:'',b.need?'<span class="badge b-coral">NEED</span>':''].filter(Boolean).join(' ');
-    const btns=[!b.read&&!pr?`<button class="log-act" onclick="uvAct(${i},'read')">✓ Read</button>`:'',
-      !b.owned&&!pa?`<button class="log-act gold" onclick="uvAct(${i},'got')">📦 Got it</button>`:'',
-      !b.owned&&!pu?`<button class="log-act" onclick="uvSet(${i},'need',${b.need?'false':'true'})">${b.need?'🚩 clear need':'🚩 Need'}</button>`:'',
-      !b.owned&&!up&&!pu&&!(b.pubDate||'').trim()?`<button class="log-act" onclick="uvSet(${i},'tba')" title="not published yet, no date">📅 TBA</button>`:''].filter(Boolean).join('');
-    return`<div class="uv-row"${show(b)?'':' style="display:none"'}>${dots}<div class="uv-t">${esc(b.title)}${b.seq?` <span class="ms">#${esc(b.seq)}</span>`:''}${b.media&&b.media!=='Print'?` <span class="ms">· ${esc(b.media)}</span>`:''} ${chips}</div><div class="uv-acts">${btns}</div><div class="uv-inline" id="uv-in-${i}" style="display:none"></div></div>`;};
+  G._uvBooks=[];
+  const row=b=>uvRowHtml(b,ctx,show(b));
   const filt=[['all','All '+n.tracked],['unread','Unread '+n.unread],['unowned','Not owned '+n.unowned],['need','Needed '+n.need],['unpub','Unpublished '+n.unpub]];
   el.innerHTML=`<div class="cb" style="margin-bottom:1.5rem">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
@@ -1597,8 +1586,72 @@ function uvOpen(name,filter){
   </div>`;
   if(!filter)el.scrollIntoView({behavior:'smooth',block:'start'});
 }
+// Shared by the universe drill-down and Tracking › Register (2026-10-07):
+// one row per book — read · owned · need · unpublished dots, pending chips,
+// the one-tap actions — indexed into G._uvBooks for uvAct / uvSet. Whoever
+// rendered last owns G._uvBooks; uvRerender redraws that host.
+function uvCtx(){const todayIso=LOG.today();
+  return{todayIso,pR:LOG.pendingBooks('finished'),pA:LOG.pendingBooks('acquired'),pU:LOG.pendingBooks('book_update'),
+    pk:b=>b.title+'|'+(!b.series||b.series==='Standalones'?'':b.series),
+    unpub:b=>tbrRel(b.pubDate,todayIso,todayIso)!=='out',
+    seqN:b=>{const v=parseFloat(String(b.seq||'').replace(/[^0-9.]/g,''));return isNaN(v)?Infinity:v;}};}
+function uvRowHtml(b,ctx,visible){
+  G._uvBooks=G._uvBooks||[];G._uvBooks.push(b);const i=G._uvBooks.length-1;
+  const k=ctx.pk(b),pr=ctx.pR.has(k),pa=ctx.pA.has(k),pu=ctx.pU.has(k),up=ctx.unpub(b);
+  const dots=`<span class="uv-dots"><span class="uv-dot${b.read?' on-read':''}" title="read"></span><span class="uv-dot${b.owned?' on-own':''}" title="owned"></span><span class="uv-dot${b.need?' on-need':''}" title="need"></span><span class="uv-dot${up?' on-unpub':''}" title="unpublished"></span></span>`;
+  const chips=[pr?'<span class="badge b-teal">read · pending</span>':'',pa?'<span class="badge b-gold">got it · pending</span>':'',pu?'<span class="badge b-gray">edit · pending</span>':'',
+    up?`<span class="badge b-gray">${/^tba$/i.test(b.pubDate)?'TBA':'📅 '+esc(b.pubDate)}</span>`:'',b.need?'<span class="badge b-coral">NEED</span>':''].filter(Boolean).join(' ');
+  const btns=[!b.read&&!pr?`<button class="log-act" onclick="uvAct(${i},'read')">✓ Read</button>`:'',
+    !b.owned&&!pa?`<button class="log-act gold" onclick="uvAct(${i},'got')">📦 Got it</button>`:'',
+    !b.owned&&!pu?`<button class="log-act" onclick="uvSet(${i},'need',${b.need?'false':'true'})">${b.need?'🚩 clear need':'🚩 Need'}</button>`:'',
+    !b.owned&&!up&&!pu&&!(b.pubDate||'').trim()?`<button class="log-act" onclick="uvSet(${i},'tba')" title="not published yet, no date">📅 TBA</button>`:''].filter(Boolean).join('');
+  return`<div class="uv-row"${visible===false?' style="display:none"':''}>${dots}<div class="uv-t">${esc(b.title)}${b.seq?` <span class="ms">#${esc(b.seq)}</span>`:''}${b.media&&b.media!=='Print'?` <span class="ms">· ${esc(b.media)}</span>`:''} ${chips}</div><div class="uv-acts">${btns}</div><div class="uv-inline" id="uv-in-${i}" style="display:none"></div></div>`;
+}
 function uvClose(){const el=document.getElementById('uv-detail');if(el){el.style.display='none';el.innerHTML='';}G._uvName=null;}
-function uvRerender(){if(G._uvName)uvOpen(G._uvName,uvFilter);}
+function uvRerender(){if(G._uvHost==='register')renderRegister();else if(G._uvName)uvOpen(G._uvName,uvFilter);}
+
+// ── Tracking › Register: what the register holds for a title, author or
+// series (John, 2026-10-07: "I bought a book today that's book 3 in a
+// series but it wasn't tracked and I don't have an easy way to find that
+// out"). Register only — the outside lookup stays in Log › Books, one tap
+// away. A series that is named by the query, or is home to a matching
+// title, shows every volume like a universe page (uvRowHtml); matching
+// standalones and people follow. Series not in any universe are the point.
+let rgQ='';
+function rgSearch(){const el=document.getElementById('rg-q');rgQ=el?el.value.trim():'';renderRegister();}
+function openRegister(q){switchSection('tracking','register');const el=document.getElementById('rg-q');if(el)el.value=q||'';rgQ=(q||'').trim();renderRegister();if(el)el.scrollIntoView({block:'start',behavior:'smooth'});}
+function rgOutside(){switchSection('log','logbook');const q=document.getElementById('log-q');if(q){q.value=rgQ;LOG.search();q.focus();}}
+function renderRegister(){
+  const out=document.getElementById('rg-out');if(!out)return;
+  G._uvHost='register';
+  const q=rgQ,nl=s=>(s||'').toLowerCase().replace(/[^a-z0-9]/g,''),nq=nl(q);
+  const who=OWNER_LABEL[OWNER]||'Both';
+  if(nq.length<3){out.innerHTML=`<div class="ms" style="padding:8px 2px">Type at least three letters — matches come from the current reader filter (${who}).</div>`;return;}
+  const books=G.indBooks||[];
+  const als=b=>(G.aliasesOf&&G.aliasesOf[(b.owner||'butthead')+'|'+nl(b.title)])||[];
+  const real=b=>b.series&&b.series!=='Standalones';
+  const hitT=b=>nl(b.title).includes(nq)||als(b).some(a=>nl(a).includes(nq));
+  const hitA=b=>nl(b.author).includes(nq);
+  const hitS=b=>real(b)&&nl(b.series).includes(nq);
+  // With the header on Both, each reader's copy of a series is its own block (as By Universe does)
+  const gkey=b=>OWNER==='all'?b.series+' · '+(OWNER_LABEL[b.owner||'butthead']||b.owner):b.series;
+  const sers=new Map();
+  books.forEach(b=>{if(!real(b)||!(hitS(b)||hitT(b)))return;const k=gkey(b);const e=sers.get(k)||{key:k,name:b.series,owner:b.owner||'butthead',byName:false,byTitle:false};if(hitS(b))e.byName=true;if(hitT(b))e.byTitle=true;sers.set(k,e);});
+  const stand=books.filter(b=>!real(b)&&(hitT(b)||hitA(b))).sort((a,b)=>a.title.localeCompare(b.title));
+  const people=new Map();
+  books.forEach(b=>peopleOf(b.author).forEach(p=>{if(!nl(p).includes(nq))return;const e=people.get(p)||{name:p,series:new Map(),stand:0};if(real(b))e.series.set(gkey(b),(e.series.get(gkey(b))||0)+1);else e.stand++;people.set(p,e);}));
+  if(!sers.size&&!stand.length&&!people.size){out.innerHTML=`<div class="cb"><div class="ms">Nothing in the register matches “${esc(q)}” for ${who}.</div><button class="log-ghost" style="margin-top:6px" onclick="rgOutside()">Search outside in Log › Books</button></div>`;return;}
+  const ctx=uvCtx();G._uvBooks=[];
+  const order=[...sers.values()].sort((a,b)=>(b.byName-a.byName)||((nl(b.name)===nq)-(nl(a.name)===nq))||a.name.localeCompare(b.name)).slice(0,25);
+  const block=e=>{const list=books.filter(b=>real(b)&&gkey(b)===e.key).sort((a,b)=>ctx.seqN(a)-ctx.seqN(b)||a.title.localeCompare(b.title));
+    const au=[...new Set(list.map(b=>b.author).filter(Boolean))].slice(0,2).join(' · '),uni=list[0].universe?` · ${esc(list[0].universe)}`:'';
+    const owner=OWNER==='all'?` <span class="badge ${e.owner==='goblin'?'b-purple':'b-teal'}">${OWNER_LABEL[e.owner]||e.owner}</span>`:'';
+    const more=LOG.trackQueued(e.name)?'<span class="badge b-gold">looking for volumes · queued</span>':`<button class="log-act" data-s="${esc(e.name)}" data-a="${esc(list[0].author||'')}" onclick="LOG.awardTrackSeries(this.dataset.s,this.dataset.a)" title="ask jerry for every volume of this series — proposals on the Proposed tab, nothing enters the register without you">🔍 Look for missing volumes</button>`;
+    return`<div class="cb rg-ser" style="margin-bottom:1rem"><div class="uv-ser" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span>${esc(e.name)}${owner} <span class="ms">· ${au?esc(au)+' · ':''}${list.filter(b=>b.read).length}/${list.length} read · ${list.filter(b=>b.owned).length} owned${uni}</span></span>${more}</div>${list.map(b=>uvRowHtml(b,ctx,true)).join('')}</div>`;};
+  const standHtml=stand.length?`<div class="cb rg-stand" style="margin-bottom:1rem"><div class="uv-ser">Standalones <span class="ms">· ${stand.length}</span></div>${stand.slice(0,60).map(b=>uvRowHtml(b,ctx,true)).join('')}</div>`:'';
+  const peopleHtml=people.size?`<div class="cb rg-people" style="margin-bottom:1rem"><div class="uv-ser">Authors <span class="ms">· ${people.size}</span></div>${[...people.values()].sort((a,b)=>a.name.localeCompare(b.name)).slice(0,20).map(e=>`<div class="uv-row"><div class="uv-t">${esc(e.name)} <span class="ms">· ${e.series.size} series · ${e.stand} standalone${e.stand===1?'':'s'}</span></div><div class="uv-acts">${[...e.series.entries()].slice(0,8).map(([k,n])=>`<button class="log-act" data-s="${esc(k.split(' · ')[0])}" onclick="openRegister(this.dataset.s)">${esc(k)} <span class="ms">${n}</span></button>`).join('')}</div></div>`).join('')}</div>`:'';
+  out.innerHTML=`<div class="ms" style="margin-bottom:6px">${order.length} series · ${stand.length} standalone${stand.length===1?'':'s'} · ${people.size} author${people.size===1?'':'s'} match “${esc(q)}” (${who}). Dots: read · owned · need · unpublished; taps send the same events as the Log tab.</div>${order.map(block).join('')}${standHtml}${peopleHtml}`;
+}
 function uvAct(i,kind){
   const b=(G._uvBooks||[])[i],el=document.getElementById('uv-in-'+i);if(!b||!el)return;
   if(el.style.display!=='none'&&el.dataset.kind===kind){el.style.display='none';return;}
@@ -1821,12 +1874,7 @@ let tyYear=2026,allYD={};
 // Next = the first unread volume past the highest read seq, else the
 // earliest unread one (a skipped volume). Shelf state comes from the
 // register, open orders (Book Mail and the flyer) and the release date.
-function tbrBrowse(name){
-  switchTab('logbook','log');
-  const m=document.getElementById('log-br-mode');if(!m)return;
-  m.value='series';LOG.brMode();
-  document.getElementById('log-br-q').value=name;LOG.browse();
-}
+function tbrBrowse(name){openRegister(name);}   // the series view lives in Tracking › Register (2026-10-07)
 // Tap-throughs from the TBR rows (top-level so inline handlers see them):
 // ✓ Read opens a date row and logs a finished event; 🚩 Need flags the
 // register's need column (To Acquire picks it up). G._tbrBooks indexes the
@@ -3487,6 +3535,7 @@ const HASH_ACTIONS={
   add:['log','logbook',()=>{const q=document.getElementById('log-q');if(q){q.focus();q.scrollIntoView({block:'center'});}}],
   order:['log','logorders',arg=>{if(arg&&/^\d+$/.test(arg))return LOG.openOrder(+arg);const f=document.getElementById('log-orderform');if(f)f.scrollIntoView({block:'start'});}],
   tbr:['reading','tbr',null],read:['reading','tbr',null],
+  register:['tracking','register',arg=>{if(arg)openRegister(decodeURIComponent(arg));}],
 };
 function runHashAction(hash){
   const[act,arg]=hash.split('/');const a=HASH_ACTIONS[act];if(!a)return false;
@@ -3502,7 +3551,7 @@ function restoreFromHash(){
   if(!hash){try{hash=(localStorage.getItem(LS_LAST_TAB)||'').replace('#','');}catch(e){}}
   const[sec,tab]=hash.split('/');
   const validSecs=new Set(['tracking','reading','buying','collecting','bookclub','log']);
-  const validTabs=new Set(['overview','bytype','genre','universe','rooms','tbr','plan','history','thisyear','completion','byseries','toread','comingup','bookmail','toacquire','someday','libgrowth','buythisyear','col-fr','col-dl','col-sr','flyer','bnauthors','logbook','logorders','logpending','logproposed','logmeta','logsheet','col-awards']);
+  const validTabs=new Set(['overview','bytype','genre','universe','register','rooms','tbr','plan','history','thisyear','completion','byseries','toread','comingup','bookmail','toacquire','someday','libgrowth','buythisyear','col-fr','col-dl','col-sr','flyer','bnauthors','logbook','logorders','logpending','logproposed','logmeta','logsheet','col-awards']);
   const validFRTabs=new Set(['fr-overview','fr-series','fr-completion']);
   const validDLTabs=new Set(['dl-overview','dl-series','dl-completion']);
   const validSRTabs=new Set(['sr-overview','sr-publisher','sr-completion']);
@@ -3539,6 +3588,7 @@ function renderTabInner(id){
   else if(id==='bytype')renderByType(bm);
   else if(id==='genre')renderGenre(bm);
   else if(id==='universe')renderUniverse(bm);
+  else if(id==='register')renderRegister();
   else if(id==='rooms')renderRooms(bm);
   else if(id==='tbr')renderTBR();
   else if(id==='plan')renderPlan();
@@ -5121,7 +5171,7 @@ const LOG=(()=>{
         ${thumbHTML(b.title,b.owner,null,null,b.series)}
         <div class="log-item-info">
           <div class="log-item-title">${esc(b.title)}${pendMark}${needMark}${missMark}</div>
-          <div class="log-item-meta">${esc(seriesLabel(b))}${b.seq?' #'+esc(b.seq):''} · ${esc(b.author)}${rolesTag(b)}${b.media?' · '+esc(b.media):''}${b.pubDate?' · '+esc(b.pubDate):''}${OWNER==='all'?' · '+(OWNER_LABEL[b.owner]||''):''}${(G.inCopy&&G.inCopy[b.title.toLowerCase().replace(/[^a-z0-9]/g,'')+'|'+b.owner]||[]).map(t=>` · <span style="color:var(--purple)">in: ${esc(t)}</span>`).join('')}${(G.editionOf&&G.editionOf[b.title.toLowerCase().replace(/[^a-z0-9]/g,'')+'|'+b.owner]||[]).map(t=>` · <span style="color:var(--gold)">${esc(t)}</span>`).join('')}</div>
+          <div class="log-item-meta">${b.series&&b.series!=='Standalones'?`<button class="tbr-link" data-s="${esc(b.series)}" onclick="event.stopPropagation();openRegister(this.dataset.s)" title="the whole series in Tracking › Register">${esc(seriesLabel(b))} ▸</button>`:esc(seriesLabel(b))}${b.seq?' #'+esc(b.seq):''} · ${esc(b.author)}${rolesTag(b)}${b.media?' · '+esc(b.media):''}${b.pubDate?' · '+esc(b.pubDate):''}${OWNER==='all'?' · '+(OWNER_LABEL[b.owner]||''):''}${(G.inCopy&&G.inCopy[b.title.toLowerCase().replace(/[^a-z0-9]/g,'')+'|'+b.owner]||[]).map(t=>` · <span style="color:var(--purple)">in: ${esc(t)}</span>`).join('')}${(G.editionOf&&G.editionOf[b.title.toLowerCase().replace(/[^a-z0-9]/g,'')+'|'+b.owner]||[]).map(t=>` · <span style="color:var(--gold)">${esc(t)}</span>`).join('')}</div>
         </div>
         <div class="log-acts">
           <button class="log-act primary" onclick="LOG.expand(${key},'finished')">✓ Read it</button>
@@ -5144,7 +5194,8 @@ const LOG=(()=>{
   // and NEED badges. Series counts come from the whole register so an author
   // filter can't make a series look more complete than it is (John, 2026-09-10).
   function brFillList(){
-    const m=document.getElementById('log-br-mode').value;
+    const mEl=document.getElementById('log-br-mode');if(!mEl)return;      // browse UI moved to Tracking › Register (2026-10-07)
+    const m=mEl.value;
     const src=(G.indBooks||[]);
     let vals;
     if(m==='author')vals=[...new Set(src.flatMap(b=>peopleOf(b.author)))];
@@ -5157,9 +5208,10 @@ const LOG=(()=>{
   function browse(){
     clearTimeout(brT);
     brT=setTimeout(()=>{
-      const m=document.getElementById('log-br-mode').value;
+      const mEl=document.getElementById('log-br-mode');if(!mEl)return;
+      const m=mEl.value;
       const q=(document.getElementById('log-br-q').value||'').trim().toLowerCase();
-      const needOnly=document.getElementById('log-br-need').checked;
+      const needOnly=!!(document.getElementById('log-br-need')||{}).checked;
       if(!q&&!needOnly)return;
       document.getElementById('log-q').value='';
       const hits=(G.indBooks||[]).filter(b=>{
