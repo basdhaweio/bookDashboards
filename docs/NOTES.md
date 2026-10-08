@@ -69,3 +69,19 @@ publish.
   Log → Orders and use **Cancel order** (added 2026-09-09) on whichever
   isn't the live one — it drops from the open list and shows Cancelled in
   history.
+
+- **TBR: In progress layout, Reading now vs Next up, Sync Goodreads
+  (2026-10-08).** In progress is the same grid as the other TBR sections
+  again; a universe box spans one column per series (capped at the row —
+  `--span` is set by renderTBR from the grid's width, and a resize that
+  changes the column count re-renders). The flex flow of 09-24/27 left an
+  empty slot beside every box and ragged rows ("still kinda looks off"). A
+  queued book that is on the Goodreads currently-reading shelf, or already
+  read, shows under Reading now only; its queue row stays until the finish
+  lands — apply_finished and an approved sync_finished proposal both drop
+  it now (Glinda of Oz sat under both). The TBR heading carries the same
+  ⟳ Sync Goodreads as Log › Books (a sync_request event; jerry runs both
+  feeds within a minute or two, then publishes — reload after). Also:
+  index.html carried a raw NUL byte (a heredoc had turned a `'\0'` literal
+  into the byte — the same JS string) that made grep call the file binary;
+  it is the escape again.

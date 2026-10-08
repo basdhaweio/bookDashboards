@@ -440,6 +440,31 @@ async function main(){
     const slack=gr.width-extent; // padding 6+6, border 1+1 = 14
     res(name,slack>=10&&slack<=24,`${pick.cs.length} cards span ${extent.toFixed(0)}px, box ${gr.width.toFixed(0)}px, slack ${slack.toFixed(0)}px (expect ~14)`);
   });
+  await check('TBR: a universe box spans whole columns',async()=>{
+    const name='TBR: a universe box spans whole columns';
+    await go('tbr','reading');
+    const grid=doc().getElementById('tbr-prog');
+    const groups=[...grid.querySelectorAll(':scope>.tbr-group')].filter(g=>g.getBoundingClientRect().width>0);
+    const loose=[...grid.querySelectorAll(':scope>.tbr-card')].map(c=>c.getBoundingClientRect().width).filter(Boolean);
+    if(!groups.length||!loose.length){res(name,true,`${groups.length} box(es), ${loose.length} loose card(s) — nothing to measure`);return;}
+    // every column is one loose card wide; a box is n columns plus the gaps between them
+    const colW=loose[0],gap=8;
+    const bad=groups.map(g=>{const w=g.getBoundingClientRect().width,n=Math.round((w+gap)/(colW+gap)),want=n*colW+(n-1)*gap;return{w,n,off:Math.abs(w-want)};}).filter(x=>x.off>2);
+    res(name,bad.length===0,`${groups.length} box(es) against ${colW.toFixed(0)}px columns${bad.length?'; off: '+bad.map(x=>x.w.toFixed(0)+'px vs '+x.n+' col').join(', '):''}`);
+  });
+  await check('TBR: a queued book on the currently-reading shelf shows under Reading now only',async()=>{
+    const name='TBR: a queued book on the currently-reading shelf shows under Reading now only';
+    w().setOwner('butthead');await go('tbr','reading');
+    const nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    const gr=(tget('Goodreads')||[]).slice(1).filter(r=>r[0]==='currently-reading'&&(r[10]||'butthead')==='butthead'&&(r[6]||'').trim());
+    const q=(tget('Queue')||[]).slice(1).filter(r=>(r[2]||'butthead')==='butthead');
+    const both=q.filter(r=>gr.some(g=>nk(g[6])===nk(r[0])));
+    if(!both.length){res(name,true,'no queued book on the shelf right now — nothing to measure');return;}
+    const t=both[0][0];
+    const inReading=[...doc().querySelectorAll('#tbr-reading .tbr-card .tbr-ser')].some(e=>nk(e.textContent)===nk(t));
+    const inQueue=[...doc().querySelectorAll('#tbr-queue .tbr-card .tbr-ser')].some(e=>nk(e.textContent).includes(nk(t)));
+    res(name,inReading&&!inQueue,`${t}: under Reading now ${inReading}, under Next up ${inQueue}`);
+  });
   await check('TBR: Start a series leaves out series being read or queued',async()=>{
     const name='TBR: Start a series leaves out series being read or queued';
     await go('tbr','reading');

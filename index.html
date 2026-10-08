@@ -132,18 +132,18 @@ a.bc-burst:hover{transform:rotate(12deg) scale(1.08);}
 button.tbr-link{background:none;border:none;padding:0;font:inherit;font-weight:inherit;color:inherit;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;text-align:left;}
 .tbr-a{color:var(--gold);text-decoration:none;font-size:11px;}
 .tbr-uni{font-family:var(--font-m);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--gold);margin:8px 0 0;padding-top:6px;border-top:2px solid var(--gold2);}
-/* In progress flows as cards; a universe with several series sits in a
-   dashed box that hugs exactly its own cards, caption on top — the old
-   full-width rule looked like a heading for everything after it (John,
-   2026-09-24). */
-.tbr-grid.tbr-flow{display:flex;flex-wrap:wrap;align-items:flex-start;}
-.tbr-flow>.tbr-card{flex:0 0 250px;max-width:100%;}
-.tbr-flow>.ms{width:100%;}
-.tbr-group{display:flex;flex-wrap:wrap;gap:8px;padding:26px 6px 6px;border:1px dashed var(--gold2);border-radius:12px;max-width:100%;background:rgba(201,168,76,.05);position:relative;}
-/* The heading sits above the cards, out of the flex flow: a wrapping flex box sizes itself as if every item sat
-   on one line, so an in-flow heading added its text width (most of a card) of empty space to the box (John, 2026-09-27). */
+/* In progress is the same grid as the other sections. A universe with
+   several series sits in a dashed box, caption on top, that spans exactly
+   one column per series (capped at the row: renderTBR sets --span from the
+   grid's width, a resize re-renders when the column count changes), so the
+   box sits in the grid like a wide card and rows stay even. The flex flow
+   of 2026-09-24/27 left an empty slot beside every box and ragged rows
+   (John, 2026-10-08: "still kinda looks off"). */
+.tbr-grid.tbr-flow{grid-auto-flow:dense;}
+.tbr-group{display:grid;grid-template-columns:repeat(auto-fit,minmax(236px,1fr));gap:8px;padding:26px 6px 6px;border:1px dashed var(--gold2);border-radius:12px;min-width:0;background:rgba(201,168,76,.05);position:relative;grid-column:span var(--span,1);}
+/* The caption sits above the cards, out of the flow, so it adds no width of its own (John, 2026-09-27). */
 .tbr-group>.tbr-uni{position:absolute;top:6px;left:10px;right:10px;margin:0;padding:0;border-top:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.tbr-group>.tbr-card{flex:0 0 250px;max-width:100%;}
+.tbr-group>.tbr-card{min-width:0;}
 /* pointer drag and drop (works on touch, unlike HTML5 drag events) */
 .dnd-ghost{position:fixed;z-index:1000;opacity:.9;pointer-events:none;box-shadow:var(--shadow2);transform:rotate(1.5deg);}
 .tbr-card.dropafter{box-shadow:inset -3px 0 0 var(--gold2);}
@@ -620,7 +620,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <button onclick="switchTab('toread','reading')">To Read</button>
     </div>
     <div class="panel active" id="tab-tbr">
-      <div class="sl">TBR — what to read next</div>
+      <div class="sl">TBR — what to read next <button class="log-act" style="text-transform:none;letter-spacing:0" onclick="LOG.doSyncRequest('goodreads')" title="jerry re-reads both Goodreads feeds within a minute or two: the currently-reading shelf lands under Reading now, read-shelf finds as proposals — reload the page after">⟳ Sync Goodreads</button></div>
       <div class="mg" id="tbr-m"></div>
       <div class="tbr-legend" id="tbr-legend"></div>
       <div id="tbr-reading-wrap"><div class="sl">Reading now — Goodreads currently-reading shelf</div>
@@ -1912,6 +1912,11 @@ function tbrBrowse(name){openRegister(name);}   // the series view lives in Trac
 // register's need column (To Acquire picks it up). G._tbrBooks indexes the
 // books behind the buttons — titles never ride inside onclick strings.
 function tbrRerender(){rendered.delete('tbr');renderTab('tbr');rendered.add('tbr');}
+// The In-progress boxes span whole columns (renderTBR sets --span from the
+// grid's width): when a resize changes the column count, lay them out again.
+let _tbrRz=null;
+window.addEventListener('resize',()=>{clearTimeout(_tbrRz);_tbrRz=setTimeout(()=>{const el=document.getElementById('tbr-prog');if(!el||!el.offsetParent||!el.querySelector('.tbr-group'))return;
+  const cols=Math.max(1,Math.floor((el.clientWidth+8)/258));if(cols!==G._tbrCols)tbrRerender();},150);});
 // A collection's stories: folded by default; open = the card spans the
 // grid so the list doesn't stretch its neighbours' row.
 function tbrToggleWorks(btn){
@@ -2180,7 +2185,11 @@ function renderTBR(){
     qmap.set(kk,{b,pos,pending:true,owner:own(b)});
   }
   // Com's list first, then Shereen's; a move never crosses that line.
-  const queue=[...qmap.values()].sort((a,b)=>(a.owner==='goblin')-(b.owner==='goblin')||a.pos-b.pos||a.b.title.localeCompare(b.b.title));
+  // A queued book that is now on the Goodreads currently-reading shelf (or
+  // already read) shows under Reading now and nowhere else; it stays in
+  // qmap so its series is still spoken for (John, 2026-10-08: Glinda of Oz
+  // sat under both Reading now and Next up).
+  const queue=[...qmap.values()].filter(q=>!readingKeys.has(ok(q.b))&&!q.b.read).sort((a,b)=>(a.owner==='goblin')-(b.owner==='goblin')||a.pos-b.pos||a.b.title.localeCompare(b.b.title));
   G._tbrQueue=queue;
   // A series whose next volume is being read (Goodreads) or sits on the
   // Next up list is spoken for: it shows under that section and nowhere
@@ -2260,8 +2269,13 @@ function renderTBR(){
   // of their first series in the order, everything else stays put.
   // a universe with several series in progress sits in its own dashed box
   // whose caption covers exactly those cards (John, 2026-09-24)
+  // A box spans one column per series, capped at the row. The grid is
+  // auto-fill 250px columns with 8px gaps, so the count follows its width;
+  // a resize that changes it re-renders (see tbrRerender).
+  const progW=(document.getElementById('tbr-prog')||{}).clientWidth||Math.max(250,window.innerWidth-48);
+  const cols=G._tbrCols=Math.max(1,Math.floor((progW+8)/258));
   const grouped=rows=>{const m=new Map();rows.forEach(s=>{const k=s.universe?'u:'+s.owner+'|'+s.universe:'s:'+s.owner+'|'+s.name;if(!m.has(k))m.set(k,[]);m.get(k).push(s);});
-    return[...m.entries()].map(([k,list])=>k.startsWith('u:')&&list.length>1?`<div class="tbr-group"><div class="tbr-uni">${esc(list[0].universe)} <span class="ms">· ${list.length} series${both?' · '+OWNER_LABEL[list[0].owner]:''}</span></div>${list.map(seriesCard).join('')}</div>`:list.map(seriesCard).join('')).join('');};
+    return[...m.entries()].map(([k,list])=>k.startsWith('u:')&&list.length>1?`<div class="tbr-group" style="--span:${Math.min(list.length,cols)}"><div class="tbr-uni">${esc(list[0].universe)} <span class="ms">· ${list.length} series${both?' · '+OWNER_LABEL[list[0].owner]:''}</span></div>${list.map(seriesCard).join('')}</div>`:list.map(seriesCard).join('')).join('');};
   const bookCard=(b,s,extra,qi)=>`<div class="tbr-card${ownCls(b)}" data-ser="${esc(s?s.name:'')}" data-owner="${own(b)}"${s&&s.inProg?' data-inprog="1"':''}>
     ${qi!=null?'<span class="tbr-handle" title="drag to reorder">⋮⋮</span>':''}
     <div class="tbr-cov">${cover(b)}</div>
@@ -3202,7 +3216,7 @@ function renderYearCovers(books){
   const yr=String(typeof tyYear!=='undefined'?tyYear:new Date().getFullYear());
   const who=soloOwner();
   const serOf=t=>{const c=(G.allIndBooks||[]).filter(x=>(x.owner||'butthead')===who&&nk(x.title)===nk(t));
-    const pick=c.length===1?c[0]:c.find(x=>(x.readOn||'').startsWith(yr));return pick?pick.series:(c.length?' ':'');};
+    const pick=c.length===1?c[0]:c.find(x=>(x.readOn||'').startsWith(yr));return pick?pick.series:(c.length?'\0':'');};
   el.innerHTML=keys.length?keys.map(k=>`<div class="ycrow"><div class="ycmo">${k?MONTHS[k-1]:'Undated'} <span class="ms">· ${rows[k].length}</span></div><div class="cstrip">${rows[k].sort((a,b)=>a.num-b.num).map(b=>coverTile(b.title,who,[b.genre,b.media].filter(Boolean).join(' · '),null,undefined,serOf(b.title))).join('')}</div></div>`).join('')
     :'<div class="ms">Nothing finished yet this year.</div>';
 }
