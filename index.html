@@ -1485,18 +1485,28 @@ function valuationCard(){
     <div class="ms" style="margin-top:8px">Actual list prices come from Tombolo Books' catalogue by ISBN, a few hundred a night: <strong>${fmt(priced)}</strong> of ${fmt(owned)} owned books priced so far${priced?` ($${fmt(Math.round(total))})`:''}${noOffer?`, ${fmt(noOffer)} not in their catalogue`:''}${rows[0].asOf?` · as of ${esc(rows[0].asOf)}`:''}. The tile switches to the real total once half the shelf is priced; books without an ISBN (${fmt(Math.max(0,owned-priced-noOffer-rows.reduce((m,v)=>m+(v.unchecked||0),0)))}+) stay on the estimate.</div></div>`;
 }
 // Owned by format (John, 2026-10-08): the owned books in exclusive buckets
-// — print only, print with an Audible or Kindle copy, audio only, ebook only
-// — so the stack still sums to the owned total. A book's formats are its
-// media plus every other format among its acquisitions (bundle Formats).
+// — print, manga, comics + graphic novels, a physical book with an Audible
+// or Kindle copy, audio only, ebook only — so the stack still sums to the
+// owned total. A book's formats are its media plus every other format among
+// its acquisitions (bundle Formats); manga and comics got their own buckets
+// the same day ("let's add in manga and comics too").
+function ownedFormatBucket(b){
+  const f=b.formats&&b.formats.length?b.formats:[b.media||'Print'];
+  const dig=f.filter(x=>x==='Audio'||x==='eBook'),phys=f.filter(x=>x!=='Audio'&&x!=='eBook');
+  if(phys.length&&dig.length)return'both';
+  if(dig.includes('Audio'))return'audio';
+  if(dig.length)return'ebook';
+  if(phys.includes('Manga'))return'manga';
+  if(phys.includes('Comics')||phys.includes('Graphic Novel'))return'comics';
+  return'print';
+}
 function ownedFormatBar(){
   const books=(G.allIndBooks||[]).filter(b=>b.owned&&(OWNER==='all'||(b.owner||'butthead')===OWNER));
-  const bk={print:0,both:0,audio:0,ebook:0};
-  for(const b of books){const f=b.formats&&b.formats.length?b.formats:[b.media||'Print'];
-    const dig=f.filter(x=>x==='Audio'||x==='eBook'),phys=f.filter(x=>x!=='Audio'&&x!=='eBook');
-    if(phys.length&&dig.length)bk.both++;else if(dig.includes('Audio'))bk.audio++;else if(dig.length)bk.ebook++;else bk.print++;}
+  const bk={print:0,manga:0,comics:0,both:0,audio:0,ebook:0};
+  for(const b of books)bk[ownedFormatBucket(b)]++;
   if(!books.length)return'';
-  const seg=[['Print only',bk.print,'#c9a84c'],['Print + digital',bk.both,'#4a9b8e'],['Audio only',bk.audio,'#7a6bab'],['Ebook only',bk.ebook,'#c4614a']];
-  return`<div class="cb" style="margin-bottom:1.5rem"><div class="cbt">Owned by format <span class="ms">— ${fmt(books.length)} books; a print book with an Audible or Kindle copy counts once, under print + digital</span></div>
+  const seg=[['Print',bk.print,'#c9a84c'],['Manga',bk.manga,MCOL['Manga']||'#5a8a4a'],['Comics + GN',bk.comics,MCOL['Comics']||'#8a6a1a'],['Print + digital',bk.both,'#4a9b8e'],['Audio only',bk.audio,'#7a6bab'],['Ebook only',bk.ebook,'#c4614a']];
+  return`<div class="cb" style="margin-bottom:1.5rem"><div class="cbt">Owned by format <span class="ms">— ${fmt(books.length)} books, each counted once; a physical book with an Audible or Kindle copy sits under print + digital</span></div>
     <div class="fmt-bar">${seg.map(([l,v,c])=>v?`<span style="width:${(100*v/books.length).toFixed(2)}%;background:${c}" title="${l} ${fmt(v)}"></span>`:'').join('')}</div>
     <div class="leg">${seg.map(([l,v,c])=>`<div class="li"><div class="ld" style="background:${c}"></div>${l} ${fmt(v)}</div>`).join('')}</div></div>`;
 }

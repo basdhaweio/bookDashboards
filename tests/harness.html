@@ -194,12 +194,13 @@ async function main(){
     const name='Overview: owned by format buckets sum to owned';
     w().setOwner('butthead');await go('overview','tracking');
     const rows=ind.slice(1).filter(r=>(r[10]||'butthead')==='butthead'&&(r[6]||'').trim().toLowerCase()==='x');
-    const bk={print:0,both:0,audio:0,ebook:0};
-    for(const r of rows){const f=((r[21]||'').trim()||(r[5]||'').trim()||'Print').split('+');const dig=f.filter(x=>x==='Audio'||x==='eBook'),phys=f.filter(x=>x!=='Audio'&&x!=='eBook');if(phys.length&&dig.length)bk.both++;else if(dig.includes('Audio'))bk.audio++;else if(dig.length)bk.ebook++;else bk.print++;}
+    const bk={print:0,manga:0,comics:0,both:0,audio:0,ebook:0};
+    for(const r of rows){const f=((r[21]||'').trim()||(r[5]||'').trim()||'Print').split('+');const dig=f.filter(x=>x==='Audio'||x==='eBook'),phys=f.filter(x=>x!=='Audio'&&x!=='eBook');
+      if(phys.length&&dig.length)bk.both++;else if(dig.includes('Audio'))bk.audio++;else if(dig.length)bk.ebook++;else if(phys.includes('Manga'))bk.manga++;else if(phys.includes('Comics')||phys.includes('Graphic Novel'))bk.comics++;else bk.print++;}
     const txt=doc().getElementById('ov-fmt')?.textContent||'';
     const num=l=>{const m=txt.match(new RegExp(l+'\\s+([\\d,]+)'));return m?+m[1].replace(/,/g,''):-1;};
-    const got={print:num('Print only'),both:num('Print \\+ digital'),audio:num('Audio only'),ebook:num('Ebook only')};
-    const ok=['print','both','audio','ebook'].every(k=>got[k]===bk[k])&&bk.print+bk.both+bk.audio+bk.ebook===rows.length;
+    const got={print:num('Print'),manga:num('Manga'),comics:num('Comics \\+ GN'),both:num('Print \\+ digital'),audio:num('Audio only'),ebook:num('Ebook only')};
+    const ok=['print','manga','comics','both','audio','ebook'].every(k=>got[k]===bk[k])&&Object.values(bk).reduce((t,v)=>t+v,0)===rows.length;
     res(name,ok,`register ${JSON.stringify(bk)} vs page ${JSON.stringify(got)} of ${rows.length} owned`);
   });
   await check('Overview: the Also audio column matches the Series tab',async()=>{
