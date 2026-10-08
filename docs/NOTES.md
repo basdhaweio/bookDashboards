@@ -85,3 +85,20 @@ publish.
   index.html carried a raw NUL byte (a heredoc had turned a `'\0'` literal
   into the byte — the same JS string) that made grep call the file binary;
   it is the escape again.
+
+- **Owned by format, the Digital room, physical copies (2026-10-08).** The
+  bundle's Books rows carry `Formats` (the book's media plus every other
+  format among its acquisitions — an Audible copy of a print book reads
+  "Print+Audio"), `Copies` (1 plus the second physical copies on record:
+  acquisitions.copy_no > 1, migration 034) and `Id`; the Series rows carry
+  `Audio` (owned books in the series with an audio copy); Valuation carries
+  `ExtraCopies`. The Overview shows Owned by format in exclusive buckets
+  (print only · print + digital · audio only · ebook only — a book counts
+  once) and the By Type table an "Also audio" column. Rooms has a Digital
+  room for audiobooks and ebooks (media Audio/eBook → Digital, in
+  room_rules.py and assignRoom; no spines). Library Growth's live owned
+  figure counts physical copies: owned books plus second copies; a digital
+  copy of a print book adds nothing, and the history rows keep the numbers
+  they were kept with. Copies come only from rows that say so — 723 of
+  John's books carry two snapshot acquisition rows for one copy, so the
+  acquisitions table is never counted raw.

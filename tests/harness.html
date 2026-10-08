@@ -185,9 +185,51 @@ async function main(){
     await go('rooms','tracking');
     const spines=doc().querySelectorAll('#room-cases .spine').length;
     const per={all:0};
-    for(const r of ind.slice(1)){if((r[6]||'').trim().toLowerCase()==='x'){per.all++;per[r[10]]=(per[r[10]]||0)+1;}}
+    // Digital (audiobooks, ebooks) draws no spines (2026-10-08)
+    for(const r of ind.slice(1)){if((r[6]||'').trim().toLowerCase()==='x'&&(r[17]||'').trim()!=='Digital'){per.all++;per[r[10]]=(per[r[10]]||0)+1;}}
     res('Rooms bookcases hold every owned book',spines>0&&[per.all,per.butthead||0,per.goblin||0].includes(spines),
         `${spines} spines vs owned all ${per.all}, Com ${per.butthead||0}, Shereen ${per.goblin||0}`);
+  });
+  await check('Overview: owned by format buckets sum to owned',async()=>{
+    const name='Overview: owned by format buckets sum to owned';
+    w().setOwner('butthead');await go('overview','tracking');
+    const rows=ind.slice(1).filter(r=>(r[10]||'butthead')==='butthead'&&(r[6]||'').trim().toLowerCase()==='x');
+    const bk={print:0,both:0,audio:0,ebook:0};
+    for(const r of rows){const f=((r[21]||'').trim()||(r[5]||'').trim()||'Print').split('+');const dig=f.filter(x=>x==='Audio'||x==='eBook'),phys=f.filter(x=>x!=='Audio'&&x!=='eBook');if(phys.length&&dig.length)bk.both++;else if(dig.includes('Audio'))bk.audio++;else if(dig.length)bk.ebook++;else bk.print++;}
+    const txt=doc().getElementById('ov-fmt')?.textContent||'';
+    const num=l=>{const m=txt.match(new RegExp(l+'\\s+([\\d,]+)'));return m?+m[1].replace(/,/g,''):-1;};
+    const got={print:num('Print only'),both:num('Print \\+ digital'),audio:num('Audio only'),ebook:num('Ebook only')};
+    const ok=['print','both','audio','ebook'].every(k=>got[k]===bk[k])&&bk.print+bk.both+bk.audio+bk.ebook===rows.length;
+    res(name,ok,`register ${JSON.stringify(bk)} vs page ${JSON.stringify(got)} of ${rows.length} owned`);
+  });
+  await check('Overview: the Also audio column matches the Series tab',async()=>{
+    const name='Overview: the Also audio column matches the Series tab';
+    w().setOwner('butthead');await go('bytype','tracking');
+    const ser=tget('Butthead Series')||[];
+    const want=ser.slice(1).filter(r=>(r[9]||'butthead')==='butthead').reduce((t,r)=>t+(parseInt(r[10])||0),0);
+    const cells=[...doc().querySelectorAll('#typeFoot td')].map(td=>td.textContent.trim());
+    const got=parseInt((cells[4]||'').replace(/,/g,''))||0;
+    res(name,want===got&&want>0,`Series tab ${want} vs foot ${got} (cells: ${cells.slice(0,5).join(' | ')})`);
+  });
+  await check('Rooms: Digital holds the audiobooks and ebooks and draws no spines',async()=>{
+    const name='Rooms: Digital holds the audiobooks and ebooks and draws no spines';
+    w().setOwner('butthead');await go('rooms','tracking');
+    const want=ind.slice(1).filter(r=>(r[10]||'butthead')==='butthead'&&(r[6]||'').trim().toLowerCase()==='x'&&(r[17]||'').trim()==='Digital').length;
+    const tile=[...doc().querySelectorAll('#room-grid > div')].find(d=>/Digital/.test(d.textContent))||null;
+    const m=tile?tile.textContent.replace(/\s+/g,' ').match(/(\d[\d,]*)\s*owned/):null;
+    const hit=!!m&&+m[1].replace(/,/g,'')===want;
+    const cases=[...doc().querySelectorAll('#room-cases .sl')].some(e=>/Digital/.test(e.textContent));
+    res(name,!!tile&&hit&&!cases&&want>0,`tile ${tile?'present':'missing'}, ${want} digital owned ${hit?'shown':'not shown'}; bookcase drawn ${cases}`);
+  });
+  await check('Library Growth: owned counts second copies',async()=>{
+    const name='Library Growth: owned counts second copies';
+    w().setOwner('butthead');await go('libgrowth','buying');
+    const rows=ind.slice(1).filter(r=>(r[10]||'butthead')==='butthead'&&(r[6]||'').trim().toLowerCase()==='x');
+    const extra=rows.reduce((t,r)=>t+Math.max(0,(parseInt(r[22])||1)-1),0);
+    const txt=doc().getElementById('lg-m')?.textContent||'';
+    const m=txt.match(/([\d,]+)\s*Currently owned/i);
+    const got=m?+m[1].replace(/,/g,''):-1;
+    res(name,got===rows.length+extra,`${got} shown vs ${rows.length} owned + ${extra} second copies`);
   });
 
   await check('TBR lists every series in progress',async()=>{

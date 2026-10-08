@@ -352,6 +352,7 @@ deluxe copy; blank falls back to the book's media. The year tabs show
 Format as that category, with the edition text (the old sheet's free-text
 format, or an edition-naming title) in a Note column. Nothing else is
 settable here.
+`copy_no` (2026-10-08, migration 034): 2 or more marks this acquisition as a further PHYSICAL copy of the same book — Library Growth's owned count and the replacement estimate count physical copies (John: "multiple physical copies should count"); 1 is the only copy. A snapshot echo is never a copy, and a digital copy (Audio, eBook) of a print book stays at 1: the bundle's per-book Formats column ("Print+Audio") carries it instead.
 
 ### `goodreads_link`
 A hand match for a currently-reading shelf row the sync could not place —

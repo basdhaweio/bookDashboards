@@ -220,6 +220,8 @@ button.tbr-link{background:none;border:none;padding:0;font:inherit;font-weight:i
 .panel.active{display:block;}
 .sl{font-family:var(--font-m);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:1rem;display:flex;align-items:center;gap:8px;}
 .sl::after{content:'';flex:1;height:1px;background:var(--border);}
+.fmt-bar{display:flex;height:18px;border-radius:5px;overflow:hidden;margin:6px 0 8px;background:var(--bg2);}
+.fmt-bar>span{display:block;height:100%;}
 .mg{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:2rem;box-shadow:var(--shadow);}
 .m{background:var(--bg2);padding:1.1rem 1.3rem;}
 .mv{font-family:var(--font-d);font-size:1.9rem;font-weight:600;line-height:1;color:var(--gold);}
@@ -544,6 +546,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
     </div>
     <div class="panel active" id="tab-overview">
       <div class="sl">Library totals</div><div class="mg" id="ov-m"></div>
+      <div id="ov-fmt"></div>
       <div class="sl">Completion rates</div><div class="mg" id="ov-c"></div>
       <div class="sl">This year at a glance</div>
       <div class="ov-charts">
@@ -559,7 +562,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
     </div>
     <div class="panel" id="tab-bytype">
       <div class="sl">Detail by type</div>
-      <div class="tw"><table><thead><tr><th>Type</th><th class="nr">Tracked</th><th class="nr">Read</th><th class="nr">Owned</th><th class="nr">On Shelf</th><th class="nr">Need to Buy</th><th class="nr">% Read/Owned</th><th class="nr">% Owned/Tracked</th></tr></thead><tbody id="typeBody"></tbody><tfoot><tr id="typeFoot"></tr></tfoot></table></div>
+      <div class="tw"><table><thead><tr><th>Type</th><th class="nr">Tracked</th><th class="nr">Read</th><th class="nr">Owned</th><th class="nr">Also audio</th><th class="nr">On Shelf</th><th class="nr">Need to Buy</th><th class="nr">% Read/Owned</th><th class="nr">% Owned/Tracked</th></tr></thead><tbody id="typeBody"></tbody><tfoot><tr id="typeFoot"></tr></tfoot></table></div>
       <div class="sl">% read of owned by type</div>
       <div class="cb"><div style="height:200px"><canvas id="readPctChart" role="img" aria-label="% read by type"></canvas></div></div>
     </div>
@@ -1139,10 +1142,11 @@ const SK=['narnia','chronicles of narnia','space trilogy',"c.s. lewis",'sprawl',
 
 // The eight rooms: books.room holds one of these names (rule-filled from
 // assignRoom on 2026-09-13, ✎-editable since). Tile order = house order.
-const ROOMS=[{k:'Main Library',i:'📚',th:'Big Series + Classics'},{k:'Hidden — TTRPG',i:'🎲',th:'FR · DL · SR · Warhammer'},{k:'Hidden — Comics/GN/Manga',i:'🎌',th:'Comics · Manga · Nier · Evangelion'},{k:'Hidden — Franchise',i:'🚀',th:'Firefly · Star Wars · Critical Role'},{k:'Goblin Office',i:'🌿',th:'Wren — Asian Writers',display:'Wren Office'},{k:'Butthead Office',i:'🏛️',th:'Com — NF · History · Philosophy',display:'Com Office'},{k:'Sitting Room',i:'🪑',th:'Small Series + Pretty Books'},{k:'Bedroom',i:'🌙',th:'Spicy / Kink'}];
-const ROOM_COLS=['#c9a84c','#c4614a','#7a6bab','#4a9b8e','#5a8a4a','#9a9688','#8a6a1a','#a84030'];
+const ROOMS=[{k:'Main Library',i:'📚',th:'Big Series + Classics'},{k:'Hidden — TTRPG',i:'🎲',th:'FR · DL · SR · Warhammer'},{k:'Hidden — Comics/GN/Manga',i:'🎌',th:'Comics · Manga · Nier · Evangelion'},{k:'Hidden — Franchise',i:'🚀',th:'Firefly · Star Wars · Critical Role'},{k:'Goblin Office',i:'🌿',th:'Wren — Asian Writers',display:'Wren Office'},{k:'Butthead Office',i:'🏛️',th:'Com — NF · History · Philosophy',display:'Com Office'},{k:'Sitting Room',i:'🪑',th:'Small Series + Pretty Books'},{k:'Bedroom',i:'🌙',th:'Spicy / Kink'},{k:'Digital',i:'🎧',th:'Audiobooks · ebooks — no shelf'}];
+const ROOM_COLS=['#c9a84c','#c4614a','#7a6bab','#4a9b8e','#5a8a4a','#9a9688','#8a6a1a','#a84030','#6b8fb3'];
 function assignRoom(title,author,type,genre,sg){
   const t=title.toLowerCase(),a=author.toLowerCase(),s=sg.toLowerCase(),g=genre.toLowerCase();
+  if(type==='Audio'||type==='eBook')return'Digital'; // no shelf (John, 2026-10-08; room_rules.py carries the same)
   if(TKW.some(k=>t.includes(k))||s==='ttrpg')return'Hidden — TTRPG';
   if(FKW.some(k=>t.includes(k)))return'Hidden — Franchise';
   if(HT.has(type)||HE.some(k=>t.includes(k)))return'Hidden — Comics/GN/Manga';
@@ -1211,7 +1215,7 @@ function parseBooks(vals){
     const r=vals[i];
     const title=(r[1]||'').trim(),type=(r[0]||'').trim(),count=n(r[2]);
     if(!title||!type||count===0||SKIP.has(title)||title.startsWith('Totals'))continue;
-    rows.push({type,title,count,read:n(r[3]),owned:n(r[4]),author:(r[5]||'').trim(),genre:(r[6]||'').trim(),subgenre:(r[7]||'').trim(),universe:(r[8]||'').trim(),owner:(r[9]||'butthead').trim()});
+    rows.push({type,title,count,read:n(r[3]),owned:n(r[4]),author:(r[5]||'').trim(),genre:(r[6]||'').trim(),subgenre:(r[7]||'').trim(),universe:(r[8]||'').trim(),owner:(r[9]||'butthead').trim(),audio:n(r[10])});
   }
   return rows;
 }
@@ -1340,12 +1344,12 @@ function buildSeriesDupes(){
   G.seriesDupes={};for(const k in m)if(m[k].size>1)G.seriesDupes[k]=true;
 }
 function calcBooks(rows){
-  const m={tracked:0,read:0,owned:0,readNotOwned:0,byType:{},byGenre:{},byRoom:{},byUniverse:{},byAuthor:{},fr:{t:0,r:0,o:0},dl:{t:0,r:0,o:0},sr:{t:0,r:0,o:0},ttrpg:{t:0,r:0,o:0}};
+  const m={tracked:0,read:0,owned:0,audio:0,readNotOwned:0,byType:{},byGenre:{},byRoom:{},byUniverse:{},byAuthor:{},fr:{t:0,r:0,o:0},dl:{t:0,r:0,o:0},sr:{t:0,r:0,o:0},ttrpg:{t:0,r:0,o:0}};
   for(const r of rows){
-    m.tracked+=r.count;m.read+=r.read;m.owned+=r.owned;
+    m.tracked+=r.count;m.read+=r.read;m.owned+=r.owned;m.audio+=r.audio||0;
     m.readNotOwned+=Math.max(0,r.read-r.owned);
-    if(!m.byType[r.type])m.byType[r.type]={tracked:0,read:0,owned:0};
-    m.byType[r.type].tracked+=r.count;m.byType[r.type].read+=r.read;m.byType[r.type].owned+=r.owned;
+    if(!m.byType[r.type])m.byType[r.type]={tracked:0,read:0,owned:0,audio:0};
+    m.byType[r.type].tracked+=r.count;m.byType[r.type].read+=r.read;m.byType[r.type].owned+=r.owned;m.byType[r.type].audio+=r.audio||0;
     if(r.genre){
       if(!m.byGenre[r.genre])m.byGenre[r.genre]={tracked:0,read:0,owned:0,byType:{},series:[]};
       m.byGenre[r.genre].tracked+=r.count;m.byGenre[r.genre].read+=r.read;m.byGenre[r.genre].owned+=r.owned;
@@ -1480,9 +1484,26 @@ function valuationCard(){
     <div class="ms" style="margin-bottom:6px">Estimate: owned books × a typical US list price per media (the numbers live in jerry's publish job and are yours to tune).</div>${basis}
     <div class="ms" style="margin-top:8px">Actual list prices come from Tombolo Books' catalogue by ISBN, a few hundred a night: <strong>${fmt(priced)}</strong> of ${fmt(owned)} owned books priced so far${priced?` ($${fmt(Math.round(total))})`:''}${noOffer?`, ${fmt(noOffer)} not in their catalogue`:''}${rows[0].asOf?` · as of ${esc(rows[0].asOf)}`:''}. The tile switches to the real total once half the shelf is priced; books without an ISBN (${fmt(Math.max(0,owned-priced-noOffer-rows.reduce((m,v)=>m+(v.unchecked||0),0)))}+) stay on the estimate.</div></div>`;
 }
+// Owned by format (John, 2026-10-08): the owned books in exclusive buckets
+// — print only, print with an Audible or Kindle copy, audio only, ebook only
+// — so the stack still sums to the owned total. A book's formats are its
+// media plus every other format among its acquisitions (bundle Formats).
+function ownedFormatBar(){
+  const books=(G.allIndBooks||[]).filter(b=>b.owned&&(OWNER==='all'||(b.owner||'butthead')===OWNER));
+  const bk={print:0,both:0,audio:0,ebook:0};
+  for(const b of books){const f=b.formats&&b.formats.length?b.formats:[b.media||'Print'];
+    const dig=f.filter(x=>x==='Audio'||x==='eBook'),phys=f.filter(x=>x!=='Audio'&&x!=='eBook');
+    if(phys.length&&dig.length)bk.both++;else if(dig.includes('Audio'))bk.audio++;else if(dig.length)bk.ebook++;else bk.print++;}
+  if(!books.length)return'';
+  const seg=[['Print only',bk.print,'#c9a84c'],['Print + digital',bk.both,'#4a9b8e'],['Audio only',bk.audio,'#7a6bab'],['Ebook only',bk.ebook,'#c4614a']];
+  return`<div class="cb" style="margin-bottom:1.5rem"><div class="cbt">Owned by format <span class="ms">— ${fmt(books.length)} books; a print book with an Audible or Kindle copy counts once, under print + digital</span></div>
+    <div class="fmt-bar">${seg.map(([l,v,c])=>v?`<span style="width:${(100*v/books.length).toFixed(2)}%;background:${c}" title="${l} ${fmt(v)}"></span>`:'').join('')}</div>
+    <div class="leg">${seg.map(([l,v,c])=>`<div class="li"><div class="ld" style="background:${c}"></div>${l} ${fmt(v)}</div>`).join('')}</div></div>`;
+}
 function renderOverview(bm,yd2026){
   const pg=pageStatsFor();
-  document.getElementById('ov-m').innerHTML=mH(fmt(bm.tracked),'Total tracked')+mH(fmt(bm.read),'Total read',pct(bm.read,bm.tracked)+' of tracked','t')+mH(fmt(bm.owned),'Total owned')+mH(fmt(bm.shelf),'On shelf','owned unread','c')+mH(fmt(bm.needBuy),'Need to buy')+mH(fmt(bm.readNotOwned),'Read not owned','delta where read > owned')+mH(fmt(pg.ownedPages),'Pages owned',`${fmt(pg.ownedWith)} of ${fmt(pg.ownedBooks)} books w/ data`)+mH(fmt(pg.readPages),'Pages read',`all-time · ${fmt(pg.readWith)} of ${fmt(pg.readBooks)} w/ data`,'t');
+  document.getElementById('ov-m').innerHTML=mH(fmt(bm.tracked),'Total tracked')+mH(fmt(bm.read),'Total read',pct(bm.read,bm.tracked)+' of tracked','t')+mH(fmt(bm.owned),'Total owned',bm.audio?fmt(bm.audio)+' with an audio copy':'')+mH(fmt(bm.shelf),'On shelf','owned unread','c')+mH(fmt(bm.needBuy),'Need to buy')+mH(fmt(bm.readNotOwned),'Read not owned','delta where read > owned')+mH(fmt(pg.ownedPages),'Pages owned',`${fmt(pg.ownedWith)} of ${fmt(pg.ownedBooks)} books w/ data`)+mH(fmt(pg.readPages),'Pages read',`all-time · ${fmt(pg.readWith)} of ${fmt(pg.readBooks)} w/ data`,'t');
+  document.getElementById('ov-fmt').innerHTML=ownedFormatBar();
   document.getElementById('ov-c').innerHTML=mH(pct(bm.read,bm.tracked),'Read / tracked','','t')+mH(pct(bm.read,bm.owned),'Read / owned','','t')+mH(pct(bm.owned,bm.tracked),'Owned / tracked')+mH(pct(bm.owned-bm.read,bm.tracked-bm.read),'Owned unread / unread');
   const{books,focus}=yd2026;
   const mcByMedia2026={};
@@ -1520,8 +1541,8 @@ function renderOverview(bm,yd2026){
 
 function renderByType(bm){
   const types=['Series','Individual','Manga','Comics','Graphic Novel'];
-  document.getElementById('typeBody').innerHTML=types.map(t=>{const d=bm.byType[t]||{tracked:0,read:0,owned:0};return`<tr><td>${t}</td><td class="nr">${fmt(d.tracked)}</td><td class="nr">${fmt(d.read)}</td><td class="nr">${fmt(d.owned)}</td><td class="nr">${fmt(d.owned-d.read)}</td><td class="nr">${fmt(d.tracked-d.owned)}</td><td class="nr">${pct(d.read,d.owned)}</td><td class="nr">${pct(d.owned,d.tracked)}</td></tr>`;}).join('');
-  document.getElementById('typeFoot').innerHTML=`<td>Total</td><td class="nr">${fmt(bm.tracked)}</td><td class="nr">${fmt(bm.read)}</td><td class="nr">${fmt(bm.owned)}</td><td class="nr">${fmt(bm.shelf)}</td><td class="nr">${fmt(bm.needBuy)}</td><td class="nr">${pct(bm.read,bm.owned)}</td><td class="nr">${pct(bm.owned,bm.tracked)}</td>`;
+  document.getElementById('typeBody').innerHTML=types.map(t=>{const d=bm.byType[t]||{tracked:0,read:0,owned:0,audio:0};return`<tr><td>${t}</td><td class="nr">${fmt(d.tracked)}</td><td class="nr">${fmt(d.read)}</td><td class="nr">${fmt(d.owned)}</td><td class="nr">${d.audio?fmt(d.audio):'<span class="ms">—</span>'}</td><td class="nr">${fmt(d.owned-d.read)}</td><td class="nr">${fmt(d.tracked-d.owned)}</td><td class="nr">${pct(d.read,d.owned)}</td><td class="nr">${pct(d.owned,d.tracked)}</td></tr>`;}).join('');
+  document.getElementById('typeFoot').innerHTML=`<td>Total</td><td class="nr">${fmt(bm.tracked)}</td><td class="nr">${fmt(bm.read)}</td><td class="nr">${fmt(bm.owned)}</td><td class="nr">${fmt(bm.audio)}</td><td class="nr">${fmt(bm.shelf)}</td><td class="nr">${fmt(bm.needBuy)}</td><td class="nr">${pct(bm.read,bm.owned)}</td><td class="nr">${pct(bm.owned,bm.tracked)}</td>`;
   dc('readPctChart');
   charts.readPctChart=new Chart(document.getElementById('readPctChart'),{type:'bar',data:{labels:types,datasets:[{data:types.map(t=>{const d=bm.byType[t]||{};return d.owned?+(d.read/d.owned*100).toFixed(1):0;}),backgroundColor:['#7a6bab','#c9a84c','#4a9b8e','#5a8a4a','#c4614a'],borderRadius:3}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{max:100,ticks:{color:'#9a9688',callback:v=>v+'%'},grid:{color:'rgba(0,0,0,0.04)'}},y:{ticks:{color:'#5a5850'},grid:{display:false}}}}});
 }
@@ -1734,6 +1755,7 @@ function renderBookcases(shelves){
   const sKey=b=>b.series==='Standalones'?'￿':(b.series||'').toLowerCase();
   let html='';
   ROOMS.forEach((d,i)=>{
+    if(d.k==='Digital')return; // audiobooks and ebooks have no spines (John, 2026-10-08)
     const books=(shelves[d.k]||[]).slice().sort((a,b)=>sKey(a).localeCompare(sKey(b))||seqN(a)-seqN(b)||a.title.localeCompare(b.title));
     if(!books.length)return;
     let last=null;
@@ -1756,9 +1778,9 @@ function peekSpine(i,j){
   el.innerHTML=`${coverTile(b.title,b.owner,'',null,72,b.series)}<div><div style="font-weight:600">${esc(b.title)}</div><div class="ms">${esc(b.series!=='Standalones'?b.series+(b.seq?' #'+b.seq:''):'Standalone')} · ${esc(b.author)}${b.media?' · '+esc(b.media):''}${b.pages?' · '+b.pages+' pages':''}</div><div class="ms">${b.read?'read':'unread'}${b.readOn?' · '+esc(b.readOn):''}${b.acquiredOn?' · acquired '+esc(b.acquiredOn):''}</div></div>`;
 }
 function renderRoomTiles(bm){
-  const defs=[{k:'Main Library',i:'📚',th:'Big Series + Classics'},{k:'Hidden — TTRPG',i:'🎲',th:'FR · DL · SR · Warhammer'},{k:'Hidden — Comics/GN/Manga',i:'🎌',th:'Comics · Manga · Nier · Evangelion'},{k:'Hidden — Franchise',i:'🚀',th:'Firefly · Star Wars · Critical Role'},{k:'Goblin Office',i:'🌿',th:'Wren — Asian Writers',display:'Wren Office'},{k:'Butthead Office',i:'🏛️',th:'Com — NF · History · Philosophy',display:'Com Office'},{k:'Sitting Room',i:'🪑',th:'Small Series + Pretty Books'},{k:'Bedroom',i:'🌙',th:'Spicy / Kink'}];
-  const cols=['#c9a84c','#c4614a','#7a6bab','#4a9b8e','#5a8a4a','#9a9688','#8a6a1a','#a84030'];
-  document.getElementById('room-grid').innerHTML=defs.map((d,i)=>{const r=bm.byRoom[d.k]||{tracked:0,read:0,owned:0};const sh=r.owned-r.read,rp=pctN(r.read,r.tracked),op=pctN(r.owned,r.tracked);const name=d.display||d.k;return`<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:1.1rem 1.3rem;box-shadow:var(--shadow)"><div style="font-family:var(--font-d);font-size:1rem;font-weight:600;color:var(--text);margin-bottom:2px">${d.i} ${name}</div><div style="font-family:var(--font-m);font-size:10px;color:var(--text3);margin-bottom:10px">${d.th}</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:8px">${[['tracked',r.tracked],['owned',r.owned],['shelf',sh]].map(([l,v])=>`<div style="background:var(--bg3);border-radius:6px;padding:5px;text-align:center"><div style="font-family:var(--font-d);font-size:1.1rem;font-weight:600;color:${cols[i]}">${fmt(v)}</div><div style="font-family:var(--font-m);font-size:9px;color:var(--text3)">${l}</div></div>`).join('')}</div><div class="pr"><div class="pl">% read</div><div class="pt"><div class="pf" style="width:${rp}%;background:${cols[i]}"></div></div><div class="pv">${rp}%</div></div><div class="pr"><div class="pl">% owned</div><div class="pt"><div class="pf" style="width:${op}%;background:${cols[i]};opacity:0.35"></div></div><div class="pv">${op}%</div></div></div>`;}).join('');
+  const defs=[{k:'Main Library',i:'📚',th:'Big Series + Classics'},{k:'Hidden — TTRPG',i:'🎲',th:'FR · DL · SR · Warhammer'},{k:'Hidden — Comics/GN/Manga',i:'🎌',th:'Comics · Manga · Nier · Evangelion'},{k:'Hidden — Franchise',i:'🚀',th:'Firefly · Star Wars · Critical Role'},{k:'Goblin Office',i:'🌿',th:'Wren — Asian Writers',display:'Wren Office'},{k:'Butthead Office',i:'🏛️',th:'Com — NF · History · Philosophy',display:'Com Office'},{k:'Sitting Room',i:'🪑',th:'Small Series + Pretty Books'},{k:'Bedroom',i:'🌙',th:'Spicy / Kink'},{k:'Digital',i:'🎧',th:'Audiobooks · ebooks — no shelf'}];
+  const cols=['#c9a84c','#c4614a','#7a6bab','#4a9b8e','#5a8a4a','#9a9688','#8a6a1a','#a84030','#6b8fb3'];
+  document.getElementById('room-grid').innerHTML=defs.map((d,i)=>{const r=bm.byRoom[d.k]||{tracked:0,read:0,owned:0};const sh=Math.max(0,r.owned-r.read),rp=pctN(r.read,r.tracked),op=pctN(r.owned,r.tracked);const name=d.display||d.k;return`<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:1.1rem 1.3rem;box-shadow:var(--shadow)"><div style="font-family:var(--font-d);font-size:1rem;font-weight:600;color:var(--text);margin-bottom:2px">${d.i} ${name}</div><div style="font-family:var(--font-m);font-size:10px;color:var(--text3);margin-bottom:10px">${d.th}</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:8px">${[['tracked',r.tracked],['owned',r.owned],['shelf',sh]].map(([l,v])=>`<div style="background:var(--bg3);border-radius:6px;padding:5px;text-align:center"><div style="font-family:var(--font-d);font-size:1.1rem;font-weight:600;color:${cols[i]}">${fmt(v)}</div><div style="font-family:var(--font-m);font-size:9px;color:var(--text3)">${l}</div></div>`).join('')}</div><div class="pr"><div class="pl">% read</div><div class="pt"><div class="pf" style="width:${rp}%;background:${cols[i]}"></div></div><div class="pv">${rp}%</div></div><div class="pr"><div class="pl">% owned</div><div class="pt"><div class="pf" style="width:${op}%;background:${cols[i]};opacity:0.35"></div></div><div class="pv">${op}%</div></div></div>`;}).join('');
   dc('roomChart');
   charts.roomChart=new Chart(document.getElementById('roomChart'),{type:'bar',data:{labels:defs.map(d=>(d.display||d.k).replace('Hidden — ','')),datasets:[{data:defs.map(d=>(bm.byRoom[d.k]||{}).owned||0),backgroundColor:cols,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9a9688',maxRotation:35,font:{size:10}},grid:{display:false}},y:{ticks:{color:'#9a9688',callback:v=>v.toLocaleString()},grid:{color:'rgba(0,0,0,0.04)'}}}}});
 }
@@ -3336,14 +3358,18 @@ function renderLibGrowth(growthMetrics,bm){
   // Overview's totals.
   const rows=growthMetrics;
   const years=rows.map(r=>r.year);
-  const curPlanned=bm.tracked,curOwned=bm.owned,curRead=bm.read;
+  // Owned counts physical copies (John, 2026-10-08): a second print copy on
+  // record (bundle Copies > 1) adds one; a digital copy of a print book adds
+  // nothing. The history rows keep the figures they were kept with.
+  const extraCopies=(G.allIndBooks||[]).filter(b=>b.owned&&(OWNER==='all'||(b.owner||'butthead')===OWNER)).reduce((t,b)=>t+Math.max(0,(b.copies||1)-1),0);
+  const curPlanned=bm.tracked,curOwned=bm.owned+extraCopies,curRead=bm.read;
   // Metrics summary
   const latest=rows[rows.length-1]||{};
   const prev=rows[rows.length-2]||{};
   const lgCard=document.getElementById('lg-valuation');if(lgCard)lgCard.innerHTML=valuationCard();
   document.getElementById('lg-m').innerHTML=
     mH(fmt(curPlanned),'Currently tracked','live · matches Overview','p')+
-    mH(fmt(curOwned),'Currently owned','live from library')+valuationTile()+
+    mH(fmt(curOwned),'Currently owned',extraCopies?`${fmt(bm.owned)} books + ${fmt(extraCopies)} second ${extraCopies===1?'copy':'copies'}`:'live from library')+valuationTile()+
     mH(fmt(curRead),'Currently read','live from library','t')+
     mH(fmt(latest.yoyBought||0),'Bought last year',String(latest.year||''))+
     mH(fmt(latest.yoyRead||0),'Read last year',String(latest.year||''))+
@@ -4420,6 +4446,12 @@ function parseIndividual(vals){
       pages:n(r[18]),
       collection:(r[19]||'main').trim(),
       firstPub:(r[20]||'').trim(), // earliest year any source gives (publication order)
+      // Formats (2026-10-08): the media plus every other format among the
+      // book's acquisitions ("Print+Audio"); Copies: physical copies on
+      // record — a second print copy counts in Growth and the estimate
+      formats:((r[21]||'').trim()||(r[5]||'').trim()||'Print').split('+').filter(Boolean),
+      copies:Math.max(1,n(r[22])||1),
+      id:n(r[23])||null,
     });
   }
   return books;
@@ -6917,7 +6949,7 @@ async function init(){
     G.titleAliases=(BUNDLE.tabs['bookdb|Book Titles']||[]).slice(1).map(r=>({title:(r[0]||'').trim(),alias:(r[1]||'').trim(),owner:(r[2]||'butthead').trim(),kind:(r[3]||'').trim()})).filter(a=>a.title&&a.alias);
     G.aliasIndex={};G.aliasesOf={};G.titleAliases.forEach(a=>{const k=a.alias.toLowerCase().replace(/[^a-z0-9]/g,'');G.aliasIndex[k+'|'+a.owner]=a.title;(G.aliasesOf[a.owner+'|'+a.title.toLowerCase().replace(/[^a-z0-9]/g,'')]=G.aliasesOf[a.owner+'|'+a.title.toLowerCase().replace(/[^a-z0-9]/g,'')]||[]).push(a.alias);});
     G.awards=(BUNDLE.tabs['bookdb|Awards']||[]).slice(1).map(r=>({award:(r[0]||'').trim(),cat:(r[1]||'').trim(),year:+r[2]||0,result:(r[3]||'').trim(),title:(r[4]||'').trim(),author:(r[5]||'').trim(),pubYear:(r[6]||'').trim(),seriesName:(r[7]||'').trim(),seriesPos:(r[8]||'').trim(),seriesTotal:+r[9]||0,qid:(r[10]||'').trim(),seriesQid:(r[11]||'').trim(),bookTitle:(r[12]||'').trim(),bookOwner:(r[13]||'').trim(),bookRead:(r[14]||'').trim()==='x',bookOwned:(r[15]||'').trim()==='x',regSeries:(r[16]||'').trim(),regOwner:(r[17]||'').trim()})).filter(a=>a.title);
-    G.valuation=(BUNDLE.tabs['bookdb|Valuation']||[]).slice(1).map(r=>({owner:(r[0]||'butthead').trim(),owned:n(r[1]),priced:n(r[2]),total:parseFloat(r[3])||0,noOffer:n(r[4]),asOf:(r[5]||'').trim(),estimate:parseFloat(r[6])||0,basis:(r[7]||'').trim()}));
+    G.valuation=(BUNDLE.tabs['bookdb|Valuation']||[]).slice(1).map(r=>({owner:(r[0]||'butthead').trim(),owned:n(r[1]),priced:n(r[2]),total:parseFloat(r[3])||0,noOffer:n(r[4]),asOf:(r[5]||'').trim(),estimate:parseFloat(r[6])||0,basis:(r[7]||'').trim(),extraCopies:n(r[8])}));
     G.queue=(BUNDLE.tabs['bookdb|Queue']||[]).slice(1).map(r=>({title:(r[0]||'').trim(),series:(r[1]||'').trim(),owner:(r[2]||'butthead').trim(),pos:parseFloat(r[3])||0,added:(r[4]||'').trim()})).filter(q=>q.title);
     // ISBNs tab: identifiers (owned-edition first) + best stored cover URL.
     // isbnMap answers "do I have this exact edition?"; bookIsbn drives the
