@@ -122,6 +122,12 @@ a.bc-burst:hover{transform:rotate(12deg) scale(1.08);}
 .tbr-bar{display:inline-block;width:56px;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;flex:none;}
 .tbr-bar span{display:block;height:100%;background:var(--teal2);}
 .tbr-next{font-size:12px;line-height:1.5;}
+.rg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-top:8px}
+.rg-tile{background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 12px;box-shadow:var(--shadow);cursor:pointer;min-width:0}
+.rg-tile.open{border-color:var(--gold);box-shadow:0 0 0 2px rgba(201,168,76,.25)}
+.rg-tile-t{font-weight:600;font-size:13px;line-height:1.25}
+.rg-bar{display:flex;height:6px;background:var(--bg2);border-radius:3px;overflow:hidden;margin:6px 0 4px}
+.rg-bar .rg-read{background:#4a9b8e}.rg-bar .rg-own{background:#c9a84c}
 button.tbr-link{background:none;border:none;padding:0;font:inherit;font-weight:inherit;color:inherit;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;text-align:left;}
 .tbr-a{color:var(--gold);text-decoration:none;font-size:11px;}
 .tbr-uni{font-family:var(--font-m);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--gold);margin:8px 0 0;padding-top:6px;border-top:2px solid var(--gold2);}
@@ -564,7 +570,8 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div class="tw"><table><thead><tr><th>Genre</th><th class="nr">Tracked</th><th class="nr">Read</th><th class="nr">Owned</th><th class="nr">On Shelf</th><th class="nr">Need to Buy</th><th class="nr">% Read</th></tr></thead><tbody id="genreBody"></tbody></table></div>
     </div>
     <div class="panel" id="tab-universe">
-      <div class="ms" style="margin-bottom:10px">Tap a universe for every book in it — read, owned, needed, unpublished — and register a status in one tap.</div>
+      <input id="uv-q" class="log-search" type="search" placeholder="Filter universes — a universe, or a series, title or author inside one…" autocomplete="off" oninput="uvFilterQ()">
+      <div class="ms" style="margin:6px 0 10px">Tap a universe for every book in it — read, owned, needed, unpublished — and register a status in one tap. One universe left by the filter opens by itself.</div>
       <div id="uv-detail" style="display:none"></div>
       <div id="uv-series-section" class="uv-section">
         <div class="uv-section-title">📚 Series</div>
@@ -586,7 +593,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div class="sl">Register lookup — what the register holds for a title, author or series</div>
       <div class="cb" style="margin-bottom:1rem">
         <input id="rg-q" class="log-search" type="search" placeholder="Title, author or series — the register only…" autocomplete="off" oninput="rgSearch()">
-        <div class="ms" style="margin-top:6px">Three letters start it. A series opens like a universe page: every volume in order with its read · owned · need · unpublished dots and the same one-tap actions. Looking for a book that isn't here? <button class="log-ghost" onclick="rgOutside()">Search outside in Log › Books</button></div>
+        <div class="ms" style="margin-top:6px">Every series is a tile; the words narrow them by series, author, title or alias. Tap a tile for the series as a universe-style page: every volume in order with its read · owned · need · unpublished dots and the same one-tap actions. Looking for a book that isn't here? <button class="log-ghost" onclick="rgOutside()">Search outside in Log › Books</button></div>
       </div>
       <div id="rg-out"></div>
     </div>
@@ -1528,7 +1535,7 @@ function renderGenre(bm){
 
 function renderUniverseSection(uvList,gridId,chartId,wrapId,color){
   const sorted=uvList.filter(u=>u.name&&u.name!=='(unassigned)').sort((a,b)=>b.tracked-a.tracked);
-  if(!sorted.length){document.getElementById(gridId).innerHTML='<div class="ms" style="color:var(--text3);padding:8px">No universe data yet — add values to the Universe column in the Series tab.</div>';return;}
+  if(!sorted.length){document.getElementById(gridId).innerHTML=uvQ?`<div class="ms" style="color:var(--text3);padding:8px">No universe here matches “${esc(uvQ)}”.</div>`:'<div class="ms" style="color:var(--text3);padding:8px">No universe data yet — add values to the Universe column in the Series tab.</div>';dc(chartId);return;}
   const cols=TKCOL;
   document.getElementById(gridId).innerHTML=sorted.map((u,i)=>{
     const rp=pctN(u.read,u.tracked),op=pctN(u.owned,u.tracked),col=cols[i%cols.length];
@@ -1617,40 +1624,55 @@ function uvRerender(){if(G._uvHost==='register')renderRegister();else if(G._uvNa
 // away. A series that is named by the query, or is home to a matching
 // title, shows every volume like a universe page (uvRowHtml); matching
 // standalones and people follow. Series not in any universe are the point.
-let rgQ='';
-function rgSearch(){const el=document.getElementById('rg-q');rgQ=el?el.value.trim():'';renderRegister();}
-function openRegister(q){switchSection('tracking','register');const el=document.getElementById('rg-q');if(el)el.value=q||'';rgQ=(q||'').trim();renderRegister();if(el)el.scrollIntoView({block:'start',behavior:'smooth'});}
+let rgQ='',rgOpenKey=null;
+function rgSearch(){const el=document.getElementById('rg-q');rgQ=el?el.value.trim():'';rgOpenKey=null;renderRegister();}
+function openRegister(q){switchSection('tracking','register');const el=document.getElementById('rg-q');if(el)el.value=q||'';rgQ=(q||'').trim();rgOpenKey=null;renderRegister();if(el)el.scrollIntoView({block:'start',behavior:'smooth'});}
 function rgOutside(){switchSection('log','logbook');const q=document.getElementById('log-q');if(q){q.value=rgQ;LOG.search();q.focus();}}
+function rgOpen(key){rgOpenKey=rgOpenKey===key?null:key;renderRegister();const d=document.getElementById('rg-detail');if(d&&rgOpenKey)d.scrollIntoView({block:'start',behavior:'smooth'});}
+// The whole register as series tiles (John, 2026-10-07: "see the whole
+// register and then use the search to filter it down like we do for
+// universes"); a tile opens its series as a universe-style page; the words
+// narrow tiles by series name, author, title or alias. One series left
+// opens by itself. Standalones are one tile; people get a strip of buttons.
 function renderRegister(){
   const out=document.getElementById('rg-out');if(!out)return;
   G._uvHost='register';
   const q=rgQ,nl=s=>(s||'').toLowerCase().replace(/[^a-z0-9]/g,''),nq=nl(q);
   const who=OWNER_LABEL[OWNER]||'Both';
-  if(nq.length<3){out.innerHTML=`<div class="ms" style="padding:8px 2px">Type at least three letters — matches come from the current reader filter (${who}).</div>`;return;}
   const books=G.indBooks||[];
   const als=b=>(G.aliasesOf&&G.aliasesOf[(b.owner||'butthead')+'|'+nl(b.title)])||[];
   const real=b=>b.series&&b.series!=='Standalones';
-  const hitT=b=>nl(b.title).includes(nq)||als(b).some(a=>nl(a).includes(nq));
-  const hitA=b=>nl(b.author).includes(nq);
-  const hitS=b=>real(b)&&nl(b.series).includes(nq);
-  // With the header on Both, each reader's copy of a series is its own block (as By Universe does)
+  // With the header on Both, each reader's copy of a series is its own tile (as By Universe does)
   const gkey=b=>OWNER==='all'?b.series+' · '+(OWNER_LABEL[b.owner||'butthead']||b.owner):b.series;
   const sers=new Map();
-  books.forEach(b=>{if(!real(b)||!(hitS(b)||hitT(b)))return;const k=gkey(b);const e=sers.get(k)||{key:k,name:b.series,owner:b.owner||'butthead',byName:false,byTitle:false};if(hitS(b))e.byName=true;if(hitT(b))e.byTitle=true;sers.set(k,e);});
-  const stand=books.filter(b=>!real(b)&&(hitT(b)||hitA(b))).sort((a,b)=>a.title.localeCompare(b.title));
+  books.forEach(b=>{if(!real(b))return;const k=gkey(b);const e=sers.get(k)||{key:k,name:b.series,owner:b.owner||'butthead',books:[],uni:b.universe||''};e.books.push(b);sers.set(k,e);});
+  const stand=books.filter(b=>!real(b));
+  const hitB=b=>nl(b.title).includes(nq)||nl(b.author).includes(nq)||als(b).some(a=>nl(a).includes(nq));
+  const list=[...sers.values()].filter(e=>!nq||nl(e.name).includes(nq)||e.books.some(hitB))
+    .sort((a,b)=>{if(nq){const an=nl(a.name).includes(nq),bn=nl(b.name).includes(nq);if(an!==bn)return bn-an;}return a.name.localeCompare(b.name)||a.owner.localeCompare(b.owner);});
+  const standHits=nq?stand.filter(hitB):stand;
   const people=new Map();
-  books.forEach(b=>peopleOf(b.author).forEach(p=>{if(!nl(p).includes(nq))return;const e=people.get(p)||{name:p,series:new Map(),stand:0};if(real(b))e.series.set(gkey(b),(e.series.get(gkey(b))||0)+1);else e.stand++;people.set(p,e);}));
-  if(!sers.size&&!stand.length&&!people.size){out.innerHTML=`<div class="cb"><div class="ms">Nothing in the register matches “${esc(q)}” for ${who}.</div><button class="log-ghost" style="margin-top:6px" onclick="rgOutside()">Search outside in Log › Books</button></div>`;return;}
+  if(nq)books.forEach(b=>peopleOf(b.author).forEach(p=>{if(!nl(p).includes(nq))return;const e=people.get(p)||{name:p,series:new Map(),stand:0};if(real(b))e.series.set(gkey(b),(e.series.get(gkey(b))||0)+1);else e.stand++;people.set(p,e);}));
+  let openKey=rgOpenKey;
+  if(nq&&!openKey&&list.length===1&&!standHits.length)openKey=list[0].key;
+  if(openKey&&openKey!=='__stand'&&!sers.has(openKey))openKey=null;
   const ctx=uvCtx();G._uvBooks=[];
-  const order=[...sers.values()].sort((a,b)=>(b.byName-a.byName)||((nl(b.name)===nq)-(nl(a.name)===nq))||a.name.localeCompare(b.name)).slice(0,25);
-  const block=e=>{const list=books.filter(b=>real(b)&&gkey(b)===e.key).sort((a,b)=>ctx.seqN(a)-ctx.seqN(b)||a.title.localeCompare(b.title));
-    const au=[...new Set(list.map(b=>b.author).filter(Boolean))].slice(0,2).join(' · '),uni=list[0].universe?` · ${esc(list[0].universe)}`:'';
+  const close=`<button class="log-act" onclick="rgOpen(null)">✕ Close</button>`;
+  const block=e=>{const lst=e.books.slice().sort((a,b)=>ctx.seqN(a)-ctx.seqN(b)||a.title.localeCompare(b.title));
+    const au=[...new Set(lst.map(b=>b.author).filter(Boolean))].slice(0,2).join(' · '),uni=e.uni?` · ${esc(e.uni)}`:'';
     const owner=OWNER==='all'?` <span class="badge ${e.owner==='goblin'?'b-purple':'b-teal'}">${OWNER_LABEL[e.owner]||e.owner}</span>`:'';
-    const more=LOG.trackQueued(e.name)?'<span class="badge b-gold">looking for volumes · queued</span>':`<button class="log-act" data-s="${esc(e.name)}" data-a="${esc(list[0].author||'')}" onclick="LOG.awardTrackSeries(this.dataset.s,this.dataset.a)" title="ask jerry for every volume of this series — proposals on the Proposed tab, nothing enters the register without you">🔍 Look for missing volumes</button>`;
-    return`<div class="cb rg-ser" style="margin-bottom:1rem"><div class="uv-ser" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span>${esc(e.name)}${owner} <span class="ms">· ${au?esc(au)+' · ':''}${list.filter(b=>b.read).length}/${list.length} read · ${list.filter(b=>b.owned).length} owned${uni}</span></span>${more}</div>${list.map(b=>uvRowHtml(b,ctx,true)).join('')}</div>`;};
-  const standHtml=stand.length?`<div class="cb rg-stand" style="margin-bottom:1rem"><div class="uv-ser">Standalones <span class="ms">· ${stand.length}</span></div>${stand.slice(0,60).map(b=>uvRowHtml(b,ctx,true)).join('')}</div>`:'';
-  const peopleHtml=people.size?`<div class="cb rg-people" style="margin-bottom:1rem"><div class="uv-ser">Authors <span class="ms">· ${people.size}</span></div>${[...people.values()].sort((a,b)=>a.name.localeCompare(b.name)).slice(0,20).map(e=>`<div class="uv-row"><div class="uv-t">${esc(e.name)} <span class="ms">· ${e.series.size} series · ${e.stand} standalone${e.stand===1?'':'s'}</span></div><div class="uv-acts">${[...e.series.entries()].slice(0,8).map(([k,n])=>`<button class="log-act" data-s="${esc(k.split(' · ')[0])}" onclick="openRegister(this.dataset.s)">${esc(k)} <span class="ms">${n}</span></button>`).join('')}</div></div>`).join('')}</div>`:'';
-  out.innerHTML=`<div class="ms" style="margin-bottom:6px">${order.length} series · ${stand.length} standalone${stand.length===1?'':'s'} · ${people.size} author${people.size===1?'':'s'} match “${esc(q)}” (${who}). Dots: read · owned · need · unpublished; taps send the same events as the Log tab.</div>${order.map(block).join('')}${standHtml}${peopleHtml}`;
+    const more=LOG.trackQueued(e.name)?'<span class="badge b-gold">looking for volumes · queued</span>':`<button class="log-act" data-s="${esc(e.name)}" data-a="${esc(lst[0].author||'')}" onclick="LOG.awardTrackSeries(this.dataset.s,this.dataset.a)" title="ask jerry for every volume of this series — proposals on the Proposed tab, nothing enters the register without you">🔍 Look for missing volumes</button>`;
+    return`<div class="cb rg-ser" style="margin-bottom:1rem"><div class="uv-ser" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span>${esc(e.name)}${owner} <span class="ms">· ${au?esc(au)+' · ':''}${lst.filter(b=>b.read).length}/${lst.length} read · ${lst.filter(b=>b.owned).length} owned${uni}</span></span><span style="display:flex;gap:6px">${more}${close}</span></div>${lst.map(b=>uvRowHtml(b,ctx,true)).join('')}</div>`;};
+  const standBlock=lst=>`<div class="cb rg-stand" style="margin-bottom:1rem"><div class="uv-ser" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span>Standalones <span class="ms">· ${lst.length}${nq?' matching':''}</span></span>${close}</div>${lst.slice().sort((a,b)=>a.title.localeCompare(b.title)).slice(0,120).map(b=>uvRowHtml(b,ctx,true)).join('')}${lst.length>120?`<div class="ms">showing 120 of ${lst.length} — type to narrow</div>`:''}</div>`;
+  const detail=openKey?(openKey==='__stand'?standBlock(standHits):block(sers.get(openKey))):'';
+  const tile=e=>{const n=e.books.length,r=e.books.filter(b=>b.read).length,o=e.books.filter(b=>b.owned).length,au=[...new Set(e.books.map(b=>b.author).filter(Boolean))].slice(0,1).join('');
+    return`<div class="rg-tile${openKey===e.key?' open':''}" data-k="${esc(e.key)}" onclick="rgOpen(this.dataset.k)" title="open ${esc(e.name)}"><div class="rg-tile-t">${esc(e.name)}${OWNER==='all'?` <span class="badge ${e.owner==='goblin'?'b-purple':'b-teal'}" style="font-size:9px">${OWNER_LABEL[e.owner]||e.owner}</span>`:''}</div><div class="ms" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(au)}${e.uni?' · '+esc(e.uni):''}</div><div class="rg-bar"><span class="rg-read" style="width:${pctN(r,n)}%"></span><span class="rg-own" style="width:${pctN(Math.max(0,o-r),n)}%"></span></div><div class="ms">${r} read · ${o} owned · ${n} tracked</div></div>`;};
+  const standTile=(standHits.length||!nq)?`<div class="rg-tile rg-tile-stand${openKey==='__stand'?' open':''}" onclick="rgOpen('__stand')" title="open the standalones"><div class="rg-tile-t">Standalones</div><div class="ms">${nq?standHits.length+' matching of ':''}${stand.length} books</div><div class="rg-bar"><span class="rg-read" style="width:${pctN(stand.filter(b=>b.read).length,stand.length)}%"></span><span class="rg-own" style="width:${pctN(Math.max(0,stand.filter(b=>b.owned).length-stand.filter(b=>b.read).length),stand.length)}%"></span></div><div class="ms">${stand.filter(b=>b.read).length} read · ${stand.filter(b=>b.owned).length} owned</div></div>`:'';
+  const peopleHtml=people.size?`<div class="cb rg-people" style="margin-bottom:1rem"><div class="uv-ser">Authors <span class="ms">· ${people.size}</span></div>${[...people.values()].sort((a,b)=>a.name.localeCompare(b.name)).slice(0,20).map(e=>`<div class="uv-row"><div class="uv-t">${esc(e.name)} <span class="ms">· ${e.series.size} series · ${e.stand} standalone${e.stand===1?'':'s'}</span></div><div class="uv-acts">${[...e.series.entries()].slice(0,8).map(([k,n])=>`<button class="log-act" data-k="${esc(k)}" onclick="rgOpen(this.dataset.k)">${esc(k)} <span class="ms">${n}</span></button>`).join('')}</div></div>`).join('')}</div>`:'';
+  const summary=nq?`${list.length} series · ${standHits.length} standalone${standHits.length===1?'':'s'} · ${people.size} author${people.size===1?'':'s'} match “${esc(q)}” (${who}). Dots: read · owned · need · unpublished; taps send the same events as the Log tab.`
+    :`${sers.size} series · ${stand.length} standalones (${who}) — tap a series for its page, or type to narrow the tiles.`;
+  const none=!list.length&&!standHits.length&&!people.size?`<div class="cb"><div class="ms">Nothing in the register matches “${esc(q)}” for ${who}.</div><button class="log-ghost" style="margin-top:6px" onclick="rgOutside()">Search outside in Log › Books</button></div>`:'';
+  out.innerHTML=`<div class="ms" style="margin-bottom:6px">${summary}</div>${peopleHtml}<div id="rg-detail">${detail}</div>${none}<div class="rg-grid">${standTile}${list.map(tile).join('')}</div>`;
 }
 function uvAct(i,kind){
   const b=(G._uvBooks||[])[i],el=document.getElementById('uv-in-'+i);if(!b||!el)return;
@@ -1671,8 +1693,17 @@ async function uvSet(i,what,val){
   const ok=what==='need'?await LOG.setNeed(b,val):await LOG.setPubDate(b,'TBA');
   if(ok)uvRerender();
 }
+// By Universe filter (John, 2026-10-07: "put a search in universes"): a
+// universe stays when its name, or a series, title or author inside it,
+// carries the words; one universe left opens by itself.
+let uvQ='';
+function uvFilterQ(){const el=document.getElementById('uv-q');uvQ=el?el.value.trim().toLowerCase():'';renderUniverse(G.books);}
 function renderUniverse(bm){
-  const all=Object.values(bm.byUniverse);
+  let all=Object.values(bm.byUniverse);
+  if(uvQ){const idx={};(G.indBooks||[]).forEach(b=>{if(!b.universe)return;(idx[b.universe]=idx[b.universe]||[]).push(((b.series||'')+' '+b.title+' '+(b.author||'')).toLowerCase());});
+    all=all.filter(u=>(u.name||'').toLowerCase().includes(uvQ)||(idx[u.name]||[]).some(t=>t.includes(uvQ)));
+    const live=all.filter(u=>u.name&&u.name!=='(unassigned)');
+    if(live.length===1&&G._uvName!==live[0].name)uvOpen(live[0].name);else if(!live.length)uvClose();}
   renderUniverseSection(all.filter(u=>u.type==='Series'),'uv-series-grid','uvSeriesChart','uv-series-wrap');
   renderUniverseSection(all.filter(u=>u.type==='Comics'||u.type==='Graphic Novel'),'uv-comics-grid','uvComicsChart','uv-comics-wrap');
   renderUniverseSection(all.filter(u=>u.type==='Manga'),'uv-manga-grid','uvMangaChart','uv-manga-wrap');
