@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-10-07T18:27:24+00:00",
+ "generated_at": "2026-10-08T01:45:31+00:00",
  "owner": "butthead",
  "site": "https://basdhaweio.github.io/bookDashboards/",
  "reading_now": [
@@ -139,7 +139,7 @@
   }
  ],
  "orders": {
-  "open": 42,
+  "open": 41,
   "shipped": 0,
   "lines": [
    {
@@ -151,16 +151,6 @@
     "eta": "2025-12-01",
     "tracking": "",
     "ordered": "2025-08-26"
-   },
-   {
-    "id": 512,
-    "order_id": 542,
-    "title": "Legacies of Betrayal",
-    "store": "Tombolo",
-    "status": "ordered",
-    "eta": "2026-10-06",
-    "tracking": "",
-    "ordered": "2026-05-13"
    },
    {
     "id": 495,
@@ -221,6 +211,16 @@
     "eta": "2026-11-10",
     "tracking": "",
     "ordered": "2026-09-29"
+   },
+   {
+    "id": 251,
+    "order_id": 471,
+    "title": "The Blade That Remains",
+    "store": "Tombolo",
+    "status": "ordered",
+    "eta": "2027-04-06",
+    "tracking": "",
+    "ordered": "2026-09-30"
    }
   ]
  },
