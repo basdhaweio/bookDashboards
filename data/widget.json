@@ -1,16 +1,8 @@
 {
- "generated_at": "2026-10-08T17:32:24+00:00",
+ "generated_at": "2026-10-08T18:06:46+00:00",
  "owner": "butthead",
  "site": "https://basdhaweio.github.io/bookDashboards/",
  "reading_now": [
-  {
-   "title": "Glinda of Oz (Oz, #14)",
-   "author": "L. Frank Baum",
-   "since": "2026-10-04",
-   "cover": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1350099661l/765300.jpg",
-   "register": "Glinda of Oz",
-   "series": "Books of Oz"
-  },
   {
    "title": "Die, Vol. 3: The Great Game",
    "author": "Kieron Gillen",
@@ -226,12 +218,12 @@
  },
  "year": {
   "year": 2026,
-  "read": 56,
+  "read": 57,
   "target": 155,
   "pace": 119,
   "last_year_by_now": 115,
   "last_year_total": 154,
-  "this_month": 2,
+  "this_month": 3,
   "bought": 159
  },
  "proposals": {
