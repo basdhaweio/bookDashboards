@@ -345,7 +345,13 @@ earliest of its acquisitions.
 ```
 `acq_id` (the year tab's AcqId column) picks the row and must be this
 reader's; without it `book` + `date` must name exactly one acquisition.
-`source_store` blank clears the shop. Nothing else is settable here.
+`source_store` blank clears the shop. `format` (2026-10-08) is the edition
+that came home — one of the media (Print, eBook, Audio, Manga, Graphic
+Novel, Comics, Short Stories) or **Special Edition** for an omnibus or
+deluxe copy; blank falls back to the book's media. The year tabs show
+Format as that category, with the edition text (the old sheet's free-text
+format, or an edition-naming title) in a Note column. Nothing else is
+settable here.
 
 ### `goodreads_link`
 A hand match for a currently-reading shelf row the sync could not place —

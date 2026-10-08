@@ -713,7 +713,10 @@ async function main(){
       const okB=!src||(!!bookEv&&pb.set&&pb.set.author==='Harness Author');
       const okR=!dt||(!!readEv&&pr.set.read_on==='2026-01-03'&&(pr.read_id||pr.date));
       const pend=src?D.querySelector('#bty-list tr td[data-f="source_store"]').textContent.includes('pending'):true;
-      res(name,okA&&okB&&okR&&pend,`${note}acquisition_update ${acq?'for “'+pa.book.title+'” '+JSON.stringify(pa.set)+(pa.acq_id?' by id '+pa.acq_id:' by date '+pa.date):'missing'}; book_update ${bookEv?JSON.stringify(pb.set):'missing'}; read_update ${readEv?'for “'+(pr.book||{}).title+'” '+JSON.stringify(pr.set)+(pr.read_id?' by id':' by date'):'missing'}; pending shown ${pend}`);
+      const heads=[...D.querySelectorAll('#tab-buythisyear thead th')].map(t=>t.textContent.trim());
+      const srcLast=heads[heads.length-1]==='Source';
+      const longFmt=[...D.querySelectorAll('#bty-list td[data-f="format"]')].some(t=>t.textContent.trim().length>20);
+      res(name,okA&&okB&&okR&&pend&&srcLast&&!longFmt,`${note}Source last ${srcLast}; no free-text formats ${!longFmt}; acquisition_update ${acq?'for “'+pa.book.title+'” '+JSON.stringify(pa.set)+(pa.acq_id?' by id '+pa.acq_id:' by date '+pa.date):'missing'}; book_update ${bookEv?JSON.stringify(pb.set):'missing'}; read_update ${readEv?'for “'+(pr.book||{}).title+'” '+JSON.stringify(pr.set)+(pr.read_id?' by id':' by date'):'missing'}; pending shown ${pend}`);
     }finally{W.fetch=realFetch;if(LOGi)LOGi.forgetSetup();localStorage.removeItem('library-log-cfg');localStorage.removeItem('library-log-sent');}
   });
   await check('Collecting › Awards: Hugo rosters render with register status and track actions',async()=>{
