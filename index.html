@@ -122,6 +122,7 @@ a.bc-burst:hover{transform:rotate(12deg) scale(1.08);}
 .tbr-bar{display:inline-block;width:56px;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;flex:none;}
 .tbr-bar span{display:block;height:100%;background:var(--teal2);}
 .tbr-next{font-size:12px;line-height:1.5;}
+.ty-cell{cursor:pointer}.ty-cell:hover{background:var(--bg2)}
 .rg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-top:8px}
 .rg-tile{background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 12px;box-shadow:var(--shadow);cursor:pointer;min-width:0}
 .rg-tile.open{border-color:var(--gold);box-shadow:0 0 0 2px rgba(201,168,76,.25)}
@@ -833,7 +834,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div class="sl">Format breakdown</div>
       <div class="cb" id="bty-format"></div>
       <div class="sl">All acquisitions</div>
-      <div class="tw"><table><thead><tr><th class="nr">#</th><th class="nr">Date</th><th>Title</th><th>Author</th><th>Genre</th><th>Format</th><th>Source</th></tr></thead><tbody id="bty-list"></tbody></table></div>
+      <div class="tw"><table><thead><tr><th class="nr">#</th><th class="nr">Date</th><th>Title</th><th>Source</th><th>Author</th><th>Genre</th><th>Format</th></tr></thead><tbody id="bty-list"></tbody></table></div>
     </div>
   </div>
 
@@ -1221,7 +1222,7 @@ function parseYear(vals){
     const r=vals[i]||[];
     const c0=(r[0]||'').trim(),c6=(r[6]||'').trim();
     const num=n(c0);
-    if(num>0&&r[2])books.push({num,date:(r[1]||'').trim(),title:(r[2]||'').trim(),genre:(r[3]||'').trim(),media:(r[4]||'').trim(),pages:n(r[5])});
+    if(num>0&&r[2])books.push({num,date:(r[1]||'').trim(),title:(r[2]||'').trim(),genre:(r[3]||'').trim(),media:(r[4]||'').trim(),pages:n(r[5]),readId:n(r[10])});
     const tLabel=(r[6]||'').trim();
     if(i>=57&&i<=67&&['Print','eBook','Audio','Manga','Graphic Novel','Comics','Short Stories','Total','Illustrated Total'].includes(tLabel)){
       targets[tLabel]={total:n(r[7]),bynow:n(r[8]),actual:n(r[9])};
@@ -2726,11 +2727,19 @@ function renderThisYear(year){
   // The Media badge is tappable: a read's own media (audio of a book owned
   // in print) is edited right here through a read_update event; a change
   // in flight shows as pending until jerry's bundle carries it (John, 2026-10-04).
-  const pendMedia=LOG.pendingReadMedia(soloOwner());
+  // Every cell edits (John, 2026-10-07: "edit all the data"): the date
+  // and media are the read's own facts (read_update), title and genre the
+  // register row's (book_update); a change in flight shows as pending until
+  // jerry's bundle carries it.
+  const who=soloOwner(),pendR=LOG.pendingReadSets(who);
   const nkT=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
-  document.getElementById('ty-books').innerHTML=books.map((b,i)=>{const pm=pendMedia.get(nkT(b.title)+'|'+year),media=pm||b.media;
-    return`<tr><td class="nr" style="color:var(--text3);font-family:var(--font-m)">${b.num}</td><td class="nr" style="color:var(--text3);font-family:var(--font-m)">${b.date}</td><td>${esc(b.title)}</td><td>${esc(b.genre)}</td><td><span class="badge ${bBadge[media]||'b-gray'} ty-media" data-i="${i}" title="tap to change how this one was read" style="cursor:pointer" onclick="tyMediaEdit(this)">${esc(media)}</span>${pm?' <span class="ms">pending</span>':''}</td><td class="nr" style="font-family:var(--font-m);color:var(--text3)">${b.pages>0?fmt(b.pages):'—'}</td></tr>`;}).join('');
   G._tyBooks=books;G._tyYear=year;
+  document.getElementById('ty-books').innerHTML=books.map((b,i)=>{
+    const pr=Object.assign({},pendR.get(nkT(b.title)+'|'+year)||{},b.readId?(pendR.get('id:'+b.readId)||{}):{});
+    const rb=LOG.registerBook(b.title,who),pb=rb?LOG.bookSetsFor(rb):{};
+    const media=pr.media||b.media,iso=pr.read_on||rowIsoDate(b,year),title=pb.title||b.title,genre=pb.genre!=null?pb.genre:b.genre;
+    const pend=x=>x!=null?' <span class="ms">pending</span>':'';
+    return`<tr><td class="nr" style="color:var(--text3);font-family:var(--font-m)">${b.num}</td><td class="nr ty-cell" style="color:var(--text3);font-family:var(--font-m)" data-i="${i}" data-f="read_on" data-v="${esc(iso)}" title="tap to change the date" onclick="cellEdit(this,'ty')">${esc(pr.read_on?mdOf(pr.read_on):b.date)}${pend(pr.read_on)}</td><td class="ty-cell" data-i="${i}" data-f="title" data-v="${esc(title)}" title="tap to edit the title" onclick="cellEdit(this,'ty')">${esc(title)}${pend(pb.title)}</td><td class="ty-cell" data-i="${i}" data-f="genre" data-v="${esc(genre)}" title="tap to edit the genre" onclick="cellEdit(this,'ty')">${esc(genre)}${pend(pb.genre)}</td><td><span class="badge ${bBadge[media]||'b-gray'} ty-media" data-i="${i}" title="tap to change how this one was read" style="cursor:pointer" onclick="tyMediaEdit(this)">${esc(media)}</span>${pend(pr.media)}</td><td class="nr" style="font-family:var(--font-m);color:var(--text3)">${b.pages>0?fmt(b.pages):'—'}</td></tr>`;}).join('');
 }
 function tyMediaEdit(el){
   const i=+el.dataset.i,b=(G._tyBooks||[])[i];if(!b)return;
@@ -2740,6 +2749,32 @@ function tyMediaEdit(el){
   sel.onchange=async()=>{const ok=await LOG.setReadMedia(b,G._tyYear,sel.value);if(ok)renderThisYear(G._tyYear);};
   sel.onblur=()=>{if(sel.parentNode)sel.replaceWith(el);};
   el.replaceWith(sel);sel.focus();
+}
+// ── Tap-to-edit cells for the yearly tables (John, 2026-10-07: "edit all
+// the data"): one input in the cell; Enter / blur saves through the
+// matching inbox event, Escape cancels. The event is the read's or the
+// acquisition's own (date, media, shop) or the register row's (title,
+// author, genre, format) — LOG.editCell picks.
+function rowIsoDate(row,year){if(row.iso)return row.iso;const m=(row.date||'').match(/^(\d{1,2})\/(\d{1,2})$/);return m?`${year}-${String(+m[1]).padStart(2,'0')}-${String(+m[2]).padStart(2,'0')}`:'';}
+function mdOf(iso){const m=(iso||'').match(/^\d{4}-(\d{2})-(\d{2})/);return m?(+m[1])+'/'+(+m[2]):iso;}
+function cellEdit(td,kind){
+  if(td.querySelector('input,select'))return;
+  const i=+td.dataset.i,f=td.dataset.f,row=((kind==='ty'?G._tyBooks:G._btyBooks)||[])[i];if(!row)return;
+  const cur=td.dataset.v||'',orig=td.innerHTML;
+  let el;
+  if(f==='format'||f==='media'){el=document.createElement('select');el.innerHTML=MEDIA.map(m=>`<option${m===cur?' selected':''}>${esc(m)}</option>`).join('');}
+  else{el=document.createElement('input');el.value=cur;if(f==='read_on'||f==='acquired_on')el.type='date';
+    if(f==='genre'||f==='source_store'){const id='cell-dl-'+f;let dl=document.getElementById(id);if(!dl){dl=document.createElement('datalist');dl.id=id;document.body.appendChild(dl);}dl.innerHTML=(LOG.vocabFor(f==='genre'?'genre':'source')||[]).map(v=>`<option>${esc(v)}</option>`).join('');el.setAttribute('list',id);}}
+  el.style.cssText='font:inherit;font-size:12px;padding:2px 4px;border:1px solid var(--border2);border-radius:6px;background:var(--bg2);max-width:100%;min-width:90px';
+  td.innerHTML='';td.appendChild(el);el.focus();
+  let done=false;
+  const finish=async save=>{if(done)return;done=true;const v=el.value.trim();
+    if(!save||v===cur){td.innerHTML=orig;return;}
+    const ok=await LOG.editCell(kind,row,f,v);
+    if(ok){if(kind==='ty')renderThisYear(G._tyYear);else renderBuyThisYear(G._btyBooks);}else td.innerHTML=orig;};
+  el.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();finish(true);}else if(e.key==='Escape')finish(false);};
+  el.onchange=()=>{if(el.tagName==='SELECT')finish(true);};
+  el.onblur=()=>setTimeout(()=>finish(true),120);
 }
 // Per person, from the register's own credits (Book Authors tab) over the
 // books the header shows: a co-written series no longer hands every
@@ -3275,7 +3310,7 @@ function parseGrowthYear(vals){
   for(let i=1;i<vals.length;i++){
     const r=vals[i];
     if(!r[0]||!r[2])continue;
-    books.push({num:n(r[0]),date:(r[1]||'').trim(),title:(r[2]||'').trim(),author:(r[3]||'').trim(),genre:(r[4]||'').trim(),format:(r[5]||'').trim(),source:(r[6]||'').trim(),owner:(r[7]||'').trim()});
+    books.push({num:n(r[0]),date:(r[1]||'').trim(),title:(r[2]||'').trim(),author:(r[3]||'').trim(),genre:(r[4]||'').trim(),format:(r[5]||'').trim(),source:(r[6]||'').trim(),owner:(r[7]||'').trim(),acqId:n(r[8])});
   }
   return books;
 }
@@ -3406,8 +3441,21 @@ function renderBuyThisYear(books){
   const formatEntries=Object.entries(formatCounts).sort((a,b)=>b[1]-a[1]);
   const maxF=formatEntries[0]?.[1]||1;
   document.getElementById('bty-format').innerHTML='<div class="cbt">Books by format</div>'+formatEntries.map(([f,count])=>{const p=count/maxF*100;return`<div class="pr"><div class="pl">${f}</div><div class="pt"><div class="pf" style="width:${p.toFixed(1)}%;background:${FORMAT_COLORS[f]||'#9a9688'}"></div></div><div class="pv">${count}</div></div>`;}).join('');
-  // List
-  document.getElementById('bty-list').innerHTML=books.map(b=>`<tr><td class="nr" style="color:var(--text3);font-family:var(--font-m)">${b.num}</td><td class="nr" style="color:var(--text3);font-family:var(--font-m)">${b.date}</td><td>${b.title}</td><td>${b.author||'—'}</td><td>${b.genre||'—'}</td><td>${b.format?`<span class="badge ${FORMAT_COLORS[b.format]?'b-gold':'b-gray'}" style="background:${(FORMAT_COLORS[b.format]||'#9a9688')+'18'};color:${FORMAT_COLORS[b.format]||'#9a9688'}">${b.format}</span>`:'—'}</td><td style="font-family:var(--font-m);font-size:11px;color:var(--text2)">${b.source||'—'}</td></tr>`).join('');
+  // List — every cell edits (John, 2026-10-07): the date and the shop are
+  // the acquisition's own facts (acquisition_update), title / author /
+  // genre / format the register row's (book_update); pending until the
+  // bundle carries them. Source sits beside the title so a phone shows it.
+  G._btyBooks=books;
+  const yearB=new Date().getFullYear(),pendAll={};
+  const nkB=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  document.getElementById('bty-list').innerHTML=books.map((b,i)=>{
+    const who=b.owner||soloOwner(),pendA=pendAll[who]||(pendAll[who]=LOG.pendingAcqSets(who));
+    const iso0=rowIsoDate(b,yearB),pa=Object.assign({},pendA.get(nkB(b.title)+'|'+iso0)||{},b.acqId?(pendA.get('id:'+b.acqId)||{}):{});
+    const rb=LOG.registerBook(b.title,who),pb=rb?LOG.bookSetsFor(rb):{};
+    const iso=pa.acquired_on||iso0,title=pb.title||b.title,author=pb.author!=null?pb.author:b.author,genre=pb.genre!=null?pb.genre:b.genre,format=pb.media||b.format,source=pa.source_store!=null?pa.source_store:b.source;
+    const pend=x=>x!=null?' <span class="ms">pending</span>':'';
+    const cell=(f,v,shown,cls)=>`<td class="ty-cell${cls||''}" data-i="${i}" data-f="${f}" data-v="${esc(v||'')}" title="tap to edit" onclick="cellEdit(this,'bty')">${shown}</td>`;
+    return`<tr><td class="nr" style="color:var(--text3);font-family:var(--font-m)">${b.num}</td>${cell('acquired_on',iso,`<span style="color:var(--text3);font-family:var(--font-m)">${esc(pa.acquired_on?mdOf(pa.acquired_on):b.date)}</span>`+pend(pa.acquired_on),' nr')}${cell('title',title,esc(title)+pend(pb.title))}${cell('source_store',source,`<span style="font-family:var(--font-m);font-size:11px;color:var(--text2)">${esc(source||'—')}</span>`+pend(pa.source_store))}${cell('author',author,esc(author||'—')+pend(pb.author))}${cell('genre',genre,esc(genre||'—')+pend(pb.genre))}${cell('format',format,(format?`<span class="badge ${FORMAT_COLORS[format]?'b-gold':'b-gray'}" style="background:${(FORMAT_COLORS[format]||'#9a9688')+'18'};color:${FORMAT_COLORS[format]||'#9a9688'}">${esc(format)}</span>`:'—')+pend(pb.media))}</tr>`;}).join('');
 }
 
 
@@ -5570,26 +5618,41 @@ const LOG=(()=>{
   // Latest pending queue_set per book (title|series), oldest first so a
   // later move overrides an earlier add.
   // read_update events in flight: nk(title)|year -> media, for the This Year table
-  function pendingReadMedia(owner){
-    const m=new Map(),seen=new Set(),nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  // Pending edits of reads (read_update) keyed 'id:<read_id>' and
+  // title|year, of acquisitions (acquisition_update) keyed 'id:<acq_id>' and
+  // title|date — the yearly tables overlay them until the bundle catches up.
+  const nkP=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  function pendingSets(type,owner,idKey,altKey){
+    const m=new Map(),seen=new Set();
     [...(pendCache||[]),...sent().filter(e=>!BUNDLE||e.at>BUNDLE.generated_at)]
-      .filter(e=>e.type==='read_update'&&!seen.has(e.id)&&seen.add(e.id)&&(e.by||'butthead')===owner)
+      .filter(e=>e.type===type&&!seen.has(e.id)&&seen.add(e.id)&&(e.by||'butthead')===owner)
       .sort((a,b)=>a.at<b.at?-1:1)
-      .forEach(ev=>{const p=ev.payload||{},b=p.book||{};if(b.title&&p.set&&p.set.media)m.set(nk(b.title)+'|'+(p.year||(p.date||'').slice(0,4)),p.set.media);});
+      .forEach(ev=>{const p=ev.payload||{},set=p.set||{};const keys=[];if(p[idKey])keys.push('id:'+p[idKey]);const k=altKey(p);if(k)keys.push(k);keys.forEach(k=>m.set(k,Object.assign(m.get(k)||{},set)));});
     return m;
   }
-  // Media of one read (This Year table): the register row by title, the read by its date (or year)
-  async function setReadMedia(row,year,media){
-    const owner=soloOwner(),nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
-    const b=(G.allIndBooks||[]).find(x=>(x.owner||'butthead')===owner&&nk(x.title)===nk(row.title));
-    if(!b)return toast('That read is not matched to a register book — fix the title on the Books tab first',true),false;
-    const m=(row.date||'').match(/^(\d{1,2})\/(\d{1,2})$/);
-    const date=row.iso||(m?`${year}-${String(+m[1]).padStart(2,'0')}-${String(+m[2]).padStart(2,'0')}`:'');
-    const p={book:bookRef(b),year,set:{media}};if(date)p.date=date;
-    const ok=await submit('read_update',p,b,owner);
-    if(ok)toast(`${b.title}: read as ${media} — on the table after jerry syncs`);
-    return ok;
+  function pendingReadSets(owner){return pendingSets('read_update',owner,'read_id',p=>{const b=p.book||{};return b.title?nkP(b.title)+'|'+(p.year||(p.date||'').slice(0,4)):'';});}
+  function pendingAcqSets(owner){return pendingSets('acquisition_update',owner,'acq_id',p=>{const b=p.book||{};return b.title&&p.date?nkP(b.title)+'|'+p.date:'';});}
+  function pendingReadMedia(owner){const m=new Map();for(const[k,v]of pendingReadSets(owner))if(v.media&&!k.startsWith('id:'))m.set(k,v.media);return m;}
+  function registerBook(title,owner){return(G.allIndBooks||[]).find(x=>(x.owner||'butthead')===owner&&nkP(x.title)===nkP(title))||null;}
+  function bookSetsFor(b){return pendingBookSets().get(b.title+'|'+realSeries(b)+'|'+(b.owner||'butthead'))||{};}
+  // One cell of a yearly table: the read's / acquisition's own facts go as
+  // read_update / acquisition_update, the register row's as book_update.
+  async function editCell(kind,row,f,v){
+    const owner=kind==='bty'?(row.owner||soloOwner()):soloOwner();
+    const b=registerBook(row.title,owner);
+    if(!b)return toast('That row is not matched to a register book — fix the title on the Books tab first',true),false;
+    if((f==='read_on'||f==='acquired_on')&&!/^\d{4}-\d{2}-\d{2}$/.test(v))return toast('Dates are YYYY-MM-DD',true),false;
+    if(kind==='ty'&&(f==='read_on'||f==='media')){
+      const p={book:bookRef(b),year:G._tyYear,set:{[f]:v}};if(row.readId)p.read_id=row.readId;const d=rowIsoDate(row,G._tyYear);if(d)p.date=d;
+      const ok=await submit('read_update',p,b,owner);if(ok)toast(`${b.title}: ${f==='media'?'read as '+v:'finished '+v} — on the table after jerry syncs`);return ok;}
+    if(kind==='bty'&&(f==='acquired_on'||f==='source_store')){
+      const p={book:bookRef(b),set:{[f]:v}};if(row.acqId)p.acq_id=row.acqId;const d=rowIsoDate(row,new Date().getFullYear());if(d)p.date=d;
+      const ok=await submit('acquisition_update',p,b,owner);if(ok)toast(`${b.title}: ${f==='source_store'?'from '+(v||'no shop'):'acquired '+v} — on the table after jerry syncs`);return ok;}
+    const key=f==='format'?'media':f,set={[key]:v};const bad=vetVocab(set);if(bad)return toast(bad,true),false;
+    const ok=await submit('book_update',{book:bookRef(b),set},b,owner);if(ok)toast(`“${b.title}”: ${key} → ${v||'(blank)'}`);return ok;
   }
+  // Media of one read (the This Year badge): the same path
+  async function setReadMedia(row,year,media){G._tyYear=year;return editCell('ty',row,'media',media);}
   function pendingQueue(){
     const m=new Map(),seen=new Set();
     [...(pendCache||[]),...sent().filter(e=>!BUNDLE||e.at>BUNDLE.generated_at)]
@@ -6768,7 +6831,7 @@ const LOG=(()=>{
     toggleOrderHistory,findInRegister,storeFromOrderNo,logFlyerOrders,trackSeriesFromIsbn,submitTrackSeries,
     finishBook,setNeed,pendingBooks,today,queueSet,pendingQueue,acquireBook,setPubDate,
     renderPeople,doAuthorMerge,doAuthorRename,doAuthorAlias,addCreditRow,saveCredits,
-    pendingLinks,linkGoodreads,prefillAdd,doScanUpcoming,planSet,pendingPlan,webAdd,clearSearch,setReadMedia,pendingReadMedia,trackQueued,awardTrackSeries,renderSheet,sheetFilter,sheetEdit,sheetTick,sheetTickGo,sheetNeed,sheetNewBook,orderStore,orderStatus,orderLineAdd,orderLineDel,doLineSet,doLinesShipAll,lineShipPrompt,openOrder};
+    pendingLinks,linkGoodreads,prefillAdd,doScanUpcoming,planSet,pendingPlan,webAdd,clearSearch,setReadMedia,pendingReadMedia,pendingReadSets,pendingAcqSets,registerBook,bookSetsFor,editCell,trackQueued,awardTrackSeries,renderSheet,sheetFilter,sheetEdit,sheetTick,sheetTickGo,sheetNeed,sheetNewBook,orderStore,orderStatus,orderLineAdd,orderLineDel,doLineSet,doLinesShipAll,lineShipPrompt,openOrder};
 })();
 
 async function init(){

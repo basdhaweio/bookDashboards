@@ -312,20 +312,40 @@ slow (minutes) so it never rides along with `all`. Optional `owner`
 (`butthead` | `goblin` | `all`, default `all`). It also runs weekly
 (Wednesday 04:30, `install_scan_cron.sh`).
 
-### `read_update` (2026-10-04)
-One read event's own facts — today just `media`, how the book was read that
-time (`reads.media_read`), which can differ from the register's media:
-Women of Troy owned in print, read as audio. The This Year table's Media
-badge is tappable and sends this; the change shows as pending until the
-next bundle.
+### `read_update` (2026-10-04, extended 2026-10-07)
+One read event's own facts: `media`, how the book was read that time
+(`reads.media_read`), which can differ from the register's media — Women of
+Troy owned in print, read as audio — and `read_on`, the day the read
+finished (`reads.finished_on` and `read_year`; the register row's own
+read_on follows when it was that read's day). Every cell of the Reading ›
+This Year table is tappable and sends this (title and genre go through
+`book_update`); a change shows as pending until the next bundle.
 ```json
-{"book": {"title": "The Women of Troy", "series": "Women of Troy", "owner": "butthead"},
- "date": "2026-08-18", "year": 2026, "set": {"media": "Audio"}}
+{"read_id": 4312,
+ "book": {"title": "The Women of Troy", "series": "Women of Troy", "owner": "butthead"},
+ "date": "2026-08-18", "year": 2026, "set": {"media": "Audio", "read_on": "2026-08-19"}}
 ```
-`book` is the usual exact reference; `date` (YYYY-MM-DD) or `year` picks
-the read when the reader has several of that book — one must match or the
-event parks. `media` is canonicalised (`audio` → `Audio`) and must be one of
-Print, eBook, Audio, Manga, Graphic Novel, Comics, Short Stories.
+`read_id` (the year tab's ReadId column) picks the read outright and must
+be this reader's; without it `book` is the usual exact reference and `date`
+(YYYY-MM-DD) or `year` picks the read when the reader has several of that
+book — one must match or the event parks. `media` is canonicalised (`audio`
+→ `Audio`) and must be one of Print, eBook, Audio, Manga, Graphic Novel,
+Comics, Short Stories; `read_on` is YYYY-MM-DD.
+
+### `acquisition_update` (2026-10-07)
+One acquisition's own facts — `acquired_on` and `source_store` (the shop) on
+the `acquisitions` row. The Buying › This Year table's Date and Source cells
+send this (title, author, genre and format go through `book_update`). The
+book's own acquired_on then follows the first-acquisition rule: the
+earliest of its acquisitions.
+```json
+{"acq_id": 5497,
+ "book": {"title": "Vinland Saga Vol 13", "series": "Vinland Saga", "owner": "butthead"},
+ "date": "2025-08-13", "set": {"acquired_on": "2025-08-20", "source_store": "Tombolo"}}
+```
+`acq_id` (the year tab's AcqId column) picks the row and must be this
+reader's; without it `book` + `date` must name exactly one acquisition.
+`source_store` blank clears the shop. Nothing else is settable here.
 
 ### `goodreads_link`
 A hand match for a currently-reading shelf row the sync could not place —

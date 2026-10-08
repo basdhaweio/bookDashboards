@@ -686,6 +686,36 @@ async function main(){
       res(name,rows>0&&filtered>0&&!!ev&&p.set&&p.set.notes==='harness note'&&p.book&&p.book.title===title,`${rows} rows, ${filtered} after filter; event ${!!ev} for “${p.book&&p.book.title}” set ${JSON.stringify(p.set)}; pending shown ${pend}`);
     }finally{W.fetch=realFetch;if(LOGi)LOGi.forgetSetup();localStorage.removeItem('library-log-cfg');localStorage.removeItem('library-log-sent');}
   });
+  await check('Yearly tables: tapped cells send acquisition_update, book_update or read_update',async()=>{
+    const name='Yearly tables: tapped cells send acquisition_update, book_update or read_update';
+    const W=w(),D=doc(),tick=ms=>new Promise(r=>setTimeout(r,ms));
+    const sentBodies=[],realFetch=W.fetch;let LOGi=null;
+    W.fetch=async(url,opts={})=>{const u=String(url);if(!u.includes('api.github.com'))return realFetch(url,opts);
+      if((opts.method||'GET')==='PUT'){try{sentBodies.push(JSON.parse(decodeURIComponent(escape(atob(JSON.parse(opts.body).content)))));}catch(e){sentBodies.push({err:String(e)});}return new W.Response('{"content":{}}',{status:201,headers:{'Content-Type':'application/json'}});}
+      return new W.Response(u.includes('/contents/inbox')?'[]':'{}',{status:200,headers:{'Content-Type':'application/json'}});};
+    try{
+      LOGi=W.eval('LOG');await LOGi.saveSetup({closest:()=>({querySelector:sel=>({value:sel.includes('repo')?'harness/stub':'harness-stand-in'})})});await tick(300);
+      await go('buythisyear','buying');
+      let acq=null,bookEv=null,readEv=null,note='';
+      const src=D.querySelector('#bty-list tr td[data-f="source_store"]');
+      if(src){src.click();await tick(100);const inp=src.querySelector('input');inp.value='Harness Books';inp.dispatchEvent(new W.KeyboardEvent('keydown',{key:'Enter'}));await tick(600);
+        acq=sentBodies.find(e=>e.type==='acquisition_update');
+        const au=D.querySelector('#bty-list tr td[data-f="author"]');au.click();await tick(100);const a=au.querySelector('input');a.value='Harness Author';a.dispatchEvent(new W.KeyboardEvent('keydown',{key:'Enter'}));await tick(600);
+        bookEv=sentBodies.find(e=>e.type==='book_update');}
+      else note='no Buy This Year rows; ';
+      await go('thisyear','reading');
+      const dt=D.querySelector('#ty-books tr td[data-f="read_on"]');
+      if(dt){dt.click();await tick(100);const inp=dt.querySelector('input');inp.value='2026-01-03';inp.dispatchEvent(new W.KeyboardEvent('keydown',{key:'Enter'}));await tick(600);
+        readEv=sentBodies.find(e=>e.type==='read_update'&&e.payload&&e.payload.set&&e.payload.set.read_on);}
+      else note+='no reads on the table this year; ';
+      const pa=(acq||{}).payload||{},pb=(bookEv||{}).payload||{},pr=(readEv||{}).payload||{};
+      const okA=!src||(!!acq&&pa.set&&pa.set.source_store==='Harness Books'&&pa.book&&!!pa.book.title&&(pa.acq_id||pa.date));
+      const okB=!src||(!!bookEv&&pb.set&&pb.set.author==='Harness Author');
+      const okR=!dt||(!!readEv&&pr.set.read_on==='2026-01-03'&&(pr.read_id||pr.date));
+      const pend=src?D.querySelector('#bty-list tr td[data-f="source_store"]').textContent.includes('pending'):true;
+      res(name,okA&&okB&&okR&&pend,`${note}acquisition_update ${acq?'for “'+pa.book.title+'” '+JSON.stringify(pa.set)+(pa.acq_id?' by id '+pa.acq_id:' by date '+pa.date):'missing'}; book_update ${bookEv?JSON.stringify(pb.set):'missing'}; read_update ${readEv?'for “'+(pr.book||{}).title+'” '+JSON.stringify(pr.set)+(pr.read_id?' by id':' by date'):'missing'}; pending shown ${pend}`);
+    }finally{W.fetch=realFetch;if(LOGi)LOGi.forgetSetup();localStorage.removeItem('library-log-cfg');localStorage.removeItem('library-log-sent');}
+  });
   await check('Collecting › Awards: Hugo rosters render with register status and track actions',async()=>{
     const name='Collecting › Awards: Hugo rosters render with register status and track actions';
     const W=w(),D=doc(),tick=ms=>new Promise(r=>setTimeout(r,ms));
