@@ -25,10 +25,27 @@ here writes to `books`.
 
 Recomputed on every fetch into `awards.book_id` / `reg_series` / `reg_owner`:
 the exact normalised title, with the author's surname agreeing when both
-sides name one (Com's row first, then Shereen's); the series name against
-`series` with articles and a trailing "series/saga/trilogy" dropped. The
-bundle tab `bookdb|Awards` carries the roster with the matched book's
-owner, read and owned flags.
+sides name one (Com's row first, then Shereen's). The bundle tab
+`bookdb|Awards` carries the roster with the matched book's owner, read and
+owned flags.
+
+Series are matched **through their books** (2026-10-15, John: "go with
+matching on the books"), because the names drift: Wikidata's "The
+Stormlight Archive" is the register's "Stormlight Archives", "Children of
+Time" is "Children Series", "The Final Architecture" is "Final Architects".
+For each series, Wikidata's works (P179) are matched to register books like
+any nominee, and the register series holding most of them wins (Com's on a
+tie). Fallbacks, in order: the series name against `series` with articles
+and a trailing "series/saga/trilogy/sequence/cycle" dropped; then, for a
+series Wikidata files no works under, the closest name (similarity ≥ 0.75)
+among the series the author's own register books sit in. Matching by books
+also fixed a false hit: Jemisin's Inheritance trilogy had matched Paolini's
+"Inheritance" by name alone.
+
+Pen names and duos are dropped from the rosters like people (James S. A.
+Corey and Mark Phillips sat on them as nominees, duplicating their works),
+and a fetch removes rows Wikidata no longer returns, unless the fetch looks
+truncated (under 80% of the stored rows).
 
 ## The tab
 
