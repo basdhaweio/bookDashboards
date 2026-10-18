@@ -277,6 +277,16 @@ Titles already in the register are skipped; everything proposes as
 owned=false; the hydrator fills pub_date/genre in the same cycle. `author`
 is optional but strongly recommended — it filters both lookups.
 
+2026-10-18 (Dorohedoro picked up the anime's two seasons): the Wikidata
+roster keeps written works only — parts that are audiovisual works or video
+games are dropped. The proposals' `media` comes from what Wikidata calls
+the series ("Japanese manga series" → Manga, comics / graphic novels →
+Comics; otherwise blank, which the add path reads as Print), or from an
+optional `media` in the payload. When Wikidata has nothing and the Google
+Books sweep comes back empty with any failed lookup, the event is an
+outage, not "nothing found": it stays in `inbox/` (still shown as queued)
+and retries on each poll, going to `inbox/failed` after 3 days.
+
 ### `sync_request`
 Ask jerry to pull an external source now. Results arrive as PROPOSALS on the
 Proposed tab — a sync never writes the register directly (Goodreads burned it
