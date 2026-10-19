@@ -506,6 +506,32 @@ async function main(){
     res(name,ok,`Log section ${vis('log')||'(unset)'}, Reading section ${vis('reading')||'(unset)'}`);
     await go('tbr','reading');
   });
+  await check('Focus Series cards count only their own series, every year',async()=>{
+    // John, 2026-10-19: Die showed 6 read of 14 — the cards took in every
+    // row whose title merely contained the name. A card adds up Com's rows
+    // whose series name or universe IS the focus name; checked under Both,
+    // where Shereen's rows are on the page too.
+    const name='Focus Series cards count only their own series, every year';
+    const was=doc().querySelector('#owner-filter button.active')?.dataset.o||'all';
+    w().setOwner('all');w().setReader('butthead');await go('thisyear','reading');
+    const nl=t=>(t||'').toLowerCase().replace(/×/g,'x').replace(/^\s*(the|a|an)\s+/,'').replace(/[^a-z0-9]/g,'');
+    const num=v=>parseInt(v,10)||0;
+    const ser=(tget('Butthead Series')||[]).slice(1).filter(r=>(r[0]||'').trim()&&(r[1]||'').trim()&&num(r[2])>0&&(r[9]||'butthead').trim()==='butthead');
+    const want=sn=>{const k=nl(sn),rows=ser.filter(r=>nl(r[1])===k||nl(r[8])===k);return{rows:rows.length,read:rows.reduce((s,r)=>s+num(r[3]),0),size:rows.reduce((s,r)=>s+num(r[2]),0)};};
+    const bad=[];let cards=0;
+    const look=(where,sel)=>doc().querySelectorAll(sel+' .cb').forEach(c=>{
+      cards++;
+      const sn=c.querySelector('.cbt')?.textContent||'',st=c.querySelectorAll('strong'),e=want(sn);
+      const read=st[0]?norm(st[0].textContent):null,size=st[1]?norm(st[1].textContent):null;
+      if(e.rows?(read!==e.read||size!==e.size):read!==null)bad.push(`${where} ${sn}: card ${read}/${size}, register ${e.read}/${e.size}`);
+    });
+    const years=[...doc().querySelectorAll('#year-tog button[data-y]')].map(b=>+b.dataset.y);
+    for(const y of years){w().renderThisYear(y);look(y,'#focus-series');}
+    w().renderThisYear(new Date().getFullYear());
+    await go('overview','tracking');look('Overview','#ov-focus');
+    res(name,cards>0&&bad.length===0,`${cards} card(s) across ${years.length} year(s) and the Overview${bad.length?'; '+bad.slice(0,6).join('; '):''}`);
+    w().setOwner(was);
+  });
   await check('TBR: a queued book on the currently-reading shelf shows under Reading now only',async()=>{
     const name='TBR: a queued book on the currently-reading shelf shows under Reading now only';
     w().setOwner('butthead');await go('tbr','reading');

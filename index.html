@@ -1510,6 +1510,14 @@ function ownedFormatBar(){
     <div class="fmt-bar">${seg.map(([l,v,c])=>v?`<span style="width:${(100*v/books.length).toFixed(2)}%;background:${c}" title="${l} ${fmt(v)}"></span>`:'').join('')}</div>
     <div class="leg">${seg.map(([l,v,c])=>`<div class="li"><div class="ld" style="background:${c}"></div>${l} ${fmt(v)}</div>`).join('')}</div></div>`;
 }
+// A Focus Series card adds up Com's register rows whose series name or
+// universe IS the focus name, the TBR's focus rule. The old substring match
+// took in every row whose title merely contained the name, so Die showed 6
+// read of 14 and Narnia 7 of 20 (John, 2026-10-19).
+function focusSeriesRows(sn){
+  const nl=t=>(t||'').toLowerCase().replace(/×/g,'x').replace(/^\s*(the|a|an)\s+/,'').replace(/[^a-z0-9]/g,''),k=nl(sn);
+  return(G.bookRows||[]).filter(r=>(r.owner||'butthead')==='butthead'&&(nl(r.title)===k||nl(r.universe)===k));
+}
 function renderOverview(bm,yd2026){
   const pg=pageStatsFor();
   document.getElementById('ov-m').innerHTML=mH(fmt(bm.tracked),'Total tracked')+mH(fmt(bm.read),'Total read',pct(bm.read,bm.tracked)+' of tracked','t')+mH(fmt(bm.owned),'Total owned',bm.audio?fmt(bm.audio)+' with an audio copy':'')+mH(fmt(bm.shelf),'On shelf','owned unread','c')+mH(fmt(bm.needBuy),'Need to buy')+mH(fmt(bm.readNotOwned),'Read not owned','delta where read > owned')+mH(fmt(pg.ownedPages),'Pages owned',`${fmt(pg.ownedWith)} of ${fmt(pg.ownedBooks)} books w/ data`)+mH(fmt(pg.readPages),'Pages read',`all-time · ${fmt(pg.readWith)} of ${fmt(pg.readBooks)} w/ data`,'t');
@@ -1532,11 +1540,7 @@ function renderOverview(bm,yd2026){
   const fsEl=document.getElementById('ov-focus');
   if(focus.length&&G.bookRows){
     fsEl.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem;margin-bottom:1.5rem">'+focus.map(sn=>{
-      const sl=sn.toLowerCase();
-      const matchRows=G.bookRows.filter(r=>{
-        const ul=(r.universe||'').toLowerCase(),tl=r.title.toLowerCase();
-        return ul===sl||tl.includes(sl)||sl.includes(tl.split(' ').slice(0,2).join(' '));
-      });
+      const matchRows=focusSeriesRows(sn);
       if(!matchRows.length)return`<div class="cb" style="margin:0"><div class="cbt">${sn}</div><div class="ms">—</div></div>`;
       const totalCount=matchRows.reduce((s,r)=>s+r.count,0);
       const totalRead=matchRows.reduce((s,r)=>s+r.read,0);
@@ -2757,11 +2761,7 @@ function renderThisYear(year){
   const fsEl=document.getElementById('focus-series');
   if(focus.length&&G.bookRows){
     fsEl.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:1rem;margin-bottom:1.5rem">'+focus.map(sn=>{
-      const sl=sn.toLowerCase();
-      const matchRows=G.bookRows.filter(r=>{
-        const ul=(r.universe||'').toLowerCase(),tl=r.title.toLowerCase();
-        return ul===sl||tl.includes(sl)||sl.includes(tl.split(' ').slice(0,2).join(' '));
-      });
+      const matchRows=focusSeriesRows(sn);
       if(!matchRows.length)return`<div class="cb" style="margin:0"><div class="cbt">${sn}</div><div class="ms">Not found in library</div></div>`;
       const totalCount=matchRows.reduce((s,r)=>s+r.count,0);
       const totalRead=matchRows.reduce((s,r)=>s+r.read,0);
