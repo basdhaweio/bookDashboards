@@ -1,14 +1,22 @@
 {
- "generated_at": "2026-10-19T18:58:32+00:00",
+ "generated_at": "2026-10-19T19:10:47+00:00",
  "owner": "butthead",
  "site": "https://basdhaweio.github.io/bookDashboards/",
  "reading_now": [
   {
-   "title": "怪獣8号 15 [Kaijū 8-gō 15]",
+   "title": "Other Worlds Than These (The Talisman, #3)",
+   "author": "Stephen  King",
+   "since": "2026-10-19",
+   "cover": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1781173110l/247593404._SY475_.jpg",
+   "register": "Other Worlds Than These",
+   "series": "Jack Sawyer"
+  },
+  {
+   "title": "怪獣8号 16 [Kaijū 8-gō 16]",
    "author": "Naoya Matsumoto",
    "since": "2026-10-19",
-   "cover": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1740752088l/223747752._SY475_.jpg",
-   "register": "Kaiju No 8 Vol 15",
+   "cover": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1756880457l/239037281._SY475_.jpg",
+   "register": "Kaiju No 8 Vol 16",
    "series": "Kaiju No 8"
   },
   {
@@ -226,12 +234,12 @@
  },
  "year": {
   "year": 2026,
-  "read": 58,
+  "read": 59,
   "target": 155,
   "pace": 124,
   "last_year_by_now": 121,
   "last_year_total": 154,
-  "this_month": 4,
+  "this_month": 5,
   "bought": 180
  },
  "proposals": {
