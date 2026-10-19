@@ -300,6 +300,15 @@ no day — and the Goodreads spelling becomes a title alias. Ambiguous or
 unknown titles still propose (`add_book_from_inbox`); a collection on the
 copies layer is left for hand review. Before this the sync matched by exact
 title only and skipped undated items, so finishes never reached This Year.
+
+Numbered volumes (2026-10-19, Kaiju No 8 Vol 15 arrived on Reading now as
+"怪獣8号 15 [Kaijū 8-gō 15]" and showed as not in the register): the
+matcher's last rung reads the volume number. When other volumes of a series
+were already linked under the same spelling ("怪獣8号 12 …" is an alias of
+Kaiju No 8 Vol 12), the shelf title's number is swapped into that register
+title shape and looked up in the same series. The siblings must agree on
+one shape and exactly one book must carry the result, or nothing matches.
+That linked Kaiju No 8 Vol 16 and Spy x Family Vol 16 on the to-read shelf.
 ```json
 {"source": "goodreads"}
 ```

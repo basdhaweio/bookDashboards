@@ -495,6 +495,17 @@ async function main(){
     const bad=groups.map(g=>{const w=g.getBoundingClientRect().width,n=Math.round((w+gap)/(colW+gap)),want=n*colW+(n-1)*gap;return{w,n,off:Math.abs(w-want)};}).filter(x=>x.off>2);
     res(name,bad.length===0,`${groups.length} box(es) against ${colW.toFixed(0)}px columns${bad.length?'; off: '+bad.map(x=>x.w.toFixed(0)+'px vs '+x.n+' col').join(', '):''}`);
   });
+  await check('a jump into another section shows it (Reading › Add it opens Log › Books)',async()=>{
+    // John, 2026-10-19: "Add it" on Reading now did nothing — the Books form
+    // filled in while the Log section stayed hidden
+    const name='a jump into another section shows it (Reading › Add it opens Log › Books)';
+    await go('tbr','reading');
+    w().switchTab('logbook','log');          // what prefillAdd / Track book / the gap tracker call
+    const vis=s=>(doc().getElementById('sec-'+s)||{style:{}}).style.display;
+    const ok=vis('log')==='block'&&vis('reading')==='none'&&doc().getElementById('tab-logbook').classList.contains('active');
+    res(name,ok,`Log section ${vis('log')||'(unset)'}, Reading section ${vis('reading')||'(unset)'}`);
+    await go('tbr','reading');
+  });
   await check('TBR: a queued book on the currently-reading shelf shows under Reading now only',async()=>{
     const name='TBR: a queued book on the currently-reading shelf shows under Reading now only';
     w().setOwner('butthead');await go('tbr','reading');

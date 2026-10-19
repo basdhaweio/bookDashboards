@@ -3625,6 +3625,11 @@ function switchSection(sec,tab){
 
 function switchTab(id,sec,fromSection){
   sec=sec||curSec;
+  // A jump into ANOTHER section (Reading's "＋ Add it" opening Log › Books,
+  // Awards' Track book, the TBR gap tracker) must show that section too:
+  // on its own this only toggles panels inside the section, so the form
+  // opened out of sight and the button seemed dead (John, 2026-10-19).
+  if(!fromSection&&sec!==curSec){switchSection(sec,id);return;}
   const secEl=document.getElementById('sec-'+sec);if(!secEl)return;
   secEl.querySelectorAll('.tab-nav button').forEach(b=>{const oc=b.getAttribute('onclick');if(oc)b.classList.toggle('active',oc.includes("'"+id+"'"));});
   secEl.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='tab-'+id));
