@@ -1,15 +1,15 @@
 {
- "generated_at": "2026-10-19T18:08:31+00:00",
+ "generated_at": "2026-10-19T18:32:54+00:00",
  "owner": "butthead",
  "site": "https://basdhaweio.github.io/bookDashboards/",
  "reading_now": [
   {
-   "title": "Dungeon Crawler Carl, Vol. 2 (Graphic Novel)",
-   "author": "Matt Dinniman",
+   "title": "怪獣8号 15 [Kaijū 8-gō 15]",
+   "author": "Naoya Matsumoto",
    "since": "2026-10-19",
-   "cover": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1791316600l/251493538.jpg",
-   "register": "Dungeon Crawler Carl, Vol. 2",
-   "series": "Dungeon Crawler Carl"
+   "cover": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1740752088l/223747752._SY475_.jpg",
+   "register": "",
+   "series": ""
   },
   {
    "title": "Die, Vol. 3: The Great Game",
@@ -226,12 +226,12 @@
  },
  "year": {
   "year": 2026,
-  "read": 57,
+  "read": 58,
   "target": 155,
   "pace": 124,
   "last_year_by_now": 121,
   "last_year_total": 154,
-  "this_month": 3,
+  "this_month": 4,
   "bought": 181
  },
  "proposals": {
