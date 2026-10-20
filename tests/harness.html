@@ -547,7 +547,7 @@ async function main(){
     let cardOk=false,pasteOk=false;
     try{
       G.proposals=(keep||[]).concat([{id:-77,kind:'track_series_miss',target:'Test Missing Qq',recommend:'review',
-        proposal:JSON.stringify({author:'',owner:'butthead',series:'Test Missing Qq'}),note:'Track series found no books for it.'}]);
+        proposal:JSON.stringify({author:'Jordan Smith',owner:'butthead',series:'Test Missing Qq'}),note:'Track series found no books for it.'}]);  // the failed search's author: the pasted page's "by" replaces it
       L.renderProposed();
       const card=doc().querySelector('[data-miss="-77"]'),btns=card?[...card.querySelectorAll('button')].map(b=>b.textContent.trim()):[];
       cardOk=!!card&&/Nothing found: Test Missing Qq/.test(card.textContent)&&btns.includes('Paste titles')&&btns.includes('Dismiss')&&!btns.includes('Add');

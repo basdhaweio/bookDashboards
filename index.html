@@ -6694,7 +6694,7 @@ const LOG=(()=>{
     if(el.classList.contains('open')){el.classList.remove('open');return;}
     document.querySelectorAll('.log-exp.open').forEach(e=>e.classList.remove('open'));
     el.innerHTML=`<div class="log-frow"><label>Series</label><input id="log-ms-series-${id}" value="${esc(j.series||p.target)}"></div>
-      <div class="log-frow"><label>Author</label><input id="log-ms-author-${id}" value="${esc(j.author||'')}" placeholder="filled in from a pasted Goodreads page"></div>
+      <div class="log-frow"><label>Author</label><input id="log-ms-author-${id}" value="${esc(j.author||'')}" data-orig="${esc(j.author||'')}" placeholder="filled in from a pasted Goodreads page"></div>
       <div class="log-frow"><label>Titles</label><textarea id="log-ms-paste-${id}" rows="6" placeholder="a whole Goodreads series page (select all, copy, paste)&#10;— or one per line: Harbinger of Justice #1" style="flex:1;font:inherit" oninput="LOG.missPreview(${id})"></textarea></div>
       <div class="ms" id="log-ms-prev-${id}" style="margin:6px 0">Nothing pasted yet.</div>
       <button class="log-act primary" id="log-ms-queue-${id}" onclick="LOG.doMissQueue(${id})" disabled>Queue these</button>
@@ -6736,8 +6736,10 @@ const LOG=(()=>{
   }
   function missPreview(id){
     const r=parseSeriesPaste((document.getElementById('log-ms-paste-'+id)||{}).value);
+    // a pasted page's "by" line beats the author the failed search carried,
+    // never one typed here
     const a=document.getElementById('log-ms-author-'+id);
-    if(r.author&&a&&!a.value.trim())a.value=r.author;
+    if(r.author&&a&&(!a.value.trim()||a.value===a.dataset.orig)){a.value=r.author;a.dataset.orig=r.author;}
     const pv=document.getElementById('log-ms-prev-'+id),btn=document.getElementById('log-ms-queue-'+id);
     if(pv)pv.innerHTML=r.books.length?`${r.books.length} book${r.books.length>1?'s':''}: `+r.books.map(b=>esc((b.seq?'#'+b.seq+' ':'')+b.title)).join(' · '):'Nothing recognised yet.';
     if(btn){btn.disabled=!r.books.length;btn.textContent=r.books.length?`Queue these ${r.books.length}`:'Queue these';}
