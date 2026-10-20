@@ -532,6 +532,34 @@ async function main(){
     res(name,cards>0&&bad.length===0,`${cards} card(s) across ${years.length} year(s) and the Overview${bad.length?'; '+bad.slice(0,6).join('; '):''}`);
     w().setOwner(was);
   });
+  await check('Track series: a miss shows a card that takes a pasted list',async()=>{
+    // John, 2026-10-20: "nothing seems to come up in proposed" — a search that
+    // found nothing left no trace on the dashboard. Now a track_series_miss
+    // card says so and takes a pasted list (a copied Goodreads series page).
+    const name='Track series: a miss shows a card that takes a pasted list';
+    const L=w().eval('LOG'),G=w().eval('G'),keep=G.proposals;
+    const gr=L.parseSeriesPaste('Shadowbinders Series\n3 primary works • 5 total works\nBOOK 0.5\nSilence Is Silver\nby Andrew Watson\n4.31 · 159 Ratings · 81 Reviews · 2 editions\nWant to Read\nShelving menu\nRate it:\nBOOK 1\nHarbinger of Justice\nby Andrew Watson\nBOOK 1.5\nTomb of Tomes\nby Andrew Watson\nBOOK 2\nThe Black Mantle\nby Andrew Watson\nBOOK 3\nStorm of Shadows\nby Andrew Watson\n0.00 · 1 edition');
+    const grGot=gr.books.map(b=>b.seq+' '+b.title).join(' | ');
+    const grOk=gr.author==='Andrew Watson'&&grGot==='0.5 Silence Is Silver | 1 Harbinger of Justice | 1.5 Tomb of Tomes | 2 The Black Mantle | 3 Storm of Shadows';
+    const pl=L.parseSeriesPaste('Harbinger of Justice #1\nThe Black Mantle (Shadowbinders, #2)\n3. Storm of Shadows\nBook 4: A Fourth One\n2001: A Space Odyssey\nby Someone\nSilence Is Silver');
+    const plGot=pl.books.map(b=>(b.seq||'-')+' '+b.title).join(' | ');
+    const plOk=pl.author==='Someone'&&plGot==='1 Harbinger of Justice | 2 The Black Mantle | 3 Storm of Shadows | 4 A Fourth One | - 2001: A Space Odyssey | - Silence Is Silver';
+    let cardOk=false,pasteOk=false;
+    try{
+      G.proposals=(keep||[]).concat([{id:-77,kind:'track_series_miss',target:'Test Missing Qq',recommend:'review',
+        proposal:JSON.stringify({author:'',owner:'butthead',series:'Test Missing Qq'}),note:'Track series found no books for it.'}]);
+      L.renderProposed();
+      const card=doc().querySelector('[data-miss="-77"]'),btns=card?[...card.querySelectorAll('button')].map(b=>b.textContent.trim()):[];
+      cardOk=!!card&&/Nothing found: Test Missing Qq/.test(card.textContent)&&btns.includes('Paste titles')&&btns.includes('Dismiss')&&!btns.includes('Add');
+      if(card){
+        L.missOpen(-77);
+        const ta=doc().getElementById('log-ms-paste--77');
+        if(ta){ta.value='BOOK 1\nHarbinger of Justice\nby Andrew Watson\nBOOK 2\nThe Black Mantle\nby Andrew Watson';L.missPreview(-77);}
+        pasteOk=(doc().getElementById('log-ms-queue--77')||{}).textContent==='Queue these 2'&&(doc().getElementById('log-ms-author--77')||{}).value==='Andrew Watson';
+      }
+    }finally{G.proposals=keep;L.renderProposed();}
+    res(name,grOk&&plOk&&cardOk&&pasteOk,`Goodreads page: ${grOk?'ok':grGot+' / '+gr.author}; plain lines: ${plOk?'ok':plGot+' / '+pl.author}; card ${cardOk?'ok':'missing or wrong buttons'}; paste preview ${pasteOk?'ok':'wrong'}`);
+  });
   await check('TBR: a queued book on the currently-reading shelf shows under Reading now only',async()=>{
     const name='TBR: a queued book on the currently-reading shelf shows under Reading now only';
     w().setOwner('butthead');await go('tbr','reading');

@@ -287,6 +287,45 @@ Books sweep comes back empty with any failed lookup, the event is an
 outage, not "nothing found": it stays in `inbox/` (still shown as queued)
 and retries on each poll, going to `inbox/failed` after 3 days.
 
+2026-10-20 (John: "I've searched a couple track series today but nothing
+seems to come up in proposed" — both had found nothing, and a miss only
+reached jerry's log):
+- **A miss opens a card.** A search that finds nothing opens a
+  `track_series_miss` proposal (target = the series; payload
+  `{"series", "author", "owner"}`) that the Proposed tab shows as
+  "🔍 Nothing found" with **Paste titles** and **Dismiss** (a Drop). One
+  card per series + author: a replay or a repeat search refreshes it. An
+  outage that outlasts the 3 days opens the same card on its way to
+  `inbox/failed`. Before any miss, jerry asks Google Books for a book it
+  always has (The Hobbit's ISBN): Google answered empty 200s that day, and
+  an empty answer during an outage must retry, not report a miss.
+- **No author → jerry finds one.** With `author` blank and no Wikidata
+  roster, the author is the one at least two-thirds of the Google Books
+  listings naming the series agree on, and the sweep runs with it (the
+  proposals' note says so). The Track form asks before sending a blank
+  author. A generic tail is ignored when matching listings
+  ("Shadowbinder's Trilogy" names "The Shadowbinders").
+- **Pasted titles.** On a miss card John pastes a list (a whole copied
+  Goodreads series page, or one title per line with an optional number);
+  the dashboard parses and previews it, then sends
+  ```json
+  {"series": "Shadowbinders", "author": "Andrew Watson", "miss_id": 6301,
+   "titles": [{"title": "Silence Is Silver", "seq": "0.5"},
+              {"title": "Harbinger of Justice", "seq": "1"}]}
+  ```
+  `titles` is the roster itself (no lookup; up to 60; `seq` a number or
+  blank). **Search again** sends just `series`/`author`/`miss_id`.
+  `miss_id` names the card the event answers: it is closed (approved=false,
+  an ANSWERED note) once the event proposes something, so the archive takes
+  it off the Proposed tab.
+- **Novellas shelve as they are proposed** (jerry-bookdb docs/SHELVING.md):
+  a decimal number (#0.5, #1.5) or a listing calling itself a novella or
+  short story goes to the sibling `<series> Novellas` / `<series> Short
+  Stories` (or the series' existing sibling, historic names included) and
+  keeps its decimal; a lone side book with no sibling yet stays in the main
+  series. The note says which, and ✎ moves one back if it is an official
+  installment.
+
 ### `sync_request`
 Ask jerry to pull an external source now. Results arrive as PROPOSALS on the
 Proposed tab — a sync never writes the register directly (Goodreads burned it
