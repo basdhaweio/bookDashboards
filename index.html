@@ -846,8 +846,8 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div class="tw"><table><thead><tr><th>Title / Series</th><th>Author</th><th>Type</th><th>Genre</th><th class="nr">Count</th><th>Universe</th></tr></thead><tbody id="acq-body"></tbody></table></div>
       <div class="sl" style="margin-top:2rem">Partially owned — in progress, more to buy</div>
       <div class="tw"><table><thead><tr><th>Title / Series</th><th>Author</th><th>Type</th><th>Genre</th><th class="nr">Owned</th><th class="nr">Count</th><th class="nr">Gap</th></tr></thead><tbody id="partial-body"></tbody></table></div>
-      <div class="sl" style="margin-top:2rem">Read but not owned — digital or borrowed</div>
-      <div class="tw"><table><thead><tr><th>Title / Series</th><th>Author</th><th>Type</th><th>Genre</th><th class="nr">Read</th><th class="nr">Owned</th><th class="nr">Gap</th></tr></thead><tbody id="unowned-body"></tbody></table></div>
+      <div class="sl" style="margin-top:2rem">Read but not owned — book by book</div>
+      <div id="acq-rno"></div>
     </div>
     <div class="panel active" id="tab-libgrowth">
       <div class="sl">Library size over time</div>
@@ -3695,6 +3695,14 @@ function renderToAcquire(bookRows,interested){
   const unstarted=bookRows.filter(r=>r.owned===0&&r.read===0&&r.count>0).sort((a,b)=>b.count-a.count);
   const readNotOwned=bookRows.filter(r=>r.read>0&&r.owned<r.read).sort((a,b)=>(b.read-b.owned)-(a.read-a.owned));
   const readNotOwnedSet=new Set(readNotOwned.map(r=>r.title));
+  const rnoKey=t=>(t||'').toLowerCase().replace(/^\s*(the|a|an)\s+/,'').replace(/[^a-z0-9]/g,'');
+  const ownedBy={};(G.allIndBooks||[]).forEach(b=>{if(b.owned)(ownedBy[rnoKey(b.title)]=ownedBy[rnoKey(b.title)]||new Set()).add(b.owner||'butthead');});
+  const inHouse=b=>[...(ownedBy[rnoKey(b.title)]||[])].some(o=>o!==(b.owner||'butthead'));
+  const rnoSeq=b=>{const v=parseFloat(b.seq);return isNaN(v)?0:v;};
+  const rnoSort=(a,b)=>{const sa=a.series&&a.series!=='Standalones'?a.series:'\uffff',sb=b.series&&b.series!=='Standalones'?b.series:'\uffff';return sa.localeCompare(sb)||rnoSeq(a)-rnoSeq(b)||a.title.localeCompare(b.title);};
+  const rnoAll=(G.indBooks||[]).filter(b=>b.read&&!b.owned);
+  const rnoGroups=(OWNER==='all'?['butthead','goblin']:[OWNER]).map(o=>{const mine=rnoAll.filter(b=>(b.owner||'butthead')===o);return{o,books:mine.filter(b=>!inHouse(b)).sort(rnoSort),house:mine.filter(inHouse)};});
+  const rnoBooks=rnoGroups.flatMap(g=>g.books);
   const partial=bookRows.filter(r=>r.owned>0&&r.owned<r.count&&!readNotOwnedSet.has(r.title)).sort((a,b)=>(b.count-b.owned)-(a.count-a.owned));
 
   // Compute total need-to-buy gap across all series (matches Tracking)
@@ -3710,7 +3718,7 @@ function renderToAcquire(bookRows,interested){
     mH(fmt(totalGap),'Total need to buy','books across all series','c')+
     mH(unstarted.length,'Unstarted series')+
     mH(partial.length,'Partially owned')+
-    mH(readNotOwned.length,'Read but not owned');
+    mH(rnoBooks.length,'Read but not owned','books, one copy in the house enough');
 
   // Reconciliation bar
   const segs=[
@@ -3730,7 +3738,18 @@ function renderToAcquire(bookRows,interested){
 
   document.getElementById('acq-body').innerHTML=unstarted.map(r=>`<tr><td>${r.title}</td><td>${r.author}</td><td>${r.type}</td><td>${r.genre||'—'}</td><td class="nr">${r.count}</td><td>${r.universe||'—'}</td></tr>`).join('');
   document.getElementById('partial-body').innerHTML=partial.map(r=>`<tr><td>${r.title}</td><td>${r.author}</td><td>${r.type}</td><td>${r.genre||'—'}</td><td class="nr">${r.owned}</td><td class="nr">${r.count}</td><td class="nr" style="color:var(--coral)">${r.count-r.owned}</td></tr>`).join('');
-  document.getElementById('unowned-body').innerHTML=readNotOwned.map(r=>`<tr><td>${r.title}</td><td>${r.author}</td><td>${r.type}</td><td>${r.genre||'—'}</td><td class="nr" style="color:var(--teal)">${r.read}</td><td class="nr">${r.owned}</td><td class="nr" style="color:var(--coral)">${r.read-r.owned}</td></tr>`).join('');
+  // The book-by-book list (John, 2026-10-24, in a bookstore: "the list is
+  // very wrong" — it listed SERIES, both readers' mixed together with nothing
+  // saying whose). Each reader's books read and not owned, grouped by reader;
+  // a book the other reader owns is left out (one copy in the house is
+  // enough), counted underneath.
+  const rnoHtml=rnoGroups.map(g=>{
+    const head=rnoGroups.length>1?`<div class="sl" style="margin:1rem 0 .4rem;font-size:10px">${esc(OWNER_LABEL[g.o]||g.o)} · ${g.books.length}</div>`:'';
+    const rows=g.books.map(b=>`<tr><td>${esc(b.title)}</td><td>${b.series&&b.series!=='Standalones'?esc(b.series)+(b.seq?' #'+esc(b.seq):''):'<span class="ms">—</span>'}</td><td>${esc(b.author||'')}</td><td>${esc(b.media||'')}</td><td class="nr">${esc((b.readOn||'').slice(0,4))}</td></tr>`).join('');
+    return head+(g.books.length?`<div class="tw"><table><thead><tr><th>Title</th><th>Series</th><th>Author</th><th>Media</th><th class="nr">Read</th></tr></thead><tbody>${rows}</tbody></table></div>`:'<div class="ms">Nothing.</div>')
+      +(g.house.length?`<div class="ms" style="margin-top:4px">Also read, and already in the house (${esc(OWNER_LABEL[g.o==='goblin'?'butthead':'goblin'])} owns it): ${g.house.map(b=>esc(b.title)).join(' · ')}</div>`:'');
+  }).join('');
+  document.getElementById('acq-rno').innerHTML=rnoHtml;
 }
 
 function renderSomeday(interested){
