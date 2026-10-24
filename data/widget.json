@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-10-24T07:51:47+00:00",
+ "generated_at": "2026-10-24T15:16:34+00:00",
  "owner": "butthead",
  "site": "https://basdhaweio.github.io/bookDashboards/",
  "reading_now": [
@@ -148,8 +148,18 @@
  ],
  "orders": {
   "open": 41,
-  "shipped": 0,
+  "shipped": 1,
   "lines": [
+   {
+    "id": 93,
+    "order_id": 72,
+    "title": "Subscription credit",
+    "store": "The Broken Binding",
+    "status": "shipped",
+    "eta": "",
+    "tracking": "LT522258081GB",
+    "ordered": "September 5, 2026"
+   },
    {
     "id": 569,
     "order_id": 558,
@@ -219,16 +229,6 @@
     "eta": "2026-11-10",
     "tracking": "",
     "ordered": "2026-09-29"
-   },
-   {
-    "id": 251,
-    "order_id": 471,
-    "title": "The Blade That Remains",
-    "store": "Tombolo",
-    "status": "ordered",
-    "eta": "2027-04-06",
-    "tracking": "",
-    "ordered": "2026-09-30"
    }
   ]
  },
