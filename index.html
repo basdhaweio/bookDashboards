@@ -212,6 +212,7 @@ button.tbr-link{background:none;border:none;padding:0;font:inherit;font-weight:i
 .sec-nav button:hover{color:var(--text2);}
 .sec-nav button.active{color:var(--gold);border-bottom-color:var(--gold2);}
 .sec-nav button.bc-btn{margin-left:auto;color:#b5502f;}
+.nav-home-ic{display:none;}
 .tab-nav{position:sticky;top:var(--hdr-h,48px);z-index:60;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;padding:0 3rem;overflow-x:auto;}
 .tab-nav button{font-family:var(--font-m);font-size:11px;letter-spacing:0.07em;text-transform:uppercase;padding:0.7rem 1.1rem;background:none;border:none;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;transition:all 0.15s;}
 .tab-nav button:hover{color:var(--text2);}
@@ -410,6 +411,10 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
   .sec-nav button.active{border-top-color:var(--gold2);}
   .sec-nav button.bc-btn{margin-left:0;}
   .sec-nav .bc-x{display:none;}
+  /* seven tabs on a phone: Home is its icon and the tabs size to their labels (2026-10-24) */
+  .sec-nav button{flex:1 1 auto;}
+  .sec-nav .nav-home-ic{display:inline;font-size:1.05rem;line-height:1;}
+  .sec-nav .nav-home-lbl{display:none;}
   .tab-nav{padding:0 0.75rem;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-wrap:nowrap;position:sticky;top:var(--hdr-h,44px);}
   .tab-nav::-webkit-scrollbar{display:none;}
   .tab-nav::after{content:'';position:sticky;right:0;flex:none;width:34px;margin-left:-34px;background:linear-gradient(90deg,rgba(0,0,0,0),var(--bg3) 70%);pointer-events:none;}
@@ -505,13 +510,54 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
   .bc-total{margin-left:0;}
   .bc-return{width:calc(100% - 2rem);padding:14px 20px;}
 }
+/* ── Home (2026-10-24): the app's front page, the whole house ── */
+.home-date{font-family:var(--font-d);font-size:1.45rem;color:var(--text);margin:0 0 .8rem}
+.home-chips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 1rem}
+.home-chip{font-family:var(--font-m);font-size:11px;padding:6px 11px;border-radius:16px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);cursor:pointer}
+.home-chip.warn{border-color:#e3b2a8;color:var(--coral);background:var(--coral-bg)}
+.home-acts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 1.6rem;max-width:520px}
+.home-act{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px;border:1px solid var(--border);border-radius:10px;background:var(--bg2);font-family:var(--font-m);font-size:10px;letter-spacing:.04em;color:var(--text2);cursor:pointer}
+.home-act span{font-size:18px;line-height:1}
+.home-sec{margin:0 0 1.8rem}
+.home-hd{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 0 .6rem}
+.home-hd .sl{margin:0}
+.home-more{font-family:var(--font-m);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);background:none;border:none;cursor:pointer;padding:4px 0;white-space:nowrap}
+.home-shelf,.home-dip{display:flex;overflow-x:auto;scrollbar-width:none}
+.home-shelf::-webkit-scrollbar,.home-dip::-webkit-scrollbar{display:none}
+.home-shelf{gap:12px;scroll-snap-type:x proximity;padding:2px 2px 10px}
+.home-book{flex:0 0 auto;width:104px;scroll-snap-align:start;cursor:pointer;background:none;border:none;padding:0;font:inherit;color:inherit;text-align:left}
+.home-cov{width:104px;height:156px;border-radius:5px;overflow:hidden;background:var(--bg3);box-shadow:var(--shadow);border-bottom:4px solid transparent;box-sizing:border-box}
+.home-cov img{width:100%;height:100%;object-fit:cover;display:block}
+.home-cov .ct{width:100%!important;height:100%!important;box-shadow:none;border-radius:0}
+.home-book.own-com .home-cov{border-bottom-color:var(--teal2)}
+.home-book.own-gob .home-cov{border-bottom-color:#8f80c0}
+.home-book.sel .home-cov{outline:2px solid var(--gold2);outline-offset:2px}
+.home-t{font-size:12px;line-height:1.25;margin-top:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.home-s{font-family:var(--font-m);font-size:10px;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-dip-hd{font-family:var(--font-m);font-size:10px;color:var(--text3);margin:2px 0 6px;letter-spacing:.04em}
+.home-dip{gap:8px;padding:2px 2px 6px}
+.home-dip .home-book{width:46px}
+.home-dip .home-cov{width:46px;height:69px;border-bottom-width:3px}
+.home-sheet{display:none;margin:4px 0 12px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg2)}
+.home-sheet.open{display:block}
+.home-row{display:flex;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--bg2);margin-bottom:8px}
+.home-row.own-com{background:var(--teal-bg);border-color:#9dcdc4}
+.home-row.own-gob{background:var(--purple-bg);border-color:#b8afd6}
+.home-row .ct{width:36px;height:54px}
+.home-row-i{flex:1;min-width:0}
+.home-row-t{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-row-s{font-family:var(--font-m);font-size:10px;color:var(--text3);margin-top:2px}
+.home-late{color:var(--coral)}
+.home-foot{font-family:var(--font-m);font-size:10px;color:var(--text3);margin:2px 0 0}
+.home-tag{display:inline-block;font-family:var(--font-m);font-size:9px;padding:1px 5px;border-radius:3px;margin-top:4px}
 </style>
 </head>
 <body>
 
 <header>
-  <div class="h-brand"><div class="h-title">The Library</div><div class="h-sub">Personal reading tracker · database edition</div></div>
+  <div class="h-brand"><div class="h-title" onclick="switchSection('home')" style="cursor:pointer" title="Home">The Library</div><div class="h-sub">Personal reading tracker · database edition</div></div>
   <div class="sec-nav">
+    <button onclick="switchSection('home')" aria-label="Home"><span class="nav-home-ic" aria-hidden="true">⌂</span><span class="nav-home-lbl">Home</span></button>
     <button class="active" onclick="switchSection('tracking')">Tracking</button>
     <button onclick="switchSection('reading')">Reading</button>
     <button onclick="switchSection('buying')">Buying</button>
@@ -535,6 +581,10 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
 
 <div id="dash">
   <!-- TRACKING -->
+  <div id="sec-home" style="display:none">
+    <div class="panel active" id="tab-home"><div id="home-body"></div></div>
+  </div>
+
   <div id="sec-tracking">
     <div class="tab-nav">
       <button class="active" onclick="switchTab('overview','tracking')">Overview</button>
@@ -3128,6 +3178,132 @@ function toggleAcc(aid){
 // the register and open orders (John, 2026-09-22: the sheet-only list was
 // missing releases and its Ordered column had gone stale). Months are
 // keyed by year; the last three months stay at the bottom as "Out now".
+// ── Home (John, 2026-10-24: "a home page of sorts … a slider/shelf for what
+// I'm reading, orders that should be arriving soon/this week, new
+// announcements … mostly for the app"; "whole house, both me and Shereen").
+// Reading now from both Goodreads shelves — each reader's newest always up
+// front, books started over four months ago in a small "dipping into" row;
+// orders due this week or already shipped (Book Mail ETAs, Shereen's box
+// ETAs and tracking); and Book Notification's announcements, newest digest
+// first. The header's reader toggle narrows it like any other tab.
+const HOME_DIP_DAYS=120;
+function homeDaysAgo(iso){
+  const m=(iso||'').match(/^(\d{4})-(\d{2})-(\d{2})/);if(!m)return null;
+  const t=LOG.today().split('-').map(Number);
+  return Math.round((Date.UTC(t[0],t[1]-1,t[2])-Date.UTC(+m[1],+m[2]-1,+m[3]))/864e5);
+}
+function homeDate(iso){
+  const m=(iso||'').match(/^(\d{4})-(\d{2})-(\d{2})/);if(!m)return iso||'';
+  return MONTHS[+m[2]-1].slice(0,3)+' '+(+m[3])+(m[1]!==LOG.today().slice(0,4)?', '+m[1]:'');
+}
+// The register's title when Goodreads matched one (怪獣8号 16 → Kaiju No 8
+// Vol 16), else Goodreads' own without its series tag.
+function homeTitle(r){return r.reg?r.reg.title:(r.title||'').replace(/\s*\[[^\]]*\]\s*$/,'').replace(/\s*\([^()]*#[\d.]+\)\s*$/,'').trim()||r.title;}
+function homeSeries(r){
+  const m=(r.title||'').match(/\(([^()]*?),?\s*#([\d.]+)\)\s*$/);
+  if(m)return m[1].replace(/^The\s+/,'')+' #'+m[2];
+  const b=r.reg;if(b&&b.series&&b.series!=='Standalones')return b.series+(b.seq?' #'+b.seq:'');
+  return r.author||'';
+}
+function renderHome(){
+  const el=document.getElementById('home-body');if(!el)return;
+  const owners=OWNER==='all'?['butthead','goblin']:[OWNER],both=owners.length>1;
+  const tint=o=>both?(o==='goblin'?' own-gob':' own-com'):'';
+  const who=o=>esc(OWNER_LABEL[o]||o);
+  const td=LOG.today(),lim=(()=>{const t=td.split('-').map(Number);return new Date(Date.UTC(t[0],t[1]-1,t[2]+7)).toISOString().slice(0,10);})();
+  const iso=v=>/^\d{4}-\d{2}-\d{2}$/.test(v||'');
+  const more=(label,sec,tab)=>`<button class="home-more" onclick="switchSection('${sec}','${tab}')">${label} ›</button>`;
+
+  // Reading now
+  const nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const reading=tbrReadingNow(nk,owners).sort((a,b)=>(b.added||'').localeCompare(a.added||''));
+  const newest={};reading.forEach(r=>{if(!newest[r.owner])newest[r.owner]=r;});
+  const dipping=r=>newest[r.owner]!==r&&(homeDaysAgo(r.added)||0)>HOME_DIP_DAYS;
+  G._homeReading=reading;
+  const pendRead=LOG.pendingBooks('finished');
+  const pk=b=>b.title+'|'+(!b.series||b.series==='Standalones'?'':b.series);
+  const cov=(r,w)=>`<div class="home-cov">${r.cover?`<img loading="lazy" alt="" referrerpolicy="no-referrer" src="${esc(r.cover)}">`:coverTile(homeTitle(r),r.owner,'',r.isbn13||null,w)}</div>`;
+  const card=(r,i)=>{const d=homeDaysAgo(r.added),done=r.reg&&pendRead.has(pk(r.reg));
+    return`<button class="home-book${tint(r.owner)}" data-i="${i}" onclick="homeOpenBook(${i})" title="${esc(homeTitle(r))}">${cov(r,104)}<div class="home-t">${esc(homeTitle(r))}</div><div class="home-s">${esc(homeSeries(r))}</div><div class="home-s">${done?'✓ finished · pending':d==null?'':d===0?'started today':'day '+(d+1)}${both?' · '+who(r.owner):''}</div></button>`;};
+  // each reader's newest leads, so the whole house shows before the scroll
+  const act=reading.map((r,i)=>[r,i]).filter(([r])=>!dipping(r)).sort(([a],[b])=>(newest[b.owner]===b)-(newest[a.owner]===a)),dip=reading.map((r,i)=>[r,i]).filter(([r])=>dipping(r));
+  const readingHtml=`<div class="home-sec"><div class="home-hd"><div class="sl">Reading now</div>${more('TBR','reading','tbr')}</div>
+    ${reading.length?`<div class="home-shelf">${act.map(([r,i])=>card(r,i)).join('')}</div>
+    ${dip.length?`<div class="home-dip-hd">Dipping into · ${dip.length}</div><div class="home-dip">${dip.map(([r,i])=>`<button class="home-book${tint(r.owner)}" data-i="${i}" onclick="homeOpenBook(${i})" title="${esc(homeTitle(r))} — since ${esc(homeDate(r.added))}">${cov(r,46)}</button>`).join('')}</div>`:''}
+    <div class="home-sheet" id="home-sheet"></div>`:'<div class="ms">Nothing on a currently-reading shelf.</div>'}</div>`;
+
+  // Arriving: dated for this week (late ones too), or shipped
+  const lines=owners.includes('butthead')?(G.orderLines||[]).filter(l=>l.status==='ordered'||l.status==='shipped'):[];
+  const boxes=owners.includes('goblin')?(G.boxes||[]).filter(x=>x.open):[];
+  const shipped=l=>l.status==='shipped'||!!l.shippedOn||!!l.tracking;
+  const due=[
+    ...lines.filter(l=>shipped(l)||(iso(l.eta)&&l.eta<=lim)).map(l=>({kind:'line',owner:'butthead',box:/^subscription/i.test(l.title||''),title:/^subscription/i.test(l.title||'')?(l.store||'Subscription')+' box':l.title||'(untitled line)',store:l.store,eta:l.eta,shipped:shipped(l),shippedOn:l.shippedOn,tracking:l.tracking,l})),
+    ...boxes.filter(x=>x.tracking||(iso(x.eta)&&x.eta<=lim)).map(x=>({kind:'box',owner:'goblin',box:!x.title,title:x.title||[x.vendor,x.box,'box'].filter(Boolean).join(' '),store:[x.vendor,x.box].filter(Boolean).join(' '),eta:x.eta,shipped:!!x.tracking,tracking:x.tracking}))
+  ].sort((a,b)=>(b.shipped-a.shipped)||(a.eta||'9999').localeCompare(b.eta||'9999'));
+  const later=[...lines.map(l=>({title:l.title,eta:l.eta})),...boxes.map(x=>({title:x.title||x.box,eta:x.eta}))].filter(x=>iso(x.eta)&&x.eta>lim).sort((a,b)=>a.eta.localeCompare(b.eta))[0];
+  const undated=lines.filter(l=>!shipped(l)&&!iso(l.eta)).length+boxes.filter(x=>!x.tracking&&!iso(x.eta)).length;
+  const lateN=due.filter(x=>!x.shipped&&x.eta<td).length;
+  const when=x=>{
+    if(x.shipped)return`shipped${x.shippedOn?' '+esc(homeDate(x.shippedOn)):''}${x.tracking?' · '+esc(x.tracking):''}`;
+    const d=homeDaysAgo(x.eta);
+    if(d>45)return`<span class="home-late">due ${esc(homeDate(x.eta))} — long overdue: arrived, or cancelled?</span>`;
+    if(d>0)return`<span class="home-late">due ${esc(homeDate(x.eta))} · ${d} day${d>1?'s':''} late</span>`;
+    return d===0?'due today':`due ${esc(homeDate(x.eta))}`;
+  };
+  const arriveBtn=x=>x.kind!=='line'?`<span class="home-foot">${who('goblin')}’s sheet</span>`
+    :LOG.lineArrivePending(x.l.id)?'<span class="badge b-teal">arrived · pending</span>'
+    :`<button class="log-act" onclick="LOG.homeArrive(${x.l.orderId},${x.l.id})">Arrived</button>`;
+  const arrivingHtml=`<div class="home-sec" id="home-arriving"><div class="home-hd"><div class="sl">Arriving this week</div>${more('Orders','log','logorders')}</div>
+    ${due.map(x=>`<div class="home-row${tint(x.owner)}">${x.box?'<div class="ct ct-ph" style="width:36px;height:54px"><span style="font-size:18px">📦</span></div>':coverTile(x.title,x.owner,'',null,36)}<div class="home-row-i"><div class="home-row-t">${esc(x.title)}</div><div class="home-row-s">${esc(x.store||'')}${x.store?' · ':''}${when(x)}</div></div>${arriveBtn(x)}</div>`).join('')||'<div class="ms" style="margin-bottom:6px">Nothing due this week.</div>'}
+    ${later?`<div class="home-foot">Next: ${esc(later.title||'')} · ${esc(homeDate(later.eta))}</div>`:''}
+    ${undated?`<div class="home-foot">${undated} more on order with no date yet</div>`:''}</div>`;
+
+  // Book Notification's announcements, newest digest first
+  const digestOf=t=>{const r=(G.bookClub||[]).find(b=>bcKey(b.title)===bcKey(t)),m=r&&(r.notes||'').match(/digest (\d{4}-\d{2}-\d{2})/);return m?m[1]:'';};
+  let bnItems=[];if(owners.includes('butthead')){try{bnItems=bcBuildItems();}catch(e){console.error('home news',e);}}   // Book Notification is Com's feed
+  const news=bnItems.filter(it=>it.src==='bn').map(it=>Object.assign(it,{digest:digestOf(it.title)}))
+    .sort((a,b)=>(b.digest||'').localeCompare(a.digest||'')||String(a.release||'').localeCompare(String(b.release||''))).slice(0,15);
+  G._homeNews=news;
+  const tag=it=>it.ordered==='Have'?'<span class="home-tag b-green">have it</span>':it.ordered==='Preordered'?'<span class="home-tag b-gold">ordered</span>':it.digest&&homeDaysAgo(it.digest)<=7?'<span class="home-tag b-coral">new</span>':'';
+  const rel=it=>{const r=String(it.release||'');if(!iso(r))return r?'out '+r:'date TBA';return r<=td?'out now':'out '+homeDate(r);};
+  const newsHtml=`<div class="home-sec"><div class="home-hd"><div class="sl">New from Book Notification</div>${more('Coming up','reading','comingup')}</div>
+    ${news.length?`<div class="home-shelf">${news.map(it=>`<div class="home-book" title="${esc(it.title)}${it.author?' — '+esc(it.author):''}"><div class="home-cov">${it.cover?`<img loading="lazy" alt="" referrerpolicy="no-referrer" src="${esc(it.cover)}">`:coverTile(it.title,'butthead','',it.isbn||null,104)}</div><div class="home-t">${esc(it.title)}</div><div class="home-s">${esc(it.series||it.author||'')}</div><div class="home-s">${esc(rel(it))}</div>${tag(it)}</div>`).join('')}</div>
+    ${news[0].digest?`<div class="home-foot">Latest digest ${esc(homeDate(news[0].digest))}</div>`:''}`:'<div class="ms">No Book Notification digests yet.</div>'}</div>`;
+
+  // What needs you, and the four things the app is opened for
+  const propN=(G.proposals||[]).length;
+  const chips=[propN?`<button class="home-chip" onclick="switchSection('log','logproposed')">${propN} proposal${propN>1?'s':''} to review</button>`:'',
+    lateN?`<button class="home-chip warn" onclick="document.getElementById('home-arriving').scrollIntoView({behavior:'smooth',block:'start'})">${lateN} order${lateN>1?'s':''} late</button>`:''].join('');
+  const day=new Date(td+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+  el.innerHTML=`<div class="home-date">${esc(day)}</div>
+    ${chips?`<div class="home-chips">${chips}</div>`:''}
+    <div class="home-acts"><button class="home-act" onclick="runHashAction('scan')"><span>📷</span>Scan</button><button class="home-act" onclick="runHashAction('add')"><span>＋</span>Add</button><button class="home-act" onclick="runHashAction('order')"><span>📦</span>Order</button><button class="home-act" onclick="homeTrack()"><span>🔍</span>Track</button></div>
+    ${both?'<div class="tbr-legend" style="margin-bottom:.8rem"><span><i style="background:var(--teal-bg);border-color:#9dcdc4"></i>Com</span><span><i style="background:var(--purple-bg);border-color:#b8afd6"></i>Shereen</span></div>':''}
+    ${readingHtml}${arrivingHtml}${newsHtml}`;
+}
+// Tap a cover: finish it right here, or go to its TBR card (collections and
+// books not yet in the register are handled there).
+function homeOpenBook(i){
+  const r=(G._homeReading||[])[i],el=document.getElementById('home-sheet');if(!r||!el)return;
+  document.querySelectorAll('.home-book.sel').forEach(b=>b.classList.remove('sel'));
+  if(el.classList.contains('open')&&el.dataset.i===String(i)){el.classList.remove('open');el.dataset.i='';return;}
+  document.querySelectorAll(`#home-body .home-book[data-i="${i}"]`).forEach(b=>b.classList.add('sel'));
+  el.dataset.i=String(i);
+  const d=homeDaysAgo(r.added),pk=b=>b.title+'|'+(!b.series||b.series==='Standalones'?'':b.series);
+  const done=r.reg&&LOG.pendingBooks('finished').has(pk(r.reg));
+  el.innerHTML=`<div class="home-row-t" style="white-space:normal"><b>${esc(homeTitle(r))}</b></div>
+    <div class="home-row-s" style="margin-bottom:8px">${esc(r.author||'')} · ${esc(OWNER_LABEL[r.owner]||r.owner)}${r.added?' · since '+esc(homeDate(r.added))+(d!=null?' (day '+(d+1)+')':''):''}</div>
+    ${done?'<span class="badge b-teal">✓ finished · pending</span>'
+      :r.reg?`<div class="log-frow"><label>Finished</label><input type="date" id="home-fin-date" value="${LOG.today()}"><button class="log-act primary" onclick="homeFinish(${i})">✓ Log it</button></div>`
+      :`<div class="ms" style="margin-bottom:6px">${r.works&&r.works.length?'A collection — its stories are ticked off on the TBR.':'Not in the register yet — add or link it from the TBR.'}</div>`}
+    <button class="log-act" onclick="switchSection('reading','tbr')">Open on the TBR ›</button>`;
+  el.classList.add('open');
+}
+async function homeFinish(i){
+  const r=(G._homeReading||[])[i],d=(document.getElementById('home-fin-date')||{}).value;if(!r||!r.reg||!d)return;
+  if(await LOG.finishBook(r.reg,d)){toast('Logged — “'+homeTitle(r)+'” leaves the shelf when jerry catches up');renderHome();}
+}
+function homeTrack(){switchSection('log','logbook');setTimeout(()=>{try{LOG.toggleTrack();}catch(e){}},60);}
 function renderComingUp(){
   const el=document.getElementById('upcoming-list'),cuc=document.getElementById('cu-covers');
   const now=new Date(),cy=now.getFullYear(),cm=now.getMonth()+1,todayIso=LOG.today();
@@ -3609,12 +3785,12 @@ function setOwner(o){
 }
 
 // Section → default tab mapping
-const SEC_DEFAULT={tracking:'overview',reading:'tbr',buying:'libgrowth',collecting:'col-fr',bookclub:'flyer',log:'logbook'};
+const SEC_DEFAULT={home:'home',tracking:'overview',reading:'tbr',buying:'libgrowth',collecting:'col-fr',bookclub:'flyer',log:'logbook'};
 
 function switchSection(sec,tab){
   curSec=sec;
   document.querySelectorAll('.sec-nav button').forEach(b=>{const oc=b.getAttribute('onclick');if(oc)b.classList.toggle('active',oc.includes("'"+sec+"'"));});
-  ['tracking','reading','buying','collecting','bookclub','log'].forEach(s=>{const el=document.getElementById('sec-'+s);if(el)el.style.display=s===sec?'block':'none';});
+  ['home','tracking','reading','buying','collecting','bookclub','log'].forEach(s=>{const el=document.getElementById('sec-'+s);if(el)el.style.display=s===sec?'block':'none';});
   const targetTab=tab||SEC_DEFAULT[sec];
   // Only the flyer itself hides the chrome; the section's other tabs keep
   // the header and nav so there is always a way back.
@@ -3637,7 +3813,7 @@ function switchTab(id,sec,fromSection){
   curTab=id;
   // Log tabs reflect live inbox state — always re-render on visit (no charts, cheap)
   if(!rendered.has(id)){renderTab(id);rendered.add(id);}
-  else if(id==='logbook'||id==='logorders'||id==='logpending'||id==='logproposed'||id==='logmeta'||id==='logsheet')renderTab(id);
+  else if(id==='home'||id==='logbook'||id==='logorders'||id==='logpending'||id==='logproposed'||id==='logmeta'||id==='logsheet')renderTab(id);
   if(!fromSection){curSec=sec;updateHash(sec,id);}
 }
 
@@ -3648,6 +3824,8 @@ function switchYear(y){tyYear=y;rendered.delete('thisyear');renderTab('thisyear'
 // replaced, never kept. popstate restores from the hash without pushing again.
 let navFromHistory=false;
 const LS_LAST_TAB='library-last-tab';
+const LS_LAST_AT='library-last-at',HOME_FRESH_MS=30*60e3;   // when the app was last on screen
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'){try{localStorage.setItem(LS_LAST_AT,String(Date.now()));}catch(e){}}});
 function updateHash(sec,tab){
   const target=`#${sec}/${tab}`;
   try{localStorage.setItem(LS_LAST_TAB,target);}catch(e){}   // "open back up to the page I was on" (John, 2026-10-01)
@@ -3671,6 +3849,7 @@ const HASH_ACTIONS={
   add:['log','logbook',()=>{const q=document.getElementById('log-q');if(q){q.focus();q.scrollIntoView({block:'center'});}}],
   order:['log','logorders',arg=>{if(arg&&/^\d+$/.test(arg))return LOG.openOrder(+arg);const f=document.getElementById('log-orderform');if(f)f.scrollIntoView({block:'start'});}],
   tbr:['reading','tbr',null],read:['reading','tbr',null],
+  home:['home','home',null],
   register:['tracking','register',arg=>{if(arg)openRegister(decodeURIComponent(arg));}],
 };
 function runHashAction(hash){
@@ -3683,11 +3862,17 @@ window.addEventListener('hashchange',()=>{const h=(location.hash||'').replace('#
 function restoreFromHash(){
   let hash=(location.hash||'').replace('#','');
   if(runHashAction(hash))return;
-  // No hash (the app icon, a bare bookmark): pick up where the last visit left off.
-  if(!hash){try{hash=(localStorage.getItem(LS_LAST_TAB)||'').replace('#','');}catch(e){}}
+  // No hash (the app icon, a bare bookmark): pick up where the last visit
+  // left off (John, 2026-10-01) — except that on a phone, opening the app
+  // after half an hour or more away lands on Home (2026-10-24).
+  if(!hash){
+    let away=Infinity;try{away=Date.now()-(+localStorage.getItem(LS_LAST_AT)||0);}catch(e){}
+    if(away>HOME_FRESH_MS&&matchMedia('(max-width:820px)').matches)hash='home/home';
+    else{try{hash=(localStorage.getItem(LS_LAST_TAB)||'').replace('#','');}catch(e){}}
+  }
   const[sec,tab]=hash.split('/');
-  const validSecs=new Set(['tracking','reading','buying','collecting','bookclub','log']);
-  const validTabs=new Set(['overview','bytype','genre','universe','register','rooms','tbr','plan','history','thisyear','completion','byseries','toread','comingup','bookmail','toacquire','someday','libgrowth','buythisyear','col-fr','col-dl','col-sr','flyer','bnauthors','logbook','logorders','logpending','logproposed','logmeta','logsheet','col-awards']);
+  const validSecs=new Set(['home','tracking','reading','buying','collecting','bookclub','log']);
+  const validTabs=new Set(['home','overview','bytype','genre','universe','register','rooms','tbr','plan','history','thisyear','completion','byseries','toread','comingup','bookmail','toacquire','someday','libgrowth','buythisyear','col-fr','col-dl','col-sr','flyer','bnauthors','logbook','logorders','logpending','logproposed','logmeta','logsheet','col-awards']);
   const validFRTabs=new Set(['fr-overview','fr-series','fr-completion']);
   const validDLTabs=new Set(['dl-overview','dl-series','dl-completion']);
   const validSRTabs=new Set(['sr-overview','sr-publisher','sr-completion']);
@@ -3721,6 +3906,7 @@ function renderTabInner(id){
   const H=OWNER!=='goblin';
   const EMPTY_YD={books:[],targets:{},focus:[]};
   if(id==='overview')renderOverview(bm,ydFor(2026));
+  else if(id==='home')renderHome();
   else if(id==='bytype')renderByType(bm);
   else if(id==='genre')renderGenre(bm);
   else if(id==='universe')renderUniverse(bm);
@@ -6443,6 +6629,15 @@ const LOG=(()=>{
     if(ok&&!quiet){toast(set.status==='arrived'?'Arrival logged — the book is marked owned when jerry catches up':set.status==='shipped'?'Shipped':set.status==='cancelled'?'Line cancelled':'Line updated');renderOrders();}
     return ok;
   }
+  // Home's "Arrived" (2026-10-24): the same order_line_set event as the
+  // Orders card's "Arrived today", found by ids instead of that list's row.
+  async function homeArrive(orderId,lineId){
+    const o=(G.orders||[]).find(x=>x.id===orderId);if(!o)return toast('That order is not in this bundle any more — reload',true);
+    const ok=await submit('order_line_set',{ref:Object.assign({id:o.id},orderRef(o)),line:{id:lineId},set:{status:'arrived',arrived_on:today()}},null,'butthead');
+    if(ok){toast('Arrival logged — the book is marked owned when jerry catches up');if(typeof renderHome==='function')renderHome();}
+    return ok;
+  }
+  function lineArrivePending(lineId){return[...(pendCache||[]),...sent().filter(e=>!BUNDLE||e.at>BUNDLE.generated_at)].some(ev=>ev.type==='order_line_set'&&((ev.payload||{}).line||{}).id===lineId&&((ev.payload||{}).set||{}).status==='arrived');}
   async function doLinesShipAll(i,tracking){
     const o=orderAt(i,'open');if(!o)return;
     const open=linesWithPending(o).filter(l=>l.status==='ordered'&&!l.pending);let n=0;
@@ -6991,7 +7186,7 @@ const LOG=(()=>{
     refreshBadge();
   }
 
-  return{renderBook,renderOrders,renderPending,renderProposed,doPropDecide,propEdit,doPropDecideSet,missOpen,missPreview,doMissQueue,doMissSearch,parseSeriesPaste,doSyncRequest,importLibib,renderMeta,doMetaAdd,dupeCheck,showNeedsData,search,browse,brMode,expand,doFinished,doAcquired,
+  return{renderBook,renderOrders,renderPending,renderProposed,doPropDecide,propEdit,doPropDecideSet,homeArrive,lineArrivePending,missOpen,missPreview,doMissQueue,doMissSearch,parseSeriesPaste,doSyncRequest,importLibib,renderMeta,doMetaAdd,dupeCheck,showNeedsData,search,browse,brMode,expand,doFinished,doAcquired,
     toggleAdd,doAdd,addDates,toggleTrack,doTrackSeries,trackFromRow,isbnLookup,addFromIsbn,scanIsbn,stopScan,saveBookEdit,doCopyLetGo,vocabFor,pendingVocab,followAuthor,doNewOrder,doNewBoxOrder,setOrderStyle,expandOrder,doOrderUpdate,
     toggleRow,saveOrderEdit,expandBox,doBoxUpdate,saveBoxEdit,saveSetup,forgetSetup,refreshBadge,
     toggleOrderHistory,findInRegister,storeFromOrderNo,logFlyerOrders,trackSeriesFromIsbn,submitTrackSeries,

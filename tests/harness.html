@@ -55,6 +55,8 @@ async function check(name,fn){
 async function main(){
   // A previous run may have died half way: start clean, and load a fresh copy of the app (no cached build).
   localStorage.removeItem('library-log-cfg');localStorage.removeItem('library-log-sent');localStorage.removeItem('library-last-tab');
+  // a phone-width frame opening "fresh" would land on Home (2026-10-24): say the app was just on screen
+  localStorage.setItem('library-last-at',String(Date.now()));
   // Relative to /tests/ so the harness runs from the dev server root AND from the
   // published site under /bookDashboards/.
   fr.src=new URL('../index.html?v='+Date.now(),location.href).href;
@@ -559,6 +561,33 @@ async function main(){
       }
     }finally{G.proposals=keep;L.renderProposed();}
     res(name,grOk&&plOk&&cardOk&&pasteOk,`Goodreads page: ${grOk?'ok':grGot+' / '+gr.author}; plain lines: ${plOk?'ok':plGot+' / '+pl.author}; card ${cardOk?'ok':'missing or wrong buttons'}; paste preview ${pasteOk?'ok':'wrong'}`);
+  });
+  await check('Home: the whole house — reading now, this week’s arrivals, Book Notification news',async()=>{
+    // John, 2026-10-24: a home page for the app — "a slider/shelf for what I'm
+    // reading, orders that should be arriving soon/this week, new announcements",
+    // "whole house, both me and Shereen", announcements from Book Notification.
+    const name='Home: the whole house — reading now, this week’s arrivals, Book Notification news';
+    const was=doc().querySelector('#owner-filter button.active')?.dataset.o||'all';
+    w().setOwner('all');w().switchSection('home');await new Promise(r=>setTimeout(r,500));
+    const D=doc(),L=w().eval('LOG'),td=L.today();
+    const lim=(()=>{const t=td.split('-').map(Number);return new Date(Date.UTC(t[0],t[1]-1,t[2]+7)).toISOString().slice(0,10);})();
+    const iso=v=>/^\d{4}-\d{2}-\d{2}$/.test((v||'').trim());
+    // reading now: every row of both shelves, each once
+    const want=w().eval("tbrReadingNow(t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,''),['butthead','goblin'])").length;
+    const cards=[...D.querySelectorAll('#home-body .home-book[data-i]')];
+    const owners=new Set(cards.map(c=>c.classList.contains('own-gob')?'goblin':'butthead'));
+    const grGob=(tget('Goodreads')||[]).slice(1).some(r=>r[0]==='currently-reading'&&r[10]==='goblin');
+    // arriving: open Book Mail lines shipped or due by a week from today, Shereen's open boxes likewise
+    const ol=(tget('Order Lines')||[]).slice(1).filter(r=>+r[0]&&['ordered','shipped'].includes((r[13]||'ordered').trim()));
+    const wantDue=ol.filter(r=>(r[13]||'').trim()==='shipped'||(r[14]||'').trim()||(r[15]||'').trim()||(iso(r[12])&&r[12].trim()<=lim)).length
+      +(tget('Book Boxes')||[]).slice(1).filter(r=>(r[4]||'').trim()==='Yes'&&!(r[5]||'').trim()&&((r[11]||'').trim()||(iso(r[9])&&r[9].trim()<=lim))).length;
+    const gotDue=D.querySelectorAll('#home-arriving .home-row').length;
+    // news: Book Notification only, newest digest first, at most 15
+    const news=w().eval('G._homeNews')||[];
+    const newsOk=news.length<=15&&news.every(it=>it.src==='bn')&&news.every((it,i)=>!i||(news[i-1].digest||'')>=(it.digest||''))&&((tget('Book Club')||[]).length<2||news.length>0);
+    const ok=cards.length===want&&want>0&&(!grGob||owners.size===2)&&gotDue===wantDue&&newsOk;
+    res(name,ok,`reading ${cards.length}/${want} (${[...owners].join('+')}); arriving ${gotDue}/${wantDue}; news ${news.length}${newsOk?'':' — wrong source or order'}`);
+    w().setOwner(was);
   });
   await check('TBR: a queued book on the currently-reading shelf shows under Reading now only',async()=>{
     const name='TBR: a queued book on the currently-reading shelf shows under Reading now only';

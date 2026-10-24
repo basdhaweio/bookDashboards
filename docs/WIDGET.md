@@ -37,6 +37,7 @@ Everything is public, like the bundle it is drawn from.
 | `…/#order` | Log › Orders, new-order form at the top (store chips) |
 | `…/#order/184` | Log › Orders with order 184's card expanded (Arrived today / Shipped per line) |
 | `…/#tbr` (or `#read`) | Reading › TBR (✓ Read on the cards) |
+| `…/#home` | Home: reading now (both shelves), arriving this week, Book Notification's latest. Opening the app on a phone after 30+ minutes away lands here anyway (2026-10-24) |
 
 `…` = `https://basdhaweio.github.io/bookDashboards/`. The hash is also
 honoured when the app is already open (a `hashchange` listener), then settles
