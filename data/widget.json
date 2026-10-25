@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-10-25T16:00:25+00:00",
+ "generated_at": "2026-10-25T16:02:57+00:00",
  "owner": "butthead",
  "site": "https://basdhaweio.github.io/bookDashboards/",
  "reading_now": [
@@ -147,7 +147,7 @@
   }
  ],
  "orders": {
-  "open": 41,
+  "open": 38,
   "shipped": 1,
   "lines": [
    {
@@ -169,36 +169,6 @@
     "eta": "2025-12-01",
     "tracking": "",
     "ordered": "2025-08-26"
-   },
-   {
-    "id": 495,
-    "order_id": 536,
-    "title": "An Echo of Things to Come (Deluxe Hardcover Edition)",
-    "store": "Tombolo",
-    "status": "ordered",
-    "eta": "2026-10-20",
-    "tracking": "",
-    "ordered": "2026-09-29"
-   },
-   {
-    "id": 498,
-    "order_id": 536,
-    "title": "The Light of All That Falls (Deluxe Hardcover Edition)",
-    "store": "Tombolo",
-    "status": "ordered",
-    "eta": "2026-10-20",
-    "tracking": "",
-    "ordered": "2026-09-29"
-   },
-   {
-    "id": 499,
-    "order_id": 536,
-    "title": "The Shadow of What Was Lost (Deluxe Hardcover Edition)",
-    "store": "Tombolo",
-    "status": "ordered",
-    "eta": "2026-10-20",
-    "tracking": "",
-    "ordered": "2026-09-29"
    },
    {
     "id": 252,
@@ -229,6 +199,36 @@
     "eta": "2026-11-10",
     "tracking": "",
     "ordered": "2026-09-29"
+   },
+   {
+    "id": 251,
+    "order_id": 471,
+    "title": "The Blade That Remains",
+    "store": "Tombolo",
+    "status": "ordered",
+    "eta": "2027-04-06",
+    "tracking": "",
+    "ordered": "2026-09-30"
+   },
+   {
+    "id": 506,
+    "order_id": 539,
+    "title": "I Need My Space",
+    "store": "Tombolo",
+    "status": "ordered",
+    "eta": "2027-04-20",
+    "tracking": "",
+    "ordered": "2026-07-22"
+   },
+   {
+    "id": 253,
+    "order_id": 471,
+    "title": "Moss Effect",
+    "store": "Tombolo",
+    "status": "ordered",
+    "eta": "2027-05-04",
+    "tracking": "",
+    "ordered": "2026-09-30"
    }
   ]
  },
@@ -243,7 +243,7 @@
   "bought": 179
  },
  "proposals": {
-  "open": 10
+  "open": 13
  },
  "charts": [
   {
