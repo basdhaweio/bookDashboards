@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-10-26T01:52:24+00:00",
+ "generated_at": "2026-10-26T01:54:33+00:00",
  "owner": "butthead",
  "site": "https://basdhaweio.github.io/bookDashboards/",
  "reading_now": [
@@ -147,19 +147,9 @@
   }
  ],
  "orders": {
-  "open": 38,
-  "shipped": 1,
+  "open": 37,
+  "shipped": 0,
   "lines": [
-   {
-    "id": 93,
-    "order_id": 72,
-    "title": "Subscription credit",
-    "store": "The Broken Binding",
-    "status": "shipped",
-    "eta": "",
-    "tracking": "LT522258081GB",
-    "ordered": "September 5, 2026"
-   },
    {
     "id": 569,
     "order_id": 558,
@@ -229,6 +219,16 @@
     "eta": "2027-05-04",
     "tracking": "",
     "ordered": "2026-09-30"
+   },
+   {
+    "id": 101,
+    "order_id": 165,
+    "title": "The Sun Eater #6",
+    "store": "The Broken Binding",
+    "status": "ordered",
+    "eta": "",
+    "tracking": "",
+    "ordered": "2026-08-03"
    }
   ]
  },
@@ -243,7 +243,7 @@
   "bought": 179
  },
  "proposals": {
-  "open": 13
+  "open": 14
  },
  "charts": [
   {
