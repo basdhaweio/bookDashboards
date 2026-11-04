@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-04T02:41:31+00:00",
+ "generated_at": "2026-11-04T02:43:37+00:00",
  "owner": "butthead",
  "site": "https://basdhaweio.github.io/bookDashboards/",
  "reading_now": [
@@ -147,7 +147,7 @@
   }
  ],
  "orders": {
-  "open": 37,
+  "open": 36,
   "shipped": 0,
   "lines": [
    {
@@ -159,16 +159,6 @@
     "eta": "2025-12-01",
     "tracking": "",
     "ordered": "2025-08-26"
-   },
-   {
-    "id": 252,
-    "order_id": 471,
-    "title": "Cello's Gate",
-    "store": "Tombolo",
-    "status": "ordered",
-    "eta": "2026-11-03",
-    "tracking": "",
-    "ordered": "2026-09-30"
    },
    {
     "id": 502,
@@ -229,6 +219,16 @@
     "eta": "",
     "tracking": "",
     "ordered": "2026-08-03"
+   },
+   {
+    "id": 102,
+    "order_id": 165,
+    "title": "The Sun Eater #7",
+    "store": "The Broken Binding",
+    "status": "ordered",
+    "eta": "",
+    "tracking": "",
+    "ordered": "2026-08-03"
    }
   ]
  },
@@ -243,7 +243,7 @@
   "bought": 179
  },
  "proposals": {
-  "open": 13
+  "open": 14
  },
  "charts": [
   {
