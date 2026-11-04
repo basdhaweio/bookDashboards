@@ -619,6 +619,27 @@ Delivered / Arrived / Tracking / Count follow its lines
 (`refresh_order_status`). The dashboard emits one event per line — "All
 shipped" with a tracking number is N events, one per open line.
 
+**Editions (migration 035, 2026-11-04).** John: "how do I log that some of my
+orders are deluxe versions of books I already own?" A line can be an EDITION
+of a register book: `set` (and `order_new` lines) also take `book_id` (the
+register book, validated), `edition` (e.g. "Deluxe Hardcover Edition") and
+`edition_format` (a copies format, default Special Edition):
+```json
+{"ref": {"id": 536}, "line": {"id": 499},
+ "set": {"book_id": 575, "edition": "Deluxe Hardcover Edition", "edition_format": "Special Edition"}}
+```
+Such a line arrives as its own `copies` row of that book (`record_edition`),
+its acquisition carrying the format and the next PHYSICAL copy number when
+the shelf already holds one (`copy_no`, migration 034) — the regular copy
+stays. Naming the edition on a line that has ALREADY arrived records the copy
+then, and drops the add proposal that arrival parked for a "new" book. As a
+safety net, a line whose title matches nothing but names an edition of one
+register book — "The Shadow of What Was Lost (Deluxe Hardcover Edition)" —
+arrives the same way (`split_edition`), never as an add proposal for a book
+that exists. The dashboard's **Edition** button on each order line names the
+book and edition; a Got it with an edition of a book already owned takes the
+next copy number too.
+
 ## Consumer contract
 
 1. List `inbox/*.json`, oldest first (filenames sort chronologically).

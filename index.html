@@ -5406,7 +5406,9 @@ const LOG=(()=>{
         ?`🎁 Box: ${p.vendor}${p.box?' '+p.box:''} — ${p.title||'title TBA'}${p.want&&p.want!=='Yes'?' · want: '+p.want:''}`
         :`🧾 New order ${p.order||''}${p.store?' at '+p.store:''} — ${p.books||'?'}${p.status==='shipped'?' · shipped':p.status==='arrived'?' · arrived '+(p.arrived_on||''):''}`;
       case'read_update':return`📖 “${b.title}” read as ${(p.set||{}).media||'?'}${p.date?' · '+p.date:p.year?' · '+p.year:''}`;
-      case'order_line_set':{const s=Object.entries(p.set||{}).map(([k,v])=>`${k}: ${v}`).join(', ');const r=p.ref||{},l=p.line||{};
+      case'order_line_set':{const r=p.ref||{},l=p.line||{},st=p.set||{};
+        if(st.edition||st.edition_format)return`📖 Order ${r.order||('#'+(r.id||'?'))} line #${l.id||l.position||'?'} is the ${st.edition||st.edition_format} of a book you have`;
+        const s=Object.entries(st).map(([k,v])=>`${k}: ${v}`).join(', ');
         return`🧾 Order ${r.order||('#'+(r.id||'?'))} line ${l.id?'#'+l.id:l.position?l.position:(l.title||l.series||'')} → ${s}`;}
       case'order_update':{const s=Object.entries(p.set||{}).map(([k,v])=>v===true?k:`${k}: ${v}`).join(', ');
         return p.list==='bookboxes'
@@ -6562,7 +6564,7 @@ const LOG=(()=>{
     const nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
     const regOf=t=>(G.allIndBooks||[]).find(b=>nk(b.title)===nk(t)&&(b.owner||'butthead')==='butthead');
     const regTag=t=>{const r=regOf(t);return r?(r.acquiredOn?` · acquired ${esc(r.acquiredOn)}`:(r.owned?' · owned, no date on the book':' · in the register, not owned')):' · no exact register title';};
-    const books=`<div class="log-frow"><label>Books</label><div style="flex:1">${orderTitles(o).map(t=>`<div style="display:flex;gap:8px;align-items:center;margin:2px 0;flex-wrap:wrap"><span>${esc(t)}<span class="ms">${regTag(t)}</span></span><button class="log-act" data-t="${esc(t)}" onclick="LOG.findInRegister(this.dataset.t)" title="find it on the Book tab — Got it › Edition records a hardback or special edition">🔎 Find</button></div>`).join('')||'<span class="ms">no titles named</span>'}</div></div>`;
+    const books=(o.lines||[]).length?histLinesHTML(o,i,regTag):`<div class="log-frow"><label>Books</label><div style="flex:1">${orderTitles(o).map(t=>`<div style="display:flex;gap:8px;align-items:center;margin:2px 0;flex-wrap:wrap"><span>${esc(t)}<span class="ms">${regTag(t)}</span></span><button class="log-act" data-t="${esc(t)}" onclick="LOG.findInRegister(this.dataset.t)" title="find it on the Book tab — Got it › Edition records a hardback or special edition">🔎 Find</button></div>`).join('')||'<span class="ms">no titles named</span>'}</div></div>`;
     const edit=`<div id="log-o-edit-${tag}" style="display:none">
         ${MAIL_EDIT.map(f=>f==='contains'
           ?`<div class="log-frow"><label>Contains</label><textarea id="log-oe-${f}-${tag}" rows="3" placeholder="omnibus? list the works inside, one per line (optional #seq) — arrival then marks each one owned" style="flex:1;font:inherit">${esc(String(o[f]??''))}</textarea></div>`
@@ -6589,12 +6591,13 @@ const LOG=(()=>{
       // All arrived / All shipped sweep whatever is still open; Cancel closes the open lines.
       const L=linesWithPending(o),td=today(),anyOrdered=L.some(l=>l.status==='ordered'&&!l.pending);
       const lineRow=l=>`<div class="log-frow" style="align-items:center"><label></label><div style="flex:1;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-        <span>${esc(l.title||(l.series?l.series+(l.seq?' #'+l.seq:''):'?'))}${l.author?` <span class="ms">· ${esc(l.author)}</span>`:''}${l.qty>1?' ×'+l.qty:''}${l.eta?` <span class="ms">· due ${esc(l.eta)}</span>`:''}${l.title?`<span class="ms">${regTag(l.title)}</span>`:''}</span>
+        <span>${esc(l.title||(l.series?l.series+(l.seq?' #'+l.seq:''):'?'))}${l.author?` <span class="ms">· ${esc(l.author)}</span>`:''}${l.qty>1?' ×'+l.qty:''}${l.eta?` <span class="ms">· due ${esc(l.eta)}</span>`:''}${l.title?`<span class="ms">${(l.edition||l.editionFormat)&&l.bookId?' · its own copy of a register book':regTag(l.title)}</span>`:''}${edBadge(l)}</span>
         <span class="badge ${l.status==='arrived'?'b-green':l.status==='shipped'?'b-teal':l.status==='cancelled'?'b-gray':'b-gold'}">${esc(l.status)}${l.status==='shipped'&&l.tracking?' · '+esc(l.tracking):''}${l.status==='arrived'&&l.arrivedOn?' '+esc(l.arrivedOn):''}${l.pending?' · pending':''}</span>
         ${(l.status==='ordered'||l.status==='shipped')&&!l.pending?`<button class="log-act" onclick="LOG.doLineSet(${i},${l.id},{status:'arrived',arrived_on:'${td}'})">Arrived today</button>`:''}
         ${l.status==='ordered'&&!l.pending?`<button class="log-act" onclick="LOG.lineShipPrompt(${i},${l.id})">Shipped</button>`:''}
         ${(l.status==='ordered'||l.status==='shipped')&&!l.pending?`<button class="log-act" style="border-color:var(--coral);color:var(--coral)" title="cancel this line" onclick="if(confirm('Cancel this line?'))LOG.doLineSet(${i},${l.id},{status:'cancelled'})">✕</button>`:''}
-        <span id="log-ol-${l.id}"></span></div></div>`;
+        ${l.status!=='cancelled'&&!l.pending?`<button class="log-act" title="an edition of a book already in the register — deluxe, special, a hardback" onclick="LOG.lineEditionPrompt(${i},'open',${l.id})">Edition</button>`:''}
+        <span id="log-ol-${l.id}" style="flex-basis:100%"></span></div></div>`;
       el.innerHTML=`
       <div class="log-frow"><label>Update</label>
         ${o.paid==='Unpaid'?`<button class="log-act" onclick="LOG.doOrderUpdate(${i},{paid:'Paid'})">Mark paid</button>`:''}
@@ -6636,10 +6639,53 @@ const LOG=(()=>{
   }
   // order_line_set events still in flight overlay the bundle's lines.
   function pendingLineSets(){const seen=new Set();return[...(pendCache||[]),...sent().filter(e=>!BUNDLE||e.at>BUNDLE.generated_at)].filter(e=>e.type==='order_line_set'&&!seen.has(e.id)&&seen.add(e.id));}
+  // An order line that is an EDITION of a book already in the register
+  // (John, 2026-11-04: "how do I log that some of my orders are deluxe
+  // versions of books I already own?"): name the book and the edition, and
+  // jerry records the line as its own copy of that book when it arrives —
+  // at once if it already has. Titles like "… (Deluxe Hardcover Edition)"
+  // are caught on arrival anyway; this covers the rest and says which book.
+  const ED_TAIL=/^(.+?)[\s:,;\-–—]*(?:\(([^()]*\b(?:edition|deluxe|hardcover|collector'?s|anniversary|illustrated|signed|exclusive)\b[^()]*)\)|(\b(?:deluxe|special|collector'?s|anniversary|illustrated|signed|exclusive|limited)\b.*\b(?:edition|ed|hardcover|hc)\.?))\s*$/i;
+  function splitEdition(t){const m=String(t||'').trim().match(ED_TAIL);if(!m)return null;const base=m[1].replace(/[\s:,;\-–—]+$/,''),label=(m[2]||m[3]||'').trim();return base&&label?{base,label}:null;}
+  function edBadge(l){return l.edition||l.editionFormat?` <span class="badge b-gold" title="arrives as its own copy of the register book">${esc(l.edition||l.editionFormat)}${l.pending?' · pending':''}</span>`:'';}
+  function histLinesHTML(o,i,regTag){
+    return`<div class="log-frow"><label>Books</label><div style="flex:1">${linesWithPending(o).map(l=>`<div style="display:flex;gap:8px;align-items:center;margin:2px 0;flex-wrap:wrap"><span>${esc(l.title||(l.series?l.series+(l.seq?' #'+l.seq:''):'?'))}<span class="ms">${(l.edition||l.editionFormat)&&l.bookId?' · its own copy of a register book':regTag(l.title||'')}</span>${edBadge(l)}</span>${l.title?`<button class="log-act" data-t="${esc(l.title)}" onclick="LOG.findInRegister(this.dataset.t)" title="find it on the Book tab">🔎 Find</button>`:''}${l.status!=='cancelled'&&!l.pending?`<button class="log-act" title="an edition of a book already in the register — deluxe, special, a hardback" onclick="LOG.lineEditionPrompt(${i},'done',${l.id})">Edition</button>`:''}<span id="log-ol-${l.id}" style="flex-basis:100%"></span></div>`).join('')}</div></div>`;
+  }
+  function lineEditionPrompt(i,list,lineId){
+    const o=orderAt(i,list),l=o&&linesWithPending(o).find(x=>x.id===lineId),slot=document.getElementById('log-ol-'+lineId);if(!l||!slot)return;
+    if(slot.dataset.ed==='1'){slot.innerHTML='';slot.dataset.ed='';return;}
+    slot.dataset.ed='1';
+    const mine=(G.allIndBooks||[]).filter(b=>(b.owner||'butthead')==='butthead'&&b.id);
+    const nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    const seen=new Set(),dupe=new Set();mine.forEach(b=>{const k=nk(b.title);if(seen.has(k))dupe.add(k);seen.add(k);});
+    const optOf=b=>dupe.has(nk(b.title))?`${b.title} — ${realSeries(b)||'standalone'}${b.seq?' #'+b.seq:''}`:b.title;
+    const linked=l.bookId&&mine.find(b=>b.id===l.bookId),sp=splitEdition(l.title);
+    G._edOpts=G._edOpts||{};G._edOpts[lineId]=mine.map(b=>[optOf(b),b.id]);
+    slot.innerHTML=`<div class="log-frow"><label>Edition of</label><input id="log-ed-of-${lineId}" list="log-dl-edof-${lineId}" value="${esc(linked?optOf(linked):sp?sp.base:'')}" placeholder="the book you already have"></div>
+      <datalist id="log-dl-edof-${lineId}">${mine.filter(b=>b.owned).map(b=>`<option value="${esc(optOf(b))}">`).join('')}</datalist>
+      <div class="log-frow"><label>Edition</label><input id="log-ed-name-${lineId}" list="log-dl-ed-${lineId}" value="${esc(l.edition||(sp?sp.label:''))}" placeholder="e.g. Deluxe Hardcover Edition"></div>
+      <datalist id="log-dl-ed-${lineId}">${[...new Set((G.copies||[]).map(c=>c.edition).filter(Boolean))].map(e=>`<option>${esc(e)}</option>`).join('')}</datalist>
+      <div class="log-frow"><label>Format</label><select id="log-ed-fmt-${lineId}">${COPY_FORMATS.map(f=>`<option${f===(l.editionFormat||'Special Edition')?' selected':''}>${f}</option>`).join('')}</select></div>
+      <button class="log-act primary" onclick="LOG.doLineEdition(${i},'${list}',${lineId})">Save</button>
+      <div class="ms" style="margin-top:4px">${l.status==='arrived'?'Already arrived: jerry records it now as its own copy of that book — your other copies stay.':'When it arrives it is logged as its own copy of that book — your other copies stay.'}</div>`;
+  }
+  async function doLineEdition(i,list,lineId){
+    const o=orderAt(i,list);if(!o)return;
+    const val=id=>((document.getElementById(id)||{}).value||'').trim();
+    const of=val('log-ed-of-'+lineId),name=val('log-ed-name-'+lineId),fmt=val('log-ed-fmt-'+lineId)||'Special Edition';
+    if(!of)return toast('Name the book this is an edition of',true);
+    const opts=(G._edOpts||{})[lineId]||[],nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    let hit=opts.filter(([label])=>label===of);if(!hit.length)hit=opts.filter(([label])=>nk(label)===nk(of));
+    if(hit.length!==1)return toast(hit.length?'Several books have that title — pick the one with its series from the list':'No book in your register by that title — pick one from the list',true);
+    const arrived=((o.lines||[]).find(l=>l.id===lineId)||{}).status==='arrived';
+    const ok=await submit('order_line_set',{ref:Object.assign({id:o.id},orderRef(o)),line:{id:lineId},set:{book_id:hit[0][1],edition:name,edition_format:fmt}},null,'butthead');
+    if(ok){toast(`Saved — logged as its own copy of “${of}”${arrived?' in a minute or two':' when it arrives'}`);renderOrders();}
+  }
   function linesWithPending(o){
     const L=(o.lines||[]).map(l=>Object.assign({},l));
     for(const ev of pendingLineSets()){const p=ev.payload||{};if(!p.ref||+p.ref.id!==o.id)continue;const l=L.find(x=>x.id===+((p.line||{}).id));if(!l)continue;
-      const st=p.set||{};if(st.status)l.status=st.status;if(st.tracking)l.tracking=st.tracking;if(st.arrived_on)l.arrivedOn=st.arrived_on;l.pending=true;}
+      const st=p.set||{};if(st.status)l.status=st.status;if(st.tracking)l.tracking=st.tracking;if(st.arrived_on)l.arrivedOn=st.arrived_on;
+      if(st.edition!=null)l.edition=st.edition;if(st.edition_format)l.editionFormat=st.edition_format;if(st.book_id)l.bookId=+st.book_id;l.pending=true;}
     return L;
   }
   async function doLineSet(i,lineId,set,quiet){
@@ -7205,7 +7251,7 @@ const LOG=(()=>{
     refreshBadge();
   }
 
-  return{renderBook,renderOrders,renderPending,renderProposed,doPropDecide,propEdit,doPropDecideSet,homeArrive,lineArrivePending,missOpen,missPreview,doMissQueue,doMissSearch,parseSeriesPaste,doSyncRequest,importLibib,renderMeta,doMetaAdd,dupeCheck,showNeedsData,search,browse,brMode,expand,doFinished,doAcquired,
+  return{renderBook,renderOrders,renderPending,renderProposed,doPropDecide,propEdit,doPropDecideSet,lineEditionPrompt,doLineEdition,splitEdition,homeArrive,lineArrivePending,missOpen,missPreview,doMissQueue,doMissSearch,parseSeriesPaste,doSyncRequest,importLibib,renderMeta,doMetaAdd,dupeCheck,showNeedsData,search,browse,brMode,expand,doFinished,doAcquired,
     toggleAdd,doAdd,addDates,toggleTrack,doTrackSeries,trackFromRow,isbnLookup,addFromIsbn,scanIsbn,stopScan,saveBookEdit,doCopyLetGo,vocabFor,pendingVocab,followAuthor,doNewOrder,doNewBoxOrder,setOrderStyle,expandOrder,doOrderUpdate,
     toggleRow,saveOrderEdit,expandBox,doBoxUpdate,saveBoxEdit,saveSetup,forgetSetup,refreshBadge,
     toggleOrderHistory,findInRegister,storeFromOrderNo,logFlyerOrders,trackSeriesFromIsbn,submitTrackSeries,
@@ -7325,7 +7371,7 @@ async function init(){
     // Order lines (migration 029): the book is the unit that ships and arrives;
     // the order groups them. Orders from Tombolo or Barnes & Noble may have no
     // number and no tracking, and any store ships lines separately (John, 2026-09-30).
-    G.orderLines=(BUNDLE.tabs['bookdb|Order Lines']||[]).slice(1).map(r=>({id:+r[0],orderId:+r[1],date:(r[2]||'').trim(),orderNo:(r[3]||'').trim(),store:(r[4]||'').trim(),position:+r[5]||0,title:(r[6]||'').trim(),series:(r[7]||'').trim(),seq:(r[8]||'').trim(),bookId:+r[9]||0,qty:+r[10]||1,price:(r[11]||'').trim(),eta:(r[12]||'').trim(),status:(r[13]||'ordered').trim(),shippedOn:(r[14]||'').trim(),tracking:(r[15]||'').trim(),arrivedOn:(r[16]||'').trim(),notes:(r[17]||'').trim(),author:(r[18]||'').trim()})).filter(l=>l.id);
+    G.orderLines=(BUNDLE.tabs['bookdb|Order Lines']||[]).slice(1).map(r=>({id:+r[0],orderId:+r[1],date:(r[2]||'').trim(),orderNo:(r[3]||'').trim(),store:(r[4]||'').trim(),position:+r[5]||0,title:(r[6]||'').trim(),series:(r[7]||'').trim(),seq:(r[8]||'').trim(),bookId:+r[9]||0,qty:+r[10]||1,price:(r[11]||'').trim(),eta:(r[12]||'').trim(),status:(r[13]||'ordered').trim(),shippedOn:(r[14]||'').trim(),tracking:(r[15]||'').trim(),arrivedOn:(r[16]||'').trim(),notes:(r[17]||'').trim(),author:(r[18]||'').trim(),edition:(r[19]||'').trim(),editionFormat:(r[20]||'').trim()})).filter(l=>l.id);
     {const byOrder={};G.orderLines.forEach(l=>(byOrder[l.orderId]=byOrder[l.orderId]||[]).push(l));(G.orders||[]).forEach(o=>{o.lines=byOrder[o.id]||[];});}
     G.growthMetrics=parseGrowthMetrics(growthMetricsV);
     G.growthYear=parseGrowthYear(growthYearV);

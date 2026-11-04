@@ -589,6 +589,33 @@ async function main(){
     res(name,ok,`reading ${cards.length}/${want} (${[...owners].join('+')}); arriving ${gotDue}/${wantDue}; news ${news.length}${newsOk?'':' — wrong source or order'}`);
     w().setOwner(was);
   });
+  await check('Orders: an edition line is tagged and its Edition form names the book',async()=>{
+    // John, 2026-11-04: "how do I log that some of my orders are deluxe
+    // versions of books I already own?" — a line can be an edition of a
+    // register book; the title parser agrees with jerry's split_edition.
+    const name='Orders: an edition line is tagged and its Edition form names the book';
+    const L=w().eval('LOG');
+    const sp=[['The Shadow of What Was Lost (Deluxe Hardcover Edition)','The Shadow of What Was Lost|Deluxe Hardcover Edition'],
+      ['Firefly Legacy Deluxe Edition','Firefly Legacy|Deluxe Edition'],['The Illustrated Man',''],
+      ['Mistborn (The Final Empire, #1)',''],['Trigun Maximum Deluxe Edition Volume 5','']];
+    const spBad=sp.filter(([t,want])=>{const r=L.splitEdition(t);return(r?r.base+'|'+r.label:'')!==want;}).map(x=>x[0]);
+    w().setOwner('butthead');await go('logorders','log');
+    const line=(tget('Order Lines')||[]).slice(1).find(r=>(r[19]||'').trim()&&+r[9]);
+    if(!line){res(name,!spBad.length,`no edition line in the bundle to show; parser ${spBad.length?'wrong on '+spBad.join(', '):'ok'}`);return;}
+    const oid=+line[1],lid=+line[0],bid=+line[9];
+    const op=doc().getElementById('log-orders-open')._open||[],dn=doc().getElementById('log-orders-done')._done||[];
+    let list='open',i=op.findIndex(o=>o.id===oid);if(i<0){list='done';i=dn.findIndex(o=>o.id===oid);}
+    if(i<0){res(name,!spBad.length,`order ${oid} is older than the history list shows; parser ${spBad.length?'wrong on '+spBad.join(', '):'ok'}`);return;}
+    L.expandOrder(i,list);await new Promise(r=>setTimeout(r,300));
+    const slot=doc().getElementById('log-ol-'+lid),row=slot&&slot.parentElement;
+    const tagged=!!row&&row.textContent.includes(line[19].trim());
+    L.lineEditionPrompt(i,list,lid);await new Promise(r=>setTimeout(r,100));
+    const of=(doc().getElementById('log-ed-of-'+lid)||{}).value||'',ed=(doc().getElementById('log-ed-name-'+lid)||{}).value||'';
+    const book=(w().eval('G.allIndBooks')||[]).find(b=>b.id===bid);
+    const ofOk=!!book&&of.startsWith(book.title),edOk=ed===line[19].trim();
+    L.lineEditionPrompt(i,list,lid);   // close it again
+    res(name,!spBad.length&&tagged&&ofOk&&edOk,`parser ${spBad.length?'wrong on '+spBad.join(', '):'ok'}; line ${lid} tagged ${tagged}; form names “${of}” (${ofOk}) and “${ed}” (${edOk})`);
+  });
   await check('TBR: a queued book on the currently-reading shelf shows under Reading now only',async()=>{
     const name='TBR: a queued book on the currently-reading shelf shows under Reading now only';
     w().setOwner('butthead');await go('tbr','reading');

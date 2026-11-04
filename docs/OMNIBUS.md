@@ -63,6 +63,12 @@ name — Illumicrate, Broken Binding exclusive), `let_go_on`, `replaced_by`.
   edition's publisher, notes, and *Swap?*), or ＋ Add a book › *Edition?*
   for a new work that arrives as a specific edition. The `acquired` /
   `add_book` payloads carry an `edition` object (INBOX.md).
+- **From an order** (migration 035, 2026-11-04): an order line's **Edition**
+  button names the register book and the edition; the line arrives as that
+  book's copy — at once if it already arrived — and a further physical copy
+  takes the next `copy_no`. A title that names an edition of exactly one
+  register book ("… (Deluxe Hardcover Edition)") is caught on arrival too.
+  The Licanius deluxe hardcovers (Tombolo, 2026-10-25) were the first.
 - **Swapping**: *Swap?* (`replaces: true`) retires the book's newest
   still-active single-work copy — `active=false`, `let_go_on` = the
   acquisition date, `replaced_by` = the new copy. When the outgoing copy was
