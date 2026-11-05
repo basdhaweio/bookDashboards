@@ -589,6 +589,39 @@ async function main(){
     res(name,ok,`reading ${cards.length}/${want} (${[...owners].join('+')}); arriving ${gotDue}/${wantDue}; news ${news.length}${newsOk?'':' — wrong source or order'}`);
     w().setOwner(was);
   });
+  await check('Home: New to get — not owned, new to the register or newly announced',async()=>{
+    // John, 2026-11-05: "can you add something to home of newly announced books
+    // or books added that I need?" — every book not owned (he chose that over
+    // the Need flag), added in the last 30 days or out lately / dated ahead.
+    const name='Home: New to get — not owned, new to the register or newly announced';
+    const W=w(),G=W.eval('G'),L=W.eval('LOG'),td=L.today();
+    const ago=n=>{const t=td.split('-').map(Number);return new Date(Date.UTC(t[0],t[1]-1,t[2]-n)).toISOString().slice(0,10);};
+    const bk=(id,title,o)=>Object.assign({id,title,series:'Standalones',seq:'',author:'Zz Writer',owner:'butthead',owned:false,read:false,need:false,
+      universe:'',pubDate:'',addedOn:'',media:'Print',type:'Fiction',subGenre:'',publisher:'',notes:'',room:'',pages:0,collection:'main',firstPub:'',formats:['Print'],copies:1},o);
+    const fx=[bk(-9101,'Zz NTG Solo',{universe:'Shadowrun',addedOn:td,pubDate:ago(40)}),
+      bk(-9102,'Zz NTG Run One',{series:'Zz NTG Run',seq:'1',addedOn:ago(3)}),bk(-9103,'Zz NTG Run Two',{series:'Zz NTG Run',seq:'2',addedOn:ago(3)}),
+      bk(-9104,'Zz NTG Run Three',{series:'Zz NTG Run',seq:'3',addedOn:ago(3)}),
+      bk(-9105,'Zz NTG Owned',{owned:true,addedOn:td}),bk(-9106,'Zz NTG On Order',{addedOn:td}),
+      bk(-9107,'Zz NTG Ahead',{pubDate:'2031-01-07'}),bk(-9108,'Zz NTG Old',{addedOn:ago(200),pubDate:'1990'}),
+      bk(-9109,'Zz NTG Hers',{owner:'goblin',addedOn:td}),
+      bk(-9110,'Zz NTG Shared',{addedOn:td}),bk(-9111,'Zz NTG Shared',{owner:'goblin',owned:true})];
+    const keep={ind:G.indBooks,all:G.allIndBooks,lines:G.orderLines},was=doc().querySelector('#owner-filter button.active')?.dataset.o||'all';
+    let rows=[],dom=0,txt='',form=false,real='';
+    try{
+      W.setOwner('all');W.switchSection('home');await new Promise(r=>setTimeout(r,300));
+      const rr=G._homeNew||{rows:[]};real=`real data ${rr.total} books in ${rr.rows.length} rows, ${doc().querySelectorAll('#home-new .home-row').length} shown`;
+      G.indBooks=fx;G.allIndBooks=fx;G.orderLines=[{id:-1,orderId:-1,bookId:-9106,title:'Zz NTG On Order',status:'ordered'}];
+      W.renderHome();
+      rows=(G._homeNew||{rows:[]}).rows.map(x=>x.kind==='series'?`${x.series}×${x.books.length}`:x.b.title);
+      dom=doc().querySelectorAll('#home-new .home-row').length;
+      txt=(doc().getElementById('home-new')||{}).textContent||'';
+      const btn=[...doc().querySelectorAll('#home-new button')].find(b=>/homeGotPrompt\(0\)/.test(b.getAttribute('onclick')||''));
+      if(btn){btn.click();const f=doc().getElementById('home-got-0');form=!!(f&&f.style.display!=='none'&&doc().getElementById('home-got-d-0')&&doc().getElementById('home-got-s-0'));}
+    }finally{G.indBooks=keep.ind;G.allIndBooks=keep.all;G.orderLines=keep.lines;W.setOwner(was);W.renderHome();}
+    const want=['Zz NTG Solo','Zz NTG Hers','Zz NTG Run×3','Zz NTG Ahead'];
+    const ok=rows.join('|')===want.join('|')&&dom===4&&/3 books · added /.test(txt)&&/Shadowrun · out \w{3} \d+ · added today/.test(txt)&&/due Jan 7, 2031/.test(txt)&&/added today/.test(txt)&&form;
+    res(name,ok,`rows ${rows.join(' | ')||'none'} (want ${want.join(' | ')}); ${dom} on the page; Got it form ${form?'opens':'missing'}; ${real}`);
+  });
   await check('Upcoming scan: a blind run warns on Home and the Proposed tab',async()=>{
     // John, 2026-11-04 (They Cry): "didn't know it was coming out at all" —
     // five weekly scans had gone blind unnoticed. A blind or overdue run now

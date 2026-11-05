@@ -519,6 +519,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
 .home-act{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px;border:1px solid var(--border);border-radius:10px;background:var(--bg2);font-family:var(--font-m);font-size:10px;letter-spacing:.04em;color:var(--text2);cursor:pointer}
 .home-act span{font-size:18px;line-height:1}
 .home-sec{margin:0 0 1.8rem}
+.home-got{margin:-2px 0 10px 46px}
 .home-hd{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 0 .6rem}
 .home-hd .sl{margin:0}
 .home-more{font-family:var(--font-m);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);background:none;border:none;cursor:pointer;padding:4px 0;white-space:nowrap}
@@ -3234,6 +3235,89 @@ function scanHealth(runs,today){
   if(age>9)return{state:'stale',when,text:`The upcoming-books scan last ran ${when}, ${age} days ago — it should run every Wednesday.`};
   return{state:'ok',when,text:`Last upcoming-books scan ${when}: ${r.proposed||0} proposed${r.searches!=null?` · ${r.searches} Google Books searches, ${r.hits} with the author's books`:''}.`};
 }
+// Home's "New to get" (John, 2026-11-05: "can you add something to home of
+// newly announced books or books added that I need?" — everything not owned,
+// he chose, not only Need-flagged books). Register books no one in the view
+// owns that are new to the register (AddedOn in the last HOME_NEW_DAYS) or
+// newly announced (out in that window, dated ahead, or TBA). Left out: what is
+// already on an open Book Mail line (Arriving and Orders show it — a book shows
+// in one place only), and what the other reader owns (one copy in the house is
+// enough). Two or more from one series fold into a single row, so a tracked
+// run of nine T.H. Lain novels is one line, not nine.
+const HOME_NEW_DAYS=30,HOME_NEW_MAX=10;
+function homeNewToGet(owners,td){
+  const t=td.split('-').map(Number),since=new Date(Date.UTC(t[0],t[1]-1,t[2]-HOME_NEW_DAYS)).toISOString().slice(0,10);
+  const yearAgo=new Date(Date.UTC(t[0]-1,t[1]-1,t[2])).toISOString().slice(0,10);
+  const nk=s=>(s||'').toLowerCase().replace(/^\s*(the|a|an)\s+/,'').replace(/[^a-z0-9]/g,'');
+  const realSer=b=>b.series==='Standalones'?'':b.series||'';
+  const open=(G.orderLines||[]).filter(l=>l.status==='ordered'||l.status==='shipped');
+  const onOrderId=new Set(open.map(l=>l.bookId).filter(Boolean)),onOrderT=new Set(open.map(l=>nk(l.title)).filter(Boolean));
+  const ownedBy={};(G.allIndBooks||[]).forEach(b=>{if(b.owned)(ownedBy[nk(b.title)]=ownedBy[nk(b.title)]||new Set()).add(b.owner||'butthead');});
+  const pend=LOG.pendingBooks('acquired');
+  // 'ahead' (dated after today, or TBA) | 'recent' (out inside the window) | ''
+  const pubState=pd=>{
+    pd=(pd||'').trim();if(/^tba$/i.test(pd))return'ahead';
+    if(/^\d{4}-\d{2}-\d{2}$/.test(pd))return pd>td?'ahead':pd>=since?'recent':'';
+    if(/^\d{4}-\d{2}$/.test(pd))return pd>td.slice(0,7)?'ahead':pd>=since.slice(0,7)?'recent':'';
+    if(/^\d{4}$/.test(pd))return pd>td.slice(0,4)?'ahead':'';
+    return'';
+  };
+  const pubLabel=pd=>{
+    pd=(pd||'').trim();if(/^tba$/i.test(pd))return'date TBA';
+    let m=pd.match(/^(\d{4})-(\d{2})-\d{2}$/);if(m)return(pd>td?'due ':'out ')+homeDate(pd);
+    m=pd.match(/^(\d{4})-(\d{2})$/);if(m)return(pd>td.slice(0,7)?'due ':'out ')+MONTHS[+m[2]-1].slice(0,3)+' '+m[1];
+    return/^\d{4}$/.test(pd)?(pd>td.slice(0,4)?'due ':'out ')+pd:'';
+  };
+  // the release date is worth a word when it is recent or ahead, not on backlist
+  const pubWorth=pd=>!!pubState(pd)||(/^\d{4}-\d{2}(-\d{2})?$/.test((pd||'').trim())&&pd.trim()>=yearAgo.slice(0,pd.trim().length));
+  const addedLabel=d=>d===td?'added today':'added '+homeDate(d);
+  const seen=new Set(),hits=[];
+  for(const b of G.indBooks||[]){
+    const o=b.owner||'butthead';
+    if(b.owned||!owners.includes(o))continue;
+    const key=b.id||(o+'|'+b.title+'|'+realSer(b));if(seen.has(key))continue;seen.add(key);
+    if((b.id&&onOrderId.has(b.id))||onOrderT.has(nk(b.title)))continue;
+    if([...(ownedBy[nk(b.title)]||[])].some(x=>x!==o))continue;
+    const added=/^\d{4}-\d{2}-\d{2}$/.test(b.addedOn||'')&&b.addedOn>=since?b.addedOn:'';
+    const ps=pubState(b.pubDate);
+    if(!added&&!ps)continue;
+    // sort key: the newest thing that happened (an add, a release), else the release ahead
+    const recent=[added,ps==='recent'?(b.pubDate||'').trim():''].filter(Boolean).sort().pop()||'';
+    hits.push({b,owner:o,added,ps,recent,ahead:ps==='ahead'?(b.pubDate||'').trim():'',pending:pend.has(b.title+'|'+realSer(b))});
+  }
+  const bySer={};hits.forEach(h=>{const s=realSer(h.b);if(s)(bySer[h.owner+'|'+s]=bySer[h.owner+'|'+s]||[]).push(h);});
+  const rows=[],done=new Set();
+  for(const h of hits){
+    const s=realSer(h.b),g=s?bySer[h.owner+'|'+s]:null;
+    if(g&&g.length>1){
+      if(done.has(h.owner+'|'+s))continue;done.add(h.owner+'|'+s);
+      const adds=g.map(x=>x.added).filter(Boolean).sort(),aheads=g.map(x=>x.ahead).filter(Boolean).sort(),recs=g.map(x=>x.recent).filter(Boolean).sort();
+      rows.push({kind:'series',owner:h.owner,series:s,universe:h.b.universe||'',books:g.map(x=>x.b),
+        when:adds.length?addedLabel(adds[adds.length-1]):aheads.length?'next '+pubLabel(aheads[0]):pubLabel(recs[recs.length-1]),
+        recent:recs[recs.length-1]||'',ahead:aheads[0]||''});
+    }else{
+      const b=h.b,uni=b.universe&&!(s||'').toLowerCase().includes(b.universe.toLowerCase())?b.universe:'';
+      rows.push({kind:'book',owner:h.owner,b,pending:h.pending,recent:h.recent,ahead:h.ahead,
+        where:[uni,s?s+(b.seq?' #'+b.seq:''):(uni?'':b.author||'')].filter(Boolean).join(' · '),
+        when:[pubWorth(b.pubDate)?pubLabel(b.pubDate):'',h.added?addedLabel(h.added):''].filter(Boolean).join(' · ')});
+    }
+  }
+  // what just happened first (newest first), then what is coming (soonest first)
+  rows.sort((a,b)=>(!!b.recent-!!a.recent)||(b.recent||'').localeCompare(a.recent||'')||(a.ahead||'9999').localeCompare(b.ahead||'9999'));
+  return{rows,total:hits.length};
+}
+function homeGotPrompt(i){
+  const x=((G._homeNew||{}).rows||[])[i],el=document.getElementById('home-got-'+i);if(!x||!el||x.kind!=='book')return;
+  if(el.style.display!=='none'){el.style.display='none';return;}
+  el.style.display='';
+  el.innerHTML=`<div class="log-frow"><label>Got it</label><input type="date" id="home-got-d-${i}" value="${LOG.today()}"><input id="home-got-s-${i}" list="home-dl-src" placeholder="shop (optional)" autocomplete="off"><datalist id="home-dl-src">${(LOG.vocabFor('source')||[]).map(v=>`<option>${esc(v)}</option>`).join('')}</datalist><button class="log-act primary" onclick="homeGotGo(${i})">Log it — got “${esc(x.b.title)}”</button></div>`;
+}
+async function homeGotGo(i){
+  const x=((G._homeNew||{}).rows||[])[i];if(!x||x.kind!=='book')return;
+  const d=(document.getElementById('home-got-d-'+i)||{}).value;if(!d)return;
+  const ok=await LOG.acquireBook(x.b,d,(document.getElementById('home-got-s-'+i)||{}).value||'');
+  if(ok)renderHome();
+}
 function renderHome(){
   const el=document.getElementById('home-body');if(!el)return;
   const owners=OWNER==='all'?['butthead','goblin']:[OWNER],both=owners.length>1;
@@ -3288,6 +3372,16 @@ function renderHome(){
     ${later?`<div class="home-foot">Next: ${esc(later.title||'')} · ${esc(homeDate(later.eta))}</div>`:''}
     ${undated?`<div class="home-foot">${undated} more on order with no date yet</div>`:''}</div>`;
 
+  // New to get: new to the register or newly announced, not owned (homeNewToGet)
+  const ntg=homeNewToGet(owners,td);G._homeNew=ntg;
+  const ntgShown=ntg.rows.slice(0,HOME_NEW_MAX);
+  const ntgRow=(x,i)=>x.kind==='series'
+    ?`<div class="home-row${tint(x.owner)}">${coverTile(x.books[0].title,x.owner,'',null,36,x.series)}<div class="home-row-i"><div class="home-row-t">${esc(x.series)}${x.universe&&!x.series.toLowerCase().includes(x.universe.toLowerCase())?` <span class="ms">· ${esc(x.universe)}</span>`:''}</div><div class="home-row-s">${x.books.length} books · ${esc(x.when)}${both?' · '+who(x.owner):''}</div></div></div>`
+    :`<div class="home-row${tint(x.owner)}">${coverTile(x.b.title,x.owner,'',null,36,x.b.series)}<div class="home-row-i"><div class="home-row-t">${esc(x.b.title)}</div><div class="home-row-s">${esc(x.where)}${x.where&&x.when?' · ':''}${esc(x.when)}${both?' · '+who(x.owner):''}</div></div>${x.pending?'<span class="badge b-teal">got it · pending</span>':`<button class="log-act" onclick="homeGotPrompt(${i})">Got it</button>`}</div><div class="home-got" id="home-got-${i}" style="display:none"></div>`;
+  const newHtml=`<div class="home-sec" id="home-new"><div class="home-hd"><div class="sl">New to get</div>${more('To acquire','buying','toacquire')}</div>
+    ${ntgShown.map(ntgRow).join('')||`<div class="ms" style="margin-bottom:6px">Nothing new to get: no book you don’t own was added or announced in the last ${HOME_NEW_DAYS} days.</div>`}
+    ${ntg.rows.length>ntgShown.length?`<div class="home-foot">${ntg.rows.length-ntgShown.length} more row${ntg.rows.length-ntgShown.length>1?'s':''} · ${ntg.total} books new to get in all</div>`:''}</div>`;
+
   // Book Notification's announcements, newest digest first
   const digestOf=t=>{const r=(G.bookClub||[]).find(b=>bcKey(b.title)===bcKey(t)),m=r&&(r.notes||'').match(/digest (\d{4}-\d{2}-\d{2})/);return m?m[1]:'';};
   let bnItems=[];if(owners.includes('butthead')){try{bnItems=bcBuildItems();}catch(e){console.error('home news',e);}}   // Book Notification is Com's feed
@@ -3310,7 +3404,7 @@ function renderHome(){
     ${chips?`<div class="home-chips">${chips}</div>`:''}
     <div class="home-acts"><button class="home-act" onclick="runHashAction('scan')"><span>📷</span>Scan</button><button class="home-act" onclick="runHashAction('add')"><span>＋</span>Add</button><button class="home-act" onclick="runHashAction('order')"><span>📦</span>Order</button><button class="home-act" onclick="homeTrack()"><span>🔍</span>Track</button></div>
     ${both?'<div class="tbr-legend" style="margin-bottom:.8rem"><span><i style="background:var(--teal-bg);border-color:#9dcdc4"></i>Com</span><span><i style="background:var(--purple-bg);border-color:#b8afd6"></i>Shereen</span></div>':''}
-    ${readingHtml}${arrivingHtml}${newsHtml}`;
+    ${readingHtml}${arrivingHtml}${newHtml}${newsHtml}`;
 }
 // Tap a cover: finish it right here, or go to its TBR card (collections and
 // books not yet in the register are handled there).
@@ -4703,6 +4797,7 @@ function parseIndividual(vals){
       formats:((r[21]||'').trim()||(r[5]||'').trim()||'Print').split('+').filter(Boolean),
       copies:Math.max(1,n(r[22])||1),
       id:n(r[23])||null,
+      addedOn:(r[24]||'').trim(), // the day it entered the register (migration 038; blank = before Aug 2026)
     });
   }
   return books;
