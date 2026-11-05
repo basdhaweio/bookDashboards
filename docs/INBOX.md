@@ -667,8 +667,9 @@ they go through the same `apply_order_new` / `apply_order_update`. Three
 additions are visible here:
 - `order_new` lines take `placeholder: true`. That is a line with no title,
   series or book (a subscription charged before its book is named), noted
-  "book not announced yet". `order_line_set {title, author}` names it, and
-  clears the note. An arrival of an unnamed placeholder is refused, whether
+  "book not announced yet". John's own month-ahead lines titled
+  "Subscription credit" count the same. `order_line_set {title, author}`
+  names it, and clears the note. An arrival of an unnamed placeholder is refused, whether
   through the line's `arrived` or the order's `delivered: "Fulfilled"`: it
   would own nothing. The dashboard's **Name the book** has Save and
   Save — arrived today.

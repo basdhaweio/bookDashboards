@@ -1339,7 +1339,8 @@ function parseOrders(vals){
 // A subscription line whose book TBB has not named yet (2026-11-05: jerry's
 // Shop sync logs each TBB charge the night it is taken, with one such line;
 // John names the book when it is announced, then marks it arrived).
-function linePlaceholder(l){return!!l&&!l.title&&!l.series&&!l.bookId;}
+// John's own month-ahead lines say 'Subscription credit' — the same thing.
+function linePlaceholder(l){return!!l&&!l.series&&!l.bookId&&(!l.title||/^\s*subscription credit\s*$/i.test(l.title));}
 function lineLabel(l){return l.title||(l.series?l.series+(l.seq?' #'+l.seq:''):(linePlaceholder(l)?'book not announced yet':'?'));}
 function subName(o){return o&&o.sub&&o.sub!=='N/A'?o.sub+' subscription':'subscription';}
 // The order's name in lists: its lines once a placeholder is involved or the

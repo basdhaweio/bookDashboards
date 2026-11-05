@@ -717,7 +717,9 @@ async function main(){
       await go('home','home');if(typeof W.renderHome==='function')W.renderHome();await tick(200);
       const hr=[...D.querySelectorAll('#home-arriving .home-row')].find(r=>/SF&F subscription — book not announced yet/.test(r.textContent));
       const homeOk=!!hr&&[...hr.querySelectorAll('button')].some(b=>b.textContent.trim()==='Name it');
-      res(name,titleOk&&shopOk&&nameOk&&noArrive&&formOk&&homeOk,`row “${rowT.slice(0,70)}” (${titleOk}); At TBB ${shopOk}; Name the book ${nameOk}; no Arrived ${noArrive}; form ${formOk}; Home Name it ${homeOk}`);
+      // John's own month-ahead line, "Subscription credit", is the same thing; a titled line is not
+      const credOk=W.linePlaceholder({title:'Subscription credit',series:'',bookId:0})&&!W.linePlaceholder({title:'Catalyst Gate',series:'',bookId:0});
+      res(name,titleOk&&shopOk&&nameOk&&noArrive&&formOk&&homeOk&&credOk,`row “${rowT.slice(0,70)}” (${titleOk}); At TBB ${shopOk}; Name the book ${nameOk}; no Arrived ${noArrive}; form ${formOk}; Home Name it ${homeOk}; credit line ${credOk}`);
     }finally{
       const a=G.orders.indexOf(stub);if(a>=0)G.orders.splice(a,1);const b=G.orderLines.indexOf(line);if(b>=0)G.orderLines.splice(b,1);
       L.renderOrders();if(typeof W.renderHome==='function')W.renderHome();
@@ -890,8 +892,9 @@ async function main(){
     const W=w(),D=doc();
     await go('logorders','log');
     const open=D.getElementById('log-orders-open')._open||[];
-    const i=open.findIndex(o=>o.lines&&o.lines.some(l=>l.status==='ordered'));
-    if(i<0){res(name,true,'no open order with an ordered line — nothing to expand');return;}
+    // a named book: a subscription month not yet named offers Name the book instead (2026-11-05)
+    const i=open.findIndex(o=>o.lines&&o.lines.some(l=>l.status==='ordered'&&!W.linePlaceholder(l)));
+    if(i<0){res(name,true,'no open order with an ordered, named line — nothing to expand');return;}
     W.eval('LOG').expandOrder(i,'open');await new Promise(r=>setTimeout(r,200));
     const exp=D.getElementById('log-oexp-open'+i);
     const arrived=[...exp.querySelectorAll('button')].filter(b=>/status:'arrived'/.test(b.getAttribute('onclick')||'')).length,shipped=[...exp.querySelectorAll('button')].filter(b=>/^LOG\.lineShipPrompt/.test(b.getAttribute('onclick')||'')).length;
