@@ -589,6 +589,61 @@ async function main(){
     res(name,ok,`reading ${cards.length}/${want} (${[...owners].join('+')}); arriving ${gotDue}/${wantDue}; news ${news.length}${newsOk?'':' — wrong source or order'}`);
     w().setOwner(was);
   });
+  await check('Upcoming scan: a blind run warns on Home and the Proposed tab',async()=>{
+    // John, 2026-11-04 (They Cry): "didn't know it was coming out at all" —
+    // five weekly scans had gone blind unnoticed. A blind or overdue run now
+    // shows as a Home chip and on the Proposed tab; a clean one says so quietly.
+    const name='Upcoming scan: a blind run warns on Home and the Proposed tab';
+    const W=w(),G=W.eval('G'),L=W.eval('LOG'),td=L.today(),health=W.eval('scanHealth');
+    const run=(o)=>Object.assign({job:'scan_upcoming',at:td+' 04:31',proposed:2,searches:400,hits:390,failed:0,blind:false,note:''},o);
+    const states=[health([run({blind:true,proposed:0,searches:184,hits:2,note:'only 2 of 184'})],td).state,
+      health([run({at:'2026-01-07 04:30'})],td).state,health([run()],td).state,health([],td).state].join(',');
+    const keep=G.scanRuns,was=doc().querySelector('#owner-filter button.active')?.dataset.o||'all';
+    let chip='',line='',clean='';
+    try{
+      G.scanRuns=[run({blind:true,proposed:0,searches:184,hits:2,note:"only 2 of 184 Google Books searches returned the asked author's books"})];
+      W.setOwner('all');W.switchSection('home');await new Promise(r=>setTimeout(r,400));
+      chip=(doc().getElementById('home-scan-chip')||{}).textContent||'';
+      await go('logproposed','log');L.renderProposed();
+      line=(doc().getElementById('log-scan-status')||{}).textContent||'';
+      G.scanRuns=[run()];L.renderProposed();
+      clean=(doc().getElementById('log-scan-status')||{}).textContent||'';
+    }finally{G.scanRuns=keep;L.renderProposed();W.setOwner(was);}
+    const ok=states==='blind,stale,ok,none'&&/blind/i.test(chip)&&/couldn't see new books/.test(line)&&/Last upcoming-books scan/.test(clean);
+    res(name,ok,`states ${states}; Home chip “${chip}”; blind line “${line.slice(0,70)}…”; clean line “${clean.slice(0,60)}…”`);
+  });
+  await check('Scan card: an ISBN jerry already found shows its series and Got it',async()=>{
+    // They Cry (2026-11-04) was unknown to Open Library and the keyless Google
+    // Books is over quota, so a scan said nobody knew the ISBN. A proposal
+    // carrying the ISBN (the upcoming scan saves it) now answers at once.
+    const name='Scan card: an ISBN jerry already found shows its series and Got it';
+    const W=w(),G=W.eval('G'),L=W.eval('LOG'),keep=G.proposals;
+    const fake={id:-901,kind:'add_book_from_inbox',target:'Black Company: A Pitiless Rain / Harness Rain',recommend:'review',note:'Upcoming scan',
+      proposal:JSON.stringify({title:'Harness Rain',series:'Black Company: A Pitiless Rain',seq:'3',author:'Glen Cook',owner:'butthead',isbn:'9780000000019',pub_date:'2027-11-02'})};
+    let card='',gotIt=false;
+    try{
+      G.proposals=[fake].concat(keep||[]);
+      W.setOwner('butthead');await go('logbook','log');
+      const inp=doc().getElementById('log-isbn');if(inp)inp.value='978-0-00-000001-9';
+      await L.isbnLookup();await new Promise(r=>setTimeout(r,150));
+      const out=doc().getElementById('log-results');card=out?out.textContent.replace(/\s+/g,' '):'';
+      gotIt=!!(out&&[...out.querySelectorAll('button')].some(b=>/Got it/.test(b.textContent)&&/isbnPropDecide\(-901,'owned'\)/.test(b.getAttribute('onclick')||'')));
+    }finally{G.proposals=keep;const out=doc().getElementById('log-results');if(out)out.innerHTML='';}
+    const ok=card.includes('Harness Rain')&&card.includes('#3 of')&&card.includes('A Pitiless Rain')&&gotIt;
+    res(name,ok,`card “${card.slice(0,110)}…”; Got it ${gotIt?'wired to the proposal':'missing'}`);
+  });
+  await check('Scan card: Google’s subtitle names the register series',async()=>{
+    // "Book Two of A Pitiless Rain, a Chronicle of the Black Company" is the
+    // register's "Black Company: A Pitiless Rain" #2 — by the author's books.
+    const name='Scan card: Google’s subtitle names the register series';
+    const L=w().eval('LOG');
+    const h=L.isbnSeriesHint('They Cry','Book Two of A Pitiless Rain, a Chronicle of the Black Company','Glen Cook','butthead');
+    const other=L.isbnSeriesHint('They Cry','Book Two of A Pitiless Rain','Someone Else','butthead');
+    const bare=L.isbnSeriesHint('A New Cook Novel','','Glen Cook','butthead');
+    const seqs=[L.seqFromText('X','Book Two of Y'),L.seqFromText('Shadow Games','First Book of the South'),L.seqFromText('No One Can Know'),L.seqFromText('Saga, Vol. 12')].join(',');
+    const ok=h.series==='Black Company: A Pitiless Rain'&&h.seq==='2'&&!other.series&&!bare.series&&bare.authorSeries.includes('Black Company: A Pitiless Rain')&&seqs==='2,1,,12';
+    res(name,ok,`hint ${h.series||'—'} #${h.seq||'—'}; another author ${other.series||'none'}; no series named → offers ${bare.authorSeries.length} of Cook's series; numbers ${seqs}`);
+  });
   await check('Orders: an edition line is tagged and its Edition form names the book',async()=>{
     // John, 2026-11-04: "how do I log that some of my orders are deluxe
     // versions of books I already own?" — a line can be an edition of a

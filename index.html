@@ -1084,11 +1084,12 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div class="ms" style="margin-bottom:1rem">Suggestions from jerry and other systems (series completion, imports). Nothing enters the register until you Add it; Drop closes it. Decisions apply on the next sync (~15 min).</div>
       <div style="display:flex;gap:8px;margin-bottom:1.2rem;flex-wrap:wrap">
         <button class="log-act" onclick="LOG.doSyncRequest('goodreads')">⟳ Sync Goodreads</button>
-        <button class="log-act" onclick="LOG.doScanUpcoming()" title="Google Books newest per author + Wikidata series rosters, for every series with a book read — finds land here as proposals">🔭 Scan for upcoming books</button>
+        <button class="log-act" onclick="LOG.doScanUpcoming()" title="Google Books per series and per author + Wikidata series rosters, for every series with a book read — finds land here as proposals">🔭 Scan for upcoming books</button>
         <button class="log-act" onclick="LOG.doSyncRequest('boxes')" title="re-read the Book Boxes tab of Shereen's sheet — rows marked Ordered flag as on the way">⟳ Sync Shereen's sheet</button>
         <button class="log-act" onclick="document.getElementById('log-libib-file').click()">⇪ Import Libib CSV</button>
         <input type="file" id="log-libib-file" accept=".csv,text/csv" style="display:none" onchange="LOG.importLibib(this)">
       </div>
+      <div id="log-scan-status" class="ms" style="margin:-.6rem 0 1.2rem"></div>
       <div id="log-proposed-list"></div>
     </div>
     <div class="panel" id="tab-logsheet">
@@ -3205,6 +3206,19 @@ function homeSeries(r){
   const b=r.reg;if(b&&b.series&&b.series!=='Standalones')return b.series+(b.seq?' #'+b.seq:'');
   return r.author||'';
 }
+// The weekly upcoming-books scan, as Home and the Proposed tab report it
+// (2026-11-04: Google Books answered the old query with other people's books
+// and five Wednesday runs "found nothing" unnoticed — They Cry slipped by).
+// state: ok | blind | stale (no run for 9+ days) | none.
+function scanHealth(runs,today){
+  const r=(runs||[])[0];
+  if(!r)return{state:'none',text:'The upcoming-books scan has not run yet.'};
+  const d=r.at.slice(0,10),age=Math.round((Date.parse(today+'T12:00:00Z')-Date.parse(d+'T12:00:00Z'))/864e5);
+  const when=new Date(d+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+  if(r.blind)return{state:'blind',when,text:`The upcoming-books scan on ${when} couldn't see new books${r.note?' — '+r.note:''}. Releases may be missing until a scan runs clean.`};
+  if(age>9)return{state:'stale',when,text:`The upcoming-books scan last ran ${when}, ${age} days ago — it should run every Wednesday.`};
+  return{state:'ok',when,text:`Last upcoming-books scan ${when}: ${r.proposed||0} proposed${r.searches!=null?` · ${r.searches} Google Books searches, ${r.hits} with the author's books`:''}.`};
+}
 function renderHome(){
   const el=document.getElementById('home-body');if(!el)return;
   const owners=OWNER==='all'?['butthead','goblin']:[OWNER],both=owners.length>1;
@@ -3271,9 +3285,10 @@ function renderHome(){
     ${news[0].digest?`<div class="home-foot">Latest digest ${esc(homeDate(news[0].digest))}</div>`:''}`:'<div class="ms">No Book Notification digests yet.</div>'}</div>`;
 
   // What needs you, and the four things the app is opened for
-  const propN=(G.proposals||[]).length;
+  const propN=(G.proposals||[]).length,scan=scanHealth(G.scanRuns,td);
   const chips=[propN?`<button class="home-chip" onclick="switchSection('log','logproposed')">${propN} proposal${propN>1?'s':''} to review</button>`:'',
-    lateN?`<button class="home-chip warn" onclick="document.getElementById('home-arriving').scrollIntoView({behavior:'smooth',block:'start'})">${lateN} order${lateN>1?'s':''} late</button>`:''].join('');
+    lateN?`<button class="home-chip warn" onclick="document.getElementById('home-arriving').scrollIntoView({behavior:'smooth',block:'start'})">${lateN} order${lateN>1?'s':''} late</button>`:'',
+    scan.state==='blind'||scan.state==='stale'?`<button class="home-chip warn" id="home-scan-chip" title="${esc(scan.text)}" onclick="switchSection('log','logproposed')">${scan.state==='blind'?'Upcoming scan blind':'Upcoming scan not run since '+esc(scan.when)}</button>`:''].join('');
   const day=new Date(td+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
   el.innerHTML=`<div class="home-date">${esc(day)}</div>
     ${chips?`<div class="home-chips">${chips}</div>`:''}
@@ -6264,23 +6279,31 @@ const LOG=(()=>{
       const b=(G.indBooks||[]).find(x=>nk(x.title)===nk(hit.title));
       if(b){renderHits([b],'');toast('In the register — this exact edition');return;}
     }
+    // 1b — a proposal carrying this ISBN: usually an upcoming-scan find, a
+    // new book in a series you track. Instant, and it works when nothing
+    // else does (2026-11-04, They Cry: Open Library had never heard of it
+    // and the keyless Google Books is over its daily quota).
+    const ph=proposalForIsbn(isbn);
+    if(ph){G._isbnProp={id:ph.p.id,isbn};out.innerHTML=isbnProposalCard(ph,isbn);return;}
     // 2 — external lookup: Open Library and anonymous Google Books in
     // parallel, first answer wins (OL alone was ~4 s a scan; GB usually
     // answers inside a second). The card shows at once with the cover the
     // ISBN resolves to. John's GB key stays on jerry.
     const my=++isbnSeq;
     out.innerHTML=`<div class="log-item"><div class="log-item-hd">${thumbHTML('','',isbn,44)}<div class="log-item-info"><div class="log-item-title">Looking up ${esc(isbn)}…</div><div class="log-item-meta">Open Library · Google Books</div></div></div></div>`;
-    const ol=fetch('https://openlibrary.org/search.json?q=isbn:'+isbn+'&fields=title,author_name,first_publish_year&limit=1')
-      .then(async r=>{const d=r.ok?((await r.json()).docs||[])[0]:null;return d&&d.title?{title:d.title,author:(d.author_name||[])[0]||'',year:d.first_publish_year||''}:null;}).catch(()=>null);
+    const ol=fetch('https://openlibrary.org/search.json?q=isbn:'+isbn+'&fields=title,subtitle,author_name,first_publish_year&limit=1')
+      .then(async r=>{const d=r.ok?((await r.json()).docs||[])[0]:null;return d&&d.title?{title:d.title,subtitle:d.subtitle||'',author:(d.author_name||[])[0]||'',year:d.first_publish_year||''}:null;}).catch(()=>null);
     const gb=fetch('https://www.googleapis.com/books/v1/volumes?country=US&q=isbn:'+isbn)
-      .then(async r=>{const v=r.ok?((await r.json()).items||[])[0]:null;const vi=(v&&v.volumeInfo)||{};return vi.title?{title:vi.title,author:(vi.authors||[])[0]||'',year:(vi.publishedDate||'').slice(0,4)}:null;}).catch(()=>null);
+      .then(async r=>{const v=r.ok?((await r.json()).items||[])[0]:null;const vi=(v&&v.volumeInfo)||{};return vi.title?{title:vi.title,subtitle:vi.subtitle||'',author:(vi.authors||[])[0]||'',year:(vi.publishedDate||'').slice(0,4)}:null;}).catch(()=>null);
     const found=await firstOf([ol,gb]);
     if(my!==isbnSeq)return; // a newer scan superseded this one
     if(!found){
-      out.innerHTML='<div class="ms" style="padding:8px 2px">Neither Open Library nor Google Books knows this ISBN. The register may still have the work under another edition — try a title search — or add it manually below.</div>';
+      G._isbnFound={isbn,title:'',author:'',year:'',series:'',seq:''};
+      out.innerHTML=`<div class="ms" style="padding:8px 2px">Neither Open Library nor Google Books knows this ISBN, and no proposal carries it. The register may still have the work under another edition — try a title search.</div>
+        <div class="log-acts" style="padding:0 2px 6px"><button class="log-act gold" onclick="LOG.addFromIsbn('owned')" title="the add form, with this ISBN kept — type the title">📦 Got it — I'll type it</button><button class="log-act" onclick="LOG.addFromIsbn('wish')">👁 Track it</button></div>`;
       return;
     }
-    const title=String(found.title),author=String(found.author),year=String(found.year);
+    const title=String(found.title),author=String(found.author),year=String(found.year),subtitle=String(found.subtitle||'');
     // 3 — same work, different edition? (Got it › Edition on the row logs it)
     const strip=t=>t.split(':')[0];
     const cand=(G.indBooks||[]).filter(b=>nk(b.title)===nk(title)||nk(strip(b.title))===nk(strip(title)));
@@ -6288,12 +6311,19 @@ const LOG=(()=>{
     // 4 — honest miss: got it (owned), track it (neither), or track the
     // whole series — nothing enters the register without the add form or
     // the Proposed tab.
-    G._isbnFound={isbn,title,author,year,series:seriesFromTitle(title)};
+    // which of your series it continues: named in the title or Google's
+    // subtitle ("Book Two of A Pitiless Rain") — else the author's series
+    // to pick from (2026-11-04)
+    const hint=isbnSeriesHint(title,subtitle,author);
+    G._isbnFound={isbn,title,author,year,series:hint.series||seriesFromTitle(title),seq:hint.seq,reg:!!hint.series,
+      authorSeries:hint.series?[]:hint.authorSeries.slice(0,6)};
+    const f0=G._isbnFound;
     out.innerHTML=`<div class="log-item"><div class="log-item-hd">
       ${thumbHTML('','',isbn,44)}
       <div class="log-item-info">
         <div class="log-item-title">${esc(title)}</div>
         <div class="log-item-meta">${esc(author)}${year?' · '+esc(year):''} · ISBN ${esc(isbn)} — not in the register</div>
+        <div class="log-item-meta" id="log-isbn-hint">${isbnHintHTML(f0)}</div>
       </div>
       <div class="log-acts">
         <button class="log-act gold" onclick="LOG.addFromIsbn('owned')" title="add it as owned — pick series and genre, then Add">📦 Got it</button>
@@ -6310,11 +6340,111 @@ const LOG=(()=>{
     document.getElementById('log-n-title').value=f.title;
     document.getElementById('log-n-author').value=f.author;
     if(f.series)document.getElementById('log-n-series').value=f.series;
+    if(f.seq){const q=document.getElementById('log-n-seq');if(q)q.value=f.seq;}
     const st=document.getElementById('log-n-status');
     if(st&&status){st.value=status;addDates();}
     isbnPrefill=f.isbn;
-    toast(status==='wish'?'Prefilled as tracked only — pick series and genre, then Add':'Prefilled from the ISBN lookup — pick series, genre, and status, then Add');
+    toast(!f.title?'ISBN kept — type the title, pick the series, then Add'
+      :f.series&&f.seq?`Prefilled as #${f.seq} of ${f.series} — check genre, then Add`
+      :status==='wish'?'Prefilled as tracked only — pick series and genre, then Add':'Prefilled from the ISBN lookup — pick series, genre, and status, then Add');
     form.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+  // ── the scan card's series hint and proposal hit (2026-11-04, They Cry) ──
+  const SEQ_WORDS={one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12,
+    thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,eighteen:18,nineteen:19,twenty:20};
+  const SEQ_ORD={first:1,second:2,third:3,fourth:4,fifth:5,sixth:6,seventh:7,eighth:8,ninth:9,tenth:10};
+  const SEQ_RE=[/(?:\b(?:book|volume|vol\.?|part|no\.?)\s*|#\s*)(\d+(?:\.\d+)?)\b/i,
+    new RegExp('\\b(?:book|volume|part)\\s+('+Object.keys(SEQ_WORDS).join('|')+')\\b','i'),
+    new RegExp('\\b('+Object.keys(SEQ_ORD).join('|')+')\\s+book\\b','i')];
+  // The number a listing states — 'Book 3', '#3', 'Book Two of …', 'First
+  // Book of the South' — the same rules as jerry's scan_upcoming.seq_from.
+  function seqFromText(...texts){
+    for(const t of texts){if(!t)continue;
+      let m=String(t).match(SEQ_RE[0]);if(m)return m[1];
+      m=String(t).match(SEQ_RE[1]);if(m)return String(SEQ_WORDS[m[1].toLowerCase()]);
+      m=String(t).match(SEQ_RE[2]);if(m)return String(SEQ_ORD[m[1].toLowerCase()]);}
+    return'';
+  }
+  // Which register series a scanned book continues: the title or subtitle
+  // names it — whole name, or the part after a 'Universe: Series' colon
+  // (Google: "Book Two of A Pitiless Rain, a Chronicle of the Black Company"
+  // = the register's "Black Company: A Pitiless Rain") — and one of its
+  // books shares the author's surname. authorSeries = that author's series,
+  // most books first, for the card to offer when nothing is named.
+  function isbnSeriesHint(title,subtitle,author,owner){
+    owner=owner||(OWNER==='goblin'?'goblin':'butthead');
+    const nk=t=>(t||'').toLowerCase().replace(/×/g,'x').replace(/&/g,'and').replace(/[^a-z0-9]/g,'');
+    const bare=t=>(t||'').trim().replace(/^(the|a|an)\s+/i,'');
+    const surnames=s=>{const out=new Set();String(s||'').split(/\s+(?:and|with|&)\s+|\s*;\s*/i).forEach(p=>{p=p.trim();if(!p)return;
+      const w=p.includes(',')?p.split(',')[0].trim().split(/\s+/):p.split(/\s+/).filter(x=>x.length>1&&!x.endsWith('.'));
+      if(w.length)out.add(w[w.length-1].toLowerCase().replace(/[^a-z]/g,''));});out.delete('');return out;};
+    const want=surnames(author),full=nk(author),text=nk(`${title||''} ${subtitle||''}`),by=new Map();
+    (G.allIndBooks||G.indBooks||[]).forEach(b=>{
+      if((b.owner||'butthead')!==owner)return;const s=realSeries(b);if(!s)return;
+      let e=by.get(s);if(!e){e={name:s,people:new Set(),names:new Set(),n:0,last:''};by.set(s,e);}
+      surnames(b.author).forEach(x=>e.people.add(x));e.names.add(nk(b.author));e.n++;
+      // the series' latest sign of life — a new book most likely continues it
+      [b.pubDate,b.acquiredOn,b.readOn,b.firstPub].forEach(d=>{d=(d||'').trim();if(/^\d{4}/.test(d)&&d>e.last)e.last=d;});});
+    const keys=s=>{const ks=[],full=nk(bare(s));if(full.length>=5)ks.push(full);
+      if(s.includes(':')){const t=nk(bare(s.slice(s.lastIndexOf(':')+1)));if(t.length>=8&&!ks.includes(t))ks.push(t);}return ks;};
+    const theirs=e=>[...want].some(x=>e.people.has(x));
+    let best=null,len=0;
+    for(const e of by.values()){if(want.size&&e.people.size&&!theirs(e))continue;
+      for(const k of keys(e.name))if(text.includes(k)&&k.length>len){best=e;len=k.length;}}
+    // the author's own series to pick from: an exact name match when the
+    // register has one (the surname alone pulls David and Monte Cook's
+    // Forgotten Realms series and Tonya C. Cook's Dragonlance ones in for
+    // Glen Cook), newest activity first, then size
+    const exact=[...by.values()].filter(e=>full&&e.names.has(full));
+    const pool=exact.length?exact:want.size?[...by.values()].filter(theirs):[];
+    return{series:best?best.name:'',seq:best?seqFromText(title,subtitle):'',
+      authorSeries:pool.sort((a,b)=>b.last.localeCompare(a.last)||b.n-a.n).map(e=>e.name)};
+  }
+  function isbnHintHTML(f){
+    if(f.picked)return`Series: <b>${esc(f.series)}</b> ✓ — Got it adds it there`;
+    if(f.reg)return`Looks like ${f.seq?'#'+esc(f.seq)+' of ':''}your <b>${esc(f.series)}</b>`;
+    if((f.authorSeries||[]).length)return`${esc(f.author)} in your register — which series? ${f.authorSeries.map((s,i)=>`<button class="log-act" style="padding:2px 8px;margin:2px" onclick="LOG.isbnPickSeries(${i})">${esc(s)}</button>`).join('')}`;
+    return'';
+  }
+  function isbnPickSeries(i){
+    const f=G._isbnFound;if(!f||!f.authorSeries)return;
+    f.series=f.authorSeries[i]||'';f.seq='';f.picked=true;   // a picked series has no number to guess
+    const el=document.getElementById('log-isbn-hint');if(el)el.innerHTML=isbnHintHTML(f);
+  }
+  function proposalForIsbn(isbn){
+    for(const p of G.proposals||[]){
+      if(p.kind!=='add_book_from_inbox')continue;
+      let j;try{j=JSON.parse(p.proposal);}catch(e){continue;}
+      if(j&&j.isbn&&isbnNorm(j.isbn)===isbn)return{p,j};
+    }
+    return null;
+  }
+  function isbnProposalCard(hit,isbn){
+    const{p,j}=hit,dec=propDecisions().get(p.id),ser=j.series&&j.series!=='-'?j.series:'';
+    const own=j.owner||'butthead',other=OWNER!=='all'&&own!==OWNER;
+    return`<div class="log-item"><div class="log-item-hd">
+      ${thumbHTML(j.title||'',own,isbn,44)}
+      <div class="log-item-info">
+        <div class="log-item-title">${esc(j.title||p.target)}</div>
+        <div class="log-item-meta">${esc(j.author||'')}${j.pub_date?' · out '+esc(j.pub_date):''} · ISBN ${esc(isbn)}</div>
+        <div class="log-item-meta">${ser?`${j.seq?'#'+esc(j.seq)+' of ':''}${other?esc(OWNER_LABEL[own]||own)+'’s':'your'} <b>${esc(ser)}</b> · `:''}on the Proposed list — jerry found it coming${dec?` · <span class="badge b-teal">${dec==='approve'?'adding':'dropped'} · pending</span>`:''}</div>
+      </div>
+      ${dec?'':`<div class="log-acts">
+        <button class="log-act gold" onclick="LOG.isbnPropDecide(${p.id},'owned')" title="add it as owned, bought today">📦 Got it</button>
+        <button class="log-act" onclick="LOG.isbnPropDecide(${p.id},'track')" title="add it as tracked only — not owned, not read">👁 Track book</button>
+        <button class="log-act" onclick="switchSection('log','logproposed')">Proposed ›</button>
+      </div>`}
+    </div></div>`;
+  }
+  async function isbnPropDecide(id,mode){
+    const p=(G.proposals||[]).find(x=>x.id===id);if(!p)return;
+    const payload={id:p.id,target:p.target,kind:p.kind,decision:'approve'};
+    if(mode==='owned')payload.set={owned:true,acquired_on:today()};
+    const ok=await submit('proposal_decide',payload,null,'butthead');
+    if(!ok)return;
+    toast(mode==='owned'?`Adding “${p.target}” as owned, bought today`:`Adding “${p.target}” as tracked`);
+    const s=G._isbnProp,ph=s&&s.id===id&&proposalForIsbn(s.isbn),out=document.getElementById('log-results');
+    if(ph&&out)out.innerHTML=isbnProposalCard(ph,s.isbn);
   }
   // Track series straight from a scan: the series name is the one thing the
   // ISBN sources never give reliably, so it is a field (prefilled when the
@@ -6885,6 +7015,9 @@ const LOG=(()=>{
   }
   function renderProposed(){
     document.getElementById('log-setup-proposed').innerHTML=hintCard();
+    const ss=document.getElementById('log-scan-status');
+    if(ss){const h=scanHealth(G.scanRuns,today()),warn=h.state==='blind'||h.state==='stale';
+      ss.innerHTML=`${warn?'<span class="home-late">⚠ ':''}${esc(h.text)}${warn?'</span>':''}`;}
     const el=document.getElementById('log-proposed-list');
     const dec=propDecisions();
     // The header's reader filter applies here too (John, 2026-09-27): Com or
@@ -7252,7 +7385,7 @@ const LOG=(()=>{
   }
 
   return{renderBook,renderOrders,renderPending,renderProposed,doPropDecide,propEdit,doPropDecideSet,lineEditionPrompt,doLineEdition,splitEdition,homeArrive,lineArrivePending,missOpen,missPreview,doMissQueue,doMissSearch,parseSeriesPaste,doSyncRequest,importLibib,renderMeta,doMetaAdd,dupeCheck,showNeedsData,search,browse,brMode,expand,doFinished,doAcquired,
-    toggleAdd,doAdd,addDates,toggleTrack,doTrackSeries,trackFromRow,isbnLookup,addFromIsbn,scanIsbn,stopScan,saveBookEdit,doCopyLetGo,vocabFor,pendingVocab,followAuthor,doNewOrder,doNewBoxOrder,setOrderStyle,expandOrder,doOrderUpdate,
+    toggleAdd,doAdd,addDates,toggleTrack,doTrackSeries,trackFromRow,isbnLookup,addFromIsbn,isbnPickSeries,isbnPropDecide,isbnSeriesHint,seqFromText,proposalForIsbn,scanIsbn,stopScan,saveBookEdit,doCopyLetGo,vocabFor,pendingVocab,followAuthor,doNewOrder,doNewBoxOrder,setOrderStyle,expandOrder,doOrderUpdate,
     toggleRow,saveOrderEdit,expandBox,doBoxUpdate,saveBoxEdit,saveSetup,forgetSetup,refreshBadge,
     toggleOrderHistory,findInRegister,storeFromOrderNo,logFlyerOrders,trackSeriesFromIsbn,submitTrackSeries,
     finishBook,setNeed,pendingBooks,today,queueSet,pendingQueue,acquireBook,setPubDate,
@@ -7348,6 +7481,12 @@ async function init(){
     dupTitle.forEach(k=>{delete G.bookIsbn[k];});
     // Reading plan (bookdb|Plan): Id|Owner|Year|Position|Label|Media|Genre|
     // Length|Book|Series|Done|Notes|BookRead
+    // Upcoming-scan runs, newest first (bookdb|Scan Runs): Job|Finished|
+    // Proposed|Searches|AuthorHits|Failed|Blind|Note — Home and the Proposed
+    // tab say when the weekly scan went blind or stopped (2026-11-04).
+    G.scanRuns=(BUNDLE.tabs['bookdb|Scan Runs']||[]).slice(1).map(r=>({job:(r[0]||'').trim(),at:(r[1]||'').trim(),
+      proposed:(r[2]||'')===''?null:+r[2],searches:(r[3]||'')===''?null:+r[3],hits:(r[4]||'')===''?null:+r[4],
+      failed:(r[5]||'')===''?null:+r[5],blind:(r[6]||'').trim().toLowerCase()==='x',note:(r[7]||'').trim()})).filter(x=>x.at);
     G.plan=(BUNDLE.tabs['bookdb|Plan']||[]).slice(1).map(r=>({id:+r[0],owner:(r[1]||'butthead').trim(),year:+r[2],pos:parseFloat(r[3])||0,label:(r[4]||'').trim(),media:(r[5]||'').trim(),genre:(r[6]||'').trim(),length:(r[7]||'').trim(),book:(r[8]||'').trim(),series:(r[9]||'').trim(),done:(r[10]||'').trim().toLowerCase()==='x',notes:(r[11]||'').trim(),bookRead:(r[12]||'').trim().toLowerCase()==='x',key:(r[13]||'').trim()})).filter(p=>p.id);
     if(!Object.keys(G.vocab).length){
       const add=(k,v)=>{if(!v)return;const a=G.vocab[k]=G.vocab[k]||[];if(!a.includes(v))a.push(v);};

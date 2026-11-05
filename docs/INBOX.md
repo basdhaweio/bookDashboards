@@ -253,8 +253,19 @@ consumer then merges `set` into the proposal's payload before marking it
 `approved`, so `apply_fixes.py` runs unchanged and the add lands with the
 adjusted values. `series`/`universe` are names — resolved to rows, created
 if new; blank clears; the UI snaps vocab fields (`genre, sub_genre, media,
-publisher`) to canonical casing before sending. Status (`owned`/`read`) is
-not settable here, same as `book_update`. `set` on a `reject` is ignored.
+publisher`) to canonical casing before sending. `set` on a `reject` is ignored.
+
+`owned` and `read` (booleans) are allowed too since 2026-11-04 — they set
+the status of the book the proposal WILL create, not of a register book
+(`book_update` still refuses them; a register book's status moves only
+through `acquired`/`finished`). The scan card sends them: an ISBN that an
+upcoming-scan proposal carries shows that proposal, and **📦 Got it** is
+```json
+{"id": 6702, "kind": "add_book_from_inbox", "target": "Black Company: A Pitiless Rain / They Cry",
+ "decision": "approve", "set": {"owned": true, "acquired_on": "2026-11-04"}}
+```
+so the book lands owned with its acquisition dated (apply_fixes records the
+acquisition from `acquired_on`).
 
 `decision: "edit"` (the ✎'s **Save without adding**) merges `set` into the
 payload and LEAVES THE PROPOSAL OPEN — same key rules, note-tagged

@@ -36,7 +36,11 @@ direct adds. "Queued" shows while a request is in flight.
 The nightly `propose_series_completion.py` and the Wednesday
 `scan_upcoming.py` do the same unasked for series in progress; they depend
 on Google Books and Wikidata answering, and on the register's series name
-matching Wikidata's (the Talisman books are filed as "Jack Sawyer").
+matching Wikidata's (the Talisman books are filed as "Jack Sawyer"). The
+scan searches Google Books per series with the part after a 'Universe:
+Series' colon ("Pitiless Rain" for "Black Company: A Pitiless Rain"), and
+says on the Proposed tab — and as a Home chip when it went blind or stopped
+running — what its last run saw (jerry docs/UPCOMING.md).
 
 ## Jumps
 
