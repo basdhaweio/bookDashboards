@@ -1341,7 +1341,7 @@ function parseOrders(vals){
 // John names the book when it is announced, then marks it arrived).
 // John's own month-ahead lines say 'Subscription credit' — the same thing.
 function linePlaceholder(l){return!!l&&!l.series&&!l.bookId&&(!l.title||/^\s*subscription credit\s*$/i.test(l.title));}
-function lineLabel(l){return l.title||(l.series?l.series+(l.seq?' #'+l.seq:''):(linePlaceholder(l)?'book not announced yet':'?'));}
+function lineLabel(l){return linePlaceholder(l)?'book not announced yet':l.title||(l.series?l.series+(l.seq?' #'+l.seq:''):'?');}
 function subName(o){return o&&o.sub&&o.sub!=='N/A'?o.sub+' subscription':'subscription';}
 // The order's name in lists: its lines once a placeholder is involved or the
 // Books text is only TBB's product name ("SF&F Subscription").
@@ -6775,7 +6775,7 @@ const LOG=(()=>{
       const L=linesWithPending(o),td=today(),anyOrdered=L.some(l=>l.status==='ordered'&&!l.pending);
       const phOpen=L.some(l=>linePlaceholder(l)&&(l.status==='ordered'||l.status==='shipped'));
       const lineRow=l=>`<div class="log-frow" style="align-items:center"><label></label><div style="flex:1;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-        <span${linePlaceholder(l)?' class="ms" style="font-style:italic"':''}>${esc(lineLabel(l))}${l.author?` <span class="ms">· ${esc(l.author)}</span>`:''}${l.qty>1?' ×'+l.qty:''}${l.eta?` <span class="ms">· due ${esc(l.eta)}</span>`:''}${l.title?`<span class="ms">${(l.edition||l.editionFormat)&&l.bookId?' · its own copy of a register book':regTag(l.title)}</span>`:''}${edBadge(l)}</span>
+        <span${linePlaceholder(l)?' class="ms" style="font-style:italic"':''}>${esc(lineLabel(l))}${l.author?` <span class="ms">· ${esc(l.author)}</span>`:''}${l.qty>1?' ×'+l.qty:''}${l.eta?` <span class="ms">· due ${esc(l.eta)}</span>`:''}${l.title&&!linePlaceholder(l)?`<span class="ms">${(l.edition||l.editionFormat)&&l.bookId?' · its own copy of a register book':regTag(l.title)}</span>`:''}${edBadge(l)}</span>
         <span class="badge ${l.status==='arrived'?'b-green':l.status==='shipped'?'b-teal':l.status==='cancelled'?'b-gray':'b-gold'}">${esc(l.status)}${l.status==='shipped'&&l.tracking?' · '+esc(l.tracking):''}${l.status==='arrived'&&l.arrivedOn?' '+esc(l.arrivedOn):''}${l.pending?' · pending':''}</span>
         ${(l.status==='ordered'||l.status==='shipped')&&!l.pending&&linePlaceholder(l)?`<button class="log-act primary" onclick="LOG.lineNamePrompt(${i},${l.id})" title="TBB has charged the subscription; name the book once it is announced, then mark it arrived">Name the book</button>`:''}
         ${(l.status==='ordered'||l.status==='shipped')&&!l.pending&&!linePlaceholder(l)?`<button class="log-act" onclick="LOG.doLineSet(${i},${l.id},{status:'arrived',arrived_on:'${td}'})">Arrived today</button>`:''}
@@ -6834,7 +6834,7 @@ const LOG=(()=>{
   function splitEdition(t){const m=String(t||'').trim().match(ED_TAIL);if(!m)return null;const base=m[1].replace(/[\s:,;\-–—]+$/,''),label=(m[2]||m[3]||'').trim();return base&&label?{base,label}:null;}
   function edBadge(l){return l.edition||l.editionFormat?` <span class="badge b-gold" title="arrives as its own copy of the register book">${esc(l.edition||l.editionFormat)}${l.pending?' · pending':''}</span>`:'';}
   function histLinesHTML(o,i,regTag){
-    return`<div class="log-frow"><label>Books</label><div style="flex:1">${linesWithPending(o).map(l=>`<div style="display:flex;gap:8px;align-items:center;margin:2px 0;flex-wrap:wrap"><span>${esc(lineLabel(l))}<span class="ms">${(l.edition||l.editionFormat)&&l.bookId?' · its own copy of a register book':regTag(l.title||'')}</span>${edBadge(l)}</span>${l.title?`<button class="log-act" data-t="${esc(l.title)}" onclick="LOG.findInRegister(this.dataset.t)" title="find it on the Book tab">🔎 Find</button>`:''}${l.status!=='cancelled'&&!l.pending?`<button class="log-act" title="an edition of a book already in the register — deluxe, special, a hardback" onclick="LOG.lineEditionPrompt(${i},'done',${l.id})">Edition</button>`:''}<span id="log-ol-${l.id}" style="flex-basis:100%"></span></div>`).join('')}</div></div>`;
+    return`<div class="log-frow"><label>Books</label><div style="flex:1">${linesWithPending(o).map(l=>`<div style="display:flex;gap:8px;align-items:center;margin:2px 0;flex-wrap:wrap"><span>${esc(lineLabel(l))}<span class="ms">${linePlaceholder(l)?'':(l.edition||l.editionFormat)&&l.bookId?' · its own copy of a register book':regTag(l.title||'')}</span>${edBadge(l)}</span>${l.title?`<button class="log-act" data-t="${esc(l.title)}" onclick="LOG.findInRegister(this.dataset.t)" title="find it on the Book tab">🔎 Find</button>`:''}${l.status!=='cancelled'&&!l.pending?`<button class="log-act" title="an edition of a book already in the register — deluxe, special, a hardback" onclick="LOG.lineEditionPrompt(${i},'done',${l.id})">Edition</button>`:''}<span id="log-ol-${l.id}" style="flex-basis:100%"></span></div>`).join('')}</div></div>`;
   }
   // A TBB subscription line charged but not yet named (jerry's Shop sync,
   // 2026-11-05): put the announced book on the line, then it can arrive —

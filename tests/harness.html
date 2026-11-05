@@ -718,7 +718,8 @@ async function main(){
       const hr=[...D.querySelectorAll('#home-arriving .home-row')].find(r=>/SF&F subscription — book not announced yet/.test(r.textContent));
       const homeOk=!!hr&&[...hr.querySelectorAll('button')].some(b=>b.textContent.trim()==='Name it');
       // John's own month-ahead line, "Subscription credit", is the same thing; a titled line is not
-      const credOk=W.linePlaceholder({title:'Subscription credit',series:'',bookId:0})&&!W.linePlaceholder({title:'Catalyst Gate',series:'',bookId:0});
+      const credOk=W.linePlaceholder({title:'Subscription credit',series:'',bookId:0})&&!W.linePlaceholder({title:'Catalyst Gate',series:'',bookId:0})
+        &&W.lineLabel({title:'Subscription credit',series:'',bookId:0})==='book not announced yet';
       res(name,titleOk&&shopOk&&nameOk&&noArrive&&formOk&&homeOk&&credOk,`row “${rowT.slice(0,70)}” (${titleOk}); At TBB ${shopOk}; Name the book ${nameOk}; no Arrived ${noArrive}; form ${formOk}; Home Name it ${homeOk}; credit line ${credOk}`);
     }finally{
       const a=G.orders.indexOf(stub);if(a>=0)G.orders.splice(a,1);const b=G.orderLines.indexOf(line);if(b>=0)G.orderLines.splice(b,1);
