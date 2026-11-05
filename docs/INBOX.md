@@ -102,6 +102,15 @@ layer just knows one more object. `add_book` accepts the same `edition`
 object (without `replaces`) for a new work that arrives as a specific
 edition; the copy is recorded alongside the work on approval.
 
+`isbn` (optional, 2026-11-04, migration 036): the scanned ISBN of the
+edition in hand — sent by the scan card's **📚 New edition** button
+(John: "it found one I own (I bought a new version) but need to have a way
+to add a new edition at the bottom there"). Digits/X only, 10 or 13 long,
+else dropped; stored on `copies.isbn`, exported in the Copies tab's ISBN
+column and folded into the ISBNs tab (after the work's own ISBNs, so it
+never becomes the cover ISBN). The next scan of that edition says "in the
+register — your Hardcover · Deluxe copy".
+
 **First acquisition wins (John, 2026-10-01).** Every path that marks a book
 owned — Got it, an order line arriving, an omnibus arrival, the legacy order
 path — goes through `mark_owned`: the book's `acquired_on` is its *first*

@@ -644,6 +644,30 @@ async function main(){
     const ok=h.series==='Black Company: A Pitiless Rain'&&h.seq==='2'&&!other.series&&!bare.series&&bare.authorSeries.includes('Black Company: A Pitiless Rain')&&seqs==='2,1,,12';
     res(name,ok,`hint ${h.series||'—'} #${h.seq||'—'}; another author ${other.series||'none'}; no series named → offers ${bare.authorSeries.length} of Cook's series; numbers ${seqs}`);
   });
+  await check('Scan card: a book you have offers New edition, keeping the scanned ISBN',async()=>{
+    // John, 2026-11-04: "it found one I own (I bought a new version) but need
+    // to have a way to add a new edition at the bottom there".
+    const name='Scan card: a book you have offers New edition, keeping the scanned ISBN';
+    const W=w(),G=W.eval('G'),L=W.eval('LOG');
+    W.setOwner('butthead');await go('logbook','log');
+    const nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    const pick=Object.entries(G.isbnMap||{}).find(([i,h])=>i.length===13&&(G.indBooks||[]).some(b=>nk(b.title)===nk(h.title)));
+    if(!pick){res(name,false,'no register ISBN in the bundle to scan');return;}
+    const [isbn]=pick;
+    let footer='',ticked=false,shown=false,kept='',cleared=false;
+    try{
+      doc().getElementById('log-isbn').value=isbn;await L.isbnLookup();await new Promise(r=>setTimeout(r,150));
+      const f=doc().getElementById('log-scan-ed');footer=f?f.textContent.replace(/\s+/g,' ').trim():'';
+      L.scanNewEdition(0);await new Promise(r=>setTimeout(r,150));
+      ticked=!!doc().getElementById('log-a-ed-0')?.checked;
+      shown=(doc().getElementById('log-a-edrow-0')||{style:{display:'none'}}).style.display!=='none';
+      kept=(G._scanEd&&G._scanEd.row===0&&G._scanEd.isbn)||'';
+      doc().getElementById('log-q').value='dune';L.search();await new Promise(r=>setTimeout(r,100));
+      cleared=G._scanEd==null;
+    }finally{const out=doc().getElementById('log-results');if(out)out.innerHTML='';doc().getElementById('log-isbn').value='';doc().getElementById('log-q').value='';}
+    const ok=/New edition of/.test(footer)&&ticked&&shown&&kept===isbn&&cleared;
+    res(name,ok,`scanned ${isbn}: footer “${footer.slice(0,90)}”; Edition ticked ${ticked}, shown ${shown}; ISBN kept ${kept||'no'}; dropped on the next search ${cleared}`);
+  });
   await check('Orders: an edition line is tagged and its Edition form names the book',async()=>{
     // John, 2026-11-04: "how do I log that some of my orders are deluxe
     // versions of books I already own?" — a line can be an edition of a

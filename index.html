@@ -5539,7 +5539,7 @@ const LOG=(()=>{
         </div>
         <div class="log-acts">
           <button class="log-act primary" onclick="LOG.expand(${key},'finished')">✓ Read it</button>
-          <button class="log-act gold" onclick="LOG.expand(${key},'acquired')" ${b.owned?'title="already owned"':''}>📦 Got it</button>
+          <button class="log-act gold" onclick="LOG.expand(${key},'acquired')" ${b.owned?'title="already owned — log another copy or a new edition here (tick Edition)"':''}>📦 Got it</button>
           <button class="log-act" onclick="LOG.expand(${key},'edit')" title="edit register details">✎</button>
           ${realSeries(b)?`<button class="log-act" onclick="LOG.trackFromRow(${key})" title="find the rest of this series — books land on the Proposed tab">🔍</button>`:''}
         </div>
@@ -5551,7 +5551,7 @@ const LOG=(()=>{
     const out=document.getElementById('log-results');
     const pend=pendingKeys(pendCache);
     out.innerHTML=hits.map((b,i)=>rowHTML(b,i,pend)).join('')||emptyMsg;
-    out._hits=hits;expanded=null;
+    out._hits=hits;expanded=null;G._scanEd=null;   // a scan's ISBN never rides along to other rows
   }
   // ── Browse: the review view — everything by an author/series/universe,
   // grouped universe ▸ series, books in sequence order, with owned/read dots
@@ -5616,7 +5616,7 @@ const LOG=(()=>{
       const nNeed=hits.filter(b=>b.need).length;
       const sum=`<div class="ms" style="margin:4px 0 6px">${hits.length} book${hits.length===1?'':'s'}${hits.length>cap?` (showing ${cap})`:''} · owned ${hits.filter(b=>b.owned).length} · read ${hits.filter(b=>b.read).length}${nNeed?` · <span style="color:var(--coral)">needed ${nNeed}</span>`:''} — anything missing here isn't tracked yet</div>`;
       out.innerHTML=hits.length?sum+html:'<div class="ms" style="padding:8px 2px">Nothing in the register matches.</div>';
-      out._hits=shown;expanded=null;
+      out._hits=shown;expanded=null;G._scanEd=null;
     },200);
   }
   function search(){
@@ -6111,9 +6111,12 @@ const LOG=(()=>{
       const fmt=g('edfmt'),name=g('edname');
       if(!fmt&&!name)return toast('Pick a format or name the edition',true);
       p.edition={format:fmt,edition:name,publisher:g('edpub'),notes:g('ednotes'),replaces:!!document.getElementById(`log-a-edrep-${i}`)?.checked};
+      // opened from a scan's New edition: the ISBN in hand goes with the copy
+      if(G._scanEd&&G._scanEd.row===i&&G._scanEd.isbn)p.edition.isbn=G._scanEd.isbn;
     }
     const bad=vetVocab(p);if(bad)return toast(bad,true);
     const ok=await submit('acquired',p,b);
+    if(ok)G._scanEd=null;
     if(ok){toast('Logged: got “'+b.title+'”'+(p.omnibus_title?' via “'+p.omnibus_title+'”':'')+(p.edition?' — '+(p.edition.format||'edition')+(p.edition.edition?' · '+p.edition.edition:'')+(p.edition.replaces?', old copy retired':''):''));clearSearch();}
   }
   // Copies on the shelf for one work (single-work editions and the omnibus
@@ -6277,7 +6280,11 @@ const LOG=(()=>{
     const hit=(G.isbnMap||{})[isbn];
     if(hit){
       const b=(G.indBooks||[]).find(x=>nk(x.title)===nk(hit.title));
-      if(b){renderHits([b],'');toast('In the register — this exact edition');return;}
+      if(b){
+        // a copy logged from an earlier scan says which one it is (migration 036)
+        const cp=(G.copies||[]).find(c=>c.isbn===isbn&&c.owner===(b.owner||'butthead'));
+        renderHits([b],'');scanEditionFooter([b],isbn,true);
+        toast(cp?`In the register — your ${[cp.format,cp.edition].filter(Boolean).join(' · ')||'edition'} copy`:'In the register — this exact edition');return;}
     }
     // 1b — a proposal carrying this ISBN: usually an upcoming-scan find, a
     // new book in a series you track. Instant, and it works when nothing
@@ -6291,10 +6298,10 @@ const LOG=(()=>{
     // ISBN resolves to. John's GB key stays on jerry.
     const my=++isbnSeq;
     out.innerHTML=`<div class="log-item"><div class="log-item-hd">${thumbHTML('','',isbn,44)}<div class="log-item-info"><div class="log-item-title">Looking up ${esc(isbn)}…</div><div class="log-item-meta">Open Library · Google Books</div></div></div></div>`;
-    const ol=fetch('https://openlibrary.org/search.json?q=isbn:'+isbn+'&fields=title,subtitle,author_name,first_publish_year&limit=1')
-      .then(async r=>{const d=r.ok?((await r.json()).docs||[])[0]:null;return d&&d.title?{title:d.title,subtitle:d.subtitle||'',author:(d.author_name||[])[0]||'',year:d.first_publish_year||''}:null;}).catch(()=>null);
+    const ol=fetch('https://openlibrary.org/search.json?q=isbn:'+isbn+'&fields=title,subtitle,author_name,first_publish_year,publisher&limit=1')
+      .then(async r=>{const d=r.ok?((await r.json()).docs||[])[0]:null;return d&&d.title?{title:d.title,subtitle:d.subtitle||'',author:(d.author_name||[])[0]||'',year:d.first_publish_year||'',publisher:''}:null;}).catch(()=>null);
     const gb=fetch('https://www.googleapis.com/books/v1/volumes?country=US&q=isbn:'+isbn)
-      .then(async r=>{const v=r.ok?((await r.json()).items||[])[0]:null;const vi=(v&&v.volumeInfo)||{};return vi.title?{title:vi.title,subtitle:vi.subtitle||'',author:(vi.authors||[])[0]||'',year:(vi.publishedDate||'').slice(0,4)}:null;}).catch(()=>null);
+      .then(async r=>{const v=r.ok?((await r.json()).items||[])[0]:null;const vi=(v&&v.volumeInfo)||{};return vi.title?{title:vi.title,subtitle:vi.subtitle||'',author:(vi.authors||[])[0]||'',year:(vi.publishedDate||'').slice(0,4),publisher:vi.publisher||''}:null;}).catch(()=>null);
     const found=await firstOf([ol,gb]);
     if(my!==isbnSeq)return; // a newer scan superseded this one
     if(!found){
@@ -6304,10 +6311,13 @@ const LOG=(()=>{
       return;
     }
     const title=String(found.title),author=String(found.author),year=String(found.year),subtitle=String(found.subtitle||'');
-    // 3 — same work, different edition? (Got it › Edition on the row logs it)
+    // 3 — same work, different edition? The New edition button at the
+    // bottom logs it as its own copy (John, 2026-11-04: "it found one I own
+    // (I bought a new version) but need to have a way to add a new edition
+    // at the bottom there")
     const strip=t=>t.split(':')[0];
     const cand=(G.indBooks||[]).filter(b=>nk(b.title)===nk(title)||nk(strip(b.title))===nk(strip(title)));
-    if(cand.length){renderHits(cand,'');toast('You have this work — the copy in hand is a different edition');return;}
+    if(cand.length){renderHits(cand,'');scanEditionFooter(cand,isbn,false,found.publisher);toast('You have this work — the copy in hand is a different edition');return;}
     // 4 — honest miss: got it (owned), track it (neither), or track the
     // whole series — nothing enters the register without the add form or
     // the Proposed tab.
@@ -6348,6 +6358,32 @@ const LOG=(()=>{
       :f.series&&f.seq?`Prefilled as #${f.seq} of ${f.series} — check genre, then Add`
       :status==='wish'?'Prefilled as tracked only — pick series and genre, then Add':'Prefilled from the ISBN lookup — pick series, genre, and status, then Add');
     form.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+  // ── the scan card's New edition button (John, 2026-11-04: "I bought a new
+  // version … need to have a way to add a new edition at the bottom there").
+  // Under a scan that found a book you have: one button per match opens its
+  // 📦 Got it with Edition ticked and the scanned ISBN kept, so the copy is
+  // logged as its own object (a further physical copy) and the next scan of
+  // that edition knows it (migration 036).
+  function scanEditionFooter(hits,isbn,exact,publisher){
+    const out=document.getElementById('log-results');if(!out||!hits.length)return;
+    G._scanEd={isbn,publisher:publisher||''};
+    out.insertAdjacentHTML('beforeend',`<div class="log-scan-ed" id="log-scan-ed" style="margin:10px 0 4px;padding:10px 12px;border:1px dashed var(--gold2);border-radius:8px">
+      <div class="ms" style="margin-bottom:6px">${exact?'Another copy of this edition?':'Bought a new edition of it — deluxe, special, a hardback?'} Log it as its own copy; the one you have stays.</div>
+      ${hits.map((b,i)=>`<button class="log-act gold" style="margin:2px 6px 2px 0" onclick="LOG.scanNewEdition(${i})">📚 New edition of “${esc(b.title)}”${hits.length>1?` · ${esc(seriesLabel(b))}${OWNER==='all'?' · '+esc(OWNER_LABEL[b.owner]||b.owner):''}`:''}</button>`).join('')}
+    </div>`);
+  }
+  function scanNewEdition(i){
+    const b=(document.getElementById('log-results')._hits||[])[i];if(!b)return;
+    if(expanded!==i+'acquired')expand(i,'acquired');
+    const box=document.getElementById(`log-a-ed-${i}`),row=document.getElementById(`log-a-edrow-${i}`);
+    if(box&&!box.checked){box.checked=true;if(row)row.style.display='';}
+    const pub=document.getElementById(`log-a-edpub-${i}`);
+    if(pub&&!pub.value&&G._scanEd&&G._scanEd.publisher)pub.value=G._scanEd.publisher;
+    if(G._scanEd)G._scanEd.row=i;
+    const fmt=document.getElementById(`log-a-edfmt-${i}`);
+    if(fmt){fmt.scrollIntoView({behavior:'smooth',block:'center'});fmt.focus();}
+    toast(`Pick the format and name the edition — the scanned ISBN ${G._scanEd&&G._scanEd.isbn?G._scanEd.isbn+' ':''}goes with it`);
   }
   // ── the scan card's series hint and proposal hit (2026-11-04, They Cry) ──
   const SEQ_WORDS={one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12,
@@ -7385,7 +7421,7 @@ const LOG=(()=>{
   }
 
   return{renderBook,renderOrders,renderPending,renderProposed,doPropDecide,propEdit,doPropDecideSet,lineEditionPrompt,doLineEdition,splitEdition,homeArrive,lineArrivePending,missOpen,missPreview,doMissQueue,doMissSearch,parseSeriesPaste,doSyncRequest,importLibib,renderMeta,doMetaAdd,dupeCheck,showNeedsData,search,browse,brMode,expand,doFinished,doAcquired,
-    toggleAdd,doAdd,addDates,toggleTrack,doTrackSeries,trackFromRow,isbnLookup,addFromIsbn,isbnPickSeries,isbnPropDecide,isbnSeriesHint,seqFromText,proposalForIsbn,scanIsbn,stopScan,saveBookEdit,doCopyLetGo,vocabFor,pendingVocab,followAuthor,doNewOrder,doNewBoxOrder,setOrderStyle,expandOrder,doOrderUpdate,
+    toggleAdd,doAdd,addDates,toggleTrack,doTrackSeries,trackFromRow,isbnLookup,addFromIsbn,isbnPickSeries,isbnPropDecide,isbnSeriesHint,seqFromText,proposalForIsbn,scanNewEdition,scanIsbn,stopScan,saveBookEdit,doCopyLetGo,vocabFor,pendingVocab,followAuthor,doNewOrder,doNewBoxOrder,setOrderStyle,expandOrder,doOrderUpdate,
     toggleRow,saveOrderEdit,expandBox,doBoxUpdate,saveBoxEdit,saveSetup,forgetSetup,refreshBadge,
     toggleOrderHistory,findInRegister,storeFromOrderNo,logFlyerOrders,trackSeriesFromIsbn,submitTrackSeries,
     finishBook,setNeed,pendingBooks,today,queueSet,pendingQueue,acquireBook,setPubDate,
@@ -7428,7 +7464,7 @@ async function init(){
     (BUNDLE.tabs['bookdb|Meta Vocab']||[]).slice(1).forEach(r=>{if(r[1])(G.vocab[r[0]]=G.vocab[r[0]]||[]).push(r[1]);});
     // Copies (omnibus/collection objects): map each contained work title to
     // its edition title(s) so rows can chip "in: Theft of Swords".
-    G.copies=(BUNDLE.tabs['bookdb|Copies']||[]).slice(1).map(r=>({id:+r[0],title:r[1],owner:r[2],publisher:r[3],format:r[4],store:r[5],acquired:r[6],notes:r[7],contains:(r[8]||'').split('|').filter(Boolean),edition:r[9]||''}));
+    G.copies=(BUNDLE.tabs['bookdb|Copies']||[]).slice(1).map(r=>({id:+r[0],title:r[1],owner:r[2],publisher:r[3],format:r[4],store:r[5],acquired:r[6],notes:r[7],contains:(r[8]||'').split('|').filter(Boolean),edition:r[9]||'',isbn:(r[10]||'').replace(/[^0-9Xx]/g,'').toUpperCase()}));
     // inCopy: omnibus/collection volumes a work sits in ("in: Theft of
     // Swords"); editionOf: single-work editions of it ("Hardcover · Illumicrate").
     G.inCopy={};G.editionOf={};

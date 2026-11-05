@@ -63,6 +63,12 @@ name — Illumicrate, Broken Binding exclusive), `let_go_on`, `replaced_by`.
   edition's publisher, notes, and *Swap?*), or ＋ Add a book › *Edition?*
   for a new work that arrives as a specific edition. The `acquired` /
   `add_book` payloads carry an `edition` object (INBOX.md).
+- **From a scan** (2026-11-04): when an ISBN scan finds a book you already
+  have, the bottom of the result offers **📚 New edition of “…”** — it opens
+  that row's Got it with *Edition?* ticked (publisher prefilled when Google
+  Books named one) and sends the scanned ISBN with the edition, stored on
+  `copies.isbn` (migration 036). A later scan of the same ISBN answers "in
+  the register — your <format · edition> copy".
 - **From an order** (migration 035, 2026-11-04): an order line's **Edition**
   button names the register book and the edition; the line arrives as that
   book's copy — at once if it already arrived — and a further physical copy
