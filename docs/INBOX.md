@@ -660,6 +660,28 @@ that exists. The dashboard's **Edition** button on each order line names the
 book and edition; a Got it with an edition of a book already owned takes the
 next copy number too.
 
+**TBB through the Shop connector (migration 037, 2026-11-05;
+jerry-bookdb/docs/TBB.md).** jerry's `tbb_shop_sync.py` writes Book Mail
+orders from the Shop connector's order list. They are not inbox events, but
+they go through the same `apply_order_new` / `apply_order_update`. Three
+additions are visible here:
+- `order_new` lines take `placeholder: true`. That is a line with no title,
+  series or book (a subscription charged before its book is named), noted
+  "book not announced yet". `order_line_set {title, author}` names it, and
+  clears the note. An arrival of an unnamed placeholder is refused, whether
+  through the line's `arrived` or the order's `delivered: "Fulfilled"`: it
+  would own nothing. The dashboard's **Name the book** has Save and
+  Save — arrived today.
+- `set` (and `order_new` lines) take `isbn`: the edition's ISBN (digits/X,
+  10 or 13, else dropped). An edition line carries it onto its copy at
+  arrival, with the copy note "<store>: <the shop's name for the item>"
+  (`orders.store_item`).
+- A series is matched without its leading article ("The Sun Eater" = the
+  register's "Sun Eater").
+
+Bundle: Book Mail Orders gains `StoreItem` (col 16); Order Lines gains `ISBN`
+(col 21).
+
 ## Consumer contract
 
 1. List `inbox/*.json`, oldest first (filenames sort chronologically).

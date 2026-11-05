@@ -695,6 +695,34 @@ async function main(){
     L.lineEditionPrompt(i,list,lid);   // close it again
     res(name,!spBad.length&&tagged&&ofOk&&edOk,`parser ${spBad.length?'wrong on '+spBad.join(', '):'ok'}; line ${lid} tagged ${tagged}; form names “${of}” (${ofOk}) and “${ed}” (${edOk})`);
   });
+  await check('Orders: a TBB subscription charged before its book is named',async()=>{
+    // 2026-11-05: jerry's Shop sync logs each TBB charge the night it is
+    // taken, with one placeholder line. The card says so and shows TBB's
+    // name, offers Name the book instead of Arrived (jerry refuses an
+    // arrival that names nothing), and Home sends a shipped one to its order.
+    const name='Orders: a TBB subscription charged before its book is named';
+    const W=w(),D=doc(),G=W.eval('G'),L=W.eval('LOG'),tick=ms=>new Promise(r=>setTimeout(r,ms));
+    const line={id:99887701,orderId:99887766,date:'2099-11-05',orderNo:'',store:'The Broken Binding',position:1,title:'',series:'',seq:'',bookId:0,qty:1,price:'',eta:'',status:'shipped',shippedOn:'',tracking:'',arrivedOn:'',notes:'book not announced yet',author:'',edition:'',editionFormat:'Special Edition',isbn:''};
+    const stub={id:99887766,date:'2099-11-05',order:'',books:'SF&F Subscription',series:'',author:'',paid:'Paid',delivered:'Unfulfilled',tracking:'',fulfil:'',type:'Sub',sub:'SF&F',count:1,contains:'',store:'The Broken Binding',storeItem:'SF&F Subscription',lines:[line]};
+    G.orders.push(stub);G.orderLines.push(line);
+    try{
+      W.setOwner('butthead');await go('logorders','log');L.renderOrders();await tick(150);
+      const op=D.getElementById('log-orders-open')._open||[],i=op.findIndex(o=>o.id===stub.id);
+      const rowT=i>=0?((D.querySelectorAll('#log-orders-open .log-item-title')[i]||{}).textContent||''):'';
+      if(i>=0){L.expandOrder(i,'open');await tick(200);}
+      const exp=D.getElementById('log-oexp-open'+i),txt=exp?exp.textContent:'',btns=exp?[...exp.querySelectorAll('button')].map(b=>b.textContent.trim()):[];
+      const titleOk=/SF&F subscription — book not announced yet/.test(rowT),shopOk=/At TBB\s*SF&F Subscription/.test(txt.replace(/\s+/g,' '));
+      const nameOk=btns.includes('Name the book'),noArrive=!btns.includes('Arrived today')&&!btns.includes('All arrived');
+      let formOk=false;if(i>=0){L.lineNamePrompt(i,line.id);await tick(60);formOk=!!D.getElementById('log-nm-t-'+line.id);L.lineNamePrompt(i,line.id);}
+      await go('home','home');if(typeof W.renderHome==='function')W.renderHome();await tick(200);
+      const hr=[...D.querySelectorAll('#home-arriving .home-row')].find(r=>/SF&F subscription — book not announced yet/.test(r.textContent));
+      const homeOk=!!hr&&[...hr.querySelectorAll('button')].some(b=>b.textContent.trim()==='Name it');
+      res(name,titleOk&&shopOk&&nameOk&&noArrive&&formOk&&homeOk,`row “${rowT.slice(0,70)}” (${titleOk}); At TBB ${shopOk}; Name the book ${nameOk}; no Arrived ${noArrive}; form ${formOk}; Home Name it ${homeOk}`);
+    }finally{
+      const a=G.orders.indexOf(stub);if(a>=0)G.orders.splice(a,1);const b=G.orderLines.indexOf(line);if(b>=0)G.orderLines.splice(b,1);
+      L.renderOrders();if(typeof W.renderHome==='function')W.renderHome();
+    }
+  });
   await check('TBR: a queued book on the currently-reading shelf shows under Reading now only',async()=>{
     const name='TBR: a queued book on the currently-reading shelf shows under Reading now only';
     w().setOwner('butthead');await go('tbr','reading');
