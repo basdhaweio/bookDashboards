@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-05T08:50:28+00:00",
+ "generated_at": "2026-11-05T15:27:27+00:00",
  "owner": "butthead",
  "site": "https://basdhaweio.github.io/bookDashboards/",
  "reading_now": [
@@ -147,7 +147,7 @@
   }
  ],
  "orders": {
-  "open": 36,
+  "open": 38,
   "shipped": 0,
   "lines": [
    {
@@ -211,24 +211,24 @@
     "ordered": "2026-09-30"
    },
    {
-    "id": 101,
-    "order_id": 165,
-    "title": "The Sun Eater #6",
+    "id": 103,
+    "order_id": 170,
+    "title": "Malazan Book of the Fallen #7",
     "store": "The Broken Binding",
     "status": "ordered",
     "eta": "",
     "tracking": "",
-    "ordered": "2026-08-03"
+    "ordered": "2026-08-04"
    },
    {
-    "id": 102,
-    "order_id": 165,
-    "title": "The Sun Eater #7",
+    "id": 104,
+    "order_id": 170,
+    "title": "Malazan Book of the Fallen #8",
     "store": "The Broken Binding",
     "status": "ordered",
     "eta": "",
     "tracking": "",
-    "ordered": "2026-08-03"
+    "ordered": "2026-08-04"
    }
   ]
  },
