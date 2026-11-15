@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-15T23:14:26+00:00",
+ "generated_at": "2026-11-15T23:21:26+00:00",
  "owner": "butthead",
  "site": "https://basdhaweio.github.io/bookDashboards/",
  "reading_now": [
@@ -234,12 +234,12 @@
  },
  "year": {
   "year": 2026,
-  "read": 59,
+  "read": 60,
   "target": 155,
   "pace": 135,
   "last_year_by_now": 135,
   "last_year_total": 154,
-  "this_month": 0,
+  "this_month": 1,
   "bought": 189
  },
  "proposals": {
