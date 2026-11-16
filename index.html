@@ -2081,6 +2081,12 @@ async function tbrDropReading(from){
   const q=(G._tbrQueue||[])[from];if(!q)return;
   if(await LOG.startReading(q.b,LOG.today())){toast('Reading now: “'+q.b.title+'” (started today)');tbrRerender();}
 }
+// One work from an order's declared contents, its series number dropped:
+// "Avempartha #2" (how jerry stores it) or "1 - The Crown Conspiracy" (how
+// John typed the Riyria orders; jerry's _parse_contains reads both).
+function contentTitle(s){
+  return(s||'').replace(/\s+#\d+(?:\.\d+)?$/,'').replace(/^(?:#\d{1,3}(?:\.\d+)?\s+|#?\d{1,3}(?:\.\d+)?\s*(?:[-–—)]|\.)\s+)(?=\S)/,'').trim();
+}
 // Can this register book be started? Unread, out (not TBA or dated ahead),
 // and not already on its reader's Reading now.
 function canStartReading(b){
@@ -2358,7 +2364,7 @@ function renderTBR(){
   const onOrder=b=>{const k=nl(b.title);if(!k)return null;
     if(own(b)!=='goblin'){const l=lineFor(b);if(l)return{store:l.store||'',eta:l.eta||'',status:l.status,pending:!!l.pending};}
     if(own(b)==='goblin'){const x=openBoxes.find(x=>x.title&&(nl(x.title)===k||(k.length>=8&&nl(x.title).includes(k))));return x?{store:[x.vendor,x.box].filter(Boolean).join(' '),eta:x.eta||''}:null;}
-    const o=open.find(o=>nl(o.books).includes(k)||(o.contains||'').split('\n').some(l=>nl(l.replace(/\s+#\S+$/,''))===k));return o?{store:o.store||'',eta:''}:null;};
+    const o=open.find(o=>nl(o.books).includes(k)||(o.contains||'').split('\n').some(l=>nl(contentTitle(l))===k));return o?{store:o.store||'',eta:''}:null;};
   const inProg=series.filter(s=>s.inProg);
   const reading=tbrReadingNow(nk,owners);
   // A book on the Goodreads shelf is being read: its series lives under
@@ -7005,7 +7011,7 @@ const LOG=(()=>{
   // The order's books, one per line: declared omnibus contents when there
   // are any (seq markers dropped), else the Books text as typed.
   function orderTitles(o){
-    const t=(o.contains||'').split('\n').map(s=>s.replace(/\s+#\S+$/,'').trim()).filter(Boolean);
+    const t=(o.contains||'').split('\n').map(contentTitle).filter(Boolean);
     return t.length?t:(o.books?[o.books]:[]);
   }
   function expandOrder(i,list){

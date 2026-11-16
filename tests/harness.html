@@ -1233,6 +1233,17 @@ async function main(){
       res(name,ok,card?card.textContent.replace(/\s+/g,' ').trim().slice(0,160):'card not found');
     }finally{const i=G.orders.indexOf(stub);if(i>=0)G.orders.splice(i,1);W.renderBookMail(G.orders);}
   });
+  await check('Order contents: the number in front or at the end names the same work',async()=>{
+    // John typed the Riyria omnibus orders' contents "1 - The Crown Conspiracy";
+    // jerry stores "The Crown Conspiracy #1" (2026-11-16) — both are the work
+    const name='Order contents: the number in front or at the end names the same work';
+    const W=w();
+    const cases=[['1 - The Crown Conspiracy','The Crown Conspiracy'],['Avempartha #2','Avempartha'],['3. Nyphron Rising','Nyphron Rising'],
+      ['4) The Emerald Storm','The Emerald Storm'],['#5 Wintertide','Wintertide'],['6 – Percepliquis','Percepliquis'],['1.5 - A Novella','A Novella'],
+      ['2001: A Space Odyssey','2001: A Space Odyssey'],['1-2-3 Magic','1-2-3 Magic'],['1984','1984'],['11/22/63','11/22/63']];
+    const bad=cases.filter(([a,b])=>W.contentTitle(a)!==b);
+    res(name,!bad.length,bad.length?'wrong: '+bad.map(([a])=>a+' → '+W.contentTitle(a)).join('; '):cases.length+' shapes read right');
+  });
   await check('Widget links: #add, #order/<id> and #tbr land on the work',async()=>{
     const name='Widget links: #add, #order/<id> and #tbr land on the work';
     const W=w(),D=doc(),tick=ms=>new Promise(r=>setTimeout(r,ms));

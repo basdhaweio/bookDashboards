@@ -226,6 +226,11 @@ the sheets' own vocabulary (`x`, `yes`, `1`).
 A Book Mail order may declare its contained works up front: `contains` on
 `order_new` (list of titles, optional trailing ` #seq`), stored on the order
 and editable later via `order_update` `set.contains` (newline-separated).
+The number may also go in front (`1 - The Crown Conspiracy`, `2. Avempartha`).
+Either way jerry stores `Title #seq`, one per line (docs/OMNIBUS.md, "How a
+contents line may be written"). Declaring contents withdraws any add
+proposal still waiting for the volume's own title: a collection is never a
+register row.
 When such an order is marked arrived, the arrival records the copy (titled
 by the order's Books field) and marks each declared work owned with a dated
 acquisition — no itemize proposal needed; only titles that fail exact match

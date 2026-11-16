@@ -51,6 +51,34 @@ declare its contents at entry time.
    (Multi-book orders WITHOUT declared contents keep the old behavior: an
    itemize proposal, never a guess.)
 
+### How a contents line may be written (2026-11-16)
+
+The series number can go at the end or in front: `Avempartha #2`,
+`1 - The Crown Conspiracy`, `2. Avempartha`, `3) Nyphron Rising`, `#4 The
+Emerald Storm`. `_parse_contains` (apply_inbox) reads all of them. An order's
+contents are stored as `Title #seq`, one work per line (`contents_text`),
+whether they came from the order form or Edit details. The dashboard's
+`contentTitle()` reads both shapes too.
+
+A number in front counts only when it has at most three digits and a dash,
+`.`, or `)` followed by a space. "2001: A Space Odyssey", "1984" and
+"1-2-3 Magic" stay whole titles; no register title starts that way.
+
+Why it matters: John typed the Riyria orders as `1 - The Crown Conspiracy`.
+Read whole, that line matches no register book, so Theft of Swords' arrival
+would have proposed a new book called "1 - The Crown Conspiracy" instead of
+owning #1. `jobs/fix_1116_collection_contents.py` rewrote the three orders.
+Its dry run rehearsed all three arrivals: each copy holds its two register
+works, owned, with no proposals and no register row named after the volume.
+
+**A collection is never a register row** (John, 2026-11-16: "Theft of
+Swords is a collection of other books - so that shouldn't be its own line in
+the register the composite books should be"). The TBB check can name a
+month's line before anyone knows the book is an omnibus. When contents are
+then declared, any add proposal still waiting for that volume's own title is
+withdrawn (`withdraw_volume_adds`). A line already linked to a book is left
+as it is, and the event's note names that book.
+
 ## Editions (migration 018, 2026-09-16)
 
 The same copies layer holds **single-work objects**: a hardback of a book
