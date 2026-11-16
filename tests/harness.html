@@ -725,11 +725,11 @@ async function main(){
     const ok=b1&&b2&&got.bundle&&got.pending&&got.goodreads&&got.zone&&got.prompt&&got.startSent&&(got.drop===true||got.drop==='no Next up')&&got.stopTbr&&got.stopHome&&got.log;
     res(name,ok,Object.entries(got).map(([k,v])=>`${k} ${v===true?'ok':v}`).join('; ')+(b1?'':' — no unread register book to test with'));
   });
-  await check('Reading now: a startable card on any TBR section or the Plan shelf drags onto the start-reading bar',async()=>{
+  await check('Reading now: a startable card on any TBR section, the Plan shelf or Home drags onto the start-reading bar',async()=>{
     // John, 2026-11-15: "the drag/drop seems to work on TBR, make sure it
     // applies to all the other cards in different pages". A real pointer drag
     // from a card's ⋮⋮ handle to the bar; sending is stubbed.
-    const name='Reading now: a startable card on any TBR section or the Plan shelf drags onto the start-reading bar';
+    const name='Reading now: a startable card on any TBR section, the Plan shelf or Home drags onto the start-reading bar';
     const W=w(),G=W.eval('G'),L=W.eval('LOG'),keep=L.startReading,was=doc().querySelector('#owner-filter button.active')?.dataset.o||'all';
     const sent=[],got={},wait=ms=>new Promise(r=>setTimeout(r,ms));
     // the bar's slide-in transition is frozen in a hidden or background page,
@@ -742,6 +742,16 @@ async function main(){
       W.dispatchEvent(new W.PointerEvent('pointermove',{clientX:x,clientY:y,pointerId:7,pointerType:'mouse'}));
       W.dispatchEvent(new W.PointerEvent('pointerup',{clientX:x,clientY:y,pointerId:7,pointerType:'mouse'}));
       await wait(200);bar.style.transition='';return shown&&!bar.classList.contains('show');};
+    // the same, dropped on an element instead of the bar (Home's Reading now shelf)
+    const dragTo=async(handle,zone)=>{const bar=doc().getElementById('rn-dropbar');bar.style.transition='none';
+      // mid-shelf, clear of the page's fixed header
+      zone.scrollIntoView({block:'center'});await wait(100);
+      const r=handle.getBoundingClientRect(),z=zone.getBoundingClientRect(),H=W.innerHeight;
+      const x=z.left+z.width/2,y=Math.max(90,Math.min(z.top+z.height/2,H-40));
+      handle.dispatchEvent(new W.PointerEvent('pointerdown',{bubbles:true,cancelable:true,clientX:r.left+2,clientY:r.top+2,button:0,pointerId:8,pointerType:'mouse'}));
+      W.dispatchEvent(new W.PointerEvent('pointermove',{clientX:x,clientY:y,pointerId:8,pointerType:'mouse'}));
+      W.dispatchEvent(new W.PointerEvent('pointerup',{clientX:x,clientY:y,pointerId:8,pointerType:'mouse'}));
+      await wait(200);bar.style.transition='';return true;};
     try{
       L.startReading=b=>{sent.push(b.title);return Promise.resolve(true);};
       W.setOwner('butthead');await go('tbr','reading');
@@ -756,8 +766,20 @@ async function main(){
       if(p){const b=G._planPool[+p.closest('.tbr-card').dataset.pool],can=W.canStartReading(b),n0=sent.length,ok2=await drag(p);
         got.plan=!can?'first pool book not startable':ok2&&sent[n0]===b.title?'ok':`bar ${ok2}, sent [${sent.slice(n0).join('|')}], want ${b.title}`;}
       else got.plan='no pool card';
-    }finally{L.startReading=keep;W.setOwner(was);W.renderTBR();}
-    const ok=got.tbr==='ok'&&got.unreleasedNone&&(got.plan==='ok'||got.plan==='first pool book not startable');
+      // Home: a New to get row whose book can be started (John: "add drag to
+      // start reading on Home too"), onto the bar and onto Home's own shelf
+      W.switchSection('home');await wait(400);
+      const hh=doc().querySelector('#home-new .home-row[data-ni] .home-handle');
+      if(hh){const x=G._homeNew.rows[+hh.closest('.home-row').dataset.ni],n0=sent.length,ok3=await drag(hh);
+        got.home=ok3&&sent[n0]===x.b.title?'ok':`bar ${ok3}, sent [${sent.slice(n0).join('|')}], want ${x.b.title}`;
+        const hh2=doc().querySelector('#home-new .home-row[data-ni] .home-handle'),zone=doc().getElementById('home-reading');
+        if(hh2&&zone){const x2=G._homeNew.rows[+hh2.closest('.home-row').dataset.ni],n1=sent.length;await dragTo(hh2,zone);
+          got.homeShelf=sent[n1]===x2.b.title?'ok':`sent [${sent.slice(n1).join('|')}], want ${x2.b.title}`;}
+        else got.homeShelf='no row or shelf after the first drop';
+      }else{got.home='no startable New to get row';got.homeShelf='skipped';}
+    }finally{L.startReading=keep;W.setOwner(was);W.renderTBR();W.renderHome();}
+    const ok=got.tbr==='ok'&&got.unreleasedNone&&(got.plan==='ok'||got.plan==='first pool book not startable')
+      &&((got.home==='ok'&&got.homeShelf==='ok')||got.home==='no startable New to get row');
     res(name,ok,Object.entries(got).map(([k,v])=>`${k} ${v===true?'ok':v}`).join('; '));
   });
   await check('Scan card: an ISBN jerry already found shows its series and Got it',async()=>{

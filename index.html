@@ -550,6 +550,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
 .home-row.own-gob{background:var(--purple-bg);border-color:#b8afd6}
 .home-row .ct{width:36px;height:54px}
 .home-row-i{flex:1;min-width:0}
+.home-handle{color:var(--text3);cursor:grab;font-size:15px;user-select:none;line-height:1;padding:6px 2px;touch-action:none;}
 .home-row-t{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .home-row-s{font-family:var(--font-m);font-size:10px;color:var(--text3);margin-top:2px}
 .home-late{color:var(--coral)}
@@ -2182,7 +2183,7 @@ function dndBind(container,opts){
     const clear=()=>document.querySelectorAll('.dropbefore,.dropafter,.droptarget').forEach(x=>x.classList.remove('dropbefore','dropafter','droptarget'));
     let lx=0,ly=0,raf=0;
     const hit=(x,y)=>{const el=document.elementFromPoint(x,y);clear();before=null;target=null;rdrop=null;
-      const rz=rb&&el?el.closest('#rn-dropbar,#tbr-reading-wrap'):null;
+      const rz=rb&&el?el.closest('#rn-dropbar,#tbr-reading-wrap,#home-reading'):null;
       if(rz){rdrop=rz;rz.classList.add('droptarget');return;}
       const t=opts.targets&&el?el.closest(opts.targets):null;
       const it=el?el.closest(opts.items):null;
@@ -3462,7 +3463,7 @@ function renderHome(){
     return`<button class="home-book${tint(r.owner)}" data-i="${i}" onclick="homeOpenBook(${i})" title="${esc(homeTitle(r))}">${cov(r,104)}<div class="home-t">${esc(homeTitle(r))}</div><div class="home-s">${esc(homeSeries(r))}</div><div class="home-s">${done?'✓ finished · pending':d==null?'':d===0?'started today':'day '+(d+1)}${both?' · '+who(r.owner):''}</div></button>`;};
   // each reader's newest leads, so the whole house shows before the scroll
   const act=reading.map((r,i)=>[r,i]).filter(([r])=>!dipping(r)).sort(([a],[b])=>(newest[b.owner]===b)-(newest[a.owner]===a)),dip=reading.map((r,i)=>[r,i]).filter(([r])=>dipping(r));
-  const readingHtml=`<div class="home-sec"><div class="home-hd"><div class="sl">Reading now</div>${more('TBR','reading','tbr')}</div>
+  const readingHtml=`<div class="home-sec" id="home-reading"><div class="home-hd"><div class="sl">Reading now</div>${more('TBR','reading','tbr')}</div>
     ${reading.length?`<div class="home-shelf">${act.map(([r,i])=>card(r,i)).join('')}</div>
     ${dip.length?`<div class="home-dip-hd">Dipping into · ${dip.length}</div><div class="home-dip">${dip.map(([r,i])=>`<button class="home-book${tint(r.owner)}" data-i="${i}" onclick="homeOpenBook(${i})" title="${esc(homeTitle(r))} — since ${esc(homeDate(r.added))}">${cov(r,46)}</button>`).join('')}</div>`:''}
     <div class="home-sheet" id="home-sheet"></div>`:'<div class="ms">Nothing on a currently-reading shelf.</div>'}</div>`;
@@ -3497,9 +3498,11 @@ function renderHome(){
   // New to get: new to the register or newly announced, not owned (homeNewToGet)
   const ntg=homeNewToGet(owners,td);G._homeNew=ntg;
   const ntgShown=ntg.rows.slice(0,HOME_NEW_MAX);
+  // rows whose book can be started get a ⋮⋮ handle (drag to start reading)
+  const ntgStart=new Set(ntgShown.map((x,i)=>x.kind==='book'&&canStartReading(x.b)?i:-1).filter(i=>i>=0));
   const ntgRow=(x,i)=>x.kind==='series'
     ?`<div class="home-row${tint(x.owner)}">${coverTile(x.books[0].title,x.owner,'',null,36,x.series)}<div class="home-row-i"><div class="home-row-t">${esc(x.series)}${x.universe&&!x.series.toLowerCase().includes(x.universe.toLowerCase())?` <span class="ms">· ${esc(x.universe)}</span>`:''}</div><div class="home-row-s">${x.books.length} books · ${esc(x.when)}${both?' · '+who(x.owner):''}</div></div></div>`
-    :`<div class="home-row${tint(x.owner)}">${coverTile(x.b.title,x.owner,'',null,36,x.b.series)}<div class="home-row-i"><div class="home-row-t">${esc(x.b.title)}</div><div class="home-row-s">${esc(x.where)}${x.where&&x.when?' · ':''}${esc(x.when)}${both?' · '+who(x.owner):''}</div></div>${x.pending?'<span class="badge b-teal">got it · pending</span>':`<button class="log-act" onclick="homeGotPrompt(${i})">Got it</button>`}</div><div class="home-got" id="home-got-${i}" style="display:none"></div>`;
+    :`<div class="home-row${tint(x.owner)}"${ntgStart.has(i)?` data-ni="${i}"`:''}>${ntgStart.has(i)?'<span class="home-handle" title="drag onto Reading now (or the bar at the top) to start it">⋮⋮</span>':''}${coverTile(x.b.title,x.owner,'',null,36,x.b.series)}<div class="home-row-i"><div class="home-row-t">${esc(x.b.title)}</div><div class="home-row-s">${esc(x.where)}${x.where&&x.when?' · ':''}${esc(x.when)}${both?' · '+who(x.owner):''}</div></div>${x.pending?'<span class="badge b-teal">got it · pending</span>':`<button class="log-act" onclick="homeGotPrompt(${i})">Got it</button>`}</div><div class="home-got" id="home-got-${i}" style="display:none"></div>`;
   const newHtml=`<div class="home-sec" id="home-new"><div class="home-hd"><div class="sl">New to get</div>${more('To acquire','buying','toacquire')}</div>
     ${ntgShown.map(ntgRow).join('')||`<div class="ms" style="margin-bottom:6px">Nothing new to get: no book you don’t own was added or announced in the last ${HOME_NEW_DAYS} days.</div>`}
     ${ntg.rows.length>ntgShown.length?`<div class="home-foot">${ntg.rows.length-ntgShown.length} more row${ntg.rows.length-ntgShown.length>1?'s':''} · ${ntg.total} books new to get in all</div>`:''}</div>`;
@@ -3528,6 +3531,11 @@ function renderHome(){
     <div class="home-acts"><button class="home-act" onclick="runHashAction('scan')"><span>📷</span>Scan</button><button class="home-act" onclick="runHashAction('add')"><span>＋</span>Add</button><button class="home-act" onclick="runHashAction('order')"><span>📦</span>Order</button><button class="home-act" onclick="homeTrack()"><span>🔍</span>Track</button></div>
     ${both?'<div class="tbr-legend" style="margin-bottom:.8rem"><span><i style="background:var(--teal-bg);border-color:#9dcdc4"></i>Com</span><span><i style="background:var(--purple-bg);border-color:#b8afd6"></i>Shereen</span></div>':''}
     ${readingHtml}${arrivingHtml}${newHtml}${newsHtml}`;
+  // New to get: a book that can be started drags onto Reading now (this
+  // shelf) or the start-reading bar (John, 2026-11-15: "add drag to start
+  // reading on Home too"). The list is rebuilt each render, so it binds anew.
+  dndBind(document.getElementById('home-new'),{items:'.home-row[data-ni]',handle:'.home-handle',
+    reading:it=>{const x=((G._homeNew||{}).rows||[])[+it.dataset.ni];return x&&x.kind==='book'&&canStartReading(x.b)?x.b:null;}});
 }
 // Tap a cover: finish it right here, or go to its TBR card (collections and
 // books not yet in the register are handled there).
