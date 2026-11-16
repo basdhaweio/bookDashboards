@@ -7218,7 +7218,7 @@ const LOG=(()=>{
             <div class="log-item-title">${esc((cur||{}).title||p.target)}${d?` <span class="log-badge-pend">${d==='approve'?'Add':d==='reject'?'Drop':'Edit'} pending</span>`:''}</div>
             <div class="log-item-meta">${po?'for '+esc(OWNER_LABEL[po]||po)+' · ':''}${esc(p.kind)}${p.recommend&&p.recommend!=='review'?' · recommends '+esc(p.recommend):''}${propSummary(p)?' · '+esc(propSummary(p)):''}${cur&&!cur.series?' · <span style="color:var(--coral)">no series</span>':''}</div>
             ${p.note?`<div class="ms" style="margin-top:4px">${esc(p.note)}</div>`:''}
-            ${sg&&(sg.series.length||sg.seq)?`<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="ms">series?</span>${sg.series.map((s,i)=>`<button class="log-act" style="padding:4px 9px;font-size:10px" onclick="LOG.propFill(${p.id},'series',${i})">${esc(s.name)}</button>`).join('')}${sg.seq?`<button class="log-act" style="padding:4px 9px;font-size:10px" onclick="LOG.propFill(${p.id},'seq')">#${esc(sg.seq)}</button>`:''}</div>`:''}
+            ${sg?`<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="ms">series?</span>${sg.series.map((s,i)=>`<button class="log-act" style="padding:4px 9px;font-size:10px" onclick="LOG.propFill(${p.id},'series',${i})">${esc(s.name)}</button>`).join('')}${sg.seq?`<button class="log-act" style="padding:4px 9px;font-size:10px" onclick="LOG.propFill(${p.id},'seq')">#${esc(sg.seq)}</button>`:''}<button class="log-act" style="padding:4px 9px;font-size:10px;border-style:dashed" onclick="LOG.propFill(${p.id},'other')" title="none of these — type the series (new names are created)">other…</button></div>`:''}
           </div>
           <div class="log-acts">${decided?'':`
             <button class="log-act primary" onclick="LOG.doPropDecide(${p.id},'approve')">Add</button>
@@ -7376,7 +7376,7 @@ const LOG=(()=>{
     const tl=(cur.title||'').toLowerCase();
     G._allSeriesNames.forEach(s=>{const sl=s.toLowerCase();
       if(sl.length>3&&tl.startsWith(sl)&&!seen.has(s)&&(tl.length===sl.length||/[\s:,—-]/.test(tl[sl.length]))){seen.add(s);out.push({name:s,why:'title match'});}});
-    return{series:out.slice(0,3),seq:cur.seq?'':seqFromTitle(cur.title)};
+    return{series:out.slice(0,6),seq:cur.seq?'':seqFromTitle(cur.title)};
   }
   function propFill(id,kind,i){
     const p=(G.proposals||[]).find(x=>x.id===id);const cur=p&&propEditCur(p);if(!cur)return;
@@ -7385,6 +7385,10 @@ const LOG=(()=>{
     if(kind==='series'){
       const e=document.getElementById(`log-pke-series-${id}`);if(e&&sg.series[i])e.value=sg.series[i].name;
       const q=document.getElementById(`log-pke-seq-${id}`);if(q&&!q.value&&sg.seq)q.value=sg.seq;
+    }else if(kind==='other'){
+      // None of the suggestions fit — a typed name is created if it is new.
+      const e=document.getElementById(`log-pke-series-${id}`);
+      if(e){e.placeholder='type the series — new names are created';e.focus();}
     }else{
       const q=document.getElementById(`log-pke-seq-${id}`);if(q&&sg.seq)q.value=sg.seq;
     }
