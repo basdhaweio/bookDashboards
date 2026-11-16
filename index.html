@@ -1803,6 +1803,24 @@ let uvQ='';
 function uvFilterQ(){const el=document.getElementById('uv-q');uvQ=el?el.value.trim().toLowerCase():'';renderUniverse(G.books);}
 function renderUniverse(bm){
   let all=Object.values(bm.byUniverse);
+  // A standalone tagged with a universe arrives as type 'Individual', which
+  // has no section below — so it was dropped, and a universe whose only
+  // tagged row is a standalone never showed at all. Fold each into its
+  // universe's largest tile; a universe with no tile yet gets one, sized from
+  // its books so it agrees with the detail it opens.
+  {
+    const shown=all.filter(u=>u.type!=='Individual').map(u=>({...u})),byName={};
+    shown.forEach(u=>{(byName[u.name]=byName[u.name]||[]).push(u);});
+    all.filter(u=>u.type==='Individual'&&u.name&&u.name!=='(unassigned)').forEach(u=>{
+      const host=(byName[u.name]||[]).filter(h=>['Series','Comics','Graphic Novel','Manga'].includes(h.type)).sort((a,b)=>b.tracked-a.tracked)[0];
+      if(host){host.tracked+=u.tracked;host.read+=u.read;host.owned+=u.owned;return;}
+      const bk=(G.indBooks||[]).filter(b=>b.universe===u.name),med=bk.map(b=>b.media);
+      const type=med.length&&med.every(m=>m==='Manga')?'Manga':med.length&&med.every(m=>/^(Comics|Graphic Novel|GN)$/.test(m))?'Comics':'Series';
+      const nu=bk.length?{name:u.name,type,tracked:bk.length,read:bk.filter(b=>b.read).length,owned:bk.filter(b=>b.owned).length}:{...u,type};
+      shown.push(nu);(byName[u.name]=byName[u.name]||[]).push(nu);
+    });
+    all=shown;
+  }
   if(uvQ){const idx={};(G.indBooks||[]).forEach(b=>{if(!b.universe)return;(idx[b.universe]=idx[b.universe]||[]).push(((b.series||'')+' '+b.title+' '+(b.author||'')).toLowerCase());});
     all=all.filter(u=>(u.name||'').toLowerCase().includes(uvQ)||(idx[u.name]||[]).some(t=>t.includes(uvQ)));
     const live=all.filter(u=>u.name&&u.name!=='(unassigned)');
@@ -5736,7 +5754,7 @@ const LOG=(()=>{
     const br=document.getElementById('log-br-q');if(br)br.value='';
     const als=b=>(G.aliasesOf&&G.aliasesOf[(b.owner||'butthead')+'|'+b.title.toLowerCase().replace(/[^a-z0-9]/g,'')])||[];
     const hits=(G.indBooks||[]).filter(b=>
-      b.title.toLowerCase().includes(q)||b.series.toLowerCase().includes(q)||b.author.toLowerCase().includes(q)||als(b).some(a=>a.toLowerCase().includes(q))).slice(0,30);
+      b.title.toLowerCase().includes(q)||b.series.toLowerCase().includes(q)||b.author.toLowerCase().includes(q)||(b.universe||'').toLowerCase().includes(q)||als(b).some(a=>a.toLowerCase().includes(q))).slice(0,30);
     renderHits(hits,'<div class="ms" style="padding:8px 2px">No matches in the register.</div>');
     // …and elsewhere: Open Library and Google Books answer the same words
     // live, merged by ISBN, so a new book is a pick from a list rather than
