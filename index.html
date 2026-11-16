@@ -7207,15 +7207,18 @@ const LOG=(()=>{
       const d=dec.get(p.id);
       const decided=d==='approve'||d==='reject'; // a pending EDIT keeps the row actionable
       let pisbn='';try{pisbn=isbnNorm((JSON.parse(p.proposal)||{}).isbn);}catch(e){}
+      const cur=propEditCur(p);
+      const sg=(!decided&&cur&&!cur.series)?(propSug[p.id]=seriesSuggest(cur)):null;
       const po=propOwner(p),tint=po==='goblin'?' own-gob':po==='butthead'?' own-com':'';
       if(p.kind==='track_series_miss')return missCard(p,d,tint,po);
       return`<div class="cb${tint}" style="margin-bottom:10px" data-owner="${esc(po)}">
         <div class="log-item-hd" style="align-items:flex-start">
           ${thumbHTML('','',pisbn,40)}
           <div class="log-item-info">
-            <div class="log-item-title">${esc((propEditCur(p)||{}).title||p.target)}${d?` <span class="log-badge-pend">${d==='approve'?'Add':d==='reject'?'Drop':'Edit'} pending</span>`:''}</div>
-            <div class="log-item-meta">${po?'for '+esc(OWNER_LABEL[po]||po)+' · ':''}${esc(p.kind)}${p.recommend&&p.recommend!=='review'?' · recommends '+esc(p.recommend):''}${propSummary(p)?' · '+esc(propSummary(p)):''}</div>
+            <div class="log-item-title">${esc((cur||{}).title||p.target)}${d?` <span class="log-badge-pend">${d==='approve'?'Add':d==='reject'?'Drop':'Edit'} pending</span>`:''}</div>
+            <div class="log-item-meta">${po?'for '+esc(OWNER_LABEL[po]||po)+' · ':''}${esc(p.kind)}${p.recommend&&p.recommend!=='review'?' · recommends '+esc(p.recommend):''}${propSummary(p)?' · '+esc(propSummary(p)):''}${cur&&!cur.series?' · <span style="color:var(--coral)">no series</span>':''}</div>
             ${p.note?`<div class="ms" style="margin-top:4px">${esc(p.note)}</div>`:''}
+            ${sg&&(sg.series.length||sg.seq)?`<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="ms">series?</span>${sg.series.map((s,i)=>`<button class="log-act" style="padding:4px 9px;font-size:10px" onclick="LOG.propFill(${p.id},'series',${i})">${esc(s.name)}</button>`).join('')}${sg.seq?`<button class="log-act" style="padding:4px 9px;font-size:10px" onclick="LOG.propFill(${p.id},'seq')">#${esc(sg.seq)}</button>`:''}</div>`:''}
           </div>
           <div class="log-acts">${decided?'':`
             <button class="log-act primary" onclick="LOG.doPropDecide(${p.id},'approve')">Add</button>
@@ -7350,6 +7353,42 @@ const LOG=(()=>{
     }catch(e){return null;}
   }
   let propExpanded=null;
+  // ── Series/seq suggestions for scan proposals ──────────────────────
+  // Upcoming-scan listings rarely name the series, but the register often
+  // knows it: this author's existing series, a known series name leading
+  // the title, or a volume number in the title. Suggestions only — the
+  // reviewer picks; nothing is applied without a tap.
+  let propSug={};
+  function nameKey(s){return (s||'').toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(Boolean).sort().join(' ');}
+  function seqFromTitle(t){const m=/\b(?:vol(?:ume)?\.?|book|part|no\.?|#)\s*(\d+)\b/i.exec(t||'')||/\b(\d{1,2})$/.exec((t||'').trim());return m?m[1]:'';}
+  function seriesSuggest(cur){
+    if(!cur)return{series:[],seq:''};
+    if(!G._authorSeries){
+      const m=new Map(),names=new Set();
+      (G.allIndBooks||[]).forEach(b=>{
+        if(b.series)names.add(b.series);
+        if(!b.series)return;const k=nameKey(b.author);if(!k)return;
+        if(!m.has(k))m.set(k,new Set());m.get(k).add(b.series);});
+      G._authorSeries=m;G._allSeriesNames=[...names];
+    }
+    const out=[],seen=new Set();
+    (G._authorSeries.get(nameKey(cur.author))||[]).forEach(s=>{if(!seen.has(s)){seen.add(s);out.push({name:s,why:'by this author'});}});
+    const tl=(cur.title||'').toLowerCase();
+    G._allSeriesNames.forEach(s=>{const sl=s.toLowerCase();
+      if(sl.length>3&&tl.startsWith(sl)&&!seen.has(s)&&(tl.length===sl.length||/[\s:,—-]/.test(tl[sl.length]))){seen.add(s);out.push({name:s,why:'title match'});}});
+    return{series:out.slice(0,3),seq:cur.seq?'':seqFromTitle(cur.title)};
+  }
+  function propFill(id,kind,i){
+    const p=(G.proposals||[]).find(x=>x.id===id);const cur=p&&propEditCur(p);if(!cur)return;
+    const sg=propSug[id]||seriesSuggest(cur);
+    if(propExpanded!==id)propEdit(id);
+    if(kind==='series'){
+      const e=document.getElementById(`log-pke-series-${id}`);if(e&&sg.series[i])e.value=sg.series[i].name;
+      const q=document.getElementById(`log-pke-seq-${id}`);if(q&&!q.value&&sg.seq)q.value=sg.seq;
+    }else{
+      const q=document.getElementById(`log-pke-seq-${id}`);if(q&&sg.seq)q.value=sg.seq;
+    }
+  }
   function propEdit(id){
     const p=(G.proposals||[]).find(x=>x.id===id);const cur=p&&propEditCur(p);if(!cur)return;
     document.querySelectorAll('.log-exp.open').forEach(e=>e.classList.remove('open'));
@@ -7362,6 +7401,8 @@ const LOG=(()=>{
       :DATE_FIELDS.includes(f)?`<input type="date" id="log-pke-${f}-${id}" value="${esc(cur[f]||'')}">`
       :`<input id="log-pke-${f}-${id}" value="${esc(cur[f]||'')}" ${f==='series'?'list="log-dl-series" placeholder="blank = standalone"':f==='universe'?'list="log-dl-universe"':''}>`}</div>`).join('')
       +entityDatalists()
+      +(()=>{const sg=propSug[id]=cur.series?{series:[],seq:cur.seq?'':seqFromTitle(cur.title)}:seriesSuggest(cur);
+        return (sg.series.length||sg.seq)?`<div class="log-frow"><label>Suggest</label><div style="display:flex;gap:6px;flex-wrap:wrap">${sg.series.map((s,i)=>`<button class="log-act" style="padding:5px 10px;font-size:10px" onclick="LOG.propFill(${id},'series',${i})">${esc(s.name)} <span style="color:var(--text3)">· ${s.why}</span></button>`).join('')}${sg.seq?`<button class="log-act" style="padding:5px 10px;font-size:10px" onclick="LOG.propFill(${id},'seq')">seq #${esc(sg.seq)}</button>`:''}</div></div>`:'';})()
       +`<button class="log-act primary" onclick="LOG.doPropDecideSet(${id},'approve')">Add with these values</button>
       <button class="log-act" onclick="LOG.doPropDecideSet(${id},'edit')" title="save the changes onto the proposal but leave it open">Save without adding</button>
       <div class="ms" style="margin-top:6px">Only changed fields ride along — Add applies them and accepts; Save keeps the proposal open with your values for a later decision.</div>`;
@@ -7560,7 +7601,7 @@ const LOG=(()=>{
     refreshBadge();
   }
 
-  return{renderBook,renderOrders,renderPending,renderProposed,doPropDecide,propEdit,doPropDecideSet,lineEditionPrompt,doLineEdition,lineNamePrompt,doLineName,splitEdition,homeArrive,lineArrivePending,missOpen,missPreview,doMissQueue,doMissSearch,parseSeriesPaste,doSyncRequest,importLibib,renderMeta,doMetaAdd,dupeCheck,showNeedsData,search,browse,brMode,expand,doFinished,doAcquired,
+  return{renderBook,renderOrders,renderPending,renderProposed,doPropDecide,propEdit,propFill,doPropDecideSet,lineEditionPrompt,doLineEdition,lineNamePrompt,doLineName,splitEdition,homeArrive,lineArrivePending,missOpen,missPreview,doMissQueue,doMissSearch,parseSeriesPaste,doSyncRequest,importLibib,renderMeta,doMetaAdd,dupeCheck,showNeedsData,search,browse,brMode,expand,doFinished,doAcquired,
     toggleAdd,doAdd,addDates,toggleTrack,doTrackSeries,trackFromRow,isbnLookup,addFromIsbn,isbnPickSeries,isbnPropDecide,isbnSeriesHint,seqFromText,proposalForIsbn,scanNewEdition,scanIsbn,stopScan,saveBookEdit,doCopyLetGo,vocabFor,pendingVocab,followAuthor,doNewOrder,doNewBoxOrder,setOrderStyle,expandOrder,doOrderUpdate,
     toggleRow,saveOrderEdit,expandBox,doBoxUpdate,saveBoxEdit,saveSetup,forgetSetup,refreshBadge,
     toggleOrderHistory,findInRegister,storeFromOrderNo,logFlyerOrders,trackSeriesFromIsbn,submitTrackSeries,
