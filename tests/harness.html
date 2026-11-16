@@ -725,6 +725,41 @@ async function main(){
     const ok=b1&&b2&&got.bundle&&got.pending&&got.goodreads&&got.zone&&got.prompt&&got.startSent&&(got.drop===true||got.drop==='no Next up')&&got.stopTbr&&got.stopHome&&got.log;
     res(name,ok,Object.entries(got).map(([k,v])=>`${k} ${v===true?'ok':v}`).join('; ')+(b1?'':' — no unread register book to test with'));
   });
+  await check('Reading now: a startable card on any TBR section or the Plan shelf drags onto the start-reading bar',async()=>{
+    // John, 2026-11-15: "the drag/drop seems to work on TBR, make sure it
+    // applies to all the other cards in different pages". A real pointer drag
+    // from a card's ⋮⋮ handle to the bar; sending is stubbed.
+    const name='Reading now: a startable card on any TBR section or the Plan shelf drags onto the start-reading bar';
+    const W=w(),G=W.eval('G'),L=W.eval('LOG'),keep=L.startReading,was=doc().querySelector('#owner-filter button.active')?.dataset.o||'all';
+    const sent=[],got={},wait=ms=>new Promise(r=>setTimeout(r,ms));
+    // the bar's slide-in transition is frozen in a hidden or background page,
+    // so the test shows it without one; it checks the drop, not the animation
+    const drag=async handle=>{const bar=doc().getElementById('rn-dropbar'),r=handle.getBoundingClientRect();
+      bar.style.transition='none';
+      handle.dispatchEvent(new W.PointerEvent('pointerdown',{bubbles:true,cancelable:true,clientX:r.left+2,clientY:r.top+2,button:0,pointerId:7,pointerType:'mouse'}));
+      const shown=bar.classList.contains('show');await wait(250);
+      const b=bar.getBoundingClientRect(),x=b.left+b.width/2,y=b.top+b.height/2;
+      W.dispatchEvent(new W.PointerEvent('pointermove',{clientX:x,clientY:y,pointerId:7,pointerType:'mouse'}));
+      W.dispatchEvent(new W.PointerEvent('pointerup',{clientX:x,clientY:y,pointerId:7,pointerType:'mouse'}));
+      await wait(200);bar.style.transition='';return shown&&!bar.classList.contains('show');};
+    try{
+      L.startReading=b=>{sent.push(b.title);return Promise.resolve(true);};
+      W.setOwner('butthead');await go('tbr','reading');
+      const D=doc();
+      got.handles=['queue','focus','prog','get','start'].map(s=>s+' '+D.querySelectorAll(`#tbr-${s} .tbr-card[data-bi] .tbr-handle`).length).join(', ');
+      got.unreleasedNone=D.querySelectorAll('#tbr-wait .tbr-card[data-bi]').length===0;
+      const h=D.querySelector('#tbr-prog .tbr-card[data-bi] .tbr-handle')||D.querySelector('#tbr-focus .tbr-card[data-bi] .tbr-handle')||D.querySelector('#tbr-get .tbr-card[data-bi] .tbr-handle');
+      if(h){const want=G._tbrBooks[+h.closest('.tbr-card').dataset.bi].title;const ok1=await drag(h);got.tbr=ok1&&sent.includes(want)?'ok':`bar ${ok1}, sent [${sent.join('|')}], want ${want}`;}
+      else got.tbr='no startable card outside Next up';
+      await go('plan','reading');W.planPoolRender('butthead');await wait(300);
+      const p=doc().querySelector('#plan-pool .tbr-card[data-pool] .tbr-handle');
+      if(p){const b=G._planPool[+p.closest('.tbr-card').dataset.pool],can=W.canStartReading(b),n0=sent.length,ok2=await drag(p);
+        got.plan=!can?'first pool book not startable':ok2&&sent[n0]===b.title?'ok':`bar ${ok2}, sent [${sent.slice(n0).join('|')}], want ${b.title}`;}
+      else got.plan='no pool card';
+    }finally{L.startReading=keep;W.setOwner(was);W.renderTBR();}
+    const ok=got.tbr==='ok'&&got.unreleasedNone&&(got.plan==='ok'||got.plan==='first pool book not startable');
+    res(name,ok,Object.entries(got).map(([k,v])=>`${k} ${v===true?'ok':v}`).join('; '));
+  });
   await check('Scan card: an ISBN jerry already found shows its series and Got it',async()=>{
     // They Cry (2026-11-04) was unknown to Open Library and the keyless Google
     // Books is over quota, so a scan said nobody knew the ISBN. A proposal

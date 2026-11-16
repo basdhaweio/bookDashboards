@@ -148,6 +148,10 @@ button.tbr-link{background:none;border:none;padding:0;font:inherit;font-weight:i
 .dnd-ghost{position:fixed;z-index:1000;opacity:.9;pointer-events:none;box-shadow:var(--shadow2);transform:rotate(1.5deg);}
 .tbr-card.dropafter{box-shadow:inset -3px 0 0 var(--gold2);}
 .droptarget{outline:2px solid var(--gold2);outline-offset:2px;}
+/* the start-reading bar: slides in while a startable book card is dragged, on any page (2026-11-15) */
+.rn-dropbar{position:fixed;left:50%;top:12px;transform:translate(-50%,-170%);z-index:999;padding:.8rem 1.8rem;border:2px dashed var(--teal2);border-radius:12px;background:var(--bg2);color:var(--teal2);font-family:var(--font-m);font-size:12px;letter-spacing:.06em;text-transform:uppercase;box-shadow:var(--shadow2);transition:transform .15s ease;pointer-events:none;white-space:nowrap;}
+.rn-dropbar.show{transform:translate(-50%,0);pointer-events:auto;}
+.rn-dropbar.droptarget{background:var(--teal-bg);outline:none;}
 .plan-dropnew{border-style:dashed;color:var(--text3);}
 .plan-row{cursor:pointer;}.plan-row.open .pl{color:var(--gold);font-weight:600;}
 .plan-detail{margin:-6px 0 12px;padding:6px 10px;border-left:2px solid var(--gold2);background:var(--gold-bg);border-radius:0 8px 8px 0;}
@@ -554,6 +558,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
 </style>
 </head>
 <body>
+<div id="rn-dropbar" class="rn-dropbar">▶ Drop here to start reading</div>
 
 <header>
   <div class="h-brand"><div class="h-title" onclick="switchSection('home')" style="cursor:pointer" title="Home">The Library</div><div class="h-sub">Personal reading tracker · database edition</div></div>
@@ -2075,6 +2080,21 @@ async function tbrDropReading(from){
   const q=(G._tbrQueue||[])[from];if(!q)return;
   if(await LOG.startReading(q.b,LOG.today())){toast('Reading now: “'+q.b.title+'” (started today)');tbrRerender();}
 }
+// Can this register book be started? Unread, out (not TBA or dated ahead),
+// and not already on its reader's Reading now.
+function canStartReading(b){
+  if(!b||b.read)return false;
+  const pd=(b.pubDate||'').trim(),td=LOG.today();
+  if(/^tba$/i.test(pd)||(/^\d{4}(-\d{2}(-\d{2})?)?$/.test(pd)&&pd>td.slice(0,pd.length)))return false;
+  const nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  return!tbrReadingNow(nk,[b.owner||'butthead']).some(r=>r.reg&&(r.reg===b||(b.id&&r.reg.id===b.id)));
+}
+// A book card dropped on the start-reading bar (any page) or the TBR's
+// Reading now shelf: started today; the page re-renders.
+async function dropStartReading(b){
+  if(!b)return;
+  if(await LOG.startReading(b,LOG.today())){toast('Reading now: “'+b.title+'” (started today)');renderTab(curTab);if(curTab!=='home')renderHome();}
+}
 async function tbrStopRow(ri){
   const r=(G._tbrGR||[])[ri];if(!r)return;
   if(await LOG.stopReading(r.reg||null,r.grId||'',r.owner,r.title)){toast('Off Reading now: “'+(r.reg?r.reg.title:r.title)+'”');tbrRerender();}
@@ -2146,6 +2166,13 @@ function dndBind(container,opts){
     if(opts.handle){if(!e.target.closest(opts.handle))return;}
     else if(e.target.closest('button,input,select,textarea,a'))return;
     e.preventDefault();
+    // A card that can start a book (opts.reading -> that book, else null)
+    // shows the start-reading bar while it is dragged; the bar and the TBR's
+    // Reading now shelf both start it today (John, 2026-11-15: "make sure it
+    // applies to all the other cards in different pages").
+    const rb=opts.reading?opts.reading(item):null,bar=rb?document.getElementById('rn-dropbar'):null;
+    if(bar)bar.classList.add('show');
+    let rdrop=null;
     const items=()=>[...container.querySelectorAll(opts.items)];
     const from=items().indexOf(item),r=item.getBoundingClientRect();
     const g=item.cloneNode(true);g.classList.add('dnd-ghost');g.style.width=r.width+'px';g.style.left=r.left+'px';g.style.top=r.top+'px';document.body.appendChild(g);
@@ -2154,7 +2181,9 @@ function dndBind(container,opts){
     let before=null,target=null,moved=false;
     const clear=()=>document.querySelectorAll('.dropbefore,.dropafter,.droptarget').forEach(x=>x.classList.remove('dropbefore','dropafter','droptarget'));
     let lx=0,ly=0,raf=0;
-    const hit=(x,y)=>{const el=document.elementFromPoint(x,y);clear();before=null;target=null;
+    const hit=(x,y)=>{const el=document.elementFromPoint(x,y);clear();before=null;target=null;rdrop=null;
+      const rz=rb&&el?el.closest('#rn-dropbar,#tbr-reading-wrap'):null;
+      if(rz){rdrop=rz;rz.classList.add('droptarget');return;}
       const t=opts.targets&&el?el.closest(opts.targets):null;
       const it=el?el.closest(opts.items):null;
       if(t&&!container.contains(t)){target=t;t.classList.add('droptarget');return;}
@@ -2172,7 +2201,9 @@ function dndBind(container,opts){
     const move=ev=>{moved=true;lx=ev.clientX;ly=ev.clientY;g.style.left=(lx-dx)+'px';g.style.top=(ly-dy)+'px';hit(lx,ly);if(!raf)raf=requestAnimationFrame(edge);};
     const up=()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up);window.removeEventListener('pointercancel',up);
       if(raf){cancelAnimationFrame(raf);raf=0;}g.remove();item.classList.remove('dragging');clear();
+      if(bar)bar.classList.remove('show');
       if(!moved)return;
+      if(rdrop){dropStartReading(rb);return;}
       if(target&&opts.onTarget)opts.onTarget(from,target);
       else if(before!=null&&opts.onMove&&before!==from&&before!==from+1)opts.onMove(from,before);
     };
@@ -2417,16 +2448,23 @@ function renderTBR(){
     return'<span class="badge b-coral">not owned</span>'+heldBadge(nx);};
   // Actions: ✓ Read everywhere; ＋ Next up (or the queued badge) outside
   // the queue; ▲ ▼ ✕ inside it; Tombolo when it is out and not owned.
+  // A card whose book can be started (out, unread, not being read) carries
+  // its book's index (data-bi) and a ⋮⋮ handle: drag it onto the
+  // start-reading bar or the Reading now shelf (2026-11-15).
+  const canStart=nx=>!!nx&&!nx.read&&!readingKeys.has(ok(nx))&&rel(nx)==='out'&&!pendRead.has(pk(nx));
+  const sbi=nx=>canStart(nx)?bidx(nx):null;
+  const startOf=it=>it.dataset.bi?(G._tbrBooks||[])[+it.dataset.bi]||null:null;
   const acts=(nx,qi)=>{const i=bidx(nx),k=pk(nx),pr=pendRead.has(k),q=qmap.get(k);
     const queueBtns=qi==null
       ?(q?`<span class="badge b-gold">next up${q.pending?' · pending':''}</span>`:`<button class="log-act" onclick="tbrQueue(${i},'add')" title="put it on your Next up list">＋ Next up</button>`)
       :`<button class="log-act" onclick="tbrMoveBy(${qi},-1)" title="move up"${qi===0||queue[qi-1].owner!==queue[qi].owner?' disabled':''}>▲</button><button class="log-act" onclick="tbrMoveBy(${qi},1)" title="move down"${qi>=queue.length-1||queue[qi+1].owner!==queue[qi].owner?' disabled':''}>▼</button><button class="log-act" onclick="tbrQueue(${i},'remove')" title="take it off the list">✕</button>`;
     if(nx._gap)return`<div class="tbr-acts"><button class="log-act gold" onclick="tbrTrackGap(${i})" title="add the missing volume to the register as tracked">＋ Track #${nx._gap}</button><a class="tbr-a" href="${tomboloUrl((nx.series||'')+' '+nx._gap)}" target="_blank" rel="noopener">Tombolo ↗</a></div><div id="tbr-rr-${i}" style="display:none"></div>`;
     // ▶ Reading (2026-11-15): a released book nobody has started moves to Reading now
-    const startBtn=!pr&&!nx.read&&!readingKeys.has(ok(nx))&&rel(nx)==='out'?`<button class="log-act" onclick="tbrStartPrompt(${i})" title="start reading it — it moves to Reading now">▶ Reading</button>`:'';
+    const startBtn=canStart(nx)?`<button class="log-act" onclick="tbrStartPrompt(${i})" title="start reading it — it moves to Reading now">▶ Reading</button>`:'';
     return`<div class="tbr-acts">${pr?'':`<button class="log-act" onclick="tbrReadRow(${i})">✓ Read</button>`}${startBtn}${queueBtns}${nx.owned||rel(nx)!=='out'?'':`<a class="tbr-a" href="${tomboloUrl(nx.title)}" target="_blank" rel="noopener">Tombolo ↗</a>`}</div><div id="tbr-rr-${i}" style="display:none"></div>`;};
   const cover=b=>coverTile(b.title,b.owner||'butthead','',null,40,b.series);
-  const seriesCard=s=>{const nx=s.next;return`<div class="tbr-card${both?(s.owner==='goblin'?' own-gob':' own-com'):''}" data-ser="${esc(s.name)}" data-owner="${s.owner}"${s.inProg?' data-inprog="1"':''}>
+  const seriesCard=s=>{const nx=s.next,bi=nx?sbi(nx):null;return`<div class="tbr-card${both?(s.owner==='goblin'?' own-gob':' own-com'):''}" data-ser="${esc(s.name)}" data-owner="${s.owner}"${s.inProg?' data-inprog="1"':''}${bi!=null?` data-bi="${bi}"`:''}>
+    ${bi!=null?'<span class="tbr-handle" title="drag onto Reading now">⋮⋮</span>':''}
     <div class="tbr-cov">${nx?cover(nx):''}</div>
     <div class="tbr-info">
       <div class="tbr-ser"><button class="tbr-link" data-s="${esc(s.name)}" onclick="tbrBrowse(this.dataset.s)" title="browse the series">${esc(s.name)}</button></div>
@@ -2446,8 +2484,8 @@ function renderTBR(){
   const cols=G._tbrCols=Math.max(1,Math.floor((progW+8)/258));
   const grouped=rows=>{const m=new Map();rows.forEach(s=>{const k=s.universe?'u:'+s.owner+'|'+s.universe:'s:'+s.owner+'|'+s.name;if(!m.has(k))m.set(k,[]);m.get(k).push(s);});
     return[...m.entries()].map(([k,list])=>k.startsWith('u:')&&list.length>1?`<div class="tbr-group" style="--span:${Math.min(list.length,cols)}"><div class="tbr-uni">${esc(list[0].universe)} <span class="ms">· ${list.length} series${both?' · '+OWNER_LABEL[list[0].owner]:''}</span></div>${list.map(seriesCard).join('')}</div>`:list.map(seriesCard).join('')).join('');};
-  const bookCard=(b,s,extra,qi)=>`<div class="tbr-card${ownCls(b)}" data-ser="${esc(s?s.name:'')}" data-owner="${own(b)}"${s&&s.inProg?' data-inprog="1"':''}>
-    ${qi!=null?'<span class="tbr-handle" title="drag to reorder">⋮⋮</span>':''}
+  const bookCard=(b,s,extra,qi,bi=sbi(b))=>`<div class="tbr-card${ownCls(b)}" data-ser="${esc(s?s.name:'')}" data-owner="${own(b)}"${s&&s.inProg?' data-inprog="1"':''}${bi!=null?` data-bi="${bi}"`:''}>
+    ${qi!=null||bi!=null?`<span class="tbr-handle" title="${qi!=null?'drag to reorder, or onto Reading now':'drag onto Reading now'}">⋮⋮</span>`:''}
     <div class="tbr-cov">${cover(b)}</div>
     <div class="tbr-info">
       <div class="tbr-ser">${qi!=null?`<span class="tbr-num">${qi+1}</span>`:''}${esc(b.title)}${b.seq?' <span class="ms">#'+esc(b.seq)+'</span>':''}</div>
@@ -2506,9 +2544,9 @@ function renderTBR(){
   if(grs){const h=grHealth(G.scanRuns,LOG.today());grs.innerHTML=h.state==='failing'?`<span class="home-late">⚠ ${esc(h.text)}</span>`:h.state==='ok'?esc(h.text):'';}
   document.getElementById('tbr-queue').innerHTML=queue.map((q,qi)=>bookCard(q.b,sOf(q.b),chip(q.b)+(q.pending?' <span class="badge b-gold">pending</span>':''),qi)).join('')
     ||'<div class="ms">Nothing picked yet — tap ＋ Next up on any card below to build your list.</div>';
-  // reorder within Next up; dropped on Reading now, the book is started (2026-11-15)
-  dndBind(document.getElementById('tbr-queue'),{items:'.tbr-card',handle:'.tbr-handle',onMove:(f,b)=>tbrMoveBefore(f,b),
-    targets:'#tbr-reading-wrap',onTarget:f=>tbrDropReading(f)});
+  // reorder within Next up; dropped on Reading now or the start-reading bar,
+  // the book is started today (2026-11-15)
+  dndBind(document.getElementById('tbr-queue'),{items:'.tbr-card',handle:'.tbr-handle',onMove:(f,b)=>tbrMoveBefore(f,b),reading:startOf});
   document.getElementById('tbr-focus').innerHTML=focusLeft.map(seriesCard).join('')||'<div class="ms">'+(focusRows.length?'Every focus series is finished.':'No focus list for this year.')+'</div>';
   document.getElementById('tbr-prog').innerHTML=grouped(prog)||'<div class="ms">Nothing in progress outside the focus list.</div>';
   document.getElementById('tbr-new').innerHTML=newBook.map(x=>x.src==='register'?bookCard(x.b,x.s,`<span class="badge b-teal">📅 ${esc(x.date)}</span>${orderChip(x.b)}`):bnCard(x)).join('')
@@ -2526,6 +2564,9 @@ function renderTBR(){
   const first=pick?(pick.books.find(b=>b.owned)||pick.books[0]):null;
   document.getElementById('tbr-start').innerHTML=`<div class="log-frow" style="grid-column:1/-1"><label>Series</label><input id="tbr-start-q" list="tbr-dl-start" value="${esc(G._tbrStart||'')}" placeholder="${fresh.length} series on the shelf with nothing read yet" onchange="tbrPickStart()"><datalist id="tbr-dl-start">${fresh.map(s=>`<option>${esc(s.label)}</option>`).join('')}</datalist></div>`
     +(first?bookCard(first,pick,chip(first)):(G._tbrStart?'<div class="ms">No unstarted series by that name.</div>':''));
+  // every other section's startable cards drag onto Reading now too (2026-11-15)
+  for(const id of ['tbr-focus','tbr-prog','tbr-new','tbr-wait','tbr-get','tbr-start'])
+    dndBind(document.getElementById(id),{items:'.tbr-card[data-bi]',handle:'.tbr-handle',reading:startOf});
 }
 // ── Reading › Plan (John, 2026-09-23): "some way of vaguely planning my TBR
 // for next year … as simple as genres/length … and see how my TBR is
@@ -2659,7 +2700,11 @@ function renderPlan(){
       </div></div>`;}).join('')+`<div class="tbr-card plan-dropnew" id="plan-dropnew"><div class="tbr-info"><div class="tbr-ser">${asQueue?'＋ Add to Next up':'＋ New slot'}</div><div class="ms">${asQueue?'drop a shelf card here — it joins the end of the list':'drop a shelf card here, or use the form below'}</div></div></div>`;
   if(!slots.length)document.getElementById('plan-list').insertAdjacentHTML('afterbegin',asQueue?'<div class="ms">Nothing on Next up yet — drag from the shelves below.</div>':'<div class="ms">No slots yet — drag from the shelves below, add a few shapes, or paste your Keep list.</div>');
   if(asQueue)document.getElementById('plan-list').insertAdjacentHTML('afterbegin','<div class="ms" style="margin-bottom:8px">This year\'s plan is your <strong>Next up</strong> list — the same one as Reading › TBR. Drag to reorder, ✕ to take a book off, drop from the shelves to add.</div>');
-  dndBind(document.getElementById('plan-list'),{items:'.tbr-card[data-plan]',handle:'.tbr-handle',onMove:(f,b)=>asQueue?planQueueMoveBefore(f,b):planMoveBefore(f,b)});
+  dndBind(document.getElementById('plan-list'),{items:'.tbr-card[data-plan]',handle:'.tbr-handle',onMove:(f,b)=>asQueue?planQueueMoveBefore(f,b):planMoveBefore(f,b),
+    // a slot with its book pinned drags onto the start-reading bar too (2026-11-15)
+    reading:it=>{const s=(G._planSlots||[])[+it.dataset.i],o=soloOwner();
+      const b=s&&s.book?(G.allIndBooks||[]).find(x=>(x.owner||'butthead')===o&&x.title===s.book&&(s.series?x.series===s.series:true)):null;
+      return canStartReading(b)?b:null;}});
   planPoolRender(owner);
   // One line for a shape-only slot (a book you mean to read, in words);
   // pinning a book is a drag from the shelves, so the old six-field form
@@ -2779,7 +2824,8 @@ function planPoolRender(owner){
   let lastCat='';
   el.innerHTML=(G._planPool.map((b,i)=>{const hdr=b.why!==lastCat?`<div class="tbr-uni">${esc(POOL_CAT[b.why]||b.why)} <span class="ms">· ${rows.filter(x=>x.why===b.why).length}</span></div>`:'';lastCat=b.why;return hdr+`<div class="tbr-card" data-pool="${i}"><span class="tbr-handle" title="drag onto a slot">⋮⋮</span><div class="tbr-cov">${coverTile(b.title,b.owner,'',null,40,b.series)}</div><div class="tbr-info"><div class="tbr-ser">${esc(b.title)}${b.seq?' <span class="ms">#'+esc(b.seq)+'</span>':''}</div><div class="tbr-prog">${b.series&&b.series!=='Standalones'?esc(b.series)+' · '+b.sread+'/'+b.stotal+' · ':''}${esc(b.author||'')}</div><div class="tbr-next">${[b.media,b.type].filter(Boolean).map(esc).join(' · ')} ${b.owned?'<span class="badge b-green">on the shelf</span>':'<span class="badge b-coral">not owned</span>'+heldBadge(b)} <span class="ms">${esc(b.why)}</span></div><div class="tbr-acts"><button class="log-act" onclick="planPoolAdd(${i})">＋ Slot</button></div></div></div>`;}).join('')||'<div class="ms">Nothing matches — loosen the filters.</div>')
     +(rows.length>G._planPool.length?`<div class="ms">…and ${rows.length-G._planPool.length} more — narrow it down with the chips or the search box</div>`:'');
-  dndBind(el,{items:'.tbr-card[data-pool]',handle:'.tbr-handle',targets:'#plan-list .tbr-card[data-slot]:not([data-slot=""]),#plan-dropnew',onTarget:(from,t)=>planDropPool(from,t)});
+  dndBind(el,{items:'.tbr-card[data-pool]',handle:'.tbr-handle',targets:'#plan-list .tbr-card[data-slot]:not([data-slot=""]),#plan-dropnew',onTarget:(from,t)=>planDropPool(from,t),
+    reading:it=>{const b=(G._planPool||[])[+it.dataset.pool];return canStartReading(b)?b:null;}});   // or onto the start-reading bar (2026-11-15)
 }
 function planRef(b){return{title:b.title,series:b.series==='Standalones'?'':b.series,owner:b.owner||'butthead'};}
 async function planPoolAdd(i){const b=(G._planPool||[])[i];if(!b)return;
