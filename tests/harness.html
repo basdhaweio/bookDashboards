@@ -669,6 +669,62 @@ async function main(){
       &&/Goodreads sync failing/.test(tbr)&&/404/.test(prop);
     res(name,ok,`states ${states}; “${streak.text.slice(0,60)}…”; Home chip “${chip}”${scanChip?' (and a wrong upcoming-scan chip)':''}; TBR “${tbr.slice(0,40)}…”; Proposed “${prop.slice(0,40)}…”`);
   });
+  await check('Reading now: started here or on Goodreads, ▶ Reading, a dropped Next up card, Not reading',async()=>{
+    // John, 2026-11-15: "trying to move my TBR to 'Now Reading' since we can't
+    // use Goodreads but the drag/drop seems to not be working and there's no
+    // button to be 'reading now'". Sending is stubbed: nothing reaches the inbox.
+    const name='Reading now: started here or on Goodreads, ▶ Reading, a dropped Next up card, Not reading';
+    const W=w(),G=W.eval('G'),L=W.eval('LOG'),td=L.today(),nkJs="t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'')";
+    const cand=(G.allIndBooks||[]).filter(b=>(b.owner||'butthead')==='butthead'&&!b.read&&b.id&&b.series&&b.series!=='Standalones'&&!/^tba$/i.test(b.pubDate||'')&&!((b.pubDate||'')>td));
+    const [b1,b2]=cand;
+    const keep={rn:G.readingNow,gr:G.goodreads,pr:L.pendingReading,sr:L.startReading,st:L.stopReading},was=doc().querySelector('#owner-filter button.active')?.dataset.o||'all';
+    const R=()=>W.eval(`tbrReadingNow(${nkJs},['butthead'])`);
+    let got={},sent=[];
+    try{
+      L.startReading=(b,d)=>{sent.push(['start',b.title,d]);return Promise.resolve(true);};
+      L.stopReading=(b,gr,o,t)=>{sent.push(['stop',b?b.title:t,gr]);return Promise.resolve(true);};
+      // 1. a bundle row (jerry's reading_now) is Reading now, dated from its start
+      G.goodreads=[];L.pendingReading=()=>[];
+      G.readingNow=[{owner:'butthead',bookId:b1.id,title:b1.title,series:b1.series,started:'2026-11-10',source:'dashboard'}];
+      let rows=R();got.bundle=rows.length===1&&rows[0].reg.id===b1.id&&rows[0].added==='2026-11-10';
+      // 2. a pending start adds, a pending stop takes off
+      L.pendingReading=()=>[{action:'start',owner:'butthead',title:b2.title,series:b2.series,date:td,grId:''},{action:'stop',owner:'butthead',title:b1.title,series:b1.series,date:td,grId:''}];
+      rows=R();got.pending=rows.length===1&&rows[0].reg.id===b2.id&&rows[0].pending;
+      // 3. a Goodreads row put down by its id drops out; one not put down stays
+      G.readingNow=[];
+      G.goodreads=[{shelf:'currently-reading',title:'Zz GR Kept',author:'Q',owner:'butthead',grId:'zz-1',book:'',contains:[],added:'2026-10-01'},
+                   {shelf:'currently-reading',title:'Zz GR Down',author:'Q',owner:'butthead',grId:'zz-2',book:'',contains:[],added:'2026-10-01'}];
+      L.pendingReading=()=>[{action:'stop',owner:'butthead',title:'Zz GR Down',series:'',date:td,grId:'zz-2'}];
+      rows=R();got.goodreads=rows.length===1&&rows[0].title==='Zz GR Kept';
+      // 4. the TBR tab: the shelf shows (drop zone) even when empty, ▶ Reading opens a dated prompt
+      G.goodreads=[];L.pendingReading=()=>[];
+      W.setOwner('butthead');await go('tbr','reading');
+      const wrap=doc().getElementById('tbr-reading-wrap');
+      got.zone=!!wrap&&wrap.style.display!=='none'&&/Nothing being read/.test(doc().getElementById('tbr-reading').textContent);
+      const sb=[...doc().querySelectorAll('#tab-tbr button')].find(x=>/tbrStartPrompt\(/.test(x.getAttribute('onclick')||''));
+      if(sb){sb.click();const i=(sb.getAttribute('onclick').match(/\((\d+)\)/)||[])[1];got.prompt=!!doc().getElementById('tbr-sd-'+i);
+        W.tbrStartGo(+i);await new Promise(r=>setTimeout(r,100));got.startSent=sent.some(s=>s[0]==='start'&&s[2]===td);}
+      // 5. a Next up card dropped on Reading now starts that book today
+      const q=G._tbrQueue||[];
+      if(q.length){await W.tbrDropReading(0);got.drop=sent.some(s=>s[0]==='start'&&s[1]===q[0].b.title);}else got.drop='no Next up';
+      // 6. Not reading on a Reading now card (TBR) and on Home's sheet
+      G.readingNow=[{owner:'butthead',bookId:b1.id,title:b1.title,series:b1.series,started:'2026-11-10',source:'dashboard'}];
+      W.tbrRerender();await new Promise(r=>setTimeout(r,150));
+      const nb=[...doc().querySelectorAll('#tbr-reading button')].find(x=>/tbrStopRow\(/.test(x.getAttribute('onclick')||''));
+      if(nb){nb.click();await new Promise(r=>setTimeout(r,100));got.stopTbr=sent.some(s=>s[0]==='stop'&&s[1]===b1.title);}
+      W.switchSection('home');await new Promise(r=>setTimeout(r,300));
+      const hi=(G._homeReading||[]).findIndex(r=>r.reg&&r.reg.id===b1.id);
+      if(hi>=0){W.homeOpenBook(hi);got.stopHome=/Not reading/.test((doc().getElementById('home-sheet')||{}).textContent||'');}
+      // 7. the Log's book search offers ▶ Reading on an unread book
+      got.log=typeof L.doReading==='function';
+    }finally{
+      G.readingNow=keep.rn;G.goodreads=keep.gr;L.pendingReading=keep.pr;L.startReading=keep.sr;L.stopReading=keep.st;
+      // re-render with the real data: later checks read the TBR page as left
+      W.setOwner(was);W.renderTBR();W.renderHome();
+    }
+    const ok=b1&&b2&&got.bundle&&got.pending&&got.goodreads&&got.zone&&got.prompt&&got.startSent&&(got.drop===true||got.drop==='no Next up')&&got.stopTbr&&got.stopHome&&got.log;
+    res(name,ok,Object.entries(got).map(([k,v])=>`${k} ${v===true?'ok':v}`).join('; ')+(b1?'':' — no unread register book to test with'));
+  });
   await check('Scan card: an ISBN jerry already found shows its series and Got it',async()=>{
     // They Cry (2026-11-04) was unknown to Open Library and the keyless Google
     // Books is over quota, so a scan said nobody knew the ISBN. A proposal

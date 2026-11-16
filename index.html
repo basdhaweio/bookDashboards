@@ -678,7 +678,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
       <div class="ms" id="tbr-gr-status" style="margin:-.4rem 0 .8rem"></div>
       <div class="mg" id="tbr-m"></div>
       <div class="tbr-legend" id="tbr-legend"></div>
-      <div id="tbr-reading-wrap"><div class="sl">Reading now — Goodreads currently-reading shelf</div>
+      <div id="tbr-reading-wrap"><div class="sl">Reading now — ▶ Reading on any card, or drag a Next up card here</div>
       <div class="tbr-grid" id="tbr-reading"></div></div>
       <div class="sl">Next up — your own order · drag a card, or ▲ ▼</div>
       <div class="tbr-grid" id="tbr-queue"></div>
@@ -2050,13 +2050,34 @@ function tbrToggleWorks(btn){
 }
 function tbrReadRow(i){
   const b=(G._tbrBooks||[])[i],el=document.getElementById('tbr-rr-'+i);if(!b||!el)return;
-  if(el.style.display!=='none'){el.style.display='none';return;}
-  el.style.display='';
+  if(el.style.display!=='none'&&el.dataset.kind!=='start'){el.style.display='none';return;}
+  el.dataset.kind='read';el.style.display='';
   el.innerHTML=`<div class="log-frow"><label>Finished</label><input type="date" id="tbr-rd-${i}" value="${LOG.today()}"><button class="log-act primary" onclick="tbrFinish(${i})">Log it — read “${esc(b.title)}”</button></div>`;
 }
 async function tbrFinish(i){
   const b=(G._tbrBooks||[])[i],d=(document.getElementById('tbr-rd-'+i)||{}).value;if(!b||!d)return;
   if(await LOG.finishBook(b,d))tbrRerender();
+}
+// Reading now, kept by the dashboard (reading_set, 2026-11-15): ▶ Reading
+// asks for the start date (today by default); dropping a Next up card on the
+// Reading now shelf starts it today; Not reading puts a book down.
+function tbrStartPrompt(i){
+  const b=(G._tbrBooks||[])[i],el=document.getElementById('tbr-rr-'+i);if(!b||!el)return;
+  if(el.style.display!=='none'&&el.dataset.kind==='start'){el.style.display='none';return;}
+  el.dataset.kind='start';el.style.display='';
+  el.innerHTML=`<div class="log-frow"><label>Started</label><input type="date" id="tbr-sd-${i}" value="${LOG.today()}"><button class="log-act primary" onclick="tbrStartGo(${i})">▶ Start “${esc(b.title)}”</button></div>`;
+}
+async function tbrStartGo(i){
+  const b=(G._tbrBooks||[])[i],d=(document.getElementById('tbr-sd-'+i)||{}).value;if(!b||!d)return;
+  if(await LOG.startReading(b,d)){toast('Reading now: “'+b.title+'”');tbrRerender();}
+}
+async function tbrDropReading(from){
+  const q=(G._tbrQueue||[])[from];if(!q)return;
+  if(await LOG.startReading(q.b,LOG.today())){toast('Reading now: “'+q.b.title+'” (started today)');tbrRerender();}
+}
+async function tbrStopRow(ri){
+  const r=(G._tbrGR||[])[ri];if(!r)return;
+  if(await LOG.stopReading(r.reg||null,r.grId||'',r.owner,r.title)){toast('Off Reading now: “'+(r.reg?r.reg.title:r.title)+'”');tbrRerender();}
 }
 // Goodreads currently-reading rows (bookdb|Goodreads tab), matched to the
 // register by jerry's exact-norm title. A display signal only — reads still
@@ -2070,9 +2091,29 @@ function tbrReadingNow(nk,owners,shelf){
   owners=owners||[soloOwner()];
   const all=G.allIndBooks||[];
   const find=(t,o)=>all.find(b=>(b.owner||'butthead')===o&&nk(b.title)===nk(t))||all.find(b=>(b.owner||'butthead')===o&&nk(b.title)===nk(aliasTitle(t,o)))||null;
-  return(G.goodreads||[]).filter(r=>r.shelf===(shelf||'currently-reading')&&owners.includes(r.owner||'butthead'))
-    .map(r=>{const o=r.owner||'butthead';return Object.assign({},r,{owner:o,reg:r.book?find(r.book,o):null,works:(r.contains||[]).map(t=>find(t,o)).filter(Boolean)});})
-    .filter(r=>!(r.reg&&r.reg.read)&&!(r.works.length&&r.works.every(w=>w.read)));
+  const gr=(G.goodreads||[]).filter(r=>r.shelf===(shelf||'currently-reading')&&owners.includes(r.owner||'butthead'))
+    .map(r=>{const o=r.owner||'butthead';return Object.assign({},r,{owner:o,reg:r.book?find(r.book,o):null,works:(r.contains||[]).map(t=>find(t,o)).filter(Boolean)});});
+  const live=r=>!(r.reg&&r.reg.read)&&!(r.works.length&&r.works.every(w=>w.read));
+  if(shelf&&shelf!=='currently-reading')return gr.filter(live);
+  // Reading now kept by the dashboard (migration 039; John, 2026-11-15:
+  // Goodreads' feeds stopped in late October and "there's no button to be
+  // 'reading now'"): the bundle's open rows, then pending reading_set events
+  // oldest first — a start adds, a stop takes off, whether the book came
+  // from here or from the frozen Goodreads shelf.
+  const rs=b=>!b.series||b.series==='Standalones'?'':b.series;
+  const byId=new Map(all.filter(b=>b.id).map(b=>[b.id,b]));
+  const row=(o,b,started,pending)=>({src:'dashboard',owner:o,title:b.title,author:b.author||'',added:started||'',reg:b,works:[],
+    shelf:'currently-reading',cover:'',isbn13:'',grId:'',pending:!!pending});
+  const dash=new Map(),stopped=new Set(),stoppedGr=new Set();
+  for(const x of G.readingNow||[]){const b=byId.get(x.bookId);if(b&&owners.includes(x.owner))dash.set(x.owner+'|'+b.id,row(x.owner,b,x.started));}
+  for(const p of LOG.pendingReading()){
+    if(!owners.includes(p.owner))continue;
+    const b=all.find(x=>(x.owner||'butthead')===p.owner&&x.title===p.title&&rs(x)===(p.series||'')),k=b?p.owner+'|'+b.id:'';
+    if(p.action==='start'&&b){stopped.delete(k);dash.set(k,row(p.owner,b,p.date||LOG.today(),true));}
+    else if(p.action==='stop'){if(b){dash.delete(k);stopped.add(k);}if(p.grId)stoppedGr.add(p.owner+'|'+p.grId);}
+  }
+  const grLeft=gr.filter(r=>!stoppedGr.has(r.owner+'|'+r.grId)&&!(r.reg&&(dash.has(r.owner+'|'+r.reg.id)||stopped.has(r.owner+'|'+r.reg.id))));
+  return[...dash.values(),...grLeft].filter(live);
 }
 // Release state from the register's pub_date. Blank means nothing says the
 // book is unreleased (backlist rows mostly have no date); 'TBA' is announced
@@ -2381,7 +2422,9 @@ function renderTBR(){
       ?(q?`<span class="badge b-gold">next up${q.pending?' · pending':''}</span>`:`<button class="log-act" onclick="tbrQueue(${i},'add')" title="put it on your Next up list">＋ Next up</button>`)
       :`<button class="log-act" onclick="tbrMoveBy(${qi},-1)" title="move up"${qi===0||queue[qi-1].owner!==queue[qi].owner?' disabled':''}>▲</button><button class="log-act" onclick="tbrMoveBy(${qi},1)" title="move down"${qi>=queue.length-1||queue[qi+1].owner!==queue[qi].owner?' disabled':''}>▼</button><button class="log-act" onclick="tbrQueue(${i},'remove')" title="take it off the list">✕</button>`;
     if(nx._gap)return`<div class="tbr-acts"><button class="log-act gold" onclick="tbrTrackGap(${i})" title="add the missing volume to the register as tracked">＋ Track #${nx._gap}</button><a class="tbr-a" href="${tomboloUrl((nx.series||'')+' '+nx._gap)}" target="_blank" rel="noopener">Tombolo ↗</a></div><div id="tbr-rr-${i}" style="display:none"></div>`;
-    return`<div class="tbr-acts">${pr?'':`<button class="log-act" onclick="tbrReadRow(${i})">✓ Read</button>`}${queueBtns}${nx.owned||rel(nx)!=='out'?'':`<a class="tbr-a" href="${tomboloUrl(nx.title)}" target="_blank" rel="noopener">Tombolo ↗</a>`}</div><div id="tbr-rr-${i}" style="display:none"></div>`;};
+    // ▶ Reading (2026-11-15): a released book nobody has started moves to Reading now
+    const startBtn=!pr&&!nx.read&&!readingKeys.has(ok(nx))&&rel(nx)==='out'?`<button class="log-act" onclick="tbrStartPrompt(${i})" title="start reading it — it moves to Reading now">▶ Reading</button>`:'';
+    return`<div class="tbr-acts">${pr?'':`<button class="log-act" onclick="tbrReadRow(${i})">✓ Read</button>`}${startBtn}${queueBtns}${nx.owned||rel(nx)!=='out'?'':`<a class="tbr-a" href="${tomboloUrl(nx.title)}" target="_blank" rel="noopener">Tombolo ↗</a>`}</div><div id="tbr-rr-${i}" style="display:none"></div>`;};
   const cover=b=>coverTile(b.title,b.owner||'butthead','',null,40,b.series);
   const seriesCard=s=>{const nx=s.next;return`<div class="tbr-card${both?(s.owner==='goblin'?' own-gob':' own-com'):''}" data-ser="${esc(s.name)}" data-owner="${s.owner}"${s.inProg?' data-inprog="1"':''}>
     <div class="tbr-cov">${nx?cover(nx):''}</div>
@@ -2427,14 +2470,17 @@ function renderTBR(){
     mH(newBook.length,'New book in series','','t')+
     mH(waiting.length,'Waiting for','no date or further out')+
     mH(toGet.length,'To get','out, not on the shelf','c')+
-    mH(reading.length,'Reading now','Goodreads shelf');
+    mH(reading.length,'Reading now','started here or on Goodreads');
   const lg=document.getElementById('tbr-legend');
   if(lg)lg.innerHTML=both?'<span><i style="background:var(--teal-bg);border-color:#9dcdc4"></i>Com</span><span><i style="background:var(--purple-bg);border-color:#b8afd6"></i>Shereen</span><span>each shelf keeps its own series, Next up list and Goodreads rows</span>':'';
+  // always shown now: it is the drop zone for Next up cards (2026-11-15)
   const rw=document.getElementById('tbr-reading-wrap');
-  rw.style.display=reading.length?'':'none';
+  rw.style.display='';
   const serAttr=b=>{const s=b?sOf(b):null;return s?` data-ser="${esc(s.name)}"${s.inProg?' data-inprog="1"':''}`:'';};
   const rCls=r=>both?(r.owner==='goblin'?' own-gob':' own-com'):'';
   const pendLinks=LOG.pendingLinks();
+  // put a book down: off Reading now, not marked read (reading_set stop)
+  const notReading=ri=>`<button class="log-act" onclick="tbrStopRow(${ri})" title="put it down — off Reading now, not marked read">Not reading</button>`;
   G._tbrGR=reading;
   document.getElementById('tbr-reading').innerHTML=reading.map((r,ri)=>{const b=r.reg,i=b?bidx(b):-1,pr=b&&pendRead.has(pk(b));
     if(!b&&r.works.length){
@@ -2446,20 +2492,23 @@ function renderTBR(){
       // read" button — the old "✓ Read" button on every unread line read
       // as a tick (John, 2026-09-24: Small Magic "listed them out as read").
       const ws=r.works.map(w=>{const wi=bidx(w),wp=pendRead.has(pk(w));return`<div class="tbr-work${w.read?' tbr-work-read':''}">${esc(w.title)}${w.read?` <span class="badge b-teal">✓ read${w.readOn?' · '+esc(w.readOn):''}</span>`:wp?' <span class="badge b-teal">read · pending</span>':` <button class="log-act" onclick="tbrReadRow(${wi})" title="log it as read">mark read</button>`}<div id="tbr-rr-${wi}" style="display:none"></div></div>`;}).join('');
-      return`<div class="tbr-card${rCls(r)}" data-owner="${r.owner}"${serAttr(r.works[0])}><div class="tbr-cov">${grTile(r)}</div><div class="tbr-info"><div class="tbr-ser">${esc(r.title)}</div><div class="tbr-prog">${esc(r.author)} · collection${r.copy?' · '+esc(r.copy):''}${r.added?' · since '+esc(r.added):''}</div><div class="tbr-acts"><button class="log-act" onclick="tbrToggleWorks(this)">▸ ${r.works.length} stories · ${readN} read · ${r.works.length-readN} to go</button></div><div class="tbr-works" style="display:none">${ws}</div></div></div>`;
+      return`<div class="tbr-card${rCls(r)}" data-owner="${r.owner}"${serAttr(r.works[0])}><div class="tbr-cov">${grTile(r)}</div><div class="tbr-info"><div class="tbr-ser">${esc(r.title)}</div><div class="tbr-prog">${esc(r.author)} · collection${r.copy?' · '+esc(r.copy):''}${r.added?' · since '+esc(r.added):''}</div><div class="tbr-acts"><button class="log-act" onclick="tbrToggleWorks(this)">▸ ${r.works.length} stories · ${readN} read · ${r.works.length-readN} to go</button>${notReading(ri)}</div><div class="tbr-works" style="display:none">${ws}</div></div></div>`;
     }
     // Not matched: add it to the register prefilled from Goodreads, or
     // name the register row it already is (goodreads_link).
     const miss=pendLinks.has(r.grId)?'<span class="badge b-gold">linked · pending</span>'
       :`${(h=>h?`<span class="badge ${h.owner==='goblin'?'b-purple':'b-teal'}">${esc(OWNER_LABEL[h.owner||'butthead'])} has it</span><button class="log-act" onclick="tbrAddFromHousehold(${ri})" title="add it to this shelf as borrowed — tracked, not owned, with the register's own details">＋ Borrow it</button>`:'')(tbrHeldRow(ri))}<button class="log-act gold" onclick="tbrAddFromGoodreads(${ri})" title="add it to the register, prefilled from Goodreads">＋ Add it</button><button class="log-act" onclick="tbrLinkRow(${ri})" title="it is already in the register under another title">🔗 It's in the register as…</button>`;
-    return`<div class="tbr-card${rCls(r)}" data-owner="${r.owner}"${serAttr(b)}><div class="tbr-cov">${b?cover(b):grTile(r)}</div><div class="tbr-info"><div class="tbr-ser">${esc(b?b.title:r.title)}</div><div class="tbr-prog">${esc(r.author)}${b?' · '+esc(b.series)+(b.seq?' #'+esc(b.seq):''):' · not in the register'}${r.added?' · since '+esc(r.added):''}</div><div class="tbr-acts">${b?(pr?'<span class="badge b-teal">read · pending</span>':`<button class="log-act" onclick="tbrReadRow(${i})">✓ Read</button>`):miss}</div>${b?`<div id="tbr-rr-${i}" style="display:none"></div>`:`<div id="tbr-lk-${ri}" style="display:none"></div>`}</div></div>`;}).join('');
+    return`<div class="tbr-card${rCls(r)}" data-owner="${r.owner}"${serAttr(b)}><div class="tbr-cov">${b?cover(b):grTile(r)}</div><div class="tbr-info"><div class="tbr-ser">${esc(b?b.title:r.title)}</div><div class="tbr-prog">${esc(r.author)}${b?' · '+esc(b.series)+(b.seq?' #'+esc(b.seq):''):' · not in the register'}${r.added?' · since '+esc(r.added):''}${r.src==='dashboard'?'':' · Goodreads'}</div><div class="tbr-acts">${r.pending?'<span class="badge b-gold">reading · pending</span>':''}${b?(pr?'<span class="badge b-teal">read · pending</span>':`<button class="log-act" onclick="tbrReadRow(${i})">✓ Read</button>`):miss}${notReading(ri)}</div>${b?`<div id="tbr-rr-${i}" style="display:none"></div>`:`<div id="tbr-lk-${ri}" style="display:none"></div>`}</div></div>`;}).join('')
+    ||'<div class="ms tbr-drop-hint">Nothing being read. Tap ▶ Reading on a card below, or drag a Next up card here by its ⋮⋮ handle.</div>';
   // (the Goodreads to-read shelf is mirrored on jerry but not shown here — John, 2026-09-25: "got folded into the TBR, please remove that")
   G._tbrGR=reading;
   const grs=document.getElementById('tbr-gr-status');
   if(grs){const h=grHealth(G.scanRuns,LOG.today());grs.innerHTML=h.state==='failing'?`<span class="home-late">⚠ ${esc(h.text)}</span>`:h.state==='ok'?esc(h.text):'';}
   document.getElementById('tbr-queue').innerHTML=queue.map((q,qi)=>bookCard(q.b,sOf(q.b),chip(q.b)+(q.pending?' <span class="badge b-gold">pending</span>':''),qi)).join('')
     ||'<div class="ms">Nothing picked yet — tap ＋ Next up on any card below to build your list.</div>';
-  dndBind(document.getElementById('tbr-queue'),{items:'.tbr-card',handle:'.tbr-handle',onMove:(f,b)=>tbrMoveBefore(f,b)});
+  // reorder within Next up; dropped on Reading now, the book is started (2026-11-15)
+  dndBind(document.getElementById('tbr-queue'),{items:'.tbr-card',handle:'.tbr-handle',onMove:(f,b)=>tbrMoveBefore(f,b),
+    targets:'#tbr-reading-wrap',onTarget:f=>tbrDropReading(f)});
   document.getElementById('tbr-focus').innerHTML=focusLeft.map(seriesCard).join('')||'<div class="ms">'+(focusRows.length?'Every focus series is finished.':'No focus list for this year.')+'</div>';
   document.getElementById('tbr-prog').innerHTML=grouped(prog)||'<div class="ms">Nothing in progress outside the focus list.</div>';
   document.getElementById('tbr-new').innerHTML=newBook.map(x=>x.src==='register'?bookCard(x.b,x.s,`<span class="badge b-teal">📅 ${esc(x.date)}</span>${orderChip(x.b)}`):bnCard(x)).join('')
@@ -3449,8 +3498,13 @@ function homeOpenBook(i){
     ${done?'<span class="badge b-teal">✓ finished · pending</span>'
       :r.reg?`<div class="log-frow"><label>Finished</label><input type="date" id="home-fin-date" value="${LOG.today()}"><button class="log-act primary" onclick="homeFinish(${i})">✓ Log it</button></div>`
       :`<div class="ms" style="margin-bottom:6px">${r.works&&r.works.length?'A collection — its stories are ticked off on the TBR.':'Not in the register yet — add or link it from the TBR.'}</div>`}
+    ${done?'':`<button class="log-act" onclick="homeStop(${i})" title="put it down — off Reading now, not marked read">Not reading</button>`}
     <button class="log-act" onclick="switchSection('reading','tbr')">Open on the TBR ›</button>`;
   el.classList.add('open');
+}
+async function homeStop(i){
+  const r=(G._homeReading||[])[i];if(!r)return;
+  if(await LOG.stopReading(r.reg||null,r.grId||'',r.owner,r.title)){toast('Off Reading now: “'+homeTitle(r)+'”');renderHome();}
 }
 async function homeFinish(i){
   const r=(G._homeReading||[])[i],d=(document.getElementById('home-fin-date')||{}).value;if(!r||!r.reg||!d)return;
@@ -5560,6 +5614,7 @@ const LOG=(()=>{
     const who=OWNER_LABEL[ev.by]||ev.by;
     switch(ev.type){
       case'finished':return`✓ ${who} finished “${b.title}”${p.date?' · '+p.date:''}`;
+      case'reading_set':return p.action==='start'?`▶ ${who} started “${b.title}”${p.date?' · '+p.date:''}`:`⏹ ${who} put down “${b.title}”`;
       case'acquired':return`📦 Got “${b.title}”${b.media?' ('+b.media+')':''}${p.edition?' · '+(p.edition.format||'edition')+(p.edition.edition?' '+p.edition.edition:'')+(p.edition.replaces?' (swap)':''):''}`;
       case'copy_let_go':return`🗑 Let go copy #${p.copy_id}${p.date?' · '+p.date:''}`;
       case'queue_set':return`📌 Next up ${p.action||'add'}: “${b.title}”${p.position!=null?' · slot '+p.position:''}`;
@@ -5694,6 +5749,7 @@ const LOG=(()=>{
         </div>
         <div class="log-acts">
           <button class="log-act primary" onclick="LOG.expand(${key},'finished')">✓ Read it</button>
+          ${b.read?'':`<button class="log-act" onclick="LOG.expand(${key},'reading')" title="start reading it — it shows under Reading now">▶ Reading</button>`}
           <button class="log-act gold" onclick="LOG.expand(${key},'acquired')" ${b.owned?'title="already owned — log another copy or a new edition here (tick Edition)"':''}>📦 Got it</button>
           <button class="log-act" onclick="LOG.expand(${key},'edit')" title="edit register details">✎</button>
           ${realSeries(b)?`<button class="log-act" onclick="LOG.trackFromRow(${key})" title="find the rest of this series — books land on the Proposed tab">🔍</button>`:''}
@@ -5893,6 +5949,9 @@ const LOG=(()=>{
       el.innerHTML=`<div class="log-frow"><label>Finished</label><input type="date" id="log-f-date" value="${today()}"></div>
         <div class="log-frow"><label>Pages</label><input type="number" id="log-f-pages" placeholder="optional" inputmode="numeric"></div>
         <button class="log-act primary" onclick="LOG.doFinished(${i})">Log it — ${esc(OWNER_LABEL[by(b)])} read this</button>`;
+    }else if(type==='reading'){
+      el.innerHTML=`<div class="log-frow"><label>Started</label><input type="date" id="log-s-date" value="${today()}"></div>
+        <button class="log-act primary" onclick="LOG.doReading(${i})">▶ ${esc(OWNER_LABEL[by(b)])} is reading this</button>`;
     }else if(type==='edit'){
       const cur=bookEditCur(b);
       el.innerHTML=BOOK_EDIT.map(f=>`<div class="log-frow"><label>${BOOK_EDIT_LBL[f]||f}</label>${
@@ -6093,6 +6152,23 @@ const LOG=(()=>{
   }
   // Media of one read (the This Year badge): the same path
   async function setReadMedia(row,year,media){G._tyYear=year;return editCell('ty',row,'media',media);}
+  // Reading now (reading_set, migration 039): start a book, or put one down —
+  // a register book by its ref, a Goodreads-only row by its Goodreads id.
+  function startReading(b,date){return submit('reading_set',{book:bookRef(b),action:'start',date:date||today()},b);}
+  function stopReading(b,grId,owner,title){
+    const p={book:b?bookRef(b):{title:title||'',series:'',owner:owner||'butthead'},action:'stop',date:today()};
+    if(grId)p.gr_book_id=grId;
+    return submit('reading_set',p,b,b?undefined:(owner||'butthead'));
+  }
+  // Pending reading_set events, oldest first, so a later stop undoes a start.
+  function pendingReading(){
+    const seen=new Set();
+    return[...(pendCache||[]),...sent().filter(e=>!BUNDLE||e.at>BUNDLE.generated_at)]
+      .filter(e=>e.type==='reading_set'&&!seen.has(e.id)&&seen.add(e.id))
+      .sort((a,b)=>a.at<b.at?-1:1)
+      .map(ev=>{const p=ev.payload||{},b=p.book||{};return{action:p.action,owner:b.owner||ev.by||'butthead',title:b.title||'',
+        series:b.series||'',date:p.date||'',grId:p.gr_book_id||''};});
+  }
   function pendingQueue(){
     const m=new Map(),seen=new Set();
     [...(pendCache||[]),...sent().filter(e=>!BUNDLE||e.at>BUNDLE.generated_at)]
@@ -6243,6 +6319,11 @@ const LOG=(()=>{
     const ks=new Set();
     [...(pendCache||[]),...sent().filter(e=>!BUNDLE||e.at>BUNDLE.generated_at)].forEach(ev=>{const b=ev.payload&&ev.payload.book;if(b&&ev.type===type)ks.add(b.title+'|'+(b.series||''));});
     return ks;
+  }
+  async function doReading(i){
+    const b=(document.getElementById('log-results')._hits||[])[i];if(!b)return;
+    const d=(document.getElementById('log-s-date')||{}).value;if(!d)return;
+    if(await startReading(b,d)){toast('Reading now: “'+b.title+'”');clearSearch();}
   }
   async function doFinished(i){
     const b=(document.getElementById('log-results')._hits||[])[i];if(!b)return;
@@ -7651,11 +7732,12 @@ const LOG=(()=>{
     refreshBadge();
   }
 
-  return{renderBook,renderOrders,renderPending,renderProposed,doPropDecide,propEdit,propFill,doPropDecideSet,lineEditionPrompt,doLineEdition,lineNamePrompt,doLineName,splitEdition,homeArrive,lineArrivePending,missOpen,missPreview,doMissQueue,doMissSearch,parseSeriesPaste,doSyncRequest,importLibib,renderMeta,doMetaAdd,dupeCheck,showNeedsData,search,browse,brMode,expand,doFinished,doAcquired,
+  return{renderBook,renderOrders,renderPending,renderProposed,doPropDecide,propEdit,propFill,doPropDecideSet,lineEditionPrompt,doLineEdition,lineNamePrompt,doLineName,splitEdition,homeArrive,lineArrivePending,missOpen,missPreview,doMissQueue,doMissSearch,parseSeriesPaste,doSyncRequest,importLibib,renderMeta,doMetaAdd,dupeCheck,showNeedsData,search,browse,brMode,expand,doFinished,doReading,doAcquired,
     toggleAdd,doAdd,addDates,toggleTrack,doTrackSeries,trackFromRow,isbnLookup,addFromIsbn,isbnPickSeries,isbnPropDecide,isbnSeriesHint,seqFromText,proposalForIsbn,scanNewEdition,scanIsbn,stopScan,saveBookEdit,doCopyLetGo,vocabFor,pendingVocab,followAuthor,doNewOrder,doNewBoxOrder,setOrderStyle,expandOrder,doOrderUpdate,
     toggleRow,saveOrderEdit,expandBox,doBoxUpdate,saveBoxEdit,saveSetup,forgetSetup,refreshBadge,
     toggleOrderHistory,findInRegister,storeFromOrderNo,logFlyerOrders,trackSeriesFromIsbn,submitTrackSeries,
     finishBook,setNeed,pendingBooks,today,queueSet,pendingQueue,acquireBook,setPubDate,
+    startReading,stopReading,pendingReading,
     renderPeople,doAuthorMerge,doAuthorRename,doAuthorAlias,addCreditRow,saveCredits,
     pendingLinks,linkGoodreads,prefillAdd,doScanUpcoming,planSet,pendingPlan,webAdd,clearSearch,setReadMedia,pendingReadMedia,pendingReadSets,pendingAcqSets,registerBook,bookSetsFor,editCell,trackQueued,awardTrackSeries,renderSheet,sheetFilter,sheetEdit,sheetTick,sheetTickGo,sheetNeed,sheetNewBook,orderStore,orderStatus,orderLineAdd,orderLineDel,doLineSet,doLinesShipAll,lineShipPrompt,openOrder};
 })();
@@ -7708,6 +7790,9 @@ async function init(){
     // ReadAt|Book (matched register title)|Cover — the TBR tab's Reading now.
     // Contains|Copy (cols I-J): a collection matched on the copies layer,
     // with the register works inside it.
+    // Reading now kept by the dashboard (migration 039, 2026-11-15): open rows
+    G.readingNow=(BUNDLE.tabs['bookdb|Reading Now']||[]).slice(1).map(r=>({owner:(r[0]||'butthead').trim(),bookId:+r[1]||null,
+      title:(r[2]||'').trim(),series:(r[3]||'').trim(),started:(r[4]||'').trim(),source:(r[5]||'').trim()})).filter(x=>x.bookId);
     G.goodreads=(BUNDLE.tabs['bookdb|Goodreads']||[]).slice(1).map(r=>({shelf:(r[0]||'').trim(),title:(r[1]||'').trim(),author:(r[2]||'').trim(),isbn13:(r[3]||'').trim(),added:(r[4]||'').trim(),readAt:(r[5]||'').trim(),book:(r[6]||'').trim(),cover:(r[7]||'').trim().replace(/^http:/,'https:'),contains:(r[8]||'').split('|').filter(Boolean),copy:(r[9]||'').trim(),owner:(r[10]||'butthead').trim(),grId:(r[11]||'').trim()}));
     // Authors (bookdb|Authors): Name|SortName|Kind|Aliases|Books|Read|Owned|
     // Series. aliasMap folds every listed spelling onto its person, which

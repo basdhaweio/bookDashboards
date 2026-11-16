@@ -524,6 +524,33 @@ assigned it an id. The same `key` added twice is a no-op. `set` keys:
 or blank to unpin), position, done, notes`. A slot needs a label or a book;
 one made from a shelf card carries only the book and is named by it.
 
+### `reading_set` — Reading now, kept by the dashboard (2026-11-15)
+
+John: "trying to move my TBR to 'Now Reading' since we can't use Goodreads ...
+there's no button to be 'reading now'". Goodreads' shelf feeds have answered
+404 since late October, so the currently-reading mirror froze. The dashboard
+now starts and puts down books itself, in `reading_now` (migration 039,
+bundle tab `bookdb|Reading Now`). Home and the TBR tab show these rows beside
+any Goodreads ones.
+
+```json
+{"book": {"title": "Persepolis Rising", "series": "Expanse", "owner": "butthead"},
+ "action": "start", "date": "2026-11-15"}
+```
+
+- **`start`** opens a row from `date` (default today), one per reader and
+  book. Starting it again only moves the date.
+- **`stop`** puts the book down without marking it read. The open row closes
+  as `stopped`. The book's rows on the Goodreads currently-reading mirror are
+  deleted too. For a Goodreads row with no register book, `gr_book_id` names
+  it (`book` then carries only the title and owner).
+- **A `finished` event** closes the book's open row as `finished`.
+
+The dashboard sends `start` three ways: the ▶ Reading button on TBR cards
+(with a start date), a Next up card dropped on the Reading now shelf (today),
+and Log › Books › ▶ Reading. It sends `stop` from Not reading on TBR cards
+and on Home's book sheet.
+
 ### `queue_set` — the hand-picked TBR ("Next up")
 One register book in, out, or moved within the reader's own queue
 (`reading_queue`, migration 023). `position` is a float the dashboard
