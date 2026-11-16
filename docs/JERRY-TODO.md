@@ -32,17 +32,19 @@ answers 401 and has issued no keys since 2020.
   sync failing") and a line beside both Sync Goodreads buttons (TBR tab,
   Proposed tab). `scanHealth()` reads only `scan_upcoming` rows now.
 
-**Open: John to choose a replacement.**
-- *Goodreads library export:* John downloads the CSV (My Books › Import and
-  export › Export library). An "Import Goodreads CSV" button like the Libib
-  one sends it to jerry, and `import_goodreads.py` already reads that format.
-  It is manual but complete: read dates, currently-reading, to-read.
-- *Hardcover (hardcover.app):* an official GraphQL API with a personal token.
-  It imports a Goodreads library, and jerry could sync it nightly. John would
-  track reads there instead of on Goodreads.
-- *Neither:* log reads on the dashboard only. Then retire the nightly job and
-  the Sync buttons, and clear the frozen currently-reading mirror. Today Fall
-  of Light still shows as reading from the last good sync.
+**Decision (John, 2026-11-15): wait.** Goodreads may announce something or
+fix the feeds. Nothing is replaced and nothing is retired.
+- The nightly sync keeps running. On its first good run, the Home chip and
+  the lines beside the Sync buttons switch back to "Last Goodreads sync …" by
+  themselves.
+- Until then the currently-reading mirror stays frozen at the last good sync
+  (Fall of Light still shows), and reads are logged on the dashboard.
+- If Goodreads announces the feeds are gone for good, the options were:
+  - **Library export:** an "Import Goodreads CSV" button like the Libib one.
+    `import_goodreads.py` already reads the format.
+  - **Hardcover:** sync its GraphQL API with a personal token.
+  - **Dashboard only:** retire the job and the Sync buttons, and clear the
+    mirror.
 
 ## Done 2026-11-15 (local session)
 
@@ -64,7 +66,10 @@ answers 401 and has issued no keys since 2020.
   added.
 - The Dispossessed links to the register's "The Dispossessed: An Ambiguous
   Utopia" (634) as a Special Edition.
-- Added as standalones: The Blade That Remains, Moss Effect, I Need My Space.
+- Added as standalones: The Blade That Remains and I Need My Space.
+- Moss Effect is book 2 of the Moss'd in Space series (Pan Macmillan, out
+  6 May 2027). John: "Moss Effect isn't a standalone". The series was
+  created with Moss'd in Space, already owned, as #1.
 - Those Who Prepare the Way is The Bird That Drinks Tears #2. The Heart of the
   Nhaga, already owned, is #1.
 - Shattered Sea – Foiled Signature: TBB's page says "Shattered Sea Trilogy
