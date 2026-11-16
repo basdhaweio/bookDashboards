@@ -675,6 +675,7 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
     </div>
     <div class="panel active" id="tab-tbr">
       <div class="sl">TBR — what to read next <button class="log-act" style="text-transform:none;letter-spacing:0" onclick="LOG.doSyncRequest('goodreads')" title="jerry re-reads both Goodreads feeds within a minute or two: the currently-reading shelf lands under Reading now, read-shelf finds as proposals — reload the page after">⟳ Sync Goodreads</button></div>
+      <div class="ms" id="tbr-gr-status" style="margin:-.4rem 0 .8rem"></div>
       <div class="mg" id="tbr-m"></div>
       <div class="tbr-legend" id="tbr-legend"></div>
       <div id="tbr-reading-wrap"><div class="sl">Reading now — Goodreads currently-reading shelf</div>
@@ -1090,7 +1091,8 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
         <button class="log-act" onclick="document.getElementById('log-libib-file').click()">⇪ Import Libib CSV</button>
         <input type="file" id="log-libib-file" accept=".csv,text/csv" style="display:none" onchange="LOG.importLibib(this)">
       </div>
-      <div id="log-scan-status" class="ms" style="margin:-.6rem 0 1.2rem"></div>
+      <div id="log-scan-status" class="ms" style="margin:-.6rem 0 .4rem"></div>
+      <div id="log-gr-status" class="ms" style="margin:0 0 1.2rem"></div>
       <div id="log-proposed-list"></div>
     </div>
     <div class="panel" id="tab-logsheet">
@@ -2343,8 +2345,12 @@ function renderTBR(){
   const nl2=t=>nl((t||'').split(':')[0]);
   const have=new Set(books.flatMap(b=>[nl(b.title),nl2(b.title)]));
   const readSeries=new Map();series.filter(s=>s.read>0).forEach(s=>{const k=nl(s.raw||s.name);if(!readSeries.has(k)||s.owner==='butthead')readSeries.set(k,s);});
+  // A series on Next up or being read is spoken for there, so its Book
+  // Notification announcements stay off this list as its register books do
+  // (2026-11-15: Spawn Origins Volume 33 sat under New book while Vol 5 was
+  // queued; Home's Book Notification card still shows the announcement).
   const news=(G.bookClub||[]).filter(r=>r.series&&readSeries.has(nl(r.series))&&!have.has(nl(r.title))&&!have.has(nl2(r.title)))
-    .map(r=>Object.assign({},r,{s:readSeries.get(nl(r.series))}));
+    .map(r=>Object.assign({},r,{s:readSeries.get(nl(r.series))})).filter(r=>!touched(r.s));
   // A universe with a series read counts as engaged for its adjunct series
   // too: Threshing Day (Empyrean Novellas, nothing read there yet) belongs
   // under New book in series because Empyrean itself is read.
@@ -2449,6 +2455,8 @@ function renderTBR(){
     return`<div class="tbr-card${rCls(r)}" data-owner="${r.owner}"${serAttr(b)}><div class="tbr-cov">${b?cover(b):grTile(r)}</div><div class="tbr-info"><div class="tbr-ser">${esc(b?b.title:r.title)}</div><div class="tbr-prog">${esc(r.author)}${b?' · '+esc(b.series)+(b.seq?' #'+esc(b.seq):''):' · not in the register'}${r.added?' · since '+esc(r.added):''}</div><div class="tbr-acts">${b?(pr?'<span class="badge b-teal">read · pending</span>':`<button class="log-act" onclick="tbrReadRow(${i})">✓ Read</button>`):miss}</div>${b?`<div id="tbr-rr-${i}" style="display:none"></div>`:`<div id="tbr-lk-${ri}" style="display:none"></div>`}</div></div>`;}).join('');
   // (the Goodreads to-read shelf is mirrored on jerry but not shown here — John, 2026-09-25: "got folded into the TBR, please remove that")
   G._tbrGR=reading;
+  const grs=document.getElementById('tbr-gr-status');
+  if(grs){const h=grHealth(G.scanRuns,LOG.today());grs.innerHTML=h.state==='failing'?`<span class="home-late">⚠ ${esc(h.text)}</span>`:h.state==='ok'?esc(h.text):'';}
   document.getElementById('tbr-queue').innerHTML=queue.map((q,qi)=>bookCard(q.b,sOf(q.b),chip(q.b)+(q.pending?' <span class="badge b-gold">pending</span>':''),qi)).join('')
     ||'<div class="ms">Nothing picked yet — tap ＋ Next up on any card below to build your list.</div>';
   dndBind(document.getElementById('tbr-queue'),{items:'.tbr-card',handle:'.tbr-handle',onMove:(f,b)=>tbrMoveBefore(f,b)});
@@ -3245,7 +3253,8 @@ function homeSeries(r){
 // and five Wednesday runs "found nothing" unnoticed — They Cry slipped by).
 // state: ok | blind | stale (no run for 9+ days) | none.
 function scanHealth(runs,today){
-  const r=(runs||[])[0];
+  // the Scan Runs tab carries the Goodreads sync's runs too (grHealth)
+  const r=(runs||[]).filter(x=>!x.job||x.job==='scan_upcoming')[0];
   if(!r)return{state:'none',text:'The upcoming-books scan has not run yet.'};
   const d=r.at.slice(0,10),age=Math.round((Date.parse(today+'T12:00:00Z')-Date.parse(d+'T12:00:00Z'))/864e5);
   const when=new Date(d+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
@@ -3413,10 +3422,11 @@ function renderHome(){
     ${news[0].digest?`<div class="home-foot">Latest digest ${esc(homeDate(news[0].digest))}</div>`:''}`:'<div class="ms">No Book Notification digests yet.</div>'}</div>`;
 
   // What needs you, and the four things the app is opened for
-  const propN=(G.proposals||[]).length,scan=scanHealth(G.scanRuns,td);
+  const propN=(G.proposals||[]).length,scan=scanHealth(G.scanRuns,td),grh=grHealth(G.scanRuns,td);
   const chips=[propN?`<button class="home-chip" onclick="switchSection('log','logproposed')">${propN} proposal${propN>1?'s':''} to review</button>`:'',
     lateN?`<button class="home-chip warn" onclick="document.getElementById('home-arriving').scrollIntoView({behavior:'smooth',block:'start'})">${lateN} order${lateN>1?'s':''} late</button>`:'',
-    scan.state==='blind'||scan.state==='stale'?`<button class="home-chip warn" id="home-scan-chip" title="${esc(scan.text)}" onclick="switchSection('log','logproposed')">${scan.state==='blind'?'Upcoming scan blind':'Upcoming scan not run since '+esc(scan.when)}</button>`:''].join('');
+    scan.state==='blind'||scan.state==='stale'?`<button class="home-chip warn" id="home-scan-chip" title="${esc(scan.text)}" onclick="switchSection('log','logproposed')">${scan.state==='blind'?'Upcoming scan blind':'Upcoming scan not run since '+esc(scan.when)}</button>`:'',
+    grh.state==='failing'?`<button class="home-chip warn" id="home-gr-chip" title="${esc(grh.text)}" onclick="switchSection('reading','tbr')">Goodreads sync failing</button>`:''].join('');
   const day=new Date(td+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
   el.innerHTML=`<div class="home-date">${esc(day)}</div>
     ${chips?`<div class="home-chips">${chips}</div>`:''}
@@ -3546,6 +3556,22 @@ function coverSrcs(title,owner,isbnOverride,series){
 // has an image — grids stay complete either way. `w` in px (default 60).
 // referrerpolicy=no-referrer: MangaDex's CDN answers a page referer with
 // its "visit mangadex" placard instead of the cover (John, 2026-09-23).
+// The Goodreads sync, as Home, the TBR tab and the Proposed tab report it
+// (2026-11-15: every feed answered 404 from late October while the Sync
+// button said "0 recent" — jerry now records each run in Scan Runs).
+// state: ok | failing | none.
+function grHealth(runs,today){
+  const gr=(runs||[]).filter(x=>x.job==='sync_goodreads'),r=gr[0];
+  if(!r)return{state:'none',text:'No Goodreads sync recorded yet.'};
+  const day=d=>new Date(d.slice(0,10)+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+  const when=day(r.at);
+  if(r.blind){
+    let first=r;for(const x of gr){if(!x.blind)break;first=x;}
+    const since=first!==r?' since '+day(first.at):'';
+    return{state:'failing',when,text:`Goodreads sync failing${since} (last tried ${when}): ${r.note||'no feed answered'}. Nothing comes in from Goodreads until it's fixed, so log reads here.`};
+  }
+  return{state:'ok',when,text:`Last Goodreads sync ${when}: ${r.searches??0} feed entries read, ${r.proposed||0} proposed${r.note?' — '+r.note:''}.`};
+}
 function coverTile(title,owner,sub,isbn,w,series){
   const srcs=coverSrcs(title,owner,isbn,series),tip=esc(title)+(sub?' — '+esc(sub):'');
   const sz=w?` style="width:${w}px;height:${Math.round(w*1.5)}px"`:'';
@@ -7212,6 +7238,8 @@ const LOG=(()=>{
     const ss=document.getElementById('log-scan-status');
     if(ss){const h=scanHealth(G.scanRuns,today()),warn=h.state==='blind'||h.state==='stale';
       ss.innerHTML=`${warn?'<span class="home-late">⚠ ':''}${esc(h.text)}${warn?'</span>':''}`;}
+    const gs=document.getElementById('log-gr-status');
+    if(gs){const h=grHealth(G.scanRuns,today());gs.innerHTML=h.state==='failing'?`<span class="home-late">⚠ ${esc(h.text)}</span>`:esc(h.text);}
     const el=document.getElementById('log-proposed-list');
     const dec=propDecisions();
     // The header's reader filter applies here too (John, 2026-09-27): Com or

@@ -1,83 +1,83 @@
-# Jerry-side to-do (from the cloud dashboard session, 2026-11-16)
+# Jerry-side to-do
 
-Three gaps that need bookdb, its jobs, or `publish` — none can be fixed from
-the dashboard. Evidence is from the bundle generated 2026-11-16T02:17Z and
-the bookInbox repo. Delete each item when done.
+Work that needs bookdb, its jobs, or `publish`, which a cloud session can't
+reach. Delete each item when it's done.
 
-## 1. Goodreads sync has pulled nothing since 2026-10-19
+Last updated 2026-11-15 by the local session. Items 2 and 3 from the cloud
+session's list (2026-11-16 UTC) are done; see "Done" at the end.
 
-- Two `sync_request {source: goodreads}` events on 2026-11-15 (22:11Z and
-  23:13Z) were moved to `processed/`, but the bundle published afterwards
-  still lists *Fall of Light* on Com's currently-reading shelf. John had
-  marked it read on Goodreads before syncing, then logged it by hand.
-- `bookdb|Goodreads` has no `Added` date newer than 2026-10-19 (Com) /
-  2026-09-23 (Shereen).
-- Three open `track_series_miss` proposals say "Google Books did not answer
-  for 3 days", so outbound lookups may have wider trouble.
+## 1. Goodreads: the shelf feeds are gone, so a replacement is needed
 
-To do: run the Goodreads sync by hand and read its output; check the RSS URL
-and key in `jobs/.goodreads_rss` and the 02:20 nightly job.
+**Finding.** It isn't a key problem. Since about late October, every feed the
+nightly sync and the Sync button read answers HTTP 404:
+- John's and Shereen's read, currently-reading and to-read shelves (19 runs
+  in `sync.log` before 2026-11-15);
+- the same `review/list_rss` address with no key, for any profile. In July
+  that address answered 401 ("needs the key"); now it answers 404;
+- the `user/updates_rss` status feed.
 
-Then make the failure visible: record every sync run (job name, finished
-time, items found, error) in `bookdb|Scan Runs`, which today only carries
-`scan_upcoming`. "Processed" in the inbox only means the request was
-accepted. Once those rows publish, the dashboard session will show "last
-Goodreads sync" beside the button.
+The key files are unchanged since September. Shelf pages and the library
+export need a signed-in browser. The old developer API (`review/list.xml`)
+answers 401 and has issued no keys since 2020.
 
-## 2. Books on order have no register row
+**Done for it (2026-11-15).**
+- `sync_goodreads.py` records every run in `import_runs` (job
+  `sync_goodreads`: entries read, proposals, per-feed errors, `failed`).
+- publish adds those runs to `bookdb|Scan Runs` with the same columns as
+  `scan_upcoming`. Proposed = mark-read + add proposals; Searches = feed
+  entries; Failed = feeds that errored; Blind = no feed answered; Note = the
+  errors.
+- The Sync button's inbox reply says "FAILED - …" instead of "0 recent".
+- Dashboard: `grHealth()`. A failing run shows as a Home chip ("Goodreads
+  sync failing") and a line beside both Sync Goodreads buttons (TBR tab,
+  Proposed tab). `scanHealth()` reads only `scan_upcoming` rows now.
 
-John's rule: the register is complete for every book tracked or owned. A book
-on order is tracked, but an order line only gets a register row on arrival —
-so looking up Protectorate shows *Velocity Weapon* alone, with books 2 and 3
-invisible.
+**Open: John to choose a replacement.**
+- *Goodreads library export:* John downloads the CSV (My Books › Import and
+  export › Export library). An "Import Goodreads CSV" button like the Libib
+  one sends it to jerry, and `import_goodreads.py` already reads that format.
+  It is manual but complete: read dates, currently-reading, to-read.
+- *Hardcover (hardcover.app):* an official GraphQL API with a personal token.
+  It imports a Goodreads library, and jerry could sync it nightly. John would
+  track reads there instead of on Goodreads.
+- *Neither:* log reads on the dashboard only. Then retire the nightly job and
+  the Sync buttons, and clear the frozen currently-reading mirror. Today Fall
+  of Light still shows as reading from the last good sync.
 
-Open order lines (`ordered`) with a title and no `BookId`:
+## Done 2026-11-15 (local session)
 
-| Title | Series | Order |
-|---|---|---|
-| Chaos Vector | Protectorate | #TBBSUB831681 |
-| Catalyst Gate | Protectorate | (no order number yet) |
-| Theft of Swords | Riyria Revelations | |
-| Rise of Empire | Riyria Revelations | |
-| Heir of Novron | Riyria Revelations | |
-| Shattered Sea | Shattered Sea | |
-| The Dispossessed | | |
-| The Blade That Remains | | |
-| Moss Effect | | |
-| I Need My Space | | |
-| Those Who Prepare the Way | | |
+**Order lines now get register rows.**
+- `apply_inbox.ensure_line_book` covers new orders and a line named later.
+  The line links the register book it names. That match now ignores a
+  subtitle the line leaves off, and an edition title links its base book.
+  Otherwise the book is added tracked and not owned.
+- Adds go through an add proposal carrying `order_line_id`; `apply_fixes`
+  links the line once the book exists.
+- John's own entries are approved at once. Lines the TBB check creates wait in
+  Proposed, since TBB product names aren't always titles.
+- Left alone: placeholders, series-only lines, omnibus orders (their contents
+  are owned on arrival), and edition titles whose base book the register
+  lacks.
 
-Most carry the note "from the order's Books text, migration 029". Thirteen
-other open lines (Sun Eater, Malazan) are linked, so this is inconsistent,
-not designed. The remaining unlinked open lines are "Subscription credit"
-placeholders and two blank-title Echoes Saga lines — leave those.
+**The listed lines** (`jobs/fix_1115_order_rows.py`):
+- Protectorate: Velocity Weapon #1; Chaos Vector #2 and Catalyst Gate #3
+  added.
+- The Dispossessed links to the register's "The Dispossessed: An Ambiguous
+  Utopia" (634) as a Special Edition.
+- Added as standalones: The Blade That Remains, Moss Effect, I Need My Space.
+- Those Who Prepare the Way is The Bird That Drinks Tears #2. The Heart of the
+  Nhaga, already owned, is #1.
+- Shattered Sea – Foiled Signature: TBB's page says "Shattered Sea Trilogy
+  Books 1, 2 & 3", Royal Hardbacks. The line became three, Half a King / Half
+  the World / Half a War, series Shattered Sea Trilogy 1–3, like the First Law
+  Trilogy.
+- Theft of Swords, Rise of Empire and Heir of Novron were already fine. Their
+  orders list their contents (Riyria Revelations 1–6, all in the register).
 
-To do: create a register row (tracked, not owned) for each and link it via
-`BookId`, with series and seq where known; and create the row at order time
-from now on, so arrival flips it to owned instead of creating it.
+**Series universe.** publish fills a series' universe from its books when all
+of them agree. That covers Ronin of Okane, Landover shorts, Tales I and II
+Trilogy, Green Bone Saga and Wax and Wayne.
 
-## 3. A series row doesn't carry its books' universe
-
-`Butthead Series` rows with an empty Universe although every book in the
-series has one:
-
-- Ronin of Okane (butthead) — set on all five books 2026-11-16 via `book_update`
-- Landover shorts, Tales I Trilogy, Tales II Trilogy (butthead)
-- Green Bone Saga, Wax and Wayne (goblin)
-
-The Universe tab's tiles are built from these series rows, so those series
-are missing from their universe's count. To do: in publish, roll a series'
-universe up from its books when they all agree (or set it on the series).
-
-## For awareness
-
-- Dashboard changes merged 2026-11-16: register search now matches universe,
-  and the Universe tab counts universe-tagged standalones (they arrive as
-  type `Individual` and were dropped). A universe with no series-level tile
-  gets one sized from its books.
-- Queued through the inbox by the cloud session at John's request
-  (2026-11-16T01:46Z, all applied): `meta_add` publisher "Cyber Sheep
-  Studios"; `book_update` universe "Ronin of Okane" on Vol 1–5; `add_book`
-  *Me & My Nekomata!* (approved by John, book 15465).
-- `tests/harness.html` has one failing check that predates these changes:
-  "TBR: a queued series is not under New book or Waiting for".
+**Harness.** "TBR: a queued series is not under New book or Waiting for" now
+passes. A Book Notification announcement in a queued series (Spawn Origins
+Volume 33) is held back like the series' register books are. 81/81.

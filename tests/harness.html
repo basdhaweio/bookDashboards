@@ -645,6 +645,30 @@ async function main(){
     const ok=states==='blind,stale,ok,none'&&/blind/i.test(chip)&&/couldn't see new books/.test(line)&&/Last upcoming-books scan/.test(clean);
     res(name,ok,`states ${states}; Home chip “${chip}”; blind line “${line.slice(0,70)}…”; clean line “${clean.slice(0,60)}…”`);
   });
+  await check('Goodreads sync: a failing run warns on Home, the TBR tab and the Proposed tab',async()=>{
+    // 2026-11-15: Goodreads' shelf feeds answered 404 for weeks while the Sync
+    // button said "0 recent". jerry records every run in Scan Runs now; a
+    // failing one shows — and the upcoming-scan check ignores those rows.
+    const name='Goodreads sync: a failing run warns on Home, the TBR tab and the Proposed tab';
+    const W=w(),G=W.eval('G'),L=W.eval('LOG'),td=L.today(),health=W.eval('grHealth');
+    const gr=o=>Object.assign({job:'sync_goodreads',at:td+' 02:20',proposed:0,searches:0,hits:null,failed:2,blind:true,
+      note:'butthead: HTTP Error 404: Not Found; goblin: HTTP Error 404: Not Found'},o);
+    const streak=health([gr(),gr({at:'2026-11-01 02:20'}),gr({at:'2026-10-25 02:20',blind:false,failed:0,searches:200,note:''})],td);
+    const states=[streak.state,health([gr({blind:false,failed:0,searches:200,note:''})],td).state,health([],td).state].join(',');
+    const keep=G.scanRuns,was=doc().querySelector('#owner-filter button.active')?.dataset.o||'all';
+    let chip='',scanChip=true,tbr='',prop='';
+    try{
+      G.scanRuns=[gr(),gr({at:'2026-11-01 02:20'}),{job:'scan_upcoming',at:td+' 04:31',proposed:2,searches:400,hits:390,failed:0,blind:false,note:''}];
+      W.setOwner('all');W.switchSection('home');await new Promise(r=>setTimeout(r,400));
+      chip=(doc().getElementById('home-gr-chip')||{}).textContent||'';
+      scanChip=!!doc().getElementById('home-scan-chip');
+      await go('tbr','reading');tbr=(doc().getElementById('tbr-gr-status')||{}).textContent||'';
+      await go('logproposed','log');L.renderProposed();prop=(doc().getElementById('log-gr-status')||{}).textContent||'';
+    }finally{G.scanRuns=keep;L.renderProposed();W.setOwner(was);}
+    const ok=states==='failing,ok,none'&&/since \w{3}, Nov 1 /.test(streak.text)&&/Goodreads sync failing/.test(chip)&&!scanChip
+      &&/Goodreads sync failing/.test(tbr)&&/404/.test(prop);
+    res(name,ok,`states ${states}; “${streak.text.slice(0,60)}…”; Home chip “${chip}”${scanChip?' (and a wrong upcoming-scan chip)':''}; TBR “${tbr.slice(0,40)}…”; Proposed “${prop.slice(0,40)}…”`);
+  });
   await check('Scan card: an ISBN jerry already found shows its series and Got it',async()=>{
     // They Cry (2026-11-04) was unknown to Open Library and the keyless Google
     // Books is over quota, so a scan said nobody knew the ISBN. A proposal
