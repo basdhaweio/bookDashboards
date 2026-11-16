@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-16T03:39:33+00:00",
+ "generated_at": "2026-11-16T03:41:35+00:00",
  "owner": "butthead",
  "site": "https://basdhaweio.github.io/bookDashboards/",
  "reading_now": [
@@ -110,15 +110,9 @@
  ],
  "next_up": [
   {
-   "title": "Persepolis Rising",
-   "series": "Expanse",
-   "seq": "7",
-   "owned": true
-  },
-  {
-   "title": "Spy x Family Vol 16",
-   "series": "Spy x Family",
-   "seq": "16",
+   "title": "Iron Gold",
+   "series": "Red Rising",
+   "seq": "4",
    "owned": true
   },
   {
@@ -128,9 +122,15 @@
    "owned": true
   },
   {
-   "title": "Iron Gold",
-   "series": "Red Rising",
-   "seq": "4",
+   "title": "Persepolis Rising",
+   "series": "Expanse",
+   "seq": "7",
+   "owned": true
+  },
+  {
+   "title": "Spy x Family Vol 16",
+   "series": "Spy x Family",
+   "seq": "16",
    "owned": true
   },
   {
