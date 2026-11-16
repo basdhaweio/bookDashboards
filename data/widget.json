@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-16T16:00:57+00:00",
+ "generated_at": "2026-11-16T16:59:25+00:00",
  "owner": "butthead",
  "site": "https://basdhaweio.github.io/bookDashboards/",
  "reading_now": [
@@ -147,7 +147,7 @@
   }
  ],
  "orders": {
-  "open": 35,
+  "open": 34,
   "shipped": 0,
   "lines": [
    {
@@ -169,16 +169,6 @@
     "eta": "2026-11-10",
     "tracking": "",
     "ordered": "2026-09-02"
-   },
-   {
-    "id": 497,
-    "order_id": 536,
-    "title": "The First War",
-    "store": "Tombolo",
-    "status": "ordered",
-    "eta": "2026-11-10",
-    "tracking": "",
-    "ordered": "2026-09-29"
    },
    {
     "id": 251,
@@ -229,6 +219,16 @@
     "eta": "",
     "tracking": "",
     "ordered": "2026-08-04"
+   },
+   {
+    "id": 105,
+    "order_id": 170,
+    "title": "Malazan Book of the Fallen #9",
+    "store": "The Broken Binding",
+    "status": "ordered",
+    "eta": "",
+    "tracking": "",
+    "ordered": "2026-08-04"
    }
   ]
  },
@@ -240,7 +240,7 @@
   "last_year_by_now": 135,
   "last_year_total": 154,
   "this_month": 2,
-  "bought": 197
+  "bought": 198
  },
  "proposals": {
   "open": 19
