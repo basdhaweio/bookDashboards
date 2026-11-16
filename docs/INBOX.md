@@ -638,6 +638,11 @@ Update an existing order, referenced by its bundle strings. Carries the same
 (Book Boxes rows aren't in the bundle yet, so there is nothing to tap).
 Expected `set` keys for `bookboxes` once wired: `received` (date or "Yes"),
 `want` (Yes/Unsure/No), `ordered` ("CANCELLED"), `tracking`, `eta`.
+An edit to a Book Boxes row makes it the app's row (`source = 'inbox'`). The
+nightly sync of Shereen's sheet overwrites only the rows the sheet made, so the
+edit stands even when her sheet still says otherwise. Before 2026-11-16 the
+edit didn't do this, and a Received tapped in the app went back to blank
+overnight.
 ```json
 {"ref": {"date": "December 9, 2024", "order": "#TBBSUB247048", "books": "The Sun Eater 1-3",
          "series": "Sun Eater", "author": "Christopher Ruocchio"},
