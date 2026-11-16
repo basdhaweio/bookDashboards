@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-16T17:29:26+00:00",
+ "generated_at": "2026-11-16T17:47:02+00:00",
  "owner": "butthead",
  "site": "https://basdhaweio.github.io/bookDashboards/",
  "reading_now": [
@@ -147,9 +147,19 @@
   }
  ],
  "orders": {
-  "open": 33,
-  "shipped": 0,
+  "open": 34,
+  "shipped": 1,
   "lines": [
+   {
+    "id": 95,
+    "order_id": 74,
+    "title": "Subscription credit",
+    "store": "The Broken Binding",
+    "status": "shipped",
+    "eta": "",
+    "tracking": "",
+    "ordered": "October 5, 2026"
+   },
    {
     "id": 569,
     "order_id": 558,
@@ -193,7 +203,7 @@
    {
     "id": 103,
     "order_id": 170,
-    "title": "Malazan Book of the Fallen #7",
+    "title": "Reaper's Gale",
     "store": "The Broken Binding",
     "status": "ordered",
     "eta": "",
@@ -203,7 +213,7 @@
    {
     "id": 104,
     "order_id": 170,
-    "title": "Malazan Book of the Fallen #8",
+    "title": "Toll The Hounds",
     "store": "The Broken Binding",
     "status": "ordered",
     "eta": "",
@@ -213,22 +223,12 @@
    {
     "id": 105,
     "order_id": 170,
-    "title": "Malazan Book of the Fallen #9",
+    "title": "Dust of Dreams",
     "store": "The Broken Binding",
     "status": "ordered",
     "eta": "",
     "tracking": "",
     "ordered": "2026-08-04"
-   },
-   {
-    "id": 106,
-    "order_id": 182,
-    "title": "The Echoes Saga #1",
-    "store": "The Broken Binding",
-    "status": "ordered",
-    "eta": "",
-    "tracking": "",
-    "ordered": "2026-08-16"
    }
   ]
  },
@@ -243,7 +243,7 @@
   "bought": 199
  },
  "proposals": {
-  "open": 19
+  "open": 20
  },
  "charts": [
   {
