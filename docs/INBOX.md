@@ -119,6 +119,14 @@ copy but never moves the book's date; an earlier acquisition recorded later
 does move it back. Date corrections via `book_update` `set.acquired_on`
 still set it outright.
 
+That holds when the first acquisition is known only by its year (2026-11-16,
+`FIRST_ACQ_MOVES`). Liveship Traders copies from 2024, with no day, stay
+2024 when an Illumicrate copy #2 comes in 2026. A day in the same year fills
+the day in. Before this fix, `LEAST()` skipped the missing day, so a later
+copy took over the date. That hit six books in Oct–Nov 2026: the Licanius
+trilogy, Temptation of Elminster, Siege of Darkness and Starless Night.
+`fix_1116_later_copy_dates.py` put them back.
+
 ### `copy_let_go`
 Retire a physical copy — sold, donated, swapped out — without touching the
 work's owned status (that stays John-asserted through `acquired`).
@@ -420,7 +428,8 @@ One acquisition's own facts — `acquired_on` and `source_store` (the shop) on
 the `acquisitions` row. The Buying › This Year table's Date and Source cells
 send this (title, author, genre and format go through `book_update`). The
 book's own acquired_on then follows the first-acquisition rule: the
-earliest of its acquisitions.
+earliest of its acquisitions. If the book was first acquired in an earlier
+year with no day, it keeps that year (2026-11-16).
 ```json
 {"acq_id": 5497,
  "book": {"title": "Vinland Saga Vol 13", "series": "Vinland Saga", "owner": "butthead"},

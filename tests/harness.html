@@ -976,28 +976,87 @@ async function main(){
     W.setOwner('butthead');
     res(name,ok,`${cands.length} candidate(s); ${cands[0][1].slice(0,40)} on ${o}'s shelf: card ${!!card}, badge+button ${ok}`);
   });
-  await check('Books: a title search asks Open Library and Google Books and merges them',async()=>{
-    const name='Books: a title search asks Open Library and Google Books and merges them';
+  await check('Books: a title search asks Open Library, Google Books and Apple Books and merges them',async()=>{
+    const name='Books: a title search asks Open Library, Google Books and Apple Books and merges them';
     const W=w(),D=doc(),tick=ms=>new Promise(r=>setTimeout(r,ms));
     const known=(W.eval('G.indBooks')||[])[0];
     const realFetch=W.fetch;
-    // stand-ins for the two services: one book in both (shared ISBN), one only in Google Books, one only in Open Library (a register title)
+    // stand-ins for the three services: one book in all three (a shared ISBN, then title + author), one only in
+    // Google Books, one only in Open Library (a register title), one only in Apple Books ("(Series, Book n)" split off)
     const gb={items:[{volumeInfo:{title:'Harness Book Alpha',authors:['Ada Tester'],publishedDate:'2021-03-01',publisher:'Stub House',industryIdentifiers:[{type:'ISBN_13',identifier:'9780000000017'}],imageLinks:{thumbnail:'http://books.google.com/x.jpg'}}},
       {volumeInfo:{title:'Harness Book Beta (Beta Cycle, #2)',authors:['Bo Tester'],publishedDate:'2019',industryIdentifiers:[{type:'ISBN_10',identifier:'0000000027'}]}}]};
     const ol={docs:[{title:'Harness Book Alpha',author_name:['Ada Tester'],first_publish_year:2021,isbn:['9780000000017','0000000019'],cover_i:12345},
       {title:known?known.title:'Harness Book Gamma',author_name:[known?(known.author||'').split(',')[0]:'Cy Tester'],first_publish_year:1999,isbn:['9780000000031']}]};
-    W.fetch=async(url,opts)=>{const u=String(url);if(u.includes('openlibrary.org/search.json'))return new W.Response(JSON.stringify(ol),{status:200,headers:{'Content-Type':'application/json'}});
-      if(u.includes('googleapis.com/books'))return new W.Response(JSON.stringify(gb),{status:200,headers:{'Content-Type':'application/json'}});return realFetch(url,opts);};
+    const ap={results:[{kind:'ebook',trackName:'Harness Book Alpha',artistName:'Ada Tester',releaseDate:'2021-03-01T07:00:00Z',artworkUrl100:'https://is1-ssl.mzstatic.com/a/100x100bb.jpg'},
+      {kind:'ebook',trackName:'Harness Book Delta (Delta Saga, Book 3)',artistName:'Di Tester',releaseDate:'2026-10-27T07:00:00Z',artworkUrl100:'https://is1-ssl.mzstatic.com/d/100x100bb.jpg'}]};
+    const json=o=>new W.Response(JSON.stringify(o),{status:200,headers:{'Content-Type':'application/json'}});
+    W.fetch=async(url,opts)=>{const u=String(url);if(u.includes('openlibrary.org/search.json'))return json(ol);
+      if(u.includes('googleapis.com/books'))return json(gb);if(u.includes('itunes.apple.com/search'))return json(ap);return realFetch(url,opts);};
     try{
       await go('logbook','log');
       D.getElementById('log-q').value='harness book';W.eval('LOG').search();await tick(1200);
       const cards=[...D.querySelectorAll('#log-web .log-web-item')];
       const titles=cards.map(c=>c.querySelector('.log-item-title').textContent.trim());
-      const merged=cards.find(c=>/Harness Book Alpha/.test(c.textContent)),both=!!merged&&/Google Books \+ Open Library/.test(merged.textContent)&&/2 ISBNs/.test(merged.textContent);
+      const merged=cards.find(c=>/Harness Book Alpha/.test(c.textContent)),all3=!!merged&&/Google Books \+ Open Library \+ Apple Books/.test(merged.textContent)&&/2 ISBNs/.test(merged.textContent);
       const flagged=known?cards.some(c=>c.textContent.includes(known.title)&&/in the register/.test(c.textContent)):true;
+      const delta=cards.find(c=>c.querySelector('.log-item-title').textContent.trim()==='Harness Book Delta'&&/Apple Books/.test(c.textContent));
       const addBtn=cards.every(c=>c.querySelector('button[onclick^="LOG.webAdd"]'));
-      res(name,cards.length===3&&both&&flagged&&addBtn,`${cards.length} cards (${titles.join(' | ').slice(0,90)}); merged card carries both sources ${both}; register title flagged ${flagged}`);
+      res(name,cards.length===4&&all3&&flagged&&!!delta&&addBtn,`${cards.length} cards (${titles.join(' | ').slice(0,110)}); merged card carries all three sources ${all3}; register title flagged ${flagged}; Apple-only card, series split off ${!!delta}`);
     }finally{W.fetch=realFetch;D.getElementById('log-q').value='';}
+  });
+  await check('Books: a new release on the Book Club list is found and prefills the add form',async()=>{
+    // John, 2026-11-16: Code and Codex wasn't found by title or ISBN — Open
+    // Library had never heard of it — but his Book Notification list had it
+    const name='Books: a new release on the Book Club list is found and prefills the add form';
+    const W=w(),D=doc(),tick=ms=>new Promise(r=>setTimeout(r,ms));
+    const realFetch=W.fetch,bc=W.eval('G.bookClub=G.bookClub||[]');
+    const mine=(W.eval('G.allIndBooks')||[]).find(b=>(b.owner||'butthead')==='butthead'&&b.title);
+    const row={title:'Harness Club Book Qq',author:'Cee Tester',series:'',release:'2026-10-27',genre:'Science Fiction',notes:'',isbn:'',cover:''};
+    const dup={title:mine?mine.title:'Harness Club Dup Qq',author:'Harness Club Author',series:'',release:'',genre:'',notes:'',isbn:'',cover:''};
+    // nothing from the web, so only the register and the list answer
+    W.fetch=async(url,opts)=>{const u=String(url);if(/openlibrary\.org\/search|googleapis\.com\/books|itunes\.apple\.com/.test(u))return new W.Response('{}',{status:200,headers:{'Content-Type':'application/json'}});return realFetch(url,opts);};
+    const form=D.getElementById('log-addform'),wasHidden=form.style.display==='none',prevOwner=W.eval('OWNER');
+    bc.push(row,dup);
+    try{
+      await go('logbook','log');W.setOwner('butthead');
+      D.getElementById('log-q').value='harness club';W.eval('LOG').search();await tick(300);
+      const cards=[...D.querySelectorAll('#log-bc .log-web-item')];
+      const card=cards.find(c=>c.textContent.includes(row.title)),btn=card&&card.querySelector('button[onclick^="LOG.bcAdd"]');
+      const twice=!!mine&&cards.some(c=>c.querySelector('.log-item-title').textContent.trim()===mine.title);
+      if(btn)btn.click();
+      const t=D.getElementById('log-n-title').value,a=D.getElementById('log-n-author').value;
+      res(name,!!card&&!!btn&&!twice&&t===row.title&&a===row.author,`card ${!!card}, ＋ Add ${!!btn}, a register title offered again ${twice}; form title “${t}”, author “${a}”`);
+    }finally{bc.splice(bc.indexOf(row),1);bc.splice(bc.indexOf(dup),1);W.fetch=realFetch;W.setOwner(prevOwner);
+      D.getElementById('log-q').value='';D.getElementById('log-n-title').value='';D.getElementById('log-n-author').value='';
+      if(wasHidden&&form.style.display!=='none')W.eval('LOG').toggleAdd();}
+  });
+  await check('Google Books key: kept on this device and sent only to Google Books',async()=>{
+    // John, 2026-11-16: "let's get that key" — keyless Google Books is refused (quota 0)
+    const name='Google Books key: kept on this device and sent only to Google Books';
+    const W=w(),D=doc(),tick=ms=>new Promise(r=>setTimeout(r,ms));
+    const realFetch=W.fetch,seen=[],KEY='AIzaHarnessKeyQq_0123456789abcdef';
+    let gbStatus=429;
+    W.fetch=async(url,opts)=>{const u=String(url);
+      if(/openlibrary\.org\/search|googleapis\.com\/books|itunes\.apple\.com/.test(u)){seen.push(u);
+        if(u.includes('googleapis.com/books')&&gbStatus!==200)return new W.Response(JSON.stringify({error:{code:gbStatus,message:'stub'}}),{status:gbStatus,headers:{'Content-Type':'application/json'}});
+        return new W.Response('{}',{status:200,headers:{'Content-Type':'application/json'}});}
+      return realFetch(url,opts);};
+    const prev=localStorage.getItem('library-gb-key');
+    try{
+      localStorage.removeItem('library-gb-key');
+      await go('logbook','log');
+      D.getElementById('log-q').value='harness keyless';W.eval('LOG').search();await tick(1200);
+      const noKeyNote=/needs a key on this device/.test(D.getElementById('log-web').textContent);
+      const noKeySent=seen.some(u=>u.includes('googleapis'))&&seen.filter(u=>u.includes('googleapis')).every(u=>!/[?&]key=/.test(u));
+      localStorage.setItem('library-gb-key',KEY);gbStatus=200;seen.length=0;
+      D.getElementById('log-q').value='harness keyed';W.eval('LOG').search();await tick(1200);
+      const gbU=seen.filter(u=>u.includes('googleapis.com/books')),others=seen.filter(u=>!u.includes('googleapis.com/books'));
+      const keyed=gbU.length>0&&gbU.every(u=>u.includes('key='+KEY)),leak=others.some(u=>u.includes(KEY));
+      seen.length=0;D.getElementById('log-isbn').value='9780000000017';W.eval('LOG').isbnLookup();await tick(600);
+      const isbnKeyed=seen.some(u=>u.includes('googleapis.com/books')&&u.includes('isbn:9780000000017')&&u.includes('key='+KEY));
+      res(name,noKeyNote&&noKeySent&&keyed&&!leak&&isbnKeyed,`keyless: note ${noKeyNote}, no key sent ${noKeySent}; with a key: Google Books calls carry it ${keyed} (${gbU.length}), other services see it ${leak}; ISBN lookup keyed ${isbnKeyed}`);
+    }finally{W.fetch=realFetch;if(prev==null)localStorage.removeItem('library-gb-key');else localStorage.setItem('library-gb-key',prev);
+      D.getElementById('log-q').value='';D.getElementById('log-isbn').value='';D.getElementById('log-results').innerHTML='';}
   });
   await check('Both readers: one reader queuing a shared series does not hide it from the other',async()=>{
     const name='Both readers: one reader queuing a shared series does not hide it from the other';

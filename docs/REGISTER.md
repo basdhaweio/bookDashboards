@@ -2,7 +2,8 @@
 
 John, 2026-10-07: "I bought a book today that's book 3 in a series but it
 wasn't tracked and I don't have an easy way to find that out." Log › Books
-searches the world (Open Library, Google Books) to add a book; the universe
+searches the world (Open Library, Google Books, Apple Books and your Book
+Club list — docs/SEARCH.md) to add a book; the universe
 pages show a universe's series in full; nothing showed an ordinary series
 on demand. Register does.
 
