@@ -538,6 +538,43 @@ assigned it an id. The same `key` added twice is a no-op. `set` keys:
 or blank to unpin), position, done, notes`. A slot needs a label or a book;
 one made from a shelf card carries only the book and is named by it.
 
+### `theme_set` — a year's reading themes (migration 040, 2026-11-23)
+A theme is a goal for one year — "6 nonfiction", "finish 3 series I've
+started", "Hugo winners I own". Its `rule` says what counts; the dashboard
+counts the year's reads against it (see docs/PLAN.md), so progress is never
+sent — except `tally`, the hand count of a theme with no rule. `by` owns it.
+```json
+{"year": 2027, "action": "add", "key": "tmuhc1x2abcd",
+ "set": {"label": "6 nonfiction", "rule": {"genre": "Nonfiction"}, "target": 6}}
+{"year": 2027, "action": "update", "id": 4, "set": {"rule": {"series_goal": "finish"}, "target": 3}}
+{"year": 2027, "action": "update", "key": "tmuhc1x2abcd", "set": {"tally": 2}}
+{"year": 2027, "action": "remove", "id": 4}
+```
+Same shape as `plan_set`: `add` mints a `key` (the same key twice is a
+no-op), `update` / `remove` name the theme by `id` or `key`, an unknown one
+parks an `inbox_unmatched` proposal. `set` keys: `label` (required on add,
+never blank), `rule`, `target` (blank or 0 = no number), `tally`, `notes`,
+`position`, `year` (moves it). `rule` is an object of these keys only —
+anything else is refused:
+`genre, media, series, author, universe, award` (text) ·
+`length` (short|medium|long|doorstop) · `series_goal` (finish|start) ·
+`won, owned, shared, new_author` (true; false drops out) ·
+`shelf_years` (1–100) · `before, after` (publication years).
+`{}` or `""` = counted by hand. Stored as canonical JSON.
+
+### `idea_set` — the ideas inbox (migration 040, 2026-11-23)
+An idea is a line with no year — the Keep list. It stays open until it is
+used; `used` says what it became (`theme 2027`, `slot 2027`, `next up`,
+`done`), setting it stamps `used_on` with the event's day, blank reopens it.
+```json
+{"action": "add", "key": "imuhc1x2abcd", "set": {"text": "more nonfiction", "position": 12}}
+{"action": "update", "key": "imuhc1x2abcd", "set": {"used": "theme 2027"}}
+{"action": "update", "id": 7, "set": {"text": "6 nonfiction", "notes": "from Keep"}}
+{"action": "remove", "id": 7}
+```
+`set` keys: `text` (required on add, never blank), `notes`, `used`,
+`position` (appends when absent). Keys and ids as `theme_set`.
+
 ### `reading_set` — Reading now, kept by the dashboard (2026-11-15)
 
 John: "trying to move my TBR to 'Now Reading' since we can't use Goodreads ...

@@ -153,6 +153,41 @@ button.tbr-link{background:none;border:none;padding:0;font:inherit;font-weight:i
 .rn-dropbar.show{transform:translate(-50%,0);pointer-events:auto;}
 .rn-dropbar.droptarget{background:var(--teal-bg);outline:none;}
 .plan-dropnew{border-style:dashed;color:var(--text3);}
+/* Plan themes and ideas (2026-11-23) */
+.th-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin-bottom:10px;}
+.th-card{border:1px solid var(--border);border-radius:10px;background:var(--bg2);padding:10px 12px;min-width:0;box-shadow:var(--shadow);}
+.th-card.plan-pending{border-style:dashed;}
+.th-card.th-met{border-color:var(--teal2);}
+.th-head{display:flex;gap:8px;align-items:flex-start;}
+.th-label{flex:1;min-width:0;font-weight:600;font-size:14px;line-height:1.35;}
+.th-acts{display:flex;gap:4px;}
+.th-acts .log-act,.th-nums .log-act,.th-s .log-act,.th-sugg>.log-act{padding:3px 7px;font-size:10px;border-radius:6px;}
+.th-rule{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0;}
+.th-chip{display:inline-block;font-family:var(--font-m);font-size:10px;padding:2px 8px;border-radius:10px;background:var(--gold-bg);color:var(--gold);border:1px solid var(--gold2);margin:1px 2px 1px 0;}
+.th-chip.hand{background:var(--bg3);color:var(--text2);border-color:var(--border2);}
+.th-bar{position:relative;height:10px;border-radius:5px;background:var(--bg3);margin:6px 0 4px;overflow:hidden;}
+.th-bar>i{position:absolute;top:0;height:100%;background:var(--teal2);}
+.th-bar>i.pl{opacity:.35;}
+.th-nums{font-family:var(--font-m);font-size:11px;color:var(--text2);line-height:1.8;}
+.th-list{margin-top:6px;font-size:12px;}
+.th-sugg{margin-top:8px;border-top:1px dashed var(--border2);padding-top:6px;}
+.th-s{display:flex;gap:8px;align-items:center;padding:3px 0;}
+.th-s .tbr-info{flex:1;min-width:0;}
+.th-s .tbr-ser{font-size:12px;}
+.th-ed{margin-top:8px;padding-top:8px;border-top:1px dashed var(--border2);}
+.th-cks{display:flex;flex-wrap:wrap;gap:6px 16px;margin:0 0 10px;font-size:13px;}
+.th-cks label{display:flex;gap:6px;align-items:center;cursor:pointer;}
+.th-add{padding:1rem 1.25rem;}
+.plan-ideas{padding:1rem 1.25rem;}
+.idea{display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.idea:last-child{border-bottom:0;}
+.idea-text{flex:1 1 220px;min-width:0;font-size:14px;line-height:1.4;}
+.idea-hint{font-size:11px;color:var(--text3);margin-top:2px;}
+.idea-acts{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;margin-left:auto;}
+.idea-acts .log-act{padding:3px 7px;font-size:10px;border-radius:6px;}
+.idea-used .idea-text{font-size:12px;color:var(--text2);}
+.idea-usedwrap{margin-top:8px;}
+.idea-usedwrap summary{cursor:pointer;}
 .plan-row{cursor:pointer;}.plan-row.open .pl{color:var(--gold);font-weight:600;}
 .plan-detail{margin:-6px 0 12px;padding:6px 10px;border-left:2px solid var(--gold2);background:var(--gold-bg);border-radius:0 8px 8px 0;}
 #plan-pool-bar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px;}
@@ -705,9 +740,12 @@ input[type=range]{flex:1;accent-color:var(--gold2);}
     </div>
     <div class="panel" id="tab-plan">
       <div class="sl">Plan — rough intentions for a year, checked against the goals</div>
-      <div class="ms" style="margin-bottom:8px">A slot is the shape of a book you mean to read — "long, hard sci-fi", "cozy fantasy novella" — with a media type, genre and length when you know them. Pin a register book to it whenever one turns up; a pinned book that gets read ticks the slot. Goals come from the year's targets.</div>
+      <div class="ms" style="margin-bottom:8px">Ideas hold anything with no year yet — the Keep list. A theme is a goal for the year ("6 nonfiction", "finish 3 series I've started") counted from what you actually read. A slot is the shape of one book you mean to read — "long, hard sci-fi" — with a book pinned whenever one turns up; this year's slots are your Next up list. Goals come from the year's targets.</div>
       <div class="ytog" id="plan-tog"></div>
+      <div class="sl">Ideas <span class="ms">— any year</span></div>
+      <div class="cb plan-ideas" id="plan-ideas"></div>
       <div class="mg" id="plan-m"></div>
+      <div id="plan-themes"></div>
       <div class="tc"><div><div class="sl">By media <span class="ms">— read (solid) · planned (faint) · goal (red mark)</span></div><div class="cb" id="plan-media"></div></div><div><div class="sl">By genre</div><div class="cb" id="plan-genre"></div></div></div>
       <div class="sl">Slots <span class="ms">— drag ⋮⋮ to reorder</span></div>
       <div class="tbr-grid" id="plan-list"></div>
@@ -2685,6 +2723,11 @@ function renderPlan(){
   const done=slots.filter(isDone).length,planned=slots.length,read=readBooks.length;
   const left=goal?goal-read-(planned-done):null;
   document.getElementById('plan-m').innerHTML=mH(planned,asQueue?'On Next up':'Slots planned',String(planYear))+mH(done,'Done','pinned book read, or ticked','t')+mH(goal||'—','Goal',goal?"the year's targets":'no targets set for '+planYear)+(planYear<=cy?mH(read,'Read so far',String(planYear)):'')+(goal?mH((left>0?'':'+')+Math.abs(left),left>0?'Still to plan':'Over the goal',left>0?'goal − read − open slots':'more planned than the goal needs',left>0?'c':'t'):'');
+  // Ideas (any year) and the year's themes (2026-11-23); their indexes are
+  // rebuilt from today's data on every render
+  G._thAward=G._thTwin=null;G._thIdx={};
+  renderIdeas(owner);
+  renderThemes(owner,planYear);
   const cnt=(arr,f)=>arr.reduce((m,x)=>{const k=f(x);if(k)m[k]=(m[k]||0)+1;return m;},{});
   const mediaOf=b=>/^ebook$/i.test(b.media||'')?'eBook':b.media;
   const pm=cnt(slots,s=>s.media),rm=cnt(readBooks,mediaOf);
@@ -2855,6 +2898,486 @@ async function planDropPool(from,t){
   // A slot that was only ever the book it held takes the new title; a shape keeps its words.
   const set={book:planRef(b)};if(s.label&&s.label===s.book)set.label='';
   if(await LOG.planSet(planYear,'update',ref,set)){toast(`Pinned “${b.title}”`+(s.label&&s.label!==s.book?` to “${s.label}”`:''));renderPlan();}
+}
+// ── Plan › Themes and Ideas (John, 2026-11-23) ───────────────────────────
+// "in the past I've just kept a bullet list or google keep somewhere with
+// general ideas, themes, etc and curious about what I can do here" → "yes,
+// let's start with 1 and 2": themes with live progress, and an ideas inbox.
+// A THEME is one year's goal — "6 nonfiction", "finish 3 series I've
+// started", "Hugo winners I own". Its rule says what counts and the year's
+// reads are counted against it, so progress is never typed in (a theme with
+// no rule is counted by hand). An IDEA is a line with no year — the Keep
+// list — open until it becomes a theme, a slot or a Next up book, or is
+// simply done. Both live in bookdb (migration 040: reading_themes /
+// reading_ideas; bundle tabs bookdb|Themes, bookdb|Ideas) and change through
+// theme_set / idea_set events, overlaid while pending exactly like slots.
+const TH_LEN={short:[1,249],medium:[250,499],long:[500,1e9],doorstop:[700,1e9]};
+const TH_LEN_LABEL={short:'short (under 250 pages)',medium:'medium (250–499 pages)',long:'long (500+ pages)',doorstop:'doorstop (700+ pages)'};
+const TH_NONFIC=['nonfiction','history','philosophy','memoir','biography','popularscience','essay','truecrime','selfhelp'];
+const TH_NUM={one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12,fifteen:15,twenty:20,thirty:30,fifty:50,dozen:12};
+const TH_PARTICLES=new Set(['le','de','van','von','du','del','di','la','da','st']);
+const TH_STOP=new Set(['finish','series','books','novels','stories','start','short','reads','winners','shelf','years','fantasy','science','fiction','other','again','first','about','three','seven','eight','twelve','month','every','start','begin']);
+const thNk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+const thNl=t=>(t||'').toLowerCase().replace(/^\s*(the|a|an)\s+/,'').replace(/[^a-z0-9]/g,'');
+const thMk=m=>{const x=thNk(m);return x==='gn'?'graphicnovel':x==='shorts'?'shortstories':x;};
+const thWords=s=>' '+(s||'').toLowerCase().replace(/['’]/g,'').replace(/[^a-z0-9]+/g,' ').trim()+' ';
+function thHas(L,phrase){const p=thWords(phrase).trim();return p.length>=3&&L.includes(' '+p+' ');}
+function thYearOf(s){const m=String(s||'').match(/^(\d{4})/);return m?+m[1]:0;}
+function thAcqYear(b){return thYearOf(b.acquiredOn)||(+b.acquiredYear||0);}
+function thPubYear(b){return thYearOf(b.firstPub)||thYearOf(b.pubDate);}
+function thSeq(b){const v=parseFloat(String(b.seq||'').replace(/[^0-9.]/g,''));return isNaN(v)?Infinity:v;}
+// A genre word takes its family: "Fantasy" Dark Fantasy too, "Horror" the
+// Survival and Cosmic kinds, "Nonfiction" History and Philosophy; the year
+// tabs' "Sci Fi" is the register's "Scifi".
+function thGenreFits(want,g){
+  const w=thNk(want),x=thNk(g);if(!w)return true;if(!x)return false;if(x===w)return true;
+  if(w==='fiction')return x.endsWith('fiction')&&!x.includes('nonfiction');
+  return x.includes(w)||(w==='nonfiction'&&TH_NONFIC.some(f=>x.includes(f)));
+}
+function thAwards(b){
+  if(!G._thAward){G._thAward={};for(const a of G.awards||[]){if(!a.bookTitle)continue;const k=(a.bookOwner||'butthead')+'|'+thNk(a.bookTitle);(G._thAward[k]=G._thAward[k]||[]).push(a);}}
+  return G._thAward[(b.owner||'butthead')+'|'+thNk(b.title)]||[];
+}
+// a work the other reader's register holds too (the Both rule's bothKey)
+function thTwin(b){
+  if(!G._thTwin){G._thTwin=new Set();for(const x of G.allIndBooks||[])G._thTwin.add((x.owner||'butthead')+'|'+bothKey(x));}
+  return G._thTwin.has(((b.owner||'butthead')==='goblin'?'butthead':'goblin')+'|'+bothKey(b));
+}
+const thPeople=b=>peopleOf(b.author||'').map(thNk).filter(Boolean);
+function thAuthorFits(want,b){const w=thNk(want);return!w||thPeople(b).some(p=>p===w||p.endsWith(w));}
+// What a theme is counted against: the year's reads, each tied to the
+// register book it was (title or a known alias, then the series the read
+// names, then the copy read that year), and the authors read before it.
+function thContext(owner,year){
+  const list=owner==='butthead'?(((typeof allYD!=='undefined'&&allYD[year])||{}).books||[]):((((G.readsBy||{})[owner]||{})[year])||[]);
+  const mine=(G.allIndBooks||[]).filter(b=>(b.owner||'butthead')===owner),by={};
+  for(const b of mine)(by[thNk(b.title)]=by[thNk(b.title)]||[]).push(b);
+  const reads=list.map(r=>{let c=by[thNk(r.title)]||[];
+    if(!c.length){const al=(G.aliasIndex||{})[thNk(r.title)+'|'+owner];if(al)c=by[thNk(al)]||[];}
+    if(c.length>1&&r.series){const s=c.filter(b=>thNl(b.series)===thNl(r.series));if(s.length)c=s;}
+    if(c.length>1){const s=c.filter(b=>thYearOf(b.readOn)===year);if(s.length)c=s;}
+    return{r,b:c[0]||null};});
+  const inY=new Set(reads.map(x=>x.b).filter(Boolean)),before=new Set(),ever=new Set();
+  for(const b of mine){if(!b.read&&!inY.has(b))continue;const ps=thPeople(b),y=thYearOf(b.readOn);
+    ps.forEach(p=>ever.add(p));if(b.read&&!inY.has(b)&&(!y||y<year))ps.forEach(p=>before.add(p));}
+  return{owner,year,reads,inY,mine,before,ever,pool:null};
+}
+// Does a register book fit the rule? `read`: the book behind one of the
+// year's reads (format and length were judged on the read itself; "new to
+// you" means not read before the year). Shelf age is judged in the theme's year.
+function thFitsBook(rule,b,ctx,read){
+  if(!b)return false;
+  if(rule.genre&&!thGenreFits(rule.genre,b.type))return false;
+  if(!read&&rule.media&&!(b.formats&&b.formats.length?b.formats:[b.media||'Print']).some(f=>thMk(f)===thMk(rule.media)))return false;
+  if(!read&&rule.length){const[lo,hi]=TH_LEN[rule.length]||[0,1e9],pg=+b.pages||0;if(!pg||pg<lo||pg>hi)return false;}
+  if(rule.series&&thNl(b.series)!==thNl(rule.series))return false;
+  if(rule.universe&&thNk(b.universe)!==thNk(rule.universe))return false;
+  if(rule.author&&!thAuthorFits(rule.author,b))return false;
+  if(rule.award||rule.won){if(!thAwards(b).some(a=>(!rule.award||rule.award==='any'||thNk(a.award).includes(thNk(rule.award)))&&(!rule.won||/^win/i.test(a.result))))return false;}
+  if(rule.shelf_years){const y=thAcqYear(b);if(!b.owned||!y||y>ctx.year-rule.shelf_years)return false;}
+  if(rule.before||rule.after){const y=thPubYear(b);if(!y||(rule.before&&y>=rule.before)||(rule.after&&y<rule.after))return false;}
+  if(rule.owned&&!b.owned)return false;
+  if(rule.shared&&!thTwin(b))return false;
+  if(rule.new_author){const ps=thPeople(b);if(!ps.length||ps.some(p=>(read?ctx.before:ctx.ever).has(p)))return false;}
+  return true;
+}
+// A read fits on what it was as logged (genre, format, pages) and on the
+// register book behind it for everything else.
+function thFitsRead(rule,x,ctx){
+  const r=x.r,b=x.b;
+  if(rule.genre&&!thGenreFits(rule.genre,r.genre)&&!(b&&thGenreFits(rule.genre,b.type)))return false;
+  if(rule.media&&thMk(r.media||(b&&b.media)||'Print')!==thMk(rule.media))return false;
+  if(rule.length){const[lo,hi]=TH_LEN[rule.length]||[0,1e9],pg=+r.pages||(b&&+b.pages)||0;if(!pg||pg<lo||pg>hi)return false;}
+  const rest=Object.assign({},rule);delete rest.genre;delete rest.media;delete rest.length;
+  return!Object.keys(rest).length||(!!b&&thFitsBook(rest,b,ctx,true));
+}
+// A slot with no book yet speaks only through its shape.
+function thShapeOnly(rule){const ks=Object.keys(rule||{});return ks.length>0&&ks.every(k=>k==='genre'||k==='media'||k==='length');}
+function thFitsShape(rule,s){
+  if(!thShapeOnly(rule))return false;
+  if(rule.genre&&!thGenreFits(rule.genre,s.genre))return false;
+  if(rule.media&&thMk(s.media)!==thMk(rule.media))return false;
+  return!rule.length||s.length===rule.length||(rule.length==='long'&&s.length==='doorstop');
+}
+// Every series of the reader's with two or more volumes: read in the year,
+// read earlier (an undated read counts as earlier), read later, unread.
+function thSeriesState(ctx){
+  const by={};for(const b of ctx.mine){if(!b.series||b.series==='Standalones')continue;const k=seriesKey(b);(by[k]=by[k]||[]).push(b);}
+  const out=[];
+  for(const k in by){const l=by[k];if(l.length<2)continue;
+    const readY=l.filter(b=>ctx.inY.has(b));
+    out.push({name:l[0].series,books:l,readY,
+      earlier:l.filter(b=>b.read&&!ctx.inY.has(b)&&(!thYearOf(b.readOn)||thYearOf(b.readOn)<ctx.year)),
+      later:l.filter(b=>!ctx.inY.has(b)&&thYearOf(b.readOn)>ctx.year),
+      unread:l.filter(b=>!b.read),owned:l.filter(b=>b.owned).length});}
+  return out;
+}
+// One theme against its year: what counted, what is planned toward it (this
+// year's Next up, or a later year's slots — a pinned book by its book, a
+// shape by its shape), and what on the shelves would fit next.
+function thEval(t,ctx,cy){
+  const rule=t.rule||{},year=ctx.year,out={unit:'book',count:0,read:[],planned:[],sugg:[],shelf:0};
+  if(!Object.keys(rule).length){out.unit='hand';out.count=t.tally||0;return out;}
+  const slots=year<cy?[]:year===cy?queueAsSlots(ctx.owner):planSlotsFor(ctx.owner,year);
+  const slotBook=s=>s._b||(s.book?ctx.mine.find(x=>x.title===s.book&&(s.series?x.series===s.series:true)):null);
+  const open=slots.filter(s=>!(s.done||s.bookRead));
+  if(rule.series_goal){
+    out.unit='series';
+    const goal=rule.series_goal,sub=Object.assign({},rule);delete sub.series_goal;
+    const fits=s=>!Object.keys(sub).length||s.books.some(b=>thFitsBook(sub,b,ctx,false));
+    const st=thSeriesState(ctx).filter(fits);
+    const done=goal==='finish'?st.filter(s=>s.readY.length&&!s.unread.length&&!s.later.length):st.filter(s=>s.readY.length&&!s.earlier.length);
+    out.read=done.map(s=>({label:s.name,sub:`${s.books.length} books`}));out.count=done.length;
+    if(year<cy)return out;
+    const pinned=new Set(open.map(slotBook).filter(b=>b&&b.series&&b.series!=='Standalones').map(b=>thNl(b.series)));
+    const cand=(goal==='finish'?st.filter(s=>s.unread.length&&(s.readY.length||s.earlier.length)).sort((a,b)=>a.unread.length-b.unread.length||a.name.localeCompare(b.name))
+      :st.filter(s=>!s.readY.length&&!s.earlier.length&&s.owned).sort((a,b)=>b.owned-a.owned||a.name.localeCompare(b.name)));
+    out.planned=cand.filter(s=>pinned.has(thNl(s.name))).map(s=>({label:s.name,sub:goal==='finish'?`${s.unread.length} left`:'first volume planned'}));
+    out.sugg=cand.filter(s=>!pinned.has(thNl(s.name))).map(s=>{const next=s.unread.slice().sort((a,b)=>thSeq(a)-thSeq(b))[0];
+      return next&&Object.assign({},next,{why:goal==='finish'?`${s.unread.length} left in ${s.name}`:`starts ${s.name} · ${s.owned} on the shelf`});}).filter(Boolean);
+    out.shelf=out.sugg.filter(b=>b.owned).length;
+    return out;
+  }
+  out.read=ctx.reads.filter(x=>thFitsRead(rule,x,ctx)).map(x=>({label:x.r.title,sub:[x.r.date,x.r.media].filter(Boolean).join(' · ')}));
+  out.count=out.read.length;
+  if(year<cy)return out;
+  out.planned=open.filter(s=>{const b=slotBook(s);return b?thFitsBook(rule,b,ctx,false):thFitsShape(rule,s);}).map(s=>({label:s.book||s.label,sub:s.queue?'Next up':s.book?'pinned to a slot':'a slot’s shape'}));
+  // The shelf pool's books (the next volume of each series, the first of an
+  // unstarted one, unread standalones — never what is already on Next up or
+  // pinned); a theme naming one series offers that series in order.
+  let fit;
+  if(rule.series){const taken=planSpokenFor(ctx.owner);
+    fit=ctx.mine.filter(b=>!b.read&&thNl(b.series)===thNl(rule.series)&&!taken.has(planBookKey(b.title,b.series))&&thFitsBook(rule,b,ctx,false)).sort((a,b)=>thSeq(a)-thSeq(b)).map(b=>Object.assign({},b,{why:'next in the series'}));}
+  else fit=(ctx.pool||(ctx.pool=planPool(ctx.owner))).filter(b=>thFitsBook(rule,b,ctx,false))
+    .sort((a,b)=>(b.owned-a.owned)||POOL_ORDER.indexOf(a.why)-POOL_ORDER.indexOf(b.why)||a.title.localeCompare(b.title));
+  out.sugg=fit;out.shelf=fit.filter(b=>b.owned).length;
+  return out;
+}
+// The rule in words, for the card and the guess preview.
+function themeChips(rule){
+  const r=rule||{},o=[];
+  if(r.series_goal)o.push(r.series_goal==='finish'?'finish a series you’ve started':'start a new series');
+  if(r.series)o.push('series: '+r.series);
+  if(r.universe)o.push(r.universe);
+  if(r.genre)o.push(r.genre);
+  if(r.media)o.push(r.media);
+  if(r.length)o.push(TH_LEN_LABEL[r.length]||r.length);
+  if(r.author)o.push('by '+r.author);
+  if(r.award)o.push(r.won?'Hugo winners':'Hugo winners or finalists');else if(r.won)o.push('award winners');
+  if(r.shelf_years)o.push(`on the shelf ${r.shelf_years}+ years`);
+  if(r.after&&r.before)o.push(`published ${r.after}–${r.before-1}`);else if(r.before)o.push('published before '+r.before);else if(r.after)o.push(`published ${r.after} or later`);
+  if(r.owned)o.push('from your shelf');
+  if(r.shared)o.push('one you both have');
+  if(r.new_author)o.push('an author new to you');
+  return o;
+}
+function themeChipsHTML(rule){const c=themeChips(rule);return c.length?c.map(x=>`<span class="th-chip">${esc(x)}</span>`).join(''):'<span class="th-chip hand">counted by hand</span>';}
+// The reader's series, universes and authors, to spot names in a line.
+function thIndex(owner){
+  G._thIdx=G._thIdx||{};if(G._thIdx[owner])return G._thIdx[owner];
+  const mine=(G.allIndBooks||[]).filter(b=>(b.owner||'butthead')===owner),serN={},uni=new Set(),auth=new Set();
+  for(const b of mine){if(b.series&&b.series!=='Standalones')serN[b.series]=(serN[b.series]||0)+1;if(b.universe)uni.add(b.universe);peopleOf(b.author||'').forEach(p=>auth.add(p));}
+  return G._thIdx[owner]={mine,serN,ser:Object.keys(serN),uni:[...uni],auth:[...auth]};
+}
+// Names the guesser already reads as a kind of book, never as a series.
+const TH_GENERIC=new Set(['classic','classics','anthology','anthologies','mystery','mysteries','poetry','essays','comics','manga','short stories','novellas','standalones']);
+const TH_FILL=/ (?:finish|finishing|complete|completing|continue|continuing|read|reading|reread|more|the|rest|of|all|catch|up|on|get|through|wrap|close|out|start|starting|begin|my|some|series|books?|by) /;
+function thBare(L){let s=L,prev;do{prev=s;s=s.replace(TH_FILL,' ');}while(s!==prev);return s.trim();}
+// A one-word name ("Discworld", but also "Space", "Culture", "King") counts
+// only when it is plainly used as a name: the whole line is the name ("finish
+// discworld"), it is followed by "series"/"books", or it is capitalised
+// mid-line ("more Discworld audiobooks"). Longer names are specific enough.
+function thNamed(raw,L,name){
+  const w=thWords(name).trim();if(!w||TH_GENERIC.has(w))return false;
+  if(w.includes(' '))return true;
+  if(thBare(L)===w||L.includes(' '+w+' series ')||L.includes(' '+w+' books '))return true;
+  const cap=w.charAt(0).toUpperCase()+w.slice(1);
+  return new RegExp('\\S\\s+'+cap.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b').test(raw);
+}
+// Words → {label, rule, target}: "6 nonfiction", "finish 3 series I've
+// started", "Hugo winners I own", "books on my shelf 3+ years", "one doorstop
+// a month", "finish Malazan", "more Le Guin", "1980s sci-fi". Only what the
+// words clearly say becomes the rule; the preview shows it and ✎ fixes it.
+function themeGuess(text,owner,year){
+  const raw=(text||'').trim(),L=thWords(raw),rule={};let rest=L,m;
+  const cut=re=>{rest=rest.replace(re,' ');};
+  if((m=L.match(/ (\d{1,2}) (?:plus )?(?:years?|yrs?) /))){rule.shelf_years=+m[1];cut(/ \d{1,2} (?:plus )?(?:years?|yrs?) /);}
+  else if(/ (?:longest|oldest|been on my shelf|sitting on my shelf|languishing|neglected|gathering dust) /.test(L))rule.shelf_years=5;
+  if((m=L.match(/ (1[5-9]\d0|20[0-2]0)s /))){rule.after=+m[1];rule.before=+m[1]+10;cut(/ (?:1[5-9]\d0|20[0-2]0)s /);}
+  if((m=L.match(/ (?:before|pre|older than|prior to) (1[5-9]\d\d|20\d\d) /))){rule.before=+m[1];cut(/ (?:before|pre|older than|prior to) \d{4} /);}
+  if((m=L.match(/ (?:after|post|since|newer than) (1[5-9]\d\d|20\d\d) /))){rule.after=+m[1];cut(/ (?:after|post|since|newer than) \d{4} /);}
+  if(/ classics? /.test(L)&&!rule.before)rule.before=1970;
+  if(/ (?:new releases?|this years releases|published this year|brand new books?) /.test(L))rule.after=year;
+  if((m=L.match(/ (\d{3,4}) (?:pages?|pp) /))){const pg=+m[1],under=/ (?:under|less than|below|shorter than|max) \d/.test(L);rule.length=under?(pg<=250?'short':'medium'):(pg>=700?'doorstop':pg>=500?'long':'medium');cut(/ \d{3,4} (?:pages?|pp) /);}
+  else if(/ (?:doorstops?|bricks?|tomes?|chunksters?|massive|huge) /.test(L))rule.length='doorstop';
+  else if(/ (?:long (?:books?|reads?|ones?|novels?)|big books?|chunky) /.test(L))rule.length='long';
+  else if(/ (?:novellas?|short (?:books?|reads?|ones?|novels?)|quick reads?|slim) /.test(L))rule.length='short';
+  const pg=planGuess(raw);if(pg.media)rule.media=pg.media;if(pg.genre&&pg.genre!=='Classics')rule.genre=pg.genre;
+  const finish=/ (?:finish|finishing|complete|completing|wrap up|close out|catch up on|caught up on|get through) /.test(L);
+  const ix=thIndex(owner),best=(list,min)=>list.filter(n=>n.length>=min&&thHas(L,n)&&thNamed(raw,L,n)).sort((a,b)=>b.length-a.length)[0]||'';
+  const ser=best(ix.ser,4),uni=ser?'':best(ix.uni,4);
+  if(ser)rule.series=ser;else if(uni)rule.universe=uni;
+  else{
+    // a word that opens a series name: "finish Stormlight" (of several, the
+    // series with the most volumes — Stormlight Archives over its Novellas)
+    for(const w of rest.trim().split(' ').filter(w=>w.length>=5&&!TH_STOP.has(w))){
+      if(!thNamed(raw,L,w))continue;
+      const hits=ix.ser.filter(n=>thWords(n).trim().split(' ').filter(x=>!['the','a','an'].includes(x))[0]===w).sort((a,b)=>ix.serN[b]-ix.serN[a]);
+      if(hits.length===1||(hits.length>1&&ix.serN[hits[0]]>ix.serN[hits[1]])){rule.series=hits[0];break;}}
+    if(!rule.series&&/ series /.test(L)){if(finish)rule.series_goal='finish';else if(/ (?:start|starting|begin|new) /.test(L))rule.series_goal='start';}
+  }
+  if(!rule.series&&!rule.universe){
+    let au=ix.auth.filter(n=>n.length>=5&&n.includes(' ')&&thHas(L,n)).sort((a,b)=>b.length-a.length)[0]||'';
+    if(!au){const sn=new Map();
+      for(const p of ix.auth){const w=thWords(p).trim().split(' ');let s=w[w.length-1];if(w.length>2&&TH_PARTICLES.has(w[w.length-2]))s=w[w.length-2]+' '+s;if(s.length<4)continue;sn.set(s,sn.has(s)?null:p);}
+      // a surname alone: "more Le Guin", "something by pratchett"
+      for(const[s,p]of[...sn].sort((a,b)=>b[0].length-a[0].length))if(p&&thHas(L,s)&&(s.includes(' ')||L.includes(' by '+s+' ')||thNamed(raw,L,s))){au=p;break;}}
+    if(au)rule.author=au;
+  }
+  if(/ hugos? /.test(L)){rule.award='hugo';if(/ (?:winners?|won|winning) /.test(L))rule.won=true;}
+  else if(/ (?:award winners?|award winning|prize winners?|prize winning) /.test(L))rule.won=true;
+  if(/ (?:i own|already own|own|owned|on my shelf|on my shelves|from my shelf|off my shelf|off the shelf|my shelves|my own) /.test(L))rule.owned=true;
+  if(new RegExp(` (?:with (?:${owner==='goblin'?'john|com':'shereen'})|buddy reads?|together|both of us|we both) `).test(L))rule.shared=true;
+  if(/ (?:new to me|new authors?|authors? i havent read|never read before|debuts?|debut authors?) /.test(L))rule.new_author=true;
+  const per=/ (?:a|per|every|each) month | monthly /.test(L)?12:/ (?:a|per|every|each) week | weekly /.test(L)?52:/ (?:a|per|every|each) (?:quarter|season) | quarterly /.test(L)?4:1;
+  m=rest.match(/ (\d{1,3}) /);let k=m?+m[1]:0;
+  if(!k)for(const[w,v]of Object.entries(TH_NUM))if(rest.includes(' '+w+' ')){k=v;break;}
+  if(!k&&per>1&&/ (?:a|an) /.test(rest))k=1;
+  let target=k*per;
+  if(!target&&finish&&(rule.series||rule.universe))target=ix.mine.filter(b=>!b.read&&(rule.series?thNl(b.series)===thNl(rule.series):thNk(b.universe)===thNk(rule.universe))).length;
+  return{label:raw,rule,target};
+}
+// Bundle rows with pending events folded in — adds appear, updates and
+// removes apply — named by id or by the key minted at the add (the slots'
+// pattern, planSlotsFor).
+function thOverlay(rows,events,owner,blankRow,apply){
+  let out=rows.filter(r=>r.owner===owner).map(r=>Object.assign({},r,{pending:false}));
+  const byRef=q=>q.id?out.find(x=>x.id===+q.id):q.key?out.find(x=>x.key===q.key):null;
+  for(const ev of events){const q=ev.payload||{};if((ev.by||'butthead')!==owner)continue;
+    if(q.action==='remove'){const s=byRef(q);if(s)out=out.filter(x=>x!==s);continue;}
+    if(q.action==='update'){const s=byRef(q);if(s){apply(s,q.set||{});s.pending=true;}continue;}
+    if(q.key&&out.some(x=>x.key===q.key))continue;
+    const o=blankRow(q,out);apply(o,q.set||{});o.pending=true;out.push(o);}
+  return out;
+}
+function themeApply(t,set){if('label'in set)t.label=set.label;if('rule'in set)t.rule=set.rule&&typeof set.rule==='object'?set.rule:{};if('target'in set)t.target=+set.target||0;if('tally'in set)t.tally=+set.tally||0;if('notes'in set)t.notes=set.notes||'';if('position'in set&&set.position!==''&&set.position!=null)t.pos=+set.position;if('year'in set&&+set.year)t.year=+set.year;}
+function themesFor(owner,year){
+  const all=thOverlay(G.themes||[],LOG.pendingOf('theme_set'),owner,(q,out)=>{const y=+((q.set||{}).year||q.year);return{id:0,key:q.key||'',owner,year:y,pos:out.filter(x=>x.year===y).reduce((m,x)=>Math.max(m,x.pos||0),0)+1,label:'',rule:{},target:0,tally:0,notes:''};},themeApply);
+  return all.filter(t=>year==null||t.year===year).sort((a,b)=>a.pos-b.pos||a.id-b.id);
+}
+function ideaApply(i,set){if('text'in set)i.text=set.text||'';if('notes'in set)i.notes=set.notes||'';if('used'in set){i.used=set.used||'';i.usedOn=i.used?new Date().toISOString().slice(0,10):'';}if('position'in set&&set.position!==''&&set.position!=null)i.pos=+set.position;}
+// newest first, like an inbox (a pasted list keeps its own order)
+function ideasFor(owner){
+  return thOverlay(G.ideas||[],LOG.pendingOf('idea_set'),owner,(q,out)=>({id:0,key:q.key||'',owner,pos:out.reduce((m,x)=>Math.max(m,x.pos||0),0)+1,text:'',notes:'',used:'',usedOn:'',added:''}),ideaApply)
+    .sort((a,b)=>b.pos-a.pos||b.id-a.id);
+}
+// What an idea looks like: a book on this reader's register, a theme the
+// words describe, "Title by Author" not on the register yet, a book only the
+// other reader has, or just a note.
+function ideaGuess(text,owner){
+  const t=(text||'').trim(),m=t.match(/^(.+?)\s+(?:by|—|–)\s+([A-Z][\w.'’ -]+)$/);
+  const title=(m?m[1]:t).replace(/^["“‘']+|["”’']+$/g,'').trim(),k=thNk(title);
+  const ix=thIndex(owner);
+  let book=k?ix.mine.find(b=>thNk(b.title)===k):null;
+  if(!book&&k){const al=(G.aliasIndex||{})[k+'|'+owner];if(al)book=ix.mine.find(b=>b.title===al);}
+  if(book)return{kind:'book',book};
+  const g=themeGuess(t,owner,planYear||new Date().getFullYear());
+  if(Object.keys(g.rule).length)return{kind:'theme',guess:g};
+  if(m)return{kind:'track',title,author:m[2].trim(),guess:g};
+  const theirs=k?(G.allIndBooks||[]).find(b=>(b.owner||'butthead')!==owner&&thNk(b.title)===k):null;
+  if(theirs)return{kind:'theirs',book:theirs,guess:g};
+  return{kind:'note',guess:g};
+}
+// ── Themes on the Plan tab ──
+function renderThemes(owner,year){
+  const el=document.getElementById('plan-themes');if(!el)return;
+  const cy=new Date().getFullYear(),ctx=thContext(owner,year),list=themesFor(owner,year);
+  G._themes=list;G._themeEval=list.map(t=>thEval(t,ctx,cy));
+  const cards=list.map((t,ix)=>thCard(t,ix,G._themeEval[ix],year,cy)).join('');
+  const met=list.filter((t,ix)=>t.target&&G._themeEval[ix].count>=t.target).length;
+  if(list.length)document.getElementById('plan-m').insertAdjacentHTML('beforeend',mH(`${met}/${list.length}`,'Themes met',list.some(t=>!t.target)?'themes with a target':'goals counted from reads','t'));
+  el.innerHTML=`<div class="sl">Themes for ${year} <span class="ms">— counted from what you read</span></div>`
+    +(cards?`<div class="th-grid">${cards}</div>`:`<div class="ms" style="margin-bottom:8px">No themes for ${year} yet. Say one in words below — “6 nonfiction”, “finish 3 series I’ve started”, “Hugo winners I own”, “books on my shelf 3+ years”, “one doorstop a month” — or turn an idea into one.</div>`)
+    +`<div class="cb th-add"><div class="log-frow"><label>Theme</label><input id="th-n" placeholder="6 nonfiction · finish 3 series I’ve started · Hugo winners I own" oninput="themePreview()" onkeydown="if(event.key==='Enter')themeAdd()"><button class="log-act primary" onclick="themeAdd()">＋ Add to ${year}</button></div><div class="ms" id="th-n-prev">Say it in words — what counts is read from them (genre, format, length, series, author, universe, Hugo, shelf age, publication year), and ✎ on the card fixes anything it got wrong.</div></div>`;
+}
+function thCard(t,ix,ev,year,cy){
+  const ref=t.id||t.key||'',goal=t.target||0,n=ev.count,p=ev.planned.length,met=goal>0&&n>=goal;
+  const pct=x=>goal?Math.min(100,x/goal*100):0,a=pct(n),b=Math.max(0,Math.min(100-a,pct(p)));
+  const verb=ev.unit==='series'?((t.rule||{}).series_goal==='finish'?'finished':'started'):'read',unit=ev.unit==='series'?' series':'';
+  const left=goal-n-p;
+  const nums=ev.unit==='hand'?`${n}${goal?' of '+goal:''} so far · counted by hand`
+    :year>cy?`${p}${goal?' of '+goal:''}${unit} planned · counting starts in ${year}${goal&&left>0?` · ${left} still to plan`:''}`
+    :`${n}${goal?' of '+goal:''}${unit} ${verb}${year===cy&&p?` · ${p} on Next up`:''}${goal&&!met&&year>=cy&&left>0?` · ${left} still to plan`:''}`;
+  const open=G._thOpen===String(ref);
+  const sugg=year>=cy&&!met&&ev.unit!=='hand'?ev.sugg.slice(0,open?12:3):[];
+  const addLbl=year===cy?'＋ Next up':'＋ Slot';
+  const sRow=(s,k)=>`<div class="th-s"><div class="tbr-cov">${coverTile(s.title,s.owner,'',null,30,s.series)}</div><div class="tbr-info"><div class="tbr-ser">${esc(s.title)}${s.seq?' <span class="ms">#'+esc(s.seq)+'</span>':''}</div><div class="ms">${esc(s.why||'')}${s.series&&s.series!=='Standalones'&&!/ in |starts /.test(s.why||'')?' · '+esc(s.series):''} ${s.owned?'<span class="badge b-green">on the shelf</span>':'<span class="badge b-coral">not owned</span>'+heldBadge(s)}</div></div><button class="log-act" onclick="themeAddBook(${ix},${k})">${addLbl}</button></div>`;
+  const lists=open?`<div class="th-list">${year<=cy?`<div class="cbt">${ev.unit==='series'?(verb==='finished'?'Finished':'Started'):'Read'} in ${year} · ${n}</div>${ev.read.map(r=>`<div class="tbr-work tbr-work-read">${esc(r.label)} <span class="ms">${esc(r.sub||'')}</span></div>`).join('')||'<div class="ms">nothing yet</div>'}`:''}
+      ${year>=cy&&ev.unit!=='hand'?`<div class="cbt" style="margin-top:6px">Planned · ${p}</div>${ev.planned.map(r=>`<div class="tbr-work">○ ${esc(r.label)} <span class="ms">${esc(r.sub||'')}</span></div>`).join('')||'<div class="ms">none yet</div>'}`:''}</div>`:'';
+  const moreN=ev.sugg.length-sugg.length;
+  return`<div class="th-card${met?' th-met':''}${t.pending?' plan-pending':''}" data-theme="${esc(String(ref))}">
+    <div class="th-head"><div class="th-label">${met?'✓ ':''}${esc(t.label)}</div>${t.pending?'<span class="badge b-gold" title="saved — jerry answers within a minute or two">pending</span>':''}
+      <div class="th-acts">${ref?`<button class="log-act" onclick="themeEdit(${ix})" title="change the theme or what counts">✎</button><button class="log-act" onclick="themeRemove(${ix})" title="drop the theme">✕</button>`:'<span class="ms">saving…</span>'}</div></div>
+    <div class="th-rule">${themeChipsHTML(t.rule)}</div>
+    ${goal?`<div class="th-bar"><i style="left:0;width:${a.toFixed(1)}%"></i><i class="pl" style="left:${a.toFixed(1)}%;width:${b.toFixed(1)}%"></i></div>`:''}
+    <div class="th-nums">${nums}${met?' <span class="badge b-teal">met</span>':''}${ev.unit==='hand'&&ref?` <button class="log-act" onclick="themeTally(${ix},-1)" title="one less">−</button><button class="log-act" onclick="themeTally(${ix},1)">＋1</button>`:''}${ev.unit!=='hand'&&(n||p||ev.sugg.length)?` <button class="log-act" onclick="themeToggle(${ix})">${open?'less':'what counted'}</button>`:''}</div>
+    ${t.notes?`<div class="ms">${esc(t.notes)}</div>`:''}
+    ${lists}
+    ${sugg.length?`<div class="th-sugg"><div class="ms">${ev.unit==='series'?(verb==='finished'?'Closest to done':'Ready to start'):'Fits'} — ${ev.shelf} on the shelf${ev.sugg.length>ev.shelf?`, ${ev.sugg.length-ev.shelf} tracked`:''}</div>${sugg.map(sRow).join('')}${moreN>0&&!open?`<button class="log-act" onclick="themeToggle(${ix})">${moreN} more</button>`:''}</div>`:''}
+    <div id="th-ed-${ix}" style="display:none"></div></div>`;
+}
+function themeToggle(ix){const t=(G._themes||[])[ix];if(!t)return;const r=String(t.id||t.key||'');G._thOpen=G._thOpen===r?'':r;renderPlan();}
+function themePreview(){
+  const v=((document.getElementById('th-n')||{}).value||'').trim(),el=document.getElementById('th-n-prev');if(!el)return;
+  if(!v){el.innerHTML='Say it in words — what counts is read from them (genre, format, length, series, author, universe, Hugo, shelf age, publication year), and ✎ on the card fixes anything it got wrong.';return;}
+  const g=themeGuess(v,soloOwner(),planYear);
+  el.innerHTML=`Counts: ${themeChipsHTML(g.rule)}${g.target?` <span class="th-chip">target ${g.target}</span>`:''}`;
+}
+async function themeAdd(){
+  const el=document.getElementById('th-n'),v=((el||{}).value||'').trim();
+  if(!v)return toast('Say what the theme is — 6 nonfiction, finish 3 series…',true);
+  const g=themeGuess(v,soloOwner(),planYear),set={label:v.slice(0,200),rule:g.rule};if(g.target)set.target=g.target;
+  if(await LOG.themeSet(planYear,'add',null,set)){el.value='';toast(`Theme added to ${planYear}`);renderPlan();}
+}
+async function themeRemove(ix){const t=(G._themes||[])[ix],ref=t&&(t.id||t.key);if(!ref)return;if(!confirm(`Drop the theme “${t.label}”?`))return;if(await LOG.themeSet(t.year,'remove',ref,{}))renderPlan();}
+async function themeTally(ix,d){const t=(G._themes||[])[ix],ref=t&&(t.id||t.key);if(!ref)return;const v=Math.max(0,(t.tally||0)+d);if(v===(t.tally||0))return;if(await LOG.themeSet(t.year,'update',ref,{tally:v}))renderPlan();}
+async function themeAddBook(ix,k){
+  const t=(G._themes||[])[ix],b=((G._themeEval||[])[ix]||{sugg:[]}).sugg[k];if(!t||!b)return;
+  if(planIsQueue()){const L=queueListFor(soloOwner()),pos=L.length?L[L.length-1].pos+1:1;if(await LOG.queueSet(b,'add',pos)){toast(`“${b.title}” added to Next up`);renderPlan();}return;}
+  if(await LOG.planSet(planYear,'add',null,{label:t.label.slice(0,200),media:b.media||'',genre:b.type||'',book:planRef(b)})){toast(`“${b.title}” planned for ${planYear}, under “${t.label}”`);renderPlan();}
+}
+function themeEdit(ix){
+  const t=(G._themes||[])[ix],el=document.getElementById('th-ed-'+ix);if(!t||!el)return;
+  if(el.style.display!=='none'){el.style.display='none';return;}
+  el.style.display='';
+  const r=t.rule||{},ix2=thIndex(soloOwner()),v=x=>esc(x==null?'':String(x));
+  const uniq=a=>[...new Set(a.filter(Boolean))].sort((x,y)=>x.localeCompare(y));
+  const dl=(id,a)=>`<datalist id="${id}">${a.map(x=>`<option>${esc(x)}</option>`).join('')}</datalist>`;
+  const sel=(id,opts,cur)=>`<select id="${id}">${opts.map(([val,l])=>`<option value="${val}"${val===(cur||'')?' selected':''}>${esc(l)}</option>`).join('')}</select>`;
+  el.innerHTML=`<div class="th-ed">
+    <div class="log-frow"><label>Theme</label><input id="th-e-label-${ix}" value="${v(t.label)}"></div>
+    <div class="log-frow"><label>Target</label><input id="th-e-target-${ix}" type="number" min="1" value="${t.target||''}" placeholder="blank = no number"></div>
+    <div class="ms" style="margin:2px 0 8px">What counts — leave it all blank to count it by hand</div>
+    <div class="log-frow"><label>Genre</label><input id="th-e-genre-${ix}" list="th-dl-g-${ix}" value="${v(r.genre)}">${dl('th-dl-g-'+ix,uniq(LOG.vocabFor('genre')||[]))}</div>
+    <div class="log-frow"><label>Format</label>${sel('th-e-media-'+ix,[['','any'],...MEDIA.map(m=>[m,m])],r.media)}</div>
+    <div class="log-frow"><label>Length</label>${sel('th-e-length-'+ix,[['','any'],...Object.keys(TH_LEN).map(k=>[k,TH_LEN_LABEL[k]])],r.length)}</div>
+    <div class="log-frow"><label>Series</label><input id="th-e-series-${ix}" list="th-dl-s-${ix}" value="${v(r.series)}">${dl('th-dl-s-'+ix,uniq(ix2.ser))}</div>
+    <div class="log-frow"><label>Universe</label><input id="th-e-universe-${ix}" list="th-dl-u-${ix}" value="${v(r.universe)}">${dl('th-dl-u-'+ix,uniq(ix2.uni))}</div>
+    <div class="log-frow"><label>Author</label><input id="th-e-author-${ix}" list="th-dl-a-${ix}" value="${v(r.author)}">${dl('th-dl-a-'+ix,uniq(ix2.auth))}</div>
+    <div class="log-frow"><label>Series goal</label>${sel('th-e-sg-'+ix,[['','— count books'],['finish','finish series you’ve started'],['start','start new series']],r.series_goal)}</div>
+    <div class="log-frow"><label>Hugo</label>${sel('th-e-award-'+ix,[['','—'],['won','Hugo winners'],['any','winners or finalists']],r.award?(r.won?'won':'any'):'')}</div>
+    <div class="log-frow"><label>On shelf</label><input id="th-e-shelf-${ix}" type="number" min="1" max="100" value="${r.shelf_years||''}" placeholder="years or more"></div>
+    <div class="log-frow"><label>Published</label><input id="th-e-after-${ix}" type="number" placeholder="from (year)" value="${r.after||''}"><input id="th-e-before-${ix}" type="number" placeholder="before (year)" value="${r.before||''}"></div>
+    <div class="th-cks"><label><input type="checkbox" id="th-e-owned-${ix}"${r.owned?' checked':''}> from your shelf</label><label><input type="checkbox" id="th-e-shared-${ix}"${r.shared?' checked':''}> one you both have</label><label><input type="checkbox" id="th-e-new-${ix}"${r.new_author?' checked':''}> an author new to you</label></div>
+    <div class="log-frow"><label>Notes</label><input id="th-e-notes-${ix}" value="${v(t.notes)}"></div>
+    <button class="log-act primary" onclick="themeSave(${ix})">Save</button> <button class="log-act" onclick="themeEdit(${ix})">Cancel</button></div>`;
+}
+async function themeSave(ix){
+  const t=(G._themes||[])[ix],ref=t&&(t.id||t.key);if(!ref)return;
+  const v=id=>((document.getElementById(id)||{}).value||'').trim(),ck=id=>!!(document.getElementById(id)||{}).checked,num=id=>{const x=parseInt(v(id),10);return isNaN(x)?0:x;};
+  const rule={};
+  const put=(k,x)=>{if(x!==''&&x!==0&&x!==false&&x!=null)rule[k]=x;};
+  put('genre',v(`th-e-genre-${ix}`));put('media',v(`th-e-media-${ix}`));put('length',v(`th-e-length-${ix}`));
+  put('series',v(`th-e-series-${ix}`));put('universe',v(`th-e-universe-${ix}`));put('author',v(`th-e-author-${ix}`));
+  put('series_goal',v(`th-e-sg-${ix}`));
+  const aw=v(`th-e-award-${ix}`);if(aw){rule.award='hugo';if(aw==='won')rule.won=true;}
+  put('shelf_years',num(`th-e-shelf-${ix}`));put('after',num(`th-e-after-${ix}`));put('before',num(`th-e-before-${ix}`));
+  put('owned',ck(`th-e-owned-${ix}`));put('shared',ck(`th-e-shared-${ix}`));put('new_author',ck(`th-e-new-${ix}`));
+  if(rule.after&&rule.before&&rule.after>=rule.before)return toast('“From” has to be before “before”',true);
+  if((rule.after&&(rule.after<1000||rule.after>3000))||(rule.before&&(rule.before<1000||rule.before>3000)))return toast('Publication years are four digits',true);
+  if(rule.shelf_years&&(rule.shelf_years<1||rule.shelf_years>100))return toast('Shelf age is 1 to 100 years',true);
+  const set={},label=v(`th-e-label-${ix}`),target=num(`th-e-target-${ix}`),notes=v(`th-e-notes-${ix}`);
+  if(!label)return toast('A theme needs a name',true);
+  if(label!==t.label)set.label=label;
+  if(target!==(t.target||0)){if(target<0)return toast('A target is a positive number',true);set.target=target||'';}
+  if(notes!==(t.notes||''))set.notes=notes;
+  const canon=o=>JSON.stringify(Object.keys(o).sort().reduce((m,k)=>(m[k]=o[k],m),{}));
+  if(canon(rule)!==canon(t.rule||{}))set.rule=rule;
+  if(!Object.keys(set).length)return toast('Nothing changed',true);
+  if(await LOG.themeSet(t.year,'update',ref,set))renderPlan();
+}
+// ── Ideas: the Keep list, any year ──
+let ideaShowAll=false;
+function renderIdeas(owner){
+  const el=document.getElementById('plan-ideas');if(!el)return;
+  const all=ideasFor(owner),open=all.filter(i=>!i.used),used=all.filter(i=>i.used);
+  G._ideas=all;
+  const cy=new Date().getFullYear(),Y=planYear,shapeY=Y>cy?Y:cy+1,taken=planSpokenFor(owner);
+  const shown=ideaShowAll?open:open.slice(0,6);
+  const row=i=>{const ix=all.indexOf(i),ref=i.id||i.key,g=ideaGuess(i.text,owner);let hint='',acts='';
+    if(g.kind==='book'){const b=g.book,spoken=taken.has(planBookKey(b.title,b.series))||taken.has(planBookKey(b.title,''));
+      hint=`on your register: <strong>${esc(b.title)}</strong>${b.series&&b.series!=='Standalones'?' · '+esc(b.series)+(b.seq?' #'+esc(b.seq):''):''} · ${b.read?'read':b.owned?'on the shelf':'not owned'}${spoken?' · already on Next up or in a plan':''}`;
+      if(!b.read&&!spoken)acts+=`<button class="log-act primary" onclick="ideaPlan(${ix})">${Y===cy?'→ Next up':'→ Slot '+Y}</button>`;}
+    else if(g.kind==='theme'){hint=`a theme: ${themeChips(g.guess.rule).map(esc).join(' · ')}${g.guess.target?' · target '+g.guess.target:''}`;
+      acts+=`<button class="log-act primary" onclick="ideaTheme(${ix})">→ Theme ${Y}</button>`;if(thShapeOnly(g.guess.rule))acts+=`<button class="log-act" onclick="ideaSlot(${ix})">→ Slot ${shapeY}</button>`;}
+    else if(g.kind==='track'){hint=`not on your register yet — ${esc(g.title)} by ${esc(g.author)}`;acts+=`<button class="log-act primary" onclick="ideaTrack(${ix})">＋ Track it</button>`;}
+    else if(g.kind==='theirs'){hint=`${esc(OWNER_LABEL[g.book.owner]||g.book.owner)} has it: ${esc(g.book.title)}`;acts+=`<button class="log-act primary" onclick="ideaTrack(${ix})">＋ Borrow it</button>`;}
+    else acts+=`<button class="log-act" onclick="ideaTheme(${ix})">→ Theme ${Y}</button><button class="log-act" onclick="ideaSlot(${ix})">→ Slot ${shapeY}</button>`;
+    acts+=`<button class="log-act" onclick="ideaDone(${ix})" title="done with it">✓</button><button class="log-act" onclick="ideaEdit(${ix})" title="edit">✎</button><button class="log-act" onclick="ideaRemove(${ix})" title="drop it">✕</button>`;
+    return`<div class="idea${i.pending?' plan-pending':''}" data-idea="${esc(String(ref||''))}"><div class="idea-text">${esc(i.text)}${i.pending?' <span class="badge b-gold">pending</span>':''}${i.notes?`<div class="ms">${esc(i.notes)}</div>`:''}${hint?`<div class="idea-hint">${hint}</div>`:''}<div id="idea-ed-${ix}" style="display:none"></div></div><div class="idea-acts">${ref?acts:'<span class="ms">saving…</span>'}</div></div>`;};
+  const usedRow=i=>{const ix=all.indexOf(i),ref=i.id||i.key;return`<div class="idea idea-used"><div class="idea-text">${esc(i.text)} <span class="ms">→ ${esc(i.used)}${i.usedOn?' · '+esc(i.usedOn):''}</span></div><div class="idea-acts">${ref?`<button class="log-act" onclick="ideaReopen(${ix})" title="open it again">↺</button><button class="log-act" onclick="ideaRemove(${ix})" title="drop it">✕</button>`:''}</div></div>`;};
+  el.innerHTML=`<div class="log-frow"><input id="idea-n" placeholder="an idea — more nonfiction · finish Malazan · that book Shereen keeps mentioning" onkeydown="if(event.key==='Enter')ideaAdd()"><button class="log-act primary" onclick="ideaAdd()">＋ Idea</button></div>
+    <div class="ms" style="margin:-4px 0 6px">Jot it here; turn it into a theme, a slot or a book when it's ready. ${OWNER==='all'?esc(OWNER_LABEL[owner]||owner)+'’s ideas · ':''}${open.length} open${used.length?' · '+used.length+' used':''} · <button class="log-act" onclick="const t=document.getElementById('idea-bulkwrap');t.style.display=t.style.display==='none'?'':'none'">Paste a list…</button></div>
+    <div id="idea-bulkwrap" style="display:none;margin:6px 0 10px"><textarea id="idea-bulk" rows="5" placeholder="one idea per line, straight from Keep — bullets and checkboxes are fine" style="width:100%;font:inherit;box-sizing:border-box"></textarea><button class="log-act" onclick="ideaBulk()">Add every line</button></div>
+    <div class="ideas">${shown.map(row).join('')||'<div class="ms">No ideas yet — anything goes: a theme, a series to finish, a book someone mentioned, a mood for the summer.</div>'}</div>
+    ${open.length>shown.length?`<button class="log-act" onclick="ideaShowAll=true;renderIdeas(soloOwner())">show all ${open.length}</button>`:''}
+    ${used.length?`<details class="idea-usedwrap"><summary class="ms">${used.length} used — what each became</summary>${used.map(usedRow).join('')}</details>`:''}`;
+}
+function ideaTopPos(){return ideasFor(soloOwner()).reduce((m,x)=>Math.max(m,x.pos||0),0);}
+async function ideaAdd(){
+  const el=document.getElementById('idea-n'),v=((el||{}).value||'').trim();
+  if(!v)return toast('Type the idea first',true);
+  if(await LOG.ideaSet('add',null,{text:v.slice(0,1000),position:ideaTopPos()+1})){el.value='';toast('Idea saved');renderIdeas(soloOwner());}
+}
+async function ideaBulk(){
+  const ta=document.getElementById('idea-bulk');
+  const lines=((ta||{}).value||'').split('\n').map(s=>s.replace(/^\s*(?:[-*•◦▪·☐☑✓✔]|\[[ xX]?\]|\d+[.)])\s*/,'').trim()).filter(Boolean);
+  if(!lines.length)return toast('Paste at least one line',true);
+  const base=ideaTopPos();let n=0;
+  for(let k=0;k<lines.length;k++){if(await LOG.ideaSet('add',null,{text:lines[k].slice(0,1000),position:base+lines.length-k}))n++;else break;}
+  if(n&&ta)ta.value='';toast(`${n} idea${n===1?'':'s'} saved`);renderIdeas(soloOwner());
+}
+async function ideaUse(i,what){return LOG.ideaSet('update',i.id||i.key,{used:what});}
+async function ideaTheme(ix){
+  const i=(G._ideas||[])[ix];if(!i)return;
+  const g=themeGuess(i.text,soloOwner(),planYear),set={label:i.text.slice(0,200),rule:g.rule};if(g.target)set.target=g.target;if(i.notes)set.notes=i.notes;
+  if(!await LOG.themeSet(planYear,'add',null,set))return;
+  await ideaUse(i,'theme '+planYear);toast(`Theme added to ${planYear}`+(Object.keys(g.rule).length?'':' — counted by hand; ✎ says what counts'));renderPlan();
+}
+async function ideaSlot(ix){
+  const i=(G._ideas||[])[ix];if(!i)return;const cy=new Date().getFullYear(),Y=planYear>cy?planYear:cy+1;
+  if(!await LOG.planSet(Y,'add',null,Object.assign({label:i.text.slice(0,200)},planGuess(i.text))))return;
+  await ideaUse(i,'slot '+Y);toast(`Slot added to ${Y}`+(Y!==planYear?` — this year’s plan is Next up, so shapes go to ${Y}`:''));renderPlan();
+}
+async function ideaPlan(ix){
+  const i=(G._ideas||[])[ix],g=i&&ideaGuess(i.text,soloOwner());if(!g||g.kind!=='book')return;const b=g.book;
+  if(planIsQueue()){const L=queueListFor(soloOwner()),pos=L.length?L[L.length-1].pos+1:1;if(!await LOG.queueSet(b,'add',pos))return;await ideaUse(i,'next up');toast(`“${b.title}” added to Next up`);}
+  else{if(!await LOG.planSet(planYear,'add',null,{media:b.media||'',genre:b.type||'',book:planRef(b)}))return;await ideaUse(i,'slot '+planYear);toast(`“${b.title}” planned for ${planYear}`);}
+  renderPlan();
+}
+// Track / Borrow opens the Books add form prefilled; the idea stays open and
+// reads "on your register" once jerry has the book — then ✓ or plan it.
+function ideaTrack(ix){
+  const i=(G._ideas||[])[ix],o=soloOwner(),g=i&&ideaGuess(i.text,o);if(!g)return;
+  if(g.kind==='theirs'){const b=g.book;LOG.prefillAdd({title:b.title,series:b.series==='Standalones'?'':b.series,seq:b.seq,author:b.author,media:b.media,genre:b.type,universe:b.universe,owner:o,status:'wish',note:`Prefilled from ${OWNER_LABEL[b.owner||'butthead']}'s copy — tracked, not owned. Check it, then Add`});return;}
+  LOG.prefillAdd({title:g.title||i.text,author:g.author||'',owner:o,status:'wish',note:'From your ideas — check the fields, then Add'});
+}
+async function ideaDone(ix){const i=(G._ideas||[])[ix];if(i&&await ideaUse(i,'done'))renderIdeas(soloOwner());}
+async function ideaReopen(ix){const i=(G._ideas||[])[ix];if(i&&await ideaUse(i,''))renderIdeas(soloOwner());}
+async function ideaRemove(ix){const i=(G._ideas||[])[ix],ref=i&&(i.id||i.key);if(!ref)return;if(!confirm(`Drop the idea “${i.text.slice(0,80)}”?`))return;if(await LOG.ideaSet('remove',ref,{}))renderIdeas(soloOwner());}
+function ideaEdit(ix){
+  const i=(G._ideas||[])[ix],el=document.getElementById('idea-ed-'+ix);if(!i||!el)return;
+  if(el.style.display!=='none'){el.style.display='none';return;}
+  el.style.display='';
+  el.innerHTML=`<div class="log-frow" style="margin-top:6px"><input id="idea-e-text-${ix}" value="${esc(i.text)}"></div><div class="log-frow"><input id="idea-e-notes-${ix}" value="${esc(i.notes)}" placeholder="a note (optional)"></div><button class="log-act primary" onclick="ideaSave(${ix})">Save</button>`;
+}
+async function ideaSave(ix){
+  const i=(G._ideas||[])[ix],ref=i&&(i.id||i.key);if(!ref)return;
+  const text=((document.getElementById('idea-e-text-'+ix)||{}).value||'').trim(),notes=((document.getElementById('idea-e-notes-'+ix)||{}).value||'').trim(),set={};
+  if(!text)return toast('An idea needs some words — ✕ drops it',true);
+  if(text!==i.text)set.text=text.slice(0,1000);if(notes!==(i.notes||''))set.notes=notes;
+  if(!Object.keys(set).length)return toast('Nothing changed',true);
+  if(await LOG.ideaSet('update',ref,set))renderIdeas(soloOwner());
 }
 function renderThisYear(year){
   tyYear=year;
@@ -5062,6 +5585,7 @@ function parseIndividual(vals){
       copies:Math.max(1,n(r[22])||1),
       id:n(r[23])||null,
       addedOn:(r[24]||'').trim(), // the day it entered the register (migration 038; blank = before Aug 2026)
+      acquiredYear:n(r[25]), // the year it arrived when only the year is known (2026-11-23; 0 = unknown)
     });
   }
   return books;
@@ -5794,6 +6318,8 @@ const LOG=(()=>{
       case'sync_request':return p.source==='upcoming'?`🔭 Scan for upcoming books${p.owner&&p.owner!=='all'?' · '+(OWNER_LABEL[p.owner]||p.owner):''}`:`⟳ Sync from ${p.source||'all sources'}`;
       case'goodreads_link':return`🔗 Goodreads “${p.gr_title||p.gr_book_id}” ${p.action==='unlink'?'unlinked':'→ “'+b.title+'”'}`;
       case'plan_set':{const s=p.set||{};return`📝 Plan ${p.year} ${p.action||'add'}${p.id?' #'+p.id:''}: ${s.label||(s.book&&s.book.title)||Object.keys(s).join(', ')||''}`;}
+      case'theme_set':{const s=p.set||{};return`🎯 Theme ${p.year} ${p.action||'add'}${p.id?' #'+p.id:''}: ${s.label||Object.keys(s).join(', ')||''}`;}
+      case'idea_set':{const s=p.set||{};return`💡 Idea ${p.action||'add'}${p.id?' #'+p.id:''}: ${s.text||('used'in s?(s.used?'→ '+s.used:'reopened'):'')||Object.keys(s).join(', ')||''}`;}
       case'order_new':return p.list==='bookboxes'
         ?`🎁 Box: ${p.vendor}${p.box?' '+p.box:''} — ${p.title||'title TBA'}${p.want&&p.want!=='Yes'?' · want: '+p.want:''}`
         :`🧾 New order ${p.order||''}${p.store?' at '+p.store:''} — ${p.books||'?'}${p.status==='shipped'?' · shipped':p.status==='arrived'?' · arrived '+(p.arrived_on||''):''}`;
@@ -6420,6 +6946,21 @@ const LOG=(()=>{
     return submit('plan_set',p,null,owner);
   }
   function pendingPlan(){const seen=new Set();return[...(pendCache||[]),...sent().filter(e=>!BUNDLE||e.at>BUNDLE.generated_at)].filter(e=>e.type==='plan_set'&&!seen.has(e.id)&&seen.add(e.id)).sort((a,b)=>a.at<b.at?-1:1);}
+  // Plan themes and the ideas inbox (migration 040): the slots' add / update /
+  // remove shape, each row named by its id or by the key minted at its add,
+  // so a theme or idea made a moment ago can be changed straight away. An
+  // add resolves to its key.
+  async function keyedSet(type,base,action,ref,set,prefix){
+    const p=Object.assign({},base,{action,set:set||{}});
+    if(action==='add')p.key=prefix+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+    else if(typeof ref==='number'){if(ref)p.id=ref;}
+    else if(typeof ref==='string'&&ref)p.key=ref;
+    const ok=await submit(type,p,null,soloOwner());
+    return ok&&action==='add'?p.key:ok;
+  }
+  function themeSet(year,action,ref,set){return keyedSet('theme_set',{year},action,ref,set,'t');}
+  function ideaSet(action,ref,set){return keyedSet('idea_set',{},action,ref,set,'i');}
+  function pendingOf(type){const seen=new Set();return[...(pendCache||[]),...sent().filter(e=>!BUNDLE||e.at>BUNDLE.generated_at)].filter(e=>e.type===type&&!seen.has(e.id)&&seen.add(e.id)).sort((a,b)=>a.at<b.at?-1:1);}
   // Goodreads hand links (migration 026): pending until jerry applies them.
   function pendingLinks(){
     const ks=new Set();
@@ -8000,7 +8541,7 @@ const LOG=(()=>{
     finishBook,setNeed,pendingBooks,today,queueSet,pendingQueue,acquireBook,setPubDate,
     startReading,stopReading,pendingReading,
     renderPeople,doAuthorMerge,doAuthorRename,doAuthorAlias,addCreditRow,saveCredits,
-    pendingLinks,linkGoodreads,prefillAdd,doScanUpcoming,planSet,pendingPlan,webAdd,clearSearch,setReadMedia,pendingReadMedia,pendingReadSets,pendingAcqSets,registerBook,bookSetsFor,editCell,trackQueued,awardTrackSeries,renderSheet,sheetFilter,sheetEdit,sheetTick,sheetTickGo,sheetNeed,sheetNewBook,orderStore,orderStatus,orderLineAdd,orderLineDel,doLineSet,doLinesShipAll,lineShipPrompt,openOrder};
+    pendingLinks,linkGoodreads,prefillAdd,doScanUpcoming,planSet,pendingPlan,themeSet,ideaSet,pendingOf,webAdd,clearSearch,setReadMedia,pendingReadMedia,pendingReadSets,pendingAcqSets,registerBook,bookSetsFor,editCell,trackQueued,awardTrackSeries,renderSheet,sheetFilter,sheetEdit,sheetTick,sheetTickGo,sheetNeed,sheetNewBook,orderStore,orderStatus,orderLineAdd,orderLineDel,doLineSet,doLinesShipAll,lineShipPrompt,openOrder};
 })();
 
 async function init(){
@@ -8101,6 +8642,12 @@ async function init(){
       proposed:(r[2]||'')===''?null:+r[2],searches:(r[3]||'')===''?null:+r[3],hits:(r[4]||'')===''?null:+r[4],
       failed:(r[5]||'')===''?null:+r[5],blind:(r[6]||'').trim().toLowerCase()==='x',note:(r[7]||'').trim()})).filter(x=>x.at);
     G.plan=(BUNDLE.tabs['bookdb|Plan']||[]).slice(1).map(r=>({id:+r[0],owner:(r[1]||'butthead').trim(),year:+r[2],pos:parseFloat(r[3])||0,label:(r[4]||'').trim(),media:(r[5]||'').trim(),genre:(r[6]||'').trim(),length:(r[7]||'').trim(),book:(r[8]||'').trim(),series:(r[9]||'').trim(),done:(r[10]||'').trim().toLowerCase()==='x',notes:(r[11]||'').trim(),bookRead:(r[12]||'').trim().toLowerCase()==='x',key:(r[13]||'').trim()})).filter(p=>p.id);
+    // Plan themes and ideas (migration 040). Themes: Id|Owner|Year|Position|
+    // Label|Rule|Target|Tally|Notes|Key (Rule is JSON); Ideas: Id|Owner|
+    // Position|Text|Notes|Used|UsedOn|Key|Added.
+    const ruleOf=s=>{try{const o=JSON.parse(s||'{}');return o&&typeof o==='object'&&!Array.isArray(o)?o:{};}catch(e){return{};}};
+    G.themes=(BUNDLE.tabs['bookdb|Themes']||[]).slice(1).map(r=>({id:+r[0],owner:(r[1]||'butthead').trim(),year:+r[2],pos:parseFloat(r[3])||0,label:(r[4]||'').trim(),rule:ruleOf(r[5]),target:+r[6]||0,tally:+r[7]||0,notes:(r[8]||'').trim(),key:(r[9]||'').trim()})).filter(t=>t.id);
+    G.ideas=(BUNDLE.tabs['bookdb|Ideas']||[]).slice(1).map(r=>({id:+r[0],owner:(r[1]||'butthead').trim(),pos:parseFloat(r[2])||0,text:(r[3]||'').trim(),notes:(r[4]||'').trim(),used:(r[5]||'').trim(),usedOn:(r[6]||'').trim(),key:(r[7]||'').trim(),added:(r[8]||'').trim()})).filter(i=>i.id);
     if(!Object.keys(G.vocab).length){
       const add=(k,v)=>{if(!v)return;const a=G.vocab[k]=G.vocab[k]||[];if(!a.includes(v))a.push(v);};
       G.allIndBooks.forEach(b=>{add('genre',b.type);add('sub_genre',b.subGenre);add('media',b.media);add('publisher',b.publisher);});

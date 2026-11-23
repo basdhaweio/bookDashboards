@@ -1487,6 +1487,82 @@ async function main(){
     res('Plan: shelf pool renders draggable cards and a drop zone',pool>0&&zone&&bound,`${pool} pool cards, drop zone ${zone}, pointer drag bound ${bound}`);
   });
 
+  // ── Plan themes and ideas (2026-11-23) ─────────────────────────────────
+  await check("Plan themes: a theme counts the year's reads against its rule",async()=>{
+    const name="Plan themes: a theme counts the year's reads against its rule";
+    const W=w(),G=W.eval('G'),cy=new Date().getFullYear(),bak=G.themes;
+    try{
+      const nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+      // expectations straight from the bundle: Com's year tab and his register rows
+      const yt=tget(String(cy))||[],reads=yt.filter(r=>/^\d+$/.test((r[0]||'').trim())&&+r[0]>0&&(r[2]||'').trim());
+      const reg={};(tget('Butthead Individual')||[]).slice(1).filter(r=>(r[10]||'butthead')==='butthead').forEach(r=>{reg[nk(r[0])]=reg[nk(r[0])]||r;});
+      const nf=g=>/nonfiction|history|philosophy|memoir|biograph/i.test((g||'').replace(/[^a-z]/gi,''))&&!/^fiction$/i.test(g||'');
+      const wantNF=reads.filter(r=>nf(r[3])||nf((reg[nk(r[2])]||[])[4])).length;
+      const wantAudio=reads.filter(r=>nk(r[4])==='audio').length;
+      const mk=(id,label,rule,target,tally)=>({id,owner:'butthead',year:cy,pos:id,label,rule,target,tally:tally||0,notes:'',key:''});
+      G.themes=[mk(990001,'Qq nonfiction',{genre:'Nonfiction'},6),mk(990002,'Qq audio',{media:'Audio'},12),mk(990003,'Qq by hand',{},5,2)];
+      await go('plan','reading');W.eval('setReader("butthead");planYear='+cy+';renderPlan()');await new Promise(r=>setTimeout(r,300));
+      const num=lbl=>{const c=[...doc().querySelectorAll('#plan-themes .th-card')].find(x=>x.querySelector('.th-label').textContent.includes(lbl));return c?+((c.querySelector('.th-nums').textContent.match(/^(\d+)/)||[])[1]):NaN;};
+      const got={nf:num('Qq nonfiction'),audio:num('Qq audio'),hand:num('Qq by hand')};
+      const tile=/\d+\/3\s*Themes met/i.test(doc().getElementById('plan-m').textContent);
+      res(name,got.nf===wantNF&&got.audio===wantAudio&&got.hand===2&&tile,`nonfiction ${got.nf} (bundle ${wantNF}), audio ${got.audio} (bundle ${wantAudio}), by hand ${got.hand} (tally 2), Themes met tile ${tile} — ${reads.length} reads in ${cy}`);
+    }finally{G.themes=bak;W.eval('renderPlan()');}
+  });
+  await check('Plan themes: words become a rule',async()=>{
+    const name='Plan themes: words become a rule';
+    const W=w(),cy=new Date().getFullYear(),guess=t=>W.eval('themeGuess')(t,'butthead',cy+1);
+    const ser=[...new Set((tget('Butthead Individual')||[]).slice(1).filter(r=>(r[10]||'butthead')==='butthead').map(r=>r[1]))];
+    const n={};(tget('Butthead Individual')||[]).slice(1).filter(r=>(r[10]||'butthead')==='butthead').forEach(r=>{n[r[1]]=(n[r[1]]||0)+1;});
+    const storm=ser.filter(s=>/^stormlight/i.test(s)).sort((a,b)=>n[b]-n[a])[0];
+    const cases=[['6 nonfiction',{genre:'Nonfiction'},6],["finish 3 series I've started",{series_goal:'finish'},3],['Hugo winners I own',{award:'hugo',won:true,owned:true},0],
+      ['books on my shelf 3+ years',{shelf_years:3,owned:true},0],['one doorstop a month',{length:'doorstop'},12],['1980s sci-fi',{after:1980,before:1990,genre:'Scifi'},0],
+      ['space opera',{genre:'Scifi'},0],['read some classics',{before:1970},0],['books about the law',{},0],['cozy fantasy novellas',{length:'short',genre:'Fantasy'},0]];
+    if(storm)cases.push(['finish Stormlight',{series:storm},null]);
+    const canon=o=>JSON.stringify(Object.keys(o).sort().reduce((m,k)=>(m[k]=o[k],m),{}));
+    const bad=cases.filter(([t,rule,target])=>{const g=guess(t);return canon(g.rule)!==canon(rule)||(target!=null&&g.target!==target);}).map(([t])=>{const g=guess(t);return`${t} → ${JSON.stringify(g.rule)} T${g.target}`;});
+    res(name,!bad.length,bad.length?bad.join(' | '):`${cases.length} phrasings read as expected`);
+  });
+  await check('Plan themes: shelf suggestions fit the rule and are not already planned',async()=>{
+    const name='Plan themes: shelf suggestions fit the rule and are not already planned';
+    const W=w(),G=W.eval('G'),cy=new Date().getFullYear(),bak=G.themes;
+    try{
+      G.themes=[{id:990011,owner:'butthead',year:cy+1,pos:1,label:'Qq owned fantasy',rule:{genre:'Fantasy',owned:true},target:6,tally:0,notes:'',key:''}];
+      await go('plan','reading');W.eval('setReader("butthead");planYear='+(cy+1)+';renderPlan()');await new Promise(r=>setTimeout(r,300));
+      const ev=W.eval('G._themeEval')[0],taken=W.eval("planSpokenFor('butthead')"),key=W.eval('planBookKey');
+      const off=ev.sugg.filter(b=>b.read||!b.owned||!/fantasy/i.test(b.type||'')||taken.has(key(b.title,b.series))).map(b=>b.title);
+      const shown=doc().querySelectorAll('#plan-themes .th-card .th-s').length;
+      res(name,ev.sugg.length>0&&!off.length&&shown===Math.min(3,ev.sugg.length),`${ev.sugg.length} fit, ${shown} shown, off-rule ${off.slice(0,3).join(', ')||'none'}`);
+    }finally{G.themes=bak;W.eval('renderPlan()');}
+  });
+  await check('Plan ideas: jot one, turn it into a theme, reopen it — all before jerry answers',async()=>{
+    const name='Plan ideas: jot one, turn it into a theme, reopen it — all before jerry answers';
+    const W=w(),D=doc(),tick=ms=>new Promise(r=>setTimeout(r,ms)),cy=new Date().getFullYear();
+    const sentBodies=[],realFetch=W.fetch;let LOGi=null;
+    try{
+      W.fetch=async(url,opts={})=>{const u=String(url);if(!u.includes('api.github.com'))return realFetch(url,opts);
+        if((opts.method||'GET')==='PUT'){try{sentBodies.push(JSON.parse(decodeURIComponent(escape(atob(JSON.parse(opts.body).content)))));}catch(e){sentBodies.push({err:String(e)});}
+          return new W.Response('{"content":{}}',{status:201,headers:{'Content-Type':'application/json'}});}
+        return new W.Response(u.includes('/contents/inbox')?'[]':'{}',{status:200,headers:{'Content-Type':'application/json'}});};
+      const fakeBtn={closest:()=>({querySelector:sel=>({value:sel.includes('repo')?'harness/stub':'harness-stand-in'})})};
+      LOGi=W.eval('LOG');await LOGi.saveSetup(fakeBtn);await tick(300);
+      await go('plan','reading');W.eval('setReader("butthead");planYear='+(cy+1)+';renderPlan()');await tick(300);
+      D.getElementById('idea-n').value='Qq 6 nonfiction';await W.ideaAdd();await tick(300);
+      const add=sentBodies.find(e=>e.type==='idea_set'&&e.payload.action==='add'),key=add&&add.payload.key;
+      const row=D.querySelector(`#plan-ideas .idea[data-idea="${key}"]`),pendingRow=!!(row&&row.classList.contains('plan-pending'));
+      const ix=W.eval('G._ideas').findIndex(i=>i.key===key);
+      await W.ideaTheme(ix);await tick(300);
+      const th=sentBodies.find(e=>e.type==='theme_set'&&e.payload.action==='add'),used=sentBodies.find(e=>e.type==='idea_set'&&e.payload.action==='update'&&e.payload.key===key);
+      const card=[...D.querySelectorAll('#plan-themes .th-card.plan-pending')].some(c=>c.textContent.includes('Qq 6 nonfiction'));
+      const gone=!D.querySelector(`#plan-ideas .ideas .idea[data-idea="${key}"]`),inUsed=/Qq 6 nonfiction/.test(D.querySelector('#plan-ideas .idea-usedwrap')?.textContent||'');
+      const uix=W.eval('G._ideas').findIndex(i=>i.key===key);await W.ideaReopen(uix);await tick(300);
+      const reopen=sentBodies.filter(e=>e.type==='idea_set'&&e.payload.key===key&&e.payload.action==='update').pop();
+      const back=!!D.querySelector(`#plan-ideas .ideas .idea[data-idea="${key}"]`);
+      const ok=!!key&&add.payload.set.text==='Qq 6 nonfiction'&&pendingRow&&!!th&&th.payload.year===cy+1&&th.payload.set.label==='Qq 6 nonfiction'&&th.payload.set.rule.genre==='Nonfiction'&&th.payload.set.target===6
+        &&!!used&&used.payload.set.used==='theme '+(cy+1)&&card&&gone&&inUsed&&reopen&&reopen.payload.set.used===''&&back;
+      res(name,ok,`idea by key ${key} (pending row ${pendingRow}); theme ${th?JSON.stringify(th.payload.set):'not sent'}; marked used ${used?used.payload.set.used:'no'}; card ${card}, left the open list ${gone}, in the used fold ${inUsed}; reopened ${!!reopen&&reopen.payload.set.used===''} and back ${back}`);
+    }finally{W.fetch=realFetch;if(LOGi)LOGi.forgetSetup();localStorage.removeItem('library-log-cfg');localStorage.removeItem('library-log-sent');W.eval('renderPlan()');}
+  });
+
   res('no runtime errors in the app',errors.length===0,errors.slice(0,3).join(' | '));
   draw();
 }
