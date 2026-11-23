@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-23T03:23:33+00:00",
+ "generated_at": "2026-11-23T03:34:35+00:00",
  "owner": "butthead",
  "site": "https://basdhaweio.github.io/bookDashboards/",
  "reading_now": [
@@ -147,19 +147,9 @@
   }
  ],
  "orders": {
-  "open": 33,
-  "shipped": 1,
+  "open": 32,
+  "shipped": 0,
   "lines": [
-   {
-    "id": 95,
-    "order_id": 74,
-    "title": "The Wolves of War",
-    "store": "The Broken Binding",
-    "status": "shipped",
-    "eta": "",
-    "tracking": "",
-    "ordered": "October 5, 2026"
-   },
    {
     "id": 569,
     "order_id": 558,
@@ -229,6 +219,16 @@
     "eta": "",
     "tracking": "",
     "ordered": "2026-08-04"
+   },
+   {
+    "id": 106,
+    "order_id": 182,
+    "title": "Rise of a Ranger",
+    "store": "The Broken Binding",
+    "status": "ordered",
+    "eta": "",
+    "tracking": "",
+    "ordered": "2026-08-16"
    }
   ]
  },
@@ -240,7 +240,7 @@
   "last_year_by_now": 141,
   "last_year_total": 154,
   "this_month": 4,
-  "bought": 199
+  "bought": 200
  },
  "proposals": {
   "open": 22
