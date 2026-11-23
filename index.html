@@ -186,6 +186,8 @@ button.tbr-link{background:none;border:none;padding:0;font:inherit;font-weight:i
 .uv-dot.on-need{background:var(--coral);border-color:var(--coral);}
 .uv-dot.on-unpub{background:#9a9688;border-color:#9a9688;}
 .uv-ser{font-family:var(--font-m);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--gold);margin:12px 0 2px;}
+/* a Collecting universe the reader has no books in shows only its notice (colEmpty) */
+.col-is-empty>:not(.col-empty){display:none!important}
 .bc-burst.bc-b-blue{background:#3a6ea8;}
 .bc-rel{margin-top:auto;font-family:'DM Mono',monospace !important;font-size:10px;font-weight:500;background:#2b2620;color:#e8a33d;display:inline-block;align-self:flex-start;padding:2px 8px;letter-spacing:0.1em;text-transform:uppercase;}
 .bc-form{margin:2.2rem 2rem 0;border-top:3px dashed #2b2620;padding-top:0.4rem;position:relative;}
@@ -1480,8 +1482,8 @@ function pageStatsFor(){
   const owners=OWNER==='all'?Object.keys(ps):[OWNER];
   const agg={ownedBooks:0,ownedWith:0,ownedPages:0,readBooks:0,readWith:0,readPages:0};
   owners.forEach(o=>{const cs=ps[o]||{};Object.values(cs).forEach(c=>{for(const k in agg)agg[k]+=c[k]||0;});});
-  // Both: a work both of you own or have read counts its pages once (bothOverlap)
-  if(OWNER==='all'){const ov=bothOverlap();for(const k in agg)agg[k]-=ov[k]||0;}
+  // Both: a work both of you own or have read counts its pages once
+  if(OWNER==='all'){const ov=bothPageOverlap();for(const k in agg)agg[k]-=ov[k]||0;}
   return agg;
 }
 // ── Collecting › Awards: the Hugo rosters as a "what to track / read"
@@ -1578,14 +1580,8 @@ function ownedFormatBucket(b){
   return'print';
 }
 function ownedFormatBar(){
-  let books=(G.allIndBooks||[]).filter(b=>b.owned&&(OWNER==='all'||(b.owner||'butthead')===OWNER));
-  // Both: a work you both own is one book, in every format either copy has (bothKey)
-  if(OWNER==='all'){
-    const one=new Map(),fm=b=>b.formats&&b.formats.length?b.formats:[b.media||'Print'];
-    for(const b of books){const k=bothKey(b),o=one.get(k);
-      one.set(k,o?Object.assign({},o,{formats:[...new Set([...fm(o),...fm(b)])]}):b);}
-    books=[...one.values()];
-  }
+  // Both: a work you both own is one book, in every format either copy has (G.works)
+  const books=(G.works||G.indBooks||[]).filter(b=>b.owned);
   const bk={print:0,manga:0,comics:0,both:0,audio:0,ebook:0};
   for(const b of books)bk[ownedFormatBucket(b)]++;
   if(!books.length)return'';
@@ -1602,20 +1598,10 @@ function focusSeriesRows(sn){
   const nl=t=>(t||'').toLowerCase().replace(/×/g,'x').replace(/^\s*(the|a|an)\s+/,'').replace(/[^a-z0-9]/g,''),k=nl(sn);
   return(G.bookRows||[]).filter(r=>(r.owner||'butthead')==='butthead'&&(nl(r.title)===k||nl(r.universe)===k));
 }
-// The Overview's headline totals: a work in both registers counts once on
-// Both (bothOverlap); on shelf and need to buy follow as calcBooks has them
-function overviewTotals(bm){
-  const ov=bothOverlap();
-  const tracked=bm.tracked-ov.tracked,read=bm.read-ov.read,owned=bm.owned-ov.owned;
-  const byType={};
-  for(const[k,v]of Object.entries(bm.byType||{})){
-    const d=ov.byType[k]||{tracked:0,read:0,owned:0};
-    byType[k]=Object.assign({},v,{tracked:v.tracked-d.tracked,read:v.read-d.read,owned:v.owned-d.owned});
-  }
-  return{tracked,read,owned,shelf:owned-read,needBuy:tracked-owned,readNotOwned:bm.readNotOwned-ov.readNotOwned,audio:bm.audio,byType};
-}
-function renderOverview(bm0,yd2026){
-  const pg=pageStatsFor(),bm=overviewTotals(bm0);
+// The Overview's totals are G.books, which under Both already counts a work
+// in both registers once (bothWorks); only the pages need it done (pageStatsFor)
+function renderOverview(bm,yd2026){
+  const pg=pageStatsFor();
   document.getElementById('ov-m').innerHTML=mH(fmt(bm.tracked),'Total tracked')+mH(fmt(bm.read),'Total read',pct(bm.read,bm.tracked)+' of tracked','t')+mH(fmt(bm.owned),'Total owned',bm.audio?fmt(bm.audio)+' with an audio copy':'')+mH(fmt(bm.shelf),'On shelf','owned unread','c')+mH(fmt(bm.needBuy),'Need to buy')+mH(fmt(bm.readNotOwned),'Read not owned','delta where read > owned')+mH(fmt(pg.ownedPages),'Pages owned',`${fmt(pg.ownedWith)} of ${fmt(pg.ownedBooks)} books w/ data`)+mH(fmt(pg.readPages),'Pages read',`all-time · ${fmt(pg.readWith)} of ${fmt(pg.readBooks)} w/ data`,'t');
   document.getElementById('ov-fmt').innerHTML=ownedFormatBar();
   document.getElementById('ov-c').innerHTML=mH(pct(bm.read,bm.tracked),'Read / tracked','','t')+mH(pct(bm.read,bm.owned),'Read / owned','','t')+mH(pct(bm.owned,bm.tracked),'Owned / tracked')+mH(pct(bm.owned-bm.read,bm.tracked-bm.read),'Owned unread / unread');
@@ -1707,14 +1693,17 @@ function uvOpen(name,filter){
   const span={};for(const s in by){const ys=by[s].map(yearOf).filter(Boolean);span[s]=ys.length?[Math.min(...ys),Math.max(...ys)]:null;}
   const isStand=s=>s.startsWith('Standalones');
   const sers=Object.keys(by).sort((a,b)=>isStand(a)-isStand(b)||(!span[a])-(!span[b])||((span[a]||[0])[0]-(span[b]||[0])[0])||a.localeCompare(b));
-  const n={tracked:books.length,read:books.filter(b=>b.read).length,owned:books.filter(b=>b.owned).length,need:books.filter(b=>b.need).length,unpub:books.filter(unpub).length,unread:books.filter(b=>!b.read).length,unowned:books.filter(b=>!b.owned).length};
+  const cnt=a=>({tracked:a.length,read:a.filter(b=>b.read).length,owned:a.filter(b=>b.owned).length,need:a.filter(b=>b.need).length,unpub:a.filter(unpub).length,unread:a.filter(b=>!b.read).length,unowned:a.filter(b=>!b.owned).length});
+  // the filters count the list (each reader's copy); the headline counts a
+  // work in both registers once, as the tile does (bothWorks, 2026-11-23)
+  const n=cnt(books),t=OWNER==='all'?cnt((G.works||[]).filter(b=>b.universe===name)):n;
   const show=b=>uvFilter==='all'||(uvFilter==='unread'&&!b.read)||(uvFilter==='unowned'&&!b.owned)||(uvFilter==='need'&&b.need)||(uvFilter==='unpub'&&unpub(b));
   G._uvBooks=[];
   const row=b=>uvRowHtml(b,ctx,show(b));
   const filt=[['all','All '+n.tracked],['unread','Unread '+n.unread],['unowned','Not owned '+n.unowned],['need','Needed '+n.need],['unpub','Unpublished '+n.unpub]];
   el.innerHTML=`<div class="cb" style="margin-bottom:1.5rem">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
-      <div style="font-family:var(--font-d);font-size:1.05rem;font-weight:600">${esc(name)} <span class="ms">· ${n.tracked} tracked · ${n.read} read · ${n.owned} owned · ${n.need} needed · ${n.unpub} unpublished</span></div>
+      <div style="font-family:var(--font-d);font-size:1.05rem;font-weight:600">${esc(name)} <span class="ms">· ${t.tracked} tracked · ${t.read} read · ${t.owned} owned · ${t.need} needed · ${t.unpub} unpublished</span></div>
       <button class="log-act" onclick="uvClose()">✕ Close</button>
     </div>
     <div class="ytog" style="margin:8px 0 4px">${filt.map(([k,l])=>`<button class="${uvFilter===k?'active':''}" data-u="${esc(name)}" onclick="uvOpen(this.dataset.u,'${k}')">${l}</button>`).join('')}</div>
@@ -1843,7 +1832,7 @@ function renderUniverse(bm){
     all.filter(u=>u.type==='Individual'&&u.name&&u.name!=='(unassigned)').forEach(u=>{
       const host=(byName[u.name]||[]).filter(h=>['Series','Comics','Graphic Novel','Manga'].includes(h.type)).sort((a,b)=>b.tracked-a.tracked)[0];
       if(host){host.tracked+=u.tracked;host.read+=u.read;host.owned+=u.owned;return;}
-      const bk=(G.indBooks||[]).filter(b=>b.universe===u.name),med=bk.map(b=>b.media);
+      const bk=(G.works||G.indBooks||[]).filter(b=>b.universe===u.name),med=bk.map(b=>b.media);
       const type=med.length&&med.every(m=>m==='Manga')?'Manga':med.length&&med.every(m=>/^(Comics|Graphic Novel|GN)$/.test(m))?'Comics':'Series';
       const nu=bk.length?{name:u.name,type,tracked:bk.length,read:bk.filter(b=>b.read).length,owned:bk.filter(b=>b.owned).length}:{...u,type};
       shown.push(nu);(byName[u.name]=byName[u.name]||[]).push(nu);
@@ -3038,60 +3027,86 @@ function cellEdit(td,kind){
   el.onchange=()=>{if(el.tagName==='SELECT')finish(true);};
   el.onblur=()=>setTimeout(()=>finish(true),120);
 }
+// Both readers (John, 2026-11-22; "fix the other tabs too", 2026-11-23): a
+// work held in both registers is ONE work in every Both total — owned if
+// either owns it, read if either has read it, with an audio copy if either
+// owned copy has one — counted once, under John's entry (his series, type,
+// genre and universe). A work is its title plus its first author's surname
+// (bothKey); only a twin ACROSS the two registers folds, never two entries
+// inside one register (Com's Doom Brigade sits in two series and stays two).
+// bothWorks() gives the totals' sources: works (the book list) and rows (the
+// register rows, Shereen's twin taken out of her row and its read/owned/audio
+// joined to his), plus copies — works you both own in a physical format,
+// each a second copy in the house for Library Growth. applyOwner keeps it as
+// G.bothAll and, under Both, hands G.works / G.workRows to every total:
+// Overview, By Type, By Genre, By Universe, Completion, To Read, By Series,
+// Collecting, To Acquire, Library Growth. The per-reader lists (Register,
+// TBR, Plan, Rooms' shelves, a universe's series groups) still show each
+// register's own entries.
+function bothKey(b){const nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');return nk(b.title)+'|'+nk((peopleOf(b.author)[0]||'').split(/\s+/).pop());}
+function bothWorks(){
+  const all=G.allIndBooks||[],his=new Map(),twins=new Map();
+  for(const b of all)if((b.owner||'butthead')==='butthead')his.set(bothKey(b),b);
+  for(const s of all){
+    if((s.owner||'butthead')==='butthead')continue;
+    const j=his.get(bothKey(s));if(!j)continue;
+    if(!twins.has(j))twins.set(j,[]);twins.get(j).push(s);
+  }
+  const fm=b=>b.formats&&b.formats.length?b.formats:[b.media||'Print'];
+  const audio=b=>!!b.owned&&fm(b).includes('Audio');
+  const phys=b=>fm(b).some(f=>!/^(audio|ebook)$/i.test(f));
+  // a book's register row: its series row, or its own Individual row when standalone
+  const rk=b=>(b.owner||'butthead')+(b.series&&b.series!=='Standalones'?'|S|'+b.series:'|I|'+b.title);
+  const rows=(G.allBookRows||[]).map(r=>Object.assign({},r)),at={};
+  for(const r of rows)at[(r.owner||'butthead')+(r.type==='Individual'?'|I|':'|S|')+r.title]=r;
+  const folded=new Map(),gone=new Set();let copies=0;
+  for(const[j,ss]of twins){
+    const cp=[j,...ss],own=cp.filter(b=>b.owned);
+    const w=Object.assign({},j,{read:cp.some(b=>b.read),owned:own.length>0,
+      formats:own.length?[...new Set(own.flatMap(fm))]:fm(j),media:j.owned||!own.length?j.media:own[0].media,
+      pages:+j.pages||+(ss.find(b=>+b.pages)||{}).pages||0,copiesOf:cp});
+    w.need=!w.owned&&cp.some(b=>b.need);
+    folded.set(j,w);ss.forEach(s=>gone.add(s));
+    copies+=Math.max(0,own.filter(phys).length-1);
+    // his row takes the work whole; hers lets go of her copy
+    const rj=at[rk(j)];if(!rj)continue;
+    for(const s of ss){const rs=at[rk(s)];if(!rs)continue;rs.count--;if(s.read)rs.read--;if(s.owned)rs.owned--;if(audio(s))rs.audio=(rs.audio||0)-1;}
+    if(w.read&&!j.read)rj.read++;
+    if(w.owned&&!j.owned)rj.owned++;
+    if(cp.some(audio)&&!audio(j))rj.audio=(rj.audio||0)+1;
+  }
+  return{works:all.filter(b=>!gone.has(b)).map(b=>folded.get(b)||b),rows:rows.filter(r=>r.count>0),pairs:gone.size,copies};
+}
+// Pages come summed per register (BUNDLE.pageStats): on Both a work you both
+// own (or have both read) gives its pages once — the second copy falls out
+// when it was counted with pages
+function bothPageOverlap(){
+  const z={ownedBooks:0,ownedWith:0,ownedPages:0,readBooks:0,readWith:0,readPages:0};
+  if(OWNER!=='all')return z;
+  for(const w of (G.bothAll||{}).works||[]){
+    if(!w.copiesOf)continue;
+    for(const[k,on]of[['owned',b=>b.owned],['read',b=>b.read]]){
+      const c=w.copiesOf.filter(on);if(c.length<2)continue;
+      const pg=c.filter(b=>+b.pages);
+      z[k+'Books']+=c.length-1;
+      if(pg.length>1){z[k+'With']+=pg.length-1;z[k+'Pages']+=pg.slice(1).reduce((t,b)=>t+(+b.pages),0);}
+    }
+  }
+  return z;
+}
 // Per person, from the register's own credits (Book Authors tab) over the
 // books the header shows: a co-written series no longer hands every
 // co-author the whole series (John, 2026-09-23: "what are all these Douglas
 // Niles books? 47?" — his credits say 28). Groups (Various…) are skipped;
 // a book without credit rows falls back to its author line.
-// Both readers (John, 2026-11-22): a work held in both registers is ONE work
-// in every Both total — owned if either owns it, read if either has read it.
-// A work is its title plus its first author's surname. bothOverlap() is what
-// summing the two registers counted twice, for totals built per register
-// (the Overview's cards, rates, pages); authorStats folds the books itself.
-function bothKey(b){const nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');return nk(b.title)+'|'+nk((peopleOf(b.author)[0]||'').split(/\s+/).pop());}
-function bothOverlap(){
-  const z={tracked:0,read:0,owned:0,readNotOwned:0,ownedBooks:0,ownedWith:0,ownedPages:0,readBooks:0,readWith:0,readPages:0,byType:{}};
-  if(OWNER!=='all')return z;
-  const his=new Map(),rowType={};
-  for(const b of G.allIndBooks||[])if((b.owner||'butthead')==='butthead')his.set(bothKey(b),b);
-  // a book's register row: its series, or its own title for a standalone
-  for(const r of G.allBookRows||[])rowType[(r.owner||'butthead')+'|'+r.title]=r.type;
-  for(const s of G.allIndBooks||[]){
-    if((s.owner||'butthead')==='butthead')continue;
-    const j=his.get(bothKey(s));if(!j)continue;
-    const jr=!!j.read,sr=!!s.read,jo=!!j.owned,so=!!s.owned;
-    z.tracked++;if(jr&&sr)z.read++;if(jo&&so)z.owned++;
-    z.readNotOwned+=(jr&&!jo?1:0)+(sr&&!so?1:0)-((jr||sr)&&!(jo||so)?1:0);
-    // the by-type chart: the second copy was counted under her row's type
-    const so_=s.owner||'goblin',ty=rowType[so_+'|'+(s.series&&s.series!=='Standalones'?s.series:s.title)]||rowType[so_+'|'+s.title];
-    if(ty){const t=z.byType[ty]=z.byType[ty]||{tracked:0,read:0,owned:0};t.tracked++;if(jr&&sr)t.read++;if(jo&&so)t.owned++;}
-    // pages: the second copy falls out only when both copies were counted with pages
-    const pj=+j.pages||0,ps=+s.pages||0;
-    if(jo&&so){z.ownedBooks++;if(pj&&ps){z.ownedWith++;z.ownedPages+=ps;}}
-    if(jr&&sr){z.readBooks++;if(pj&&ps){z.readWith++;z.readPages+=ps;}}
-  }
-  return z;
-}
 function authorStats(){
   const nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
   const groups=new Set((G.authors||[]).filter(a=>a.kind==='group').map(a=>a.name));
   const m={};
-  // Both readers: a work in both registers is ONE work here, owned if either
-  // owns it and read if either has read it, counted under the row that
-  // owns/read it (John, 2026-11-22: the Icewind Dale Trilogy showed 4 books,
-  // his 3 plus Shereen's tracked Crystal Shard; 60 works sit in both)
-  let rows=G.indBooks||[];
-  if(OWNER==='all'){
-    const one=new Map(),rank=x=>(x.owned?2:0)+(x.read?1:0);
-    for(const b of rows){
-      const k=bothKey(b);
-      const o=one.get(k);
-      if(!o){one.set(k,b);continue;}
-      const rep=rank(b)>rank(o)?b:o;
-      one.set(k,Object.assign({},rep,{read:!!(o.read||b.read),owned:!!(o.owned||b.owned)}));
-    }
-    rows=[...one.values()];
-  }
+  // Both readers: a work in both registers is ONE work here (G.works,
+  // bothWorks) — John, 2026-11-22: the Icewind Dale Trilogy showed 4 books,
+  // his 3 plus Shereen's tracked Crystal Shard; 60 works sit in both
+  const rows=G.works||G.indBooks||[];
   for(const b of rows){
     const cr=((G.bookAuthors||{})[nk(b.title)+'|'+(b.owner||'butthead')]||[]).filter(c=>c.role==='author').map(c=>c.name);
     const ppl=cr.length?cr:peopleOf(b.author);
@@ -3275,11 +3290,12 @@ function renderToRead(bm){
   const ttrpgTitles=TKW; // reuse global
 
   // Split rows into TTRPG vs regular
-  const ttrpgRows=G.bookRows.filter(r=>{
+  // Both: a work in both registers is one (G.workRows / G.works, bothWorks)
+  const ttrpgRows=(G.workRows||G.bookRows).filter(r=>{
     const t=r.title.toLowerCase(),sg=r.subgenre.toLowerCase();
     return (sg===TTRPG_SG||ttrpgTitles.some(k=>t.includes(k)))&&Math.max(0,r.owned-r.read)>0;
   });
-  const regularRows=G.bookRows.filter(r=>{
+  const regularRows=(G.workRows||G.bookRows).filter(r=>{
     const t=r.title.toLowerCase(),sg=r.subgenre.toLowerCase();
     return !(sg===TTRPG_SG||ttrpgTitles.some(k=>t.includes(k)))&&Math.max(0,r.owned-r.read)>0;
   });
@@ -3337,7 +3353,7 @@ function renderToRead(bm){
   // next reads.
   const trc=document.getElementById('tr-covers');
   if(trc){
-    const shelf=(G.indBooks||[]).filter(b=>b.owned&&!b.read).sort((a,b)=>(b.acquiredOn||'').localeCompare(a.acquiredOn||'')||a.title.localeCompare(b.title))
+    const shelf=(G.works||G.indBooks||[]).filter(b=>b.owned&&!b.read).sort((a,b)=>(b.acquiredOn||'').localeCompare(a.acquiredOn||'')||a.title.localeCompare(b.title))
       .map(b=>({title:b.title,owner:b.owner,sub:[b.series!=='Standalones'?b.series:'',b.author].filter(Boolean).join(' · ')}));
     trc.innerHTML=shelf.length?`<div class="cbt" style="margin:8px 0 4px">Newest on the shelf</div>${coverStrip(shelf,60)}`:'';
   }
@@ -3895,8 +3911,11 @@ function renderLibGrowth(growthMetrics,bm){
   const years=rows.map(r=>r.year);
   // Owned counts physical copies (John, 2026-10-08): a second print copy on
   // record (bundle Copies > 1) adds one; a digital copy of a print book adds
-  // nothing. The history rows keep the figures they were kept with.
-  const extraCopies=(G.allIndBooks||[]).filter(b=>b.owned&&(OWNER==='all'||(b.owner||'butthead')===OWNER)).reduce((t,b)=>t+Math.max(0,(b.copies||1)-1),0);
+  // nothing. The history rows keep the figures they were kept with. Under
+  // Both a work you both own is one book (G.books) and, when both copies are
+  // physical, a second copy here (bothWorks, 2026-11-23)
+  const extraCopies=(G.allIndBooks||[]).filter(b=>b.owned&&(OWNER==='all'||(b.owner||'butthead')===OWNER)).reduce((t,b)=>t+Math.max(0,(b.copies||1)-1),0)
+    +(OWNER==='all'?(G.bothAll||{}).copies||0:0);
   const curPlanned=bm.tracked,curOwned=bm.owned+extraCopies,curRead=bm.read;
   // Metrics summary
   const latest=rows[rows.length-1]||{};
@@ -4052,6 +4071,8 @@ function renderToAcquire(bookRows,interested){
   const rnoAll=(G.indBooks||[]).filter(b=>b.read&&!b.owned);
   const rnoGroups=(OWNER==='all'?['butthead','goblin']:[OWNER]).map(o=>{const mine=rnoAll.filter(b=>(b.owner||'butthead')===o);return{o,books:mine.filter(b=>!inHouse(b)).sort(rnoSort),house:mine.filter(inHouse)};});
   const rnoBooks=rnoGroups.flatMap(g=>g.books);
+  // a book you have both read and neither owns is one book to buy (bothKey)
+  const rnoN=new Set(rnoBooks.map(b=>OWNER==='all'?bothKey(b):b)).size;
   const partial=bookRows.filter(r=>r.owned>0&&r.owned<r.count&&!readNotOwnedSet.has(r.title)).sort((a,b)=>(b.count-b.owned)-(a.count-a.owned));
 
   // Compute total need-to-buy gap across all series (matches Tracking)
@@ -4067,7 +4088,7 @@ function renderToAcquire(bookRows,interested){
     mH(fmt(totalGap),'Total need to buy','books across all series','c')+
     mH(unstarted.length,'Unstarted series')+
     mH(partial.length,'Partially owned')+
-    mH(rnoBooks.length,'Read but not owned','books, one copy in the house enough');
+    mH(rnoN,'Read but not owned','books, one copy in the house enough');
 
   // Reconciliation bar
   const segs=[
@@ -4140,7 +4161,11 @@ function applyOwner(rerender){
   const pick=rows=>OWNER==='all'?rows:rows.filter(r=>(r.owner||'butthead')===OWNER);
   G.bookRows=pick(G.allBookRows||[]);
   G.indBooks=pick(G.allIndBooks||[]);
-  G.books=calcBooks(G.bookRows);
+  // the totals' sources: under Both a work in both registers is one (bothWorks)
+  G.bothAll=bothWorks();
+  G.works=OWNER==='all'?G.bothAll.works:G.indBooks;
+  G.workRows=OWNER==='all'?G.bothAll.rows:G.bookRows;
+  G.books=calcBooks(G.workRows);
   if(rerender){if(typeof buildCollecting==='function')buildCollecting();rendered.clear();renderTab(curTab);}
 }
 function setOwner(o){
@@ -4293,7 +4318,7 @@ function renderTabInner(id){
   else if(id==='toread')renderToRead(bm);
   else if(id==='comingup')renderComingUp();
   else if(id==='bookmail')renderBookMail(H?G.orders:[]);
-  else if(id==='toacquire')renderToAcquire(G.bookRows,H?G.interested:{up:[],sd:[]});
+  else if(id==='toacquire')renderToAcquire(G.workRows||G.bookRows,H?G.interested:{up:[],sd:[]});
   else if(id==='someday')renderSomeday(H?G.interested:{up:[],sd:[]});
   else if(id==='libgrowth')renderLibGrowth(H?G.growthMetrics:[],G.books);
   else if(id==='buythisyear')renderBuyThisYear(H?G.growthYear:[]);
@@ -4306,9 +4331,20 @@ function renderTabInner(id){
   else if(id==='logsheet')LOG.renderSheet();
   else if(id==='logmeta')LOG.renderMeta();
   else if(id==='col-awards')renderAwards();
-  else if(id==='col-fr'){switchFRTab('fr-overview');}
-  else if(id==='col-dl'){switchDLTab('dl-overview');}
-  else if(id==='col-sr'){switchSRTab('sr-overview');}
+  else if(id==='col-fr'){if(!colEmpty('col-fr','Forgotten Realms',(G.frBooks||[]).length))switchFRTab('fr-overview');}
+  else if(id==='col-dl'){if(!colEmpty('col-dl','Dragonlance',((G.dlData||{}).books||[]).length))switchDLTab('dl-overview');}
+  else if(id==='col-sr'){if(!colEmpty('col-sr','Shadowrun',((G.srData||{}).books||[]).length))switchSRTab('sr-overview');}
+}
+// A reader with no books in a Collecting universe (Shereen has no Dragonlance
+// or Shadowrun) gets a notice, not the last reader's numbers (2026-11-23)
+function colEmpty(tab,label,n){
+  const p=document.getElementById('tab-'+tab);if(!p)return false;
+  let e=p.querySelector(':scope>.col-empty');
+  if(!e){e=document.createElement('div');e.className='col-empty ms';e.style.padding='1rem 0';p.prepend(e);}
+  e.textContent=n?'':`No ${label} books in ${OWNER==='all'?'either':(OWNER_LABEL[OWNER]||OWNER)+'’s'} register.`;
+  e.style.display=n?'none':'';
+  p.classList.toggle('col-is-empty',!n);
+  return !n;
 }
 
 // ── FR PARSERS ────────────────────────────────────────────────
@@ -4340,7 +4376,8 @@ function buildCollecting(){
   G.collectingUniverses=new Set((BUNDLE.tabs['bookdb|Universes']||[]).slice(1)
     .filter(r=>((r[1]||'')+'').trim().toLowerCase()==='x')
     .map(r=>((r[0]||'')+'').trim()));
-  const all=(G.allIndBooks||[]).filter(b=>OWNER==='all'||(b.owner||'butthead')===OWNER); // the header's reader filter applies (2026-09-27)
+  // the header's reader filter applies (2026-09-27); under Both a work in both registers is one (bothWorks, 2026-11-23)
+  const all=OWNER==='all'?(G.works||G.allIndBooks||[]):(G.allIndBooks||[]).filter(b=>(b.owner||'butthead')===OWNER);
   const of=u=>all.filter(b=>b.universe===u);
   const yearOf=b=>parseInt((b.pubDate||'').slice(0,4))||0;
 
@@ -4384,6 +4421,9 @@ function buildCollecting(){
   const byPublisher={};
   for(const pub of PUBLISHERS)byPublisher[pub]=srBooks.filter(b=>b.publisher===pub);
   G.srData={books:srBooks,byPublisher};
+  // the sub-tabs draw once per build: a new reader filter redraws them
+  // (they kept the first reader's numbers until a reload, 2026-11-23)
+  frRendered.clear();dlRendered.clear();srRendered.clear();
 }
 
 // ── FR SUB-TAB NAVIGATION ─────────────────────────────────────
@@ -5040,8 +5080,9 @@ function mediaSection(media){
 }
 
 function buildBSData(){
-  const books=G.indBooks||[];
-  const bsRows=G.bookRows||[];
+  // Both: a series you both track lists each work once (G.works, bothWorks)
+  const books=G.works||G.indBooks||[];
+  const bsRows=G.workRows||G.bookRows||[];
   const bsLookup={};
   for(const r of bsRows) bsLookup[r.title.toLowerCase()]={count:r.count,read:r.read,owned:r.owned};
 
@@ -5372,7 +5413,7 @@ function switchBSTab(tab){
 }
 
 function renderBySeries(){
-  const books=G.indBooks||[];
+  const books=G.works||G.indBooks||[];
   const total=books.length;
   const read=books.filter(b=>b.read).length;
   const owned=books.filter(b=>b.owned).length;

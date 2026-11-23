@@ -1033,42 +1033,96 @@ async function main(){
   await check('Completion on Both counts a work held in both registers once',async()=>{
     // John, 2026-11-22: Reading › Completion showed R.A. Salvatore's Icewind Dale Trilogy as 4 books,
     // his 3 plus Shereen's tracked Crystal Shard. A twin on her side must not change the counts.
+    // Her copy sits in a series of her own, so a fold that missed it would add that series to the author.
     const name='Completion on Both counts a work held in both registers once';
-    const W=w(),prev=W.eval('OWNER');
+    const W=w(),prev=W.eval('OWNER'),ib=W.eval('G.allIndBooks'),br=W.eval('G.allBookRows');
+    let twin=null,row=null;
     try{
       W.setOwner('all');
-      const ib=W.eval('G.indBooks');
       const his=ib.find(b=>(b.owner||'butthead')==='butthead'&&b.series&&b.series!=='Standalones'&&b.author&&b.read&&b.owned);
       const before=JSON.stringify(W.eval('authorStats()'));
-      const twin=Object.assign({},his,{owner:'goblin',owned:false,read:false});
-      ib.push(twin);
+      twin=Object.assign({},his,{owner:'goblin',owned:false,read:false,series:'Qq Her Shelf'});
+      row={owner:'goblin',type:'Series',title:'Qq Her Shelf',count:1,read:0,owned:0,audio:0,author:his.author,genre:'',subgenre:'',universe:''};
+      ib.push(twin);br.push(row);W.applyOwner(false);
       const after=JSON.stringify(W.eval('authorStats()'));
-      ib.splice(ib.indexOf(twin),1);
       res(name,!!his&&before===after,`Shereen's tracked twin of “${his&&his.title}” added: completion ${before===after?'unchanged':'CHANGED'}`);
-    }finally{W.setOwner(prev);}
+    }finally{if(twin)ib.splice(ib.indexOf(twin),1);if(row)br.splice(br.indexOf(row),1);W.applyOwner(false);W.setOwner(prev);}
   });
-  await check('Overview on Both counts a work held in both registers once',async()=>{
-    // John, 2026-11-22: "fix the Overview too" — its cards, rates, pages and by-type chart
-    // added the two registers, so the 60 works in both counted twice
-    const name='Overview on Both counts a work held in both registers once';
+  await check('Both: a work held in both registers is one work in every total',async()=>{
+    // John, 2026-11-22/23: "fix the Overview too", then "fix the other tabs too" — By Type, Genre,
+    // Universe, Completion's TTRPG, To Read, By Series, Collecting, To Acquire and Library Growth
+    // added the two registers, so the works in both counted twice
+    const name='Both: a work held in both registers is one work in every total';
     const W=w(),prev=W.eval('OWNER'),ib=W.eval('G.allIndBooks'),br=W.eval('G.allBookRows');
-    const put=W.eval('(function(a,b){G.allIndBooks=a;G.allBookRows=b;})');
+    const put=W.eval('(function(a,b){G.allIndBooks=a;G.allBookRows=b;applyOwner(false);})');
+    const num=(txt,label)=>{const m=(txt||'').match(new RegExp('([\\d,]+)\\s*'+label,'i'));return m?+m[1].replace(/,/g,''):-1;};
+    const el=id=>doc().getElementById(id)?.textContent||'';
     try{
-      W.setOwner('all');
-      const t=W.eval('overviewTotals(G.books)'),sum=k=>Object.values(t.byType).reduce((a,v)=>a+v[k],0);
-      const agree=['tracked','read','owned'].every(k=>sum(k)===t[k]);
-      // made-up registers: A he owns and read, she only tracks; B both own and read; C only hers
-      put([{title:'Qq Twin A',author:'Ada Tester',owner:'butthead',owned:true,read:true,series:'Qq Saga',pages:300},
-           {title:'Qq Twin B',author:'Ada Tester',owner:'butthead',owned:true,read:true,series:'Qq Saga',pages:200},
-           {title:'Qq Twin A',author:'Ada Tester',owner:'goblin',owned:false,read:false,series:'Qq Saga',pages:280},
-           {title:'Qq Twin B',author:'Ada Tester',owner:'goblin',owned:true,read:true,series:'Qq Saga',pages:250},
-           {title:'Qq Only Hers',author:'Bo Tester',owner:'goblin',owned:true,read:false,series:'',pages:100}],
-          [{owner:'butthead',title:'Qq Saga',type:'Series'},{owner:'goblin',title:'Qq Saga',type:'Series'},{owner:'goblin',title:'Qq Only Hers',type:'Individual'}]);
-      const ov=W.eval('bothOverlap()');
-      const want={tracked:2,read:1,owned:1,readNotOwned:0,ownedBooks:1,ownedWith:1,ownedPages:250,readBooks:1,readWith:1,readPages:250};
-      const ok=Object.entries(want).every(([k,v])=>ov[k]===v)&&ov.byType.Series&&ov.byType.Series.tracked===2&&!ov.byType.Individual;
-      res(name,agree&&ok,`real data: by-type chart matches the cards ${agree}; made-up registers: ${JSON.stringify(Object.fromEntries(Object.keys(want).map(k=>[k,ov[k]])))}, by type ${JSON.stringify(ov.byType)}`);
+      // real data: each reader alone, then Both = the two less the works in both
+      W.setOwner('butthead');const com=W.eval('G.books.tracked');
+      W.setOwner('goblin');const gob=W.eval('G.books.tracked');
+      W.setOwner('all');const B=W.eval('G.books'),ba=W.eval('G.bothAll');
+      const want={tracked:B.tracked,read:B.read,owned:B.owned,shelf:B.shelf,need:B.needBuy};
+      await go('overview','tracking');const ov=ptxt('overview');
+      const got={ovTracked:num(ov,'Total tracked'),ovRead:num(ov,'Total read'),ovOwned:num(ov,'Total owned'),ovShelf:num(ov,'On shelf'),ovNeed:num(ov,'Need to buy')};
+      await go('bytype','tracking');const foot=[...doc().querySelectorAll('#typeFoot td')].map(td=>norm(td.textContent));
+      await go('libgrowth','buying');const lg=el('lg-m');
+      await go('toacquire','buying');const acq=el('acq-m');
+      await go('toread','reading');const tr=el('tr-m');
+      await go('byseries','reading');const bs=el('bs-m');
+      await go('col-fr','collecting');await waitFor(()=>/Total tracked/.test(ptxt('col-fr')));
+      const frWant=W.eval('G.works').filter(b=>b.universe==='Forgotten Realms').length,frGot=num(ptxt('col-fr'),'Total tracked');
+      const extra=ib.filter(b=>b.owned).reduce((t,b)=>t+Math.max(0,(b.copies||1)-1),0)+ba.copies;
+      const real=got.ovTracked===want.tracked&&got.ovRead===want.read&&got.ovOwned===want.owned&&got.ovShelf===want.shelf&&got.ovNeed===want.need
+        &&foot[1]===want.tracked&&foot[2]===want.read&&foot[3]===want.owned&&foot[5]===want.shelf&&foot[6]===want.need
+        &&num(lg,'Currently tracked')===want.tracked&&num(lg,'Currently owned')===want.owned+extra&&num(lg,'Currently read')===want.read
+        &&num(acq,'Total need to buy')===want.need&&num(tr,'Total on shelf')===want.shelf&&num(bs,'Individual books tracked')===want.tracked
+        &&frGot===frWant&&want.tracked===com+gob-ba.pairs&&ba.pairs>0;
+      // made-up registers: A both own in print (she has not read it); B only she owns and has read,
+      // her copy a standalone; C his audiobook, her print; D only hers; Twice is two entries in
+      // his own register and stays two
+      const bk=(t,o,x)=>Object.assign({title:t,author:'Ada Tester',owner:o,owned:false,read:false,series:'Qq Saga',universe:'',formats:['Print'],media:'Print',pages:0,copies:1},x);
+      put([bk('Qq Twin A','butthead',{owned:true,read:true,universe:'Qq Verse',pages:300}),bk('Qq Twin B','butthead',{universe:'Qq Verse',pages:200}),
+           bk('Qq Twin C','butthead',{owned:true,universe:'Qq Verse',formats:['Audio'],media:'Audio'}),
+           bk('Qq Twice','butthead',{author:'Cy Tester',owned:true,read:true,universe:'Qq Verse'}),bk('Qq Twice','butthead',{author:'Cy Tester',owned:true,read:true,series:'Standalones'}),
+           bk('Qq Twin A','goblin',{owned:true,pages:280}),bk('Qq Twin B','goblin',{owned:true,read:true,series:'Standalones',pages:250}),
+           bk('Qq Twin C','goblin',{owned:true,pages:310}),bk('Qq Only Hers','goblin',{author:'Bo Tester',owned:true,series:'Standalones',pages:100})],
+          [{owner:'butthead',type:'Series',title:'Qq Saga',count:4,read:2,owned:3,audio:1,genre:'Qq Genre',subgenre:'',universe:'Qq Verse',author:'Ada Tester'},
+           {owner:'butthead',type:'Individual',title:'Qq Twice',count:1,read:1,owned:1,audio:0,genre:'Qq Genre',subgenre:'',universe:'',author:'Cy Tester'},
+           {owner:'goblin',type:'Graphic Novel',title:'Qq Saga',count:2,read:0,owned:2,audio:0,genre:'Qq Other',subgenre:'',universe:'',author:'Ada Tester'},
+           {owner:'goblin',type:'Individual',title:'Qq Twin B',count:1,read:1,owned:1,audio:0,genre:'Qq Other',subgenre:'',universe:'',author:'Ada Tester'},
+           {owner:'goblin',type:'Individual',title:'Qq Only Hers',count:1,read:0,owned:1,audio:0,genre:'Qq Other',subgenre:'',universe:'',author:'Bo Tester'}]);
+      const m=W.eval('G.books'),wk=W.eval('G.works'),pg=W.eval('bothPageOverlap()'),cp=W.eval('G.bothAll.copies');
+      const wB=wk.find(b=>b.title==='Qq Twin B'),wC=wk.find(b=>b.title==='Qq Twin C');
+      const fake=m.tracked===6&&m.read===4&&m.owned===6&&m.audio===1&&wk.length===6&&cp===1
+        &&m.byType.Series.tracked===4&&m.byType.Series.read===3&&m.byType.Series.owned===4&&m.byType.Individual.tracked===2&&!m.byType['Graphic Novel']
+        &&m.byGenre['Qq Genre'].tracked===5&&m.byGenre['Qq Other'].tracked===1&&m.byUniverse['Qq Verse||Series'].tracked===4
+        &&wk.filter(b=>b.title==='Qq Twice').length===2&&wB&&wB.owner==='butthead'&&wB.owned&&wB.read&&wC&&wC.formats.join('+')==='Audio+Print'
+        &&pg.ownedBooks===2&&pg.ownedWith===1&&pg.ownedPages===280&&pg.readBooks===0;
+      W.setOwner('goblin');const solo=W.eval('G.books.tracked')===4&&W.eval('G.works.length')===4;
+      res(name,real&&fake&&solo,`real data on Both: ${want.tracked} tracked = Com ${com} + Shereen ${gob} − ${ba.pairs} in both; Overview ${JSON.stringify(got)}, By Type foot ${foot.slice(1,7).join('/')}, Library Growth ${num(lg,'Currently tracked')} tracked · ${num(lg,'Currently owned')} owned (want ${want.owned}+${extra}), To Acquire ${num(acq,'Total need to buy')}, To Read ${num(tr,'Total on shelf')}, By Series ${num(bs,'Individual books tracked')}, Forgotten Realms ${frGot} of ${frWant} — ${real?'agree':'DISAGREE'}; made-up registers ${fake?'one work each':'WRONG: '+JSON.stringify({tracked:m.tracked,read:m.read,owned:m.owned,audio:m.audio,works:wk.length,copies:cp,byType:m.byType,pages:pg})}; Shereen alone ${solo?'unfolded':'FOLDED'}`);
     }finally{put(ib,br);W.setOwner(prev);}
+  });
+  await check('Collecting redraws when the header’s reader changes',async()=>{
+    // 2026-11-23: the universe pages drew once and kept the first reader's numbers until a reload
+    const name='Collecting redraws when the header’s reader changes';
+    const W=w(),prev=W.eval('OWNER');
+    const tracked=id=>norm((ptxt(id).match(/([\d,]+)\s*Total tracked/)||[])[1]);
+    const inU=(u,o)=>ind.slice(1).filter(r=>r[8]===u&&(r[10]||'butthead').trim()===o).length;
+    try{
+      W.setOwner('butthead');await go('col-fr','collecting');const fCom=tracked('col-fr');
+      W.setOwner('goblin');await go('col-fr','collecting');
+      const pf=doc().getElementById('tab-col-fr'),gobFR=inU('Forgotten Realms','goblin');
+      const fGob=gobFR?tracked('col-fr'):(pf.classList.contains('col-is-empty')?0:-1);
+      await go('col-dl','collecting');
+      const pd=doc().getElementById('tab-col-dl'),gobDL=inU('Dragonlance','goblin');
+      const dlGob=gobDL?!pd.classList.contains('col-is-empty')&&tracked('col-dl')===gobDL
+        :pd.classList.contains('col-is-empty')&&/No Dragonlance books in Shereen/.test(pd.querySelector('.col-empty')?.textContent||'');
+      W.setOwner('butthead');await go('col-dl','collecting');
+      const dlBack=!pd.classList.contains('col-is-empty')&&tracked('col-dl')===inU('Dragonlance','butthead');
+      res(name,fCom===inU('Forgotten Realms','butthead')&&fGob===gobFR&&dlGob&&dlBack,
+        `Forgotten Realms: Com ${fCom} of ${inU('Forgotten Realms','butthead')}, Shereen ${fGob} of ${gobFR}; Dragonlance for Shereen ${dlGob?'right':'WRONG'} (${gobDL} books), back on Com ${dlBack?'redrawn':'STALE'}`);
+    }finally{W.setOwner(prev);}
   });
   await check('Google Books key: kept on this device and sent only to Google Books',async()=>{
     // John, 2026-11-16: "let's get that key" — keyless Google Books is refused (quota 0)
