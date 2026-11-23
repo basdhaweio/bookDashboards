@@ -3026,7 +3026,23 @@ function authorStats(){
   const nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
   const groups=new Set((G.authors||[]).filter(a=>a.kind==='group').map(a=>a.name));
   const m={};
-  for(const b of (G.indBooks||[])){
+  // Both readers: a work in both registers is ONE work here, owned if either
+  // owns it and read if either has read it, counted under the row that
+  // owns/read it (John, 2026-11-22: the Icewind Dale Trilogy showed 4 books,
+  // his 3 plus Shereen's tracked Crystal Shard; 60 works sit in both)
+  let rows=G.indBooks||[];
+  if(OWNER==='all'){
+    const one=new Map(),rank=x=>(x.owned?2:0)+(x.read?1:0);
+    for(const b of rows){
+      const k=nk(b.title)+'|'+nk((peopleOf(b.author)[0]||'').split(/\s+/).pop());
+      const o=one.get(k);
+      if(!o){one.set(k,b);continue;}
+      const rep=rank(b)>rank(o)?b:o;
+      one.set(k,Object.assign({},rep,{read:!!(o.read||b.read),owned:!!(o.owned||b.owned)}));
+    }
+    rows=[...one.values()];
+  }
+  for(const b of rows){
     const cr=((G.bookAuthors||{})[nk(b.title)+'|'+(b.owner||'butthead')]||[]).filter(c=>c.role==='author').map(c=>c.name);
     const ppl=cr.length?cr:peopleOf(b.author);
     const sname=b.series&&b.series!=='Standalones'?seriesLabel(b):'';

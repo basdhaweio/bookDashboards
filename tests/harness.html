@@ -1030,6 +1030,23 @@ async function main(){
       D.getElementById('log-q').value='';D.getElementById('log-n-title').value='';D.getElementById('log-n-author').value='';
       if(wasHidden&&form.style.display!=='none')W.eval('LOG').toggleAdd();}
   });
+  await check('Completion on Both counts a work held in both registers once',async()=>{
+    // John, 2026-11-22: Reading › Completion showed R.A. Salvatore's Icewind Dale Trilogy as 4 books,
+    // his 3 plus Shereen's tracked Crystal Shard. A twin on her side must not change the counts.
+    const name='Completion on Both counts a work held in both registers once';
+    const W=w(),prev=W.eval('OWNER');
+    try{
+      W.setOwner('all');
+      const ib=W.eval('G.indBooks');
+      const his=ib.find(b=>(b.owner||'butthead')==='butthead'&&b.series&&b.series!=='Standalones'&&b.author&&b.read&&b.owned);
+      const before=JSON.stringify(W.eval('authorStats()'));
+      const twin=Object.assign({},his,{owner:'goblin',owned:false,read:false});
+      ib.push(twin);
+      const after=JSON.stringify(W.eval('authorStats()'));
+      ib.splice(ib.indexOf(twin),1);
+      res(name,!!his&&before===after,`Shereen's tracked twin of “${his&&his.title}” added: completion ${before===after?'unchanged':'CHANGED'}`);
+    }finally{W.setOwner(prev);}
+  });
   await check('Google Books key: kept on this device and sent only to Google Books',async()=>{
     // John, 2026-11-16: "let's get that key" — keyless Google Books is refused (quota 0)
     const name='Google Books key: kept on this device and sent only to Google Books';
