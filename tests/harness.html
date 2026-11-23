@@ -1047,6 +1047,29 @@ async function main(){
       res(name,!!his&&before===after,`Shereen's tracked twin of “${his&&his.title}” added: completion ${before===after?'unchanged':'CHANGED'}`);
     }finally{W.setOwner(prev);}
   });
+  await check('Overview on Both counts a work held in both registers once',async()=>{
+    // John, 2026-11-22: "fix the Overview too" — its cards, rates, pages and by-type chart
+    // added the two registers, so the 60 works in both counted twice
+    const name='Overview on Both counts a work held in both registers once';
+    const W=w(),prev=W.eval('OWNER'),ib=W.eval('G.allIndBooks'),br=W.eval('G.allBookRows');
+    const put=W.eval('(function(a,b){G.allIndBooks=a;G.allBookRows=b;})');
+    try{
+      W.setOwner('all');
+      const t=W.eval('overviewTotals(G.books)'),sum=k=>Object.values(t.byType).reduce((a,v)=>a+v[k],0);
+      const agree=['tracked','read','owned'].every(k=>sum(k)===t[k]);
+      // made-up registers: A he owns and read, she only tracks; B both own and read; C only hers
+      put([{title:'Qq Twin A',author:'Ada Tester',owner:'butthead',owned:true,read:true,series:'Qq Saga',pages:300},
+           {title:'Qq Twin B',author:'Ada Tester',owner:'butthead',owned:true,read:true,series:'Qq Saga',pages:200},
+           {title:'Qq Twin A',author:'Ada Tester',owner:'goblin',owned:false,read:false,series:'Qq Saga',pages:280},
+           {title:'Qq Twin B',author:'Ada Tester',owner:'goblin',owned:true,read:true,series:'Qq Saga',pages:250},
+           {title:'Qq Only Hers',author:'Bo Tester',owner:'goblin',owned:true,read:false,series:'',pages:100}],
+          [{owner:'butthead',title:'Qq Saga',type:'Series'},{owner:'goblin',title:'Qq Saga',type:'Series'},{owner:'goblin',title:'Qq Only Hers',type:'Individual'}]);
+      const ov=W.eval('bothOverlap()');
+      const want={tracked:2,read:1,owned:1,readNotOwned:0,ownedBooks:1,ownedWith:1,ownedPages:250,readBooks:1,readWith:1,readPages:250};
+      const ok=Object.entries(want).every(([k,v])=>ov[k]===v)&&ov.byType.Series&&ov.byType.Series.tracked===2&&!ov.byType.Individual;
+      res(name,agree&&ok,`real data: by-type chart matches the cards ${agree}; made-up registers: ${JSON.stringify(Object.fromEntries(Object.keys(want).map(k=>[k,ov[k]])))}, by type ${JSON.stringify(ov.byType)}`);
+    }finally{put(ib,br);W.setOwner(prev);}
+  });
   await check('Google Books key: kept on this device and sent only to Google Books',async()=>{
     // John, 2026-11-16: "let's get that key" — keyless Google Books is refused (quota 0)
     const name='Google Books key: kept on this device and sent only to Google Books';

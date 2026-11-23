@@ -1480,6 +1480,8 @@ function pageStatsFor(){
   const owners=OWNER==='all'?Object.keys(ps):[OWNER];
   const agg={ownedBooks:0,ownedWith:0,ownedPages:0,readBooks:0,readWith:0,readPages:0};
   owners.forEach(o=>{const cs=ps[o]||{};Object.values(cs).forEach(c=>{for(const k in agg)agg[k]+=c[k]||0;});});
+  // Both: a work both of you own or have read counts its pages once (bothOverlap)
+  if(OWNER==='all'){const ov=bothOverlap();for(const k in agg)agg[k]-=ov[k]||0;}
   return agg;
 }
 // ── Collecting › Awards: the Hugo rosters as a "what to track / read"
@@ -1576,7 +1578,14 @@ function ownedFormatBucket(b){
   return'print';
 }
 function ownedFormatBar(){
-  const books=(G.allIndBooks||[]).filter(b=>b.owned&&(OWNER==='all'||(b.owner||'butthead')===OWNER));
+  let books=(G.allIndBooks||[]).filter(b=>b.owned&&(OWNER==='all'||(b.owner||'butthead')===OWNER));
+  // Both: a work you both own is one book, in every format either copy has (bothKey)
+  if(OWNER==='all'){
+    const one=new Map(),fm=b=>b.formats&&b.formats.length?b.formats:[b.media||'Print'];
+    for(const b of books){const k=bothKey(b),o=one.get(k);
+      one.set(k,o?Object.assign({},o,{formats:[...new Set([...fm(o),...fm(b)])]}):b);}
+    books=[...one.values()];
+  }
   const bk={print:0,manga:0,comics:0,both:0,audio:0,ebook:0};
   for(const b of books)bk[ownedFormatBucket(b)]++;
   if(!books.length)return'';
@@ -1593,8 +1602,20 @@ function focusSeriesRows(sn){
   const nl=t=>(t||'').toLowerCase().replace(/×/g,'x').replace(/^\s*(the|a|an)\s+/,'').replace(/[^a-z0-9]/g,''),k=nl(sn);
   return(G.bookRows||[]).filter(r=>(r.owner||'butthead')==='butthead'&&(nl(r.title)===k||nl(r.universe)===k));
 }
-function renderOverview(bm,yd2026){
-  const pg=pageStatsFor();
+// The Overview's headline totals: a work in both registers counts once on
+// Both (bothOverlap); on shelf and need to buy follow as calcBooks has them
+function overviewTotals(bm){
+  const ov=bothOverlap();
+  const tracked=bm.tracked-ov.tracked,read=bm.read-ov.read,owned=bm.owned-ov.owned;
+  const byType={};
+  for(const[k,v]of Object.entries(bm.byType||{})){
+    const d=ov.byType[k]||{tracked:0,read:0,owned:0};
+    byType[k]=Object.assign({},v,{tracked:v.tracked-d.tracked,read:v.read-d.read,owned:v.owned-d.owned});
+  }
+  return{tracked,read,owned,shelf:owned-read,needBuy:tracked-owned,readNotOwned:bm.readNotOwned-ov.readNotOwned,audio:bm.audio,byType};
+}
+function renderOverview(bm0,yd2026){
+  const pg=pageStatsFor(),bm=overviewTotals(bm0);
   document.getElementById('ov-m').innerHTML=mH(fmt(bm.tracked),'Total tracked')+mH(fmt(bm.read),'Total read',pct(bm.read,bm.tracked)+' of tracked','t')+mH(fmt(bm.owned),'Total owned',bm.audio?fmt(bm.audio)+' with an audio copy':'')+mH(fmt(bm.shelf),'On shelf','owned unread','c')+mH(fmt(bm.needBuy),'Need to buy')+mH(fmt(bm.readNotOwned),'Read not owned','delta where read > owned')+mH(fmt(pg.ownedPages),'Pages owned',`${fmt(pg.ownedWith)} of ${fmt(pg.ownedBooks)} books w/ data`)+mH(fmt(pg.readPages),'Pages read',`all-time · ${fmt(pg.readWith)} of ${fmt(pg.readBooks)} w/ data`,'t');
   document.getElementById('ov-fmt').innerHTML=ownedFormatBar();
   document.getElementById('ov-c').innerHTML=mH(pct(bm.read,bm.tracked),'Read / tracked','','t')+mH(pct(bm.read,bm.owned),'Read / owned','','t')+mH(pct(bm.owned,bm.tracked),'Owned / tracked')+mH(pct(bm.owned-bm.read,bm.tracked-bm.read),'Owned unread / unread');
@@ -3022,6 +3043,35 @@ function cellEdit(td,kind){
 // co-author the whole series (John, 2026-09-23: "what are all these Douglas
 // Niles books? 47?" — his credits say 28). Groups (Various…) are skipped;
 // a book without credit rows falls back to its author line.
+// Both readers (John, 2026-11-22): a work held in both registers is ONE work
+// in every Both total — owned if either owns it, read if either has read it.
+// A work is its title plus its first author's surname. bothOverlap() is what
+// summing the two registers counted twice, for totals built per register
+// (the Overview's cards, rates, pages); authorStats folds the books itself.
+function bothKey(b){const nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');return nk(b.title)+'|'+nk((peopleOf(b.author)[0]||'').split(/\s+/).pop());}
+function bothOverlap(){
+  const z={tracked:0,read:0,owned:0,readNotOwned:0,ownedBooks:0,ownedWith:0,ownedPages:0,readBooks:0,readWith:0,readPages:0,byType:{}};
+  if(OWNER!=='all')return z;
+  const his=new Map(),rowType={};
+  for(const b of G.allIndBooks||[])if((b.owner||'butthead')==='butthead')his.set(bothKey(b),b);
+  // a book's register row: its series, or its own title for a standalone
+  for(const r of G.allBookRows||[])rowType[(r.owner||'butthead')+'|'+r.title]=r.type;
+  for(const s of G.allIndBooks||[]){
+    if((s.owner||'butthead')==='butthead')continue;
+    const j=his.get(bothKey(s));if(!j)continue;
+    const jr=!!j.read,sr=!!s.read,jo=!!j.owned,so=!!s.owned;
+    z.tracked++;if(jr&&sr)z.read++;if(jo&&so)z.owned++;
+    z.readNotOwned+=(jr&&!jo?1:0)+(sr&&!so?1:0)-((jr||sr)&&!(jo||so)?1:0);
+    // the by-type chart: the second copy was counted under her row's type
+    const so_=s.owner||'goblin',ty=rowType[so_+'|'+(s.series&&s.series!=='Standalones'?s.series:s.title)]||rowType[so_+'|'+s.title];
+    if(ty){const t=z.byType[ty]=z.byType[ty]||{tracked:0,read:0,owned:0};t.tracked++;if(jr&&sr)t.read++;if(jo&&so)t.owned++;}
+    // pages: the second copy falls out only when both copies were counted with pages
+    const pj=+j.pages||0,ps=+s.pages||0;
+    if(jo&&so){z.ownedBooks++;if(pj&&ps){z.ownedWith++;z.ownedPages+=ps;}}
+    if(jr&&sr){z.readBooks++;if(pj&&ps){z.readWith++;z.readPages+=ps;}}
+  }
+  return z;
+}
 function authorStats(){
   const nk=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
   const groups=new Set((G.authors||[]).filter(a=>a.kind==='group').map(a=>a.name));
@@ -3034,7 +3084,7 @@ function authorStats(){
   if(OWNER==='all'){
     const one=new Map(),rank=x=>(x.owned?2:0)+(x.read?1:0);
     for(const b of rows){
-      const k=nk(b.title)+'|'+nk((peopleOf(b.author)[0]||'').split(/\s+/).pop());
+      const k=bothKey(b);
       const o=one.get(k);
       if(!o){one.set(k,b);continue;}
       const rep=rank(b)>rank(o)?b:o;
