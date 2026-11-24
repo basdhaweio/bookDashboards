@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-23T23:46:26+00:00",
+ "generated_at": "2026-11-24T01:01:28+00:00",
  "owner": "butthead",
  "site": "https://basdhaweio.github.io/bookDashboards/",
  "reading_now": [
@@ -128,12 +128,6 @@
    "owned": true
   },
   {
-   "title": "Spy x Family Vol 16",
-   "series": "Spy x Family",
-   "seq": "16",
-   "owned": true
-  },
-  {
    "title": "Royal Assassin",
    "series": "The Farseer Trilogy",
    "seq": "2",
@@ -143,6 +137,12 @@
    "title": "Spawn Origins Vol 5",
    "series": "Spawn Origins",
    "seq": "5",
+   "owned": true
+  },
+  {
+   "title": "The Voyage Home",
+   "series": "Women of Troy",
+   "seq": "3",
    "owned": true
   }
  ],
@@ -234,12 +234,12 @@
  },
  "year": {
   "year": 2026,
-  "read": 64,
+  "read": 65,
   "target": 155,
   "pace": 139,
-  "last_year_by_now": 141,
+  "last_year_by_now": 142,
   "last_year_total": 154,
-  "this_month": 5,
+  "this_month": 6,
   "bought": 201
  },
  "proposals": {
