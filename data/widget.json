@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-25T14:46:11+00:00",
+ "generated_at": "2026-11-26T00:06:20+00:00",
  "owner": "butthead",
  "site": "https://basdhaweio.github.io/bookDashboards/",
  "reading_now": [
@@ -147,29 +147,9 @@
   }
  ],
  "orders": {
-  "open": 33,
-  "shipped": 2,
+  "open": 31,
+  "shipped": 0,
   "lines": [
-   {
-    "id": 94,
-    "order_id": 73,
-    "title": "Rise of Empire",
-    "store": "The Broken Binding",
-    "status": "shipped",
-    "eta": "",
-    "tracking": "",
-    "ordered": "October 1, 2026"
-   },
-   {
-    "id": 91,
-    "order_id": 70,
-    "title": "Theft of Swords",
-    "store": "The Broken Binding",
-    "status": "shipped",
-    "eta": "",
-    "tracking": "",
-    "ordered": "September 1, 2026"
-   },
    {
     "id": 569,
     "order_id": 558,
@@ -229,6 +209,26 @@
     "eta": "",
     "tracking": "",
     "ordered": "2026-08-04"
+   },
+   {
+    "id": 105,
+    "order_id": 170,
+    "title": "Dust of Dreams",
+    "store": "The Broken Binding",
+    "status": "ordered",
+    "eta": "",
+    "tracking": "",
+    "ordered": "2026-08-04"
+   },
+   {
+    "id": 106,
+    "order_id": 182,
+    "title": "Rise of a Ranger",
+    "store": "The Broken Binding",
+    "status": "ordered",
+    "eta": "",
+    "tracking": "",
+    "ordered": "2026-08-16"
    }
   ]
  },
@@ -240,7 +240,7 @@
   "last_year_by_now": 143,
   "last_year_total": 154,
   "this_month": 7,
-  "bought": 201
+  "bought": 205
  },
  "proposals": {
   "open": 24
